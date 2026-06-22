@@ -846,7 +846,7 @@ export default function NotificationsPage() {
 
                         {/* Optional: Mobility Level for Caregiving */}
                         {job.service_type === "other_help" &&
-                          job.service_details?.other_type === "caregiving" &&
+                          job.service_details?.other_type === "elderly_help" &&
                           job.service_details?.mobility_level && (
                             <Badge
                               variant="outline"

@@ -68,8 +68,8 @@ function normalizeCategory(category?: string, otherType?: string): RequestCatego
   if (c === "other_help") {
     const ot = (otherType ?? "").toLowerCase();
     if (ot === "caregiving" || ot === "elderly_help" || ot === "elderly") return "elderly_help";
-    if (ot === "dog_walking" || ot === "dog_walk") return "dog_walking";
-    if (ot === "shopping" || ot === "grocery") return "shopping";
+    if (ot === "dog_walking" || ot === "dog_walk" || ot === "pet_help") return "dog_walking";
+    if (ot === "shopping" || ot === "grocery" || ot === "shopping_errands") return "shopping";
     return "general_help";
   }
   if (c === "babysitter" || c === "babysitting") return "nanny";

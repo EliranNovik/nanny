@@ -192,7 +192,7 @@ export default function JobFollowUpSection({
         );
 
       case "other_help":
-        if (otherType === "caregiving") {
+        if (otherType === "elderly_help") {
           return (
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">
@@ -230,7 +230,7 @@ export default function JobFollowUpSection({
     serviceType === "cooking" ||
     serviceType === "pickup_delivery" ||
     serviceType === "nanny" ||
-    (serviceType === "other_help" && otherType === "caregiving");
+    (serviceType === "other_help" && otherType === "elderly_help");
 
   console.log("[JobFollowUpSection] Props:", {
     jobId,
@@ -253,7 +253,7 @@ export default function JobFollowUpSection({
       case "nanny":
         return !!initialDetails.age_group;
       case "other_help":
-        if (otherType === "caregiving") return !!initialDetails.mobility_level;
+        if (otherType === "elderly_help") return !!initialDetails.mobility_level;
         return false;
       default:
         return false;

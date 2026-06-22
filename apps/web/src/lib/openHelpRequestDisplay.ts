@@ -8,6 +8,7 @@ import {
 import {
   isServiceCategoryId,
   serviceCategoryLabel,
+  otherHelpSubcategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
@@ -198,7 +199,7 @@ export function openHelpRequestDetailLine(job: {
     return "Pickup & delivery";
   }
   if (type === "other_help" && typeof sd.other_type === "string") {
-    return humanizeSnake(sd.other_type);
+    return otherHelpSubcategoryLabel(sd.other_type) ?? humanizeSnake(sd.other_type);
   }
 
   return null;

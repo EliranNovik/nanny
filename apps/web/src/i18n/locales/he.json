@@ -30,6 +30,213 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "createJob": {
+    "eyebrow": "פרסמו בקשה",
+    "titles": {
+      "default": "פרסמו בקשה",
+      "step1": "סוג העזרה",
+      "step2": "סוג השירות",
+      "step3": "מיקום",
+      "step4": "משך זמן",
+      "step5": "תקציב",
+      "step6": "מתי",
+      "step7": "פרטים נוספים",
+      "step8": "תמונות וסרטונים",
+      "step9": "פרטי השירות"
+    },
+    "tips": {
+      "1": "בחרו את הקטגוריה שמתאימה ביותר למה שאתם צריכים — תמיד אפשר לפרסם בקשה נוספת.",
+      "2": "חד-פעמי מתאים לביקור בודד; משרה חלקית וקבועה מתאימות לעזרה מתמשכת או חוזרת.",
+      "3": "בחרו עיר מתוך ההצעות (או לפי GPS). טקסט חופשי בלבד לא יאפשר מעבר לשלב הבא.",
+      "4": "בחרו משך זמן שמתאים לביקור; עוזרים נעזרים בו כדי להחליט אם הם פנויים.",
+      "5": "הוסיפו תקציב אם יש לכם כזה בראש — אפשר לדלג ולהמשיך.",
+      "6": "מתי אתם צריכים עזרה? בחרו 'עכשיו' לבקשות דחופות.",
+      "7": "הוסיפו פרטים נוספים שעשויים לעזור — או דלגו אם הכול מוכן.",
+      "8": "תמונות או סרטונים הם רשות אך יכולים להבהיר את העבודה.",
+      "9": "פרטים מדויקים מביאים התאמות מהירות וטובות יותר — הוסיפו כל דבר שמבהיר את המשימה."
+    },
+    "serviceDescriptions": {
+      "cleaning": "טיפול מקצועי בבית",
+      "cooking": "ארוחות בבית",
+      "pickup_delivery": "שליחויות ומשלוחים",
+      "nanny": "טיפול אמין בילדים",
+      "technical_help": "תיקונים ותמיכה טכנית",
+      "other_help": "כל דבר אחר"
+    },
+    "careFrequency": {
+      "one_time": "חד-פעמי",
+      "part_time": "משרה חלקית",
+      "regularly": "באופן קבוע"
+    },
+    "timeDuration": {
+      "1_2_hours": "שעה-שעתיים",
+      "3_4_hours": "3-4 שעות",
+      "5_6_hours": "5-6 שעות",
+      "full_day": "יום מלא"
+    },
+    "cleaning": {
+      "label": "סוג הניקיון",
+      "house": "ניקיון בית",
+      "office": "ניקיון משרד",
+      "garden": "גינה (חוץ)"
+    },
+    "cooking": {
+      "label": "כמה אנשים?",
+      "1_4": "1-4 אנשים",
+      "4_6": "4-6 אנשים",
+      "6_10": "6-10 אנשים",
+      "10_plus": "10+ אנשים"
+    },
+    "nanny": {
+      "label": "כמה ילדים?",
+      "1_2": "1-2 ילדים",
+      "2_4": "2-4 ילדים",
+      "4_6": "4-6 ילדים",
+      "8_plus": "8+ ילדים"
+    },
+    "otherHelp": {
+      "label": "סוג העזרה",
+      "additionalDetailsLabel": "פרטים נוספים (רשות)",
+      "additionalDetailsPlaceholder": "תארו במה אתם צריכים עזרה..."
+    },
+    "technical": {
+      "label": "במה אתם צריכים עזרה?",
+      "placeholder": "תארו את התקלה הטכנית (רשות)"
+    },
+    "budget": {
+      "optionalHint": "רשות — השאירו ריק כדי להמשיך ללא תקציב.",
+      "label": "תקציב",
+      "perHour": "לשעה",
+      "fixed": "מחיר קבוע"
+    },
+    "when": {
+      "options": {
+        "now": "עכשיו",
+        "today": "היום",
+        "tomorrow": "מחר",
+        "this_week": "השבוע",
+        "custom": "מותאם"
+      },
+      "pickDate": "בחרו תאריך",
+      "dialogTitle": "מתי אתם צריכים עזרה?"
+    },
+    "additional": {
+      "hint": "רשות — הוסיפו כל מידע נוסף שעוזרים צריכים לדעת, או דלגו.",
+      "placeholder": "תארו במה אתם צריכים עזרה..."
+    },
+    "media": {
+      "hint": "רשות — הוסיפו תמונות או סרטונים שמציגים את העבודה.",
+      "addButton": "הוסיפו תמונות או סרטונים",
+      "removeAria": "הסירו מדיה"
+    },
+    "pickup": {
+      "fromLabel": "📍 איסוף מ-",
+      "toLabel": "🎯 משלוח ל-",
+      "fromPlaceholder": "הזינו כתובת איסוף",
+      "toPlaceholder": "הזינו כתובת משלוח"
+    },
+    "savedLocation": {
+      "title": "משתמשים במיקום השמור שלכם",
+      "change": "שינוי"
+    },
+    "nav": {
+      "back": "חזרה",
+      "next": "השלב הבא",
+      "skip": "דלג",
+      "submit": "פרסמו את הבקשה עכשיו"
+    },
+    "liveNow": "{{count}} פעילים עכשיו",
+    "toast": {
+      "locationFound": "המיקום נמצא",
+      "locationSet": "המיקום שלכם נקבע ל-{{city}}",
+      "locationError": "שגיאת מיקום",
+      "locationFailed": "לא ניתן לאתר את המיקום שלכם"
+    }
+  },
+  "otherHelpSubcategories": {
+    "selectLabel": "בחרו קטגוריה",
+    "selectPlaceholder": "בחרו קטגוריה…",
+    "beauty_personal_care": "טיפוח ויופי",
+    "technical_help": "עזרה טכנית",
+    "heavy_lifting_moving": "הרמת משאות והובלות",
+    "coaching_lessons": "אימון ושיעורים",
+    "shopping_errands": "קניות ושליחויות",
+    "pet_help": "עזרה עם חיות מחמד",
+    "elderly_help": "עזרה לקשישים",
+    "paperwork_bureaucracy": "ניירת ובירוקרטיה",
+    "event_help": "עזרה באירועים",
+    "home_maintenance": "תחזוקת בית",
+    "digital_creative": "עזרה דיגיטלית ויצירתית",
+    "religious_community": "עזרה דתית / קהילתית",
+    "customOption": "אחר (אף אחד מאלה)",
+    "customLabel": "הקטגוריה שלכם",
+    "customPlaceholder": "לדוגמה: הוצאת כלב לטיול"
+  },
+  "composePost": {
+    "createPost": "יצירת פוסט",
+    "post": "פרסום",
+    "done": "סיום",
+    "change": "שינוי",
+    "close": "סגירה",
+    "whatPosting": "מה אתם מפרסמים?",
+    "location": "מיקום",
+    "searchPlace": "חיפוש מקום",
+    "searchPlaceOptional": "חיפוש מקום (אופציונלי)",
+    "whenNeed": "מתי אתם צריכים את זה?",
+    "pickDate": "בחרו תאריך",
+    "whenDialogTitle": "מתי אתם צריכים עזרה?",
+    "budgetOptional": "תקציב (אופציונלי)",
+    "rateOptional": "תעריף (אופציונלי)",
+    "categoryPlaceholder": "לדוגמה: בייביסיטר, ניקיון, משלוח..",
+    "tellMore": "ספרו לנו עוד",
+    "tagSomeone": "תייגו מישהו…",
+    "addPhotos": "הוספת תמונות (אופציונלי)",
+    "addPhotosVideos": "הוספת תמונות או סרטונים",
+    "removeMedia": "הסרת מדיה",
+    "postPreview": "תצוגה מקדימה",
+    "shareTrigger": "שתפו משהו עם העוקבים שלכם…",
+    "postTypes": {
+      "request_help": { "title": "בקשת עזרה", "desc": "אני צריך עזרה במשהו" },
+      "offer_service": { "title": "הצעת שירות", "desc": "אני רוצה להציע את השירותים שלי" },
+      "community": { "title": "פוסט קהילתי", "desc": "שתפו משהו עם הקהילה" },
+      "event": { "title": "אירוע", "desc": "יצירה או שיתוף של אירוע" }
+    },
+    "captionPlaceholder": {
+      "request_help": "תארו במה אתם צריכים עזרה...",
+      "offer_service": "תארו את השירות שלכם...",
+      "event": "תארו את פרטי האירוע...",
+      "community": "תארו על מה אתם רוצים לדבר..."
+    },
+    "requestHelp": { "categoryLabel": "במה אתם צריכים עזרה?" },
+    "offerService": { "categoryLabel": "איזה שירות אתם מציעים?" },
+    "event": {
+      "nameLabel": "שם האירוע",
+      "namePlaceholder": "לדוגמה: מפגש קהילתי, פיקניק, מיטאפ",
+      "dateTimeLabel": "תאריך ושעה",
+      "dateDialogTitle": "תאריך האירוע",
+      "helpersLabel": "מספר עוזרים דרושים",
+      "helpersPlaceholder": "כמה עוזרים אתם צריכים?"
+    },
+    "community": {
+      "titleLabel": "כותרת",
+      "titlePlaceholder": "מה הנושא או השאלה?"
+    },
+    "validation": {
+      "choosePostType": "אנא בחרו מה אתם מפרסמים",
+      "chooseHelpCategory": "אנא בחרו במה אתם צריכים עזרה",
+      "chooseServiceCategory": "אנא בחרו איזה שירות אתם מציעים",
+      "chooseCategory": "אנא בחרו קטגוריה",
+      "pickLocation": "אנא בחרו מיקום",
+      "pickLocationDesc": "בחרו מההצעות או סמנו נקודה במפה.",
+      "pickCustomDateTime": "אנא בחרו תאריך ושעה",
+      "enterEventName": "אנא הזינו שם לאירוע",
+      "pickEventDate": "אנא בחרו תאריך לאירוע",
+      "pickEventTime": "אנא בחרו שעה לאירוע",
+      "helpersMin": "מספר העוזרים חייב להיות לפחות 1",
+      "enterTitle": "אנא הזינו כותרת לפוסט",
+      "addCaptionOrMedia": "הוסיפו טקסט או מדיה"
+    }
+  },
   "discover": {
     "whatAreYouHereFor": "למה אתה כאן?",
     "getHelpNow": "קבל עזרה עכשיו",
@@ -126,6 +333,7 @@
       "cooking": "בישול",
       "pickup_delivery": "איסוף ומשלוח",
       "nanny": "בייביסיטר",
+      "technical_help": "עזרה טכנית",
       "other_help": "עזרה אחרת",
       "help_request": "בקשת עזרה"
     },

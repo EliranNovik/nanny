@@ -30,6 +30,213 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "createJob": {
+    "eyebrow": "Post your request",
+    "titles": {
+      "default": "Post your request",
+      "step1": "Type of help",
+      "step2": "Type of Care",
+      "step3": "Location",
+      "step4": "Time Duration",
+      "step5": "Budget",
+      "step6": "When",
+      "step7": "Additional details",
+      "step8": "Photos & videos",
+      "step9": "Service Details"
+    },
+    "tips": {
+      "1": "Pick the category that best matches what you need — you can post another request anytime.",
+      "2": "One-time is for a single visit; part-time and regular suit ongoing or repeating help.",
+      "3": "Pick your city from the suggestions (or GPS). Free text alone won’t unlock the next step.",
+      "4": "Choose a duration that fits the visit; helpers use it to decide if they can commit.",
+      "5": "Add a budget if you have one in mind — you can skip this and continue.",
+      "6": "When do you need help? Choose Now for urgent requests.",
+      "7": "Add any extra details that might help — or skip if you're all set.",
+      "8": "Photos or videos are optional but can clarify the job.",
+      "9": "Specific details get faster, better matches — add anything that clarifies the task."
+    },
+    "serviceDescriptions": {
+      "cleaning": "Professional home care",
+      "cooking": "Meals at home",
+      "pickup_delivery": "Errands & courier",
+      "nanny": "Trusted childcare",
+      "technical_help": "Repairs & tech support",
+      "other_help": "Anything else"
+    },
+    "careFrequency": {
+      "one_time": "One time",
+      "part_time": "Part time",
+      "regularly": "Regularly"
+    },
+    "timeDuration": {
+      "1_2_hours": "1-2 hours",
+      "3_4_hours": "3-4 hours",
+      "5_6_hours": "5-6 hours",
+      "full_day": "Full day"
+    },
+    "cleaning": {
+      "label": "Type of cleaning",
+      "house": "House cleaning",
+      "office": "Office cleaning",
+      "garden": "Garden (outdoor)"
+    },
+    "cooking": {
+      "label": "How many people?",
+      "1_4": "1-4 people",
+      "4_6": "4-6 people",
+      "6_10": "6-10 people",
+      "10_plus": "10+ people"
+    },
+    "nanny": {
+      "label": "How many kids?",
+      "1_2": "1-2 kids",
+      "2_4": "2-4 kids",
+      "4_6": "4-6 kids",
+      "8_plus": "8+ kids"
+    },
+    "otherHelp": {
+      "label": "Type of help",
+      "additionalDetailsLabel": "Additional details (optional)",
+      "additionalDetailsPlaceholder": "Describe what you need help with..."
+    },
+    "technical": {
+      "label": "What do you need help with?",
+      "placeholder": "Describe the technical issue (optional)"
+    },
+    "budget": {
+      "optionalHint": "Optional — leave blank to continue without a budget.",
+      "label": "Budget",
+      "perHour": "per hour",
+      "fixed": "fixed"
+    },
+    "when": {
+      "options": {
+        "now": "Now",
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "this_week": "This week",
+        "custom": "Custom"
+      },
+      "pickDate": "Pick a date",
+      "dialogTitle": "When do you need help?"
+    },
+    "additional": {
+      "hint": "Optional — add anything else helpers should know, or skip.",
+      "placeholder": "Describe what you need help with..."
+    },
+    "media": {
+      "hint": "Optional — add photos or videos to show the job.",
+      "addButton": "Add photos or videos",
+      "removeAria": "Remove media"
+    },
+    "pickup": {
+      "fromLabel": "📍 Pick from location",
+      "toLabel": "🎯 Deliver to location",
+      "fromPlaceholder": "Enter pickup address",
+      "toPlaceholder": "Enter delivery address"
+    },
+    "savedLocation": {
+      "title": "Using your saved location",
+      "change": "Change"
+    },
+    "nav": {
+      "back": "Back",
+      "next": "Next Step",
+      "skip": "Skip",
+      "submit": "Post My Request Now"
+    },
+    "liveNow": "{{count}} Live Now",
+    "toast": {
+      "locationFound": "Location found",
+      "locationSet": "Your location has been set to {{city}}",
+      "locationError": "Location error",
+      "locationFailed": "Failed to get your location"
+    }
+  },
+  "otherHelpSubcategories": {
+    "selectLabel": "Choose a category",
+    "selectPlaceholder": "Select a category…",
+    "beauty_personal_care": "Beauty & Personal Care",
+    "technical_help": "Technical Help",
+    "heavy_lifting_moving": "Heavy Lifting & Moving Help",
+    "coaching_lessons": "Coaching & Lessons",
+    "shopping_errands": "Shopping & Errands",
+    "pet_help": "Pet Help",
+    "elderly_help": "Elderly Help",
+    "paperwork_bureaucracy": "Paperwork & Bureaucracy Help",
+    "event_help": "Event Help",
+    "home_maintenance": "Home Maintenance",
+    "digital_creative": "Digital & Creative Help",
+    "religious_community": "Religious / Community Help",
+    "customOption": "Other (none of these)",
+    "customLabel": "Your category",
+    "customPlaceholder": "E.g. Dog walking"
+  },
+  "composePost": {
+    "createPost": "Create Post",
+    "post": "Post",
+    "done": "Done",
+    "change": "Change",
+    "close": "Close",
+    "whatPosting": "What are you posting?",
+    "location": "Location",
+    "searchPlace": "Search for a place",
+    "searchPlaceOptional": "Search for a place (optional)",
+    "whenNeed": "When do you need it?",
+    "pickDate": "Pick a date",
+    "whenDialogTitle": "When do you need help?",
+    "budgetOptional": "Budget (optional)",
+    "rateOptional": "Rate (optional)",
+    "categoryPlaceholder": "E.g. Babysitter, Cleaning, Delivery..",
+    "tellMore": "Tell us more",
+    "tagSomeone": "Tag someone…",
+    "addPhotos": "Add photos (optional)",
+    "addPhotosVideos": "Add photos or videos",
+    "removeMedia": "Remove media",
+    "postPreview": "Post Preview",
+    "shareTrigger": "Share something with your followers…",
+    "postTypes": {
+      "request_help": { "title": "Request Help", "desc": "I need help with something" },
+      "offer_service": { "title": "Offer Service", "desc": "I want to offer my services" },
+      "community": { "title": "Community Post", "desc": "Share something with the community" },
+      "event": { "title": "Event", "desc": "Create or share an event" }
+    },
+    "captionPlaceholder": {
+      "request_help": "Describe what you need help with...",
+      "offer_service": "Describe your service...",
+      "event": "Describe your event details...",
+      "community": "Describe what you want to talk about..."
+    },
+    "requestHelp": { "categoryLabel": "What do you need help with?" },
+    "offerService": { "categoryLabel": "What service are you offering?" },
+    "event": {
+      "nameLabel": "Event Name",
+      "namePlaceholder": "E.g. Community Gathering, Picnic, Meetup",
+      "dateTimeLabel": "Date & Time",
+      "dateDialogTitle": "Event date",
+      "helpersLabel": "Helpers needed",
+      "helpersPlaceholder": "How many helpers do you need?"
+    },
+    "community": {
+      "titleLabel": "Title",
+      "titlePlaceholder": "What is the topic or question?"
+    },
+    "validation": {
+      "choosePostType": "Please choose what you are posting",
+      "chooseHelpCategory": "Please choose what you need help with",
+      "chooseServiceCategory": "Please choose which service you are offering",
+      "chooseCategory": "Please choose a category",
+      "pickLocation": "Please pick a location",
+      "pickLocationDesc": "Choose from the suggestions or select a spot on the map.",
+      "pickCustomDateTime": "Please pick a custom date and time",
+      "enterEventName": "Please enter an event name",
+      "pickEventDate": "Please pick an event date",
+      "pickEventTime": "Please pick an event time",
+      "helpersMin": "Helpers needed must be at least 1",
+      "enterTitle": "Please enter a title for your post",
+      "addCaptionOrMedia": "Add a caption or media"
+    }
+  },
   "discover": {
     "whatAreYouHereFor": "What are you here for?",
     "getHelpNow": "Get help now",
@@ -126,6 +333,7 @@
       "cooking": "Cooking",
       "pickup_delivery": "Pick up & delivery",
       "nanny": "Nanny",
+      "technical_help": "Technical Help",
       "other_help": "Other help",
       "help_request": "Help request"
     },

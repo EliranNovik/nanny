@@ -5,6 +5,7 @@ import {
   Sparkles,
   Truck,
   UtensilsCrossed,
+  Wrench,
 } from "lucide-react";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 
@@ -48,6 +49,13 @@ export const HIRE_CATEGORY_TILE_UI: Record<
       "bg-sky-500/[0.08] ring-sky-500/20 dark:bg-sky-500/10 dark:ring-sky-400/25",
     iconClass: "text-sky-600 dark:text-sky-400",
     badgeIconClass: "text-sky-700",
+  },
+  technical_help: {
+    Icon: Wrench,
+    tileClass:
+      "bg-slate-500/[0.08] ring-slate-400/25 dark:bg-slate-500/15 dark:ring-slate-500/30",
+    iconClass: "text-slate-700 dark:text-slate-300",
+    badgeIconClass: "text-slate-700",
   },
   other_help: {
     Icon: HelpCircle,

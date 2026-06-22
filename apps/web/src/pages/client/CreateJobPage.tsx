@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { needsKycVerification } from "@/lib/kyc";
@@ -59,29 +60,39 @@ import {
   User,
   Users,
   UserPlus,
-  Dumbbell,
   Clock,
   CalendarDays,
   ImagePlus,
   X,
+  Scissors,
+  GraduationCap,
+  ShoppingCart,
+  PawPrint,
+  FileText,
+  PartyPopper,
+  Palette,
+  Truck,
+  HeartHandshake,
+  ChefHat,
+  LayoutGrid,
 } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { cn } from "@/lib/utils";
 import {
   SERVICE_CATEGORIES,
+  OTHER_HELP_SUBCATEGORIES,
   isServiceCategoryId,
-  serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { useLiveJobCounts } from "@/hooks/data/useLiveJobCounts";
 
 /** Step 2+ list tiles — white surfaces, emerald selection (matches availability wizard) */
 const JOB_CHOICE_IDLE =
-  "border-2 border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none";
+  "border-2 border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-transparent dark:bg-white/[0.06] dark:shadow-none";
 const JOB_CHOICE_HOVER =
-  "hover:border-emerald-400/50 hover:shadow-[0_8px_24px_-12px_rgba(16,185,129,0.2)] dark:hover:border-emerald-400/35";
+  "hover:border-emerald-400/50 hover:shadow-[0_8px_24px_-12px_rgba(16,185,129,0.2)] dark:hover:bg-white/[0.1]";
 const JOB_CHOICE_SELECTED =
-  "border-2 border-emerald-500/80 bg-white shadow-[0_12px_40px_-16px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/25 dark:border-emerald-400/60 dark:bg-white/[0.04] dark:ring-emerald-400/20";
+  "border-2 border-transparent bg-emerald-600 text-white shadow-[0_12px_40px_-16px_rgba(16,185,129,0.45)] [&_svg]:text-white dark:border-transparent dark:bg-emerald-600 dark:text-white";
 
 const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
   id: c.id,
@@ -89,6 +100,49 @@ const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
   description: c.description,
   imageSrc: c.imageSrc,
 }));
+
+/** Step 1 main category tiles — colored boxes with icons (no image backgrounds). */
+const SERVICE_TYPE_META: Record<
+  string,
+  { icon: JSX.Element; idle: string; selected: string; iconWrap: string }
+> = {
+  cleaning: {
+    icon: <Sparkles className="h-7 w-7" />,
+    idle: "bg-sky-50 text-sky-950 dark:bg-sky-500/10 dark:text-sky-50",
+    selected: "bg-sky-600 text-white [&_svg]:text-white",
+    iconWrap: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
+  },
+  cooking: {
+    icon: <ChefHat className="h-7 w-7" />,
+    idle: "bg-amber-50 text-amber-950 dark:bg-amber-500/10 dark:text-amber-50",
+    selected: "bg-amber-500 text-white [&_svg]:text-white",
+    iconWrap: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
+  },
+  pickup_delivery: {
+    icon: <Truck className="h-7 w-7" />,
+    idle: "bg-indigo-50 text-indigo-950 dark:bg-indigo-500/10 dark:text-indigo-50",
+    selected: "bg-indigo-600 text-white [&_svg]:text-white",
+    iconWrap: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300",
+  },
+  nanny: {
+    icon: <Baby className="h-7 w-7" />,
+    idle: "bg-rose-50 text-rose-950 dark:bg-rose-500/10 dark:text-rose-50",
+    selected: "bg-rose-500 text-white [&_svg]:text-white",
+    iconWrap: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
+  },
+  technical_help: {
+    icon: <Wrench className="h-7 w-7" />,
+    idle: "bg-slate-100 text-slate-900 dark:bg-slate-500/10 dark:text-slate-50",
+    selected: "bg-slate-700 text-white [&_svg]:text-white",
+    iconWrap: "bg-slate-500/15 text-slate-600 dark:text-slate-300",
+  },
+  other_help: {
+    icon: <LayoutGrid className="h-7 w-7" />,
+    idle: "bg-emerald-50 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-50",
+    selected: "bg-emerald-600 text-white [&_svg]:text-white",
+    iconWrap: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+  },
+};
 
 // Step 2: Care Frequency
 const CARE_FREQUENCIES = [
@@ -198,23 +252,27 @@ const NANNY_KIDS_COUNTS = [
   },
 ];
 
-const OTHER_HELP_TYPES = [
-  {
-    id: "technical",
-    label: "Technical",
-    icon: <Wrench className="w-8 h-8 text-slate-600" />,
-  },
-  {
-    id: "heavy_lifting",
-    label: "Heavy lifting",
-    icon: <Dumbbell className="w-8 h-8 text-slate-800" />,
-  },
-  {
-    id: "caregiving",
-    label: "Caregiving (Olders)",
-    icon: <Heart className="w-8 h-8 text-red-500" />,
-  },
-];
+const OTHER_HELP_ICONS: Record<string, JSX.Element> = {
+  beauty_personal_care: <Scissors className="w-8 h-8 text-pink-500" />,
+  heavy_lifting_moving: <Truck className="w-8 h-8 text-slate-700" />,
+  coaching_lessons: <GraduationCap className="w-8 h-8 text-indigo-500" />,
+  shopping_errands: <ShoppingCart className="w-8 h-8 text-emerald-600" />,
+  pet_help: <PawPrint className="w-8 h-8 text-amber-600" />,
+  elderly_help: <Heart className="w-8 h-8 text-red-500" />,
+  paperwork_bureaucracy: <FileText className="w-8 h-8 text-blue-500" />,
+  event_help: <PartyPopper className="w-8 h-8 text-fuchsia-500" />,
+  home_maintenance: <Home className="w-8 h-8 text-orange-500" />,
+  digital_creative: <Palette className="w-8 h-8 text-violet-500" />,
+  religious_community: <HeartHandshake className="w-8 h-8 text-teal-600" />,
+};
+
+const OTHER_HELP_TYPES = OTHER_HELP_SUBCATEGORIES.map((sub) => ({
+  id: sub.id,
+  label: sub.label,
+  icon: OTHER_HELP_ICONS[sub.id] ?? (
+    <Wrench className="w-8 h-8 text-slate-600" />
+  ),
+}));
 
 const STORAGE_KEY = "create_job_form_data";
 
@@ -224,19 +282,6 @@ const MAX_CREATE_JOB_MEDIA = 5;
 
 const noFieldSpinnerClass =
   "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
-
-/** Mobile hero + desktop tip card — aligned with post-availability wizard copy style */
-const CREATE_JOB_STEP_TIPS: readonly string[] = [
-  "Pick the category that best matches what you need — you can post another request anytime.",
-  "One-time is for a single visit; part-time and regular suit ongoing or repeating help.",
-  "Pick your city from the suggestions (or GPS). Free text alone won’t unlock the next step.",
-  "Choose a duration that fits the visit; helpers use it to decide if they can commit.",
-  "Add a budget if you have one in mind — you can skip this and continue.",
-  "When do you need help? Choose Now for urgent requests.",
-  "Add any extra details that might help — or skip if you're all set.",
-  "Photos or videos are optional but can clarify the job.",
-  "Specific details get faster, better matches — add anything that clarifies the task.",
-];
 
 type CreateJobMediaDraft = {
   id: string;
@@ -301,6 +346,9 @@ export default function CreateJobPage() {
   const { openKycRequiredDialog } = useKycGate();
   const appliedServiceFromUrl = useRef(false);
   const { addToast } = useToast();
+  const { t } = useTranslation();
+  /** When `other_help` is picked on step 1, show its subcategory grid first. */
+  const [otherHelpSubOpen, setOtherHelpSubOpen] = useState(false);
   // Lazy initializer for step - only runs once
   const [step, setStep] = useState(() => {
     try {
@@ -472,7 +520,12 @@ export default function CreateJobPage() {
     if (!raw || !isServiceCategoryId(raw)) return;
     appliedServiceFromUrl.current = true;
     setJobData((prev) => ({ ...prev, service_type: raw }));
-    setStep(2);
+    if (raw === "other_help") {
+      setStep(1);
+      setOtherHelpSubOpen(true);
+    } else {
+      setStep(2);
+    }
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -489,29 +542,21 @@ export default function CreateJobPage() {
     [categoryId],
   );
 
-  const categoryLabel = categoryId ? serviceCategoryLabel(categoryId) : "";
+  const categoryLabel = categoryId ? t(`feed.categories.${categoryId}`) : "";
 
   /** Step 1 = choosing category — no hero image or category name in header */
   const showCategoryHero = Boolean(categoryImageSrc && step > 1);
 
   const shellTitle = useMemo(() => {
-    switch (step) {
-      case 1: return "Type of help";
-      case 2: return "Type of Care";
-      case 3: return "Location";
-      case 4: return "Time Duration";
-      case 5: return "Budget";
-      case 6: return "When";
-      case 7: return "Additional details";
-      case 8: return "Photos & videos";
-      case 9: return "Service Details";
-      default: return categoryLabel || "Post your request";
+    if (step >= 1 && step <= TOTAL_STEPS) {
+      return t(`createJob.titles.step${step}`);
     }
-  }, [step, categoryLabel]);
+    return categoryLabel || t("createJob.titles.default");
+  }, [step, categoryLabel, t]);
 
   const stepTip =
     step >= 1 && step <= TOTAL_STEPS
-      ? (CREATE_JOB_STEP_TIPS[step - 1] ?? "")
+      ? t(`createJob.tips.${step}`)
       : "";
 
   const selectLocationCity = useCallback((selection: CityPlaceSelection) => {
@@ -531,9 +576,13 @@ export default function CreateJobPage() {
   }, []);
 
   const handleHeaderBack = useCallback(() => {
+    if (step === 1 && otherHelpSubOpen) {
+      setOtherHelpSubOpen(false);
+      return;
+    }
     if (step > 1) setStep((s: number) => s - 1);
     else navigate("/client/home");
-  }, [navigate, step]);
+  }, [navigate, step, otherHelpSubOpen]);
 
   /** Mobile hero: glass pills — shared by Back / Next / Post now (md:hidden block only) */
   const mobileHeroPillClass =
@@ -585,6 +634,8 @@ export default function CreateJobPage() {
           return !!jobData.service_details.kids_count;
         } else if (jobData.service_type === "other_help") {
           return !!jobData.service_details.other_type;
+        } else if (jobData.service_type === "technical_help") {
+          return true;
         }
         return false;
       }
@@ -607,15 +658,15 @@ export default function CreateJobPage() {
         location_city_confirmed: true,
       }));
       addToast({
-        title: "Location found",
-        description: `Your location has been set to ${cityName}`,
+        title: t("createJob.toast.locationFound"),
+        description: t("createJob.toast.locationSet", { city: cityName }),
         variant: "success",
       });
     } catch (error: any) {
       console.error("Error getting location:", error);
       addToast({
-        title: "Location error",
-        description: error.message || "Failed to get your location",
+        title: t("createJob.toast.locationError"),
+        description: error.message || t("createJob.toast.locationFailed"),
         variant: "error",
       });
     } finally {
@@ -811,21 +862,21 @@ export default function CreateJobPage() {
                           size="sm"
                           className={mobileHeroPillClass}
                           onClick={handleHeaderBack}
-                          aria-label="Back"
+                          aria-label={t("createJob.nav.back")}
                         >
                           <HeaderBackChevron />
-                          Back
+                          {t("createJob.nav.back")}
                         </Button>
                       ) : (
                         <div className={cn(mobileHeroPillClass, "opacity-0 pointer-events-none")}>
                           <HeaderBackChevron />
-                          Back
+                          {t("createJob.nav.back")}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center pt-0.5 text-center">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 sm:text-[11px]">
-                        Post your request
+                        {t("createJob.eyebrow")}
                       </p>
                       <h1 className="text-lg font-black leading-snug tracking-tight text-white drop-shadow-md sm:text-xl">
                         {shellTitle}
@@ -833,7 +884,7 @@ export default function CreateJobPage() {
                     </div>
                     <div className="flex justify-end">
                       <div className={cn(mobileHeroPillClass, "opacity-0 pointer-events-none")}>
-                        Next
+                        {t("createJob.nav.next")}
                         <ChevronRight className="h-5 w-5 shrink-0" />
                       </div>
                     </div>
@@ -877,21 +928,21 @@ export default function CreateJobPage() {
                       size="sm"
                       className={mobilePlainHeaderPillClass}
                       onClick={handleHeaderBack}
-                      aria-label="Back"
+                      aria-label={t("createJob.nav.back")}
                     >
                       <HeaderBackChevron />
-                      Back
+                      {t("createJob.nav.back")}
                     </Button>
                   ) : (
                     <div className={cn(mobilePlainHeaderPillClass, "opacity-0 pointer-events-none")}>
                       <HeaderBackChevron />
-                      Back
+                      {t("createJob.nav.back")}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center text-center">
                   <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Post your request
+                    {t("createJob.eyebrow")}
                   </p>
                   <h1 className="text-lg font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
                     {shellTitle}
@@ -899,7 +950,7 @@ export default function CreateJobPage() {
                 </div>
                 <div className="flex justify-end">
                   <div className={cn(mobilePlainHeaderPillClass, "opacity-0 pointer-events-none")}>
-                    Next
+                    {t("createJob.nav.next")}
                     <ChevronRight className="h-5 w-5 shrink-0" />
                   </div>
                 </div>
@@ -925,11 +976,11 @@ export default function CreateJobPage() {
         )}
       </div>
 
-      <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-8 pt-2 md:pt-0">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-8 pt-2 md:pt-0">
         <div className="hidden items-start justify-between gap-4 md:flex">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              Post your request
+              {t("createJob.eyebrow")}
             </p>
             <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
               {shellTitle}
@@ -996,66 +1047,105 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 1: Service Type — image tiles; 2 columns on mobile for larger tap targets */}
-            {step === 1 && (
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 md:gap-3">
-                {SERVICE_TYPES.map((type) => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => {
-                      updateField("service_type", type.id);
-                      setStep(2);
-                    }}
-                    className={cn(
-                      "group relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl text-left outline-none",
-                      "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
-                      "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset",
-                      jobData.service_type === type.id &&
-                      "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background md:ring-offset-2",
-                    )}
-                  >
-                    <img
-                      src={type.imageSrc}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-200 group-hover:scale-105 group-active:scale-[0.98] group-active:brightness-110"
-                    />
-                    {liveCounts[type.id] > 0 && (
-                      <div className="absolute right-1.5 top-1.5 z-[10] flex h-6 items-center gap-1.5 rounded-full bg-red-500 pl-1.5 pr-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-[0_4px_12px_rgba(239,68,68,0.45)] ring-1.5 ring-white animate-in zoom-in-50 duration-300">
-                        <div className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
-                          <div className="absolute inset-0 animate-ping rounded-full bg-white/70" />
-                          <div className="relative block h-1.5 w-1.5 rounded-full bg-white" />
-                        </div>
-                        <span className="truncate">
-                          {liveCounts[type.id]} Live Now
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className="pointer-events-none absolute inset-0 z-[1] bg-black/25 transition-opacity duration-200 group-active:bg-black/15"
-                      aria-hidden
-                    />
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black via-black/90 to-transparent pt-20 pb-1 px-1 sm:pt-28 sm:pb-2 sm:px-2 md:pt-32"
-                      aria-hidden
-                    />
-                    <div className="absolute inset-x-0 bottom-0 z-[2] flex flex-col items-center justify-end px-1.5 pb-4 pt-8 text-center sm:px-2 sm:pb-6 sm:pt-10 md:pb-8 md:pt-12">
-                      <span className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-md:line-clamp-2 sm:text-base md:text-lg lg:text-xl">
-                        {type.label}
+            {/* Step 1 (Other help): pick a subcategory first, before the rest of the flow */}
+            {step === 1 && otherHelpSubOpen && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                  {OTHER_HELP_TYPES.map((type) => (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => {
+                        updateServiceDetail("other_type", type.id);
+                        setStep(2);
+                      }}
+                      className={cn(
+                        "group flex h-full flex-col items-center justify-start gap-2 rounded-2xl p-3.5 text-center shadow-sm transition-all",
+                        JOB_CHOICE_IDLE,
+                        jobData.service_details.other_type === type.id
+                          ? JOB_CHOICE_SELECTED
+                          : JOB_CHOICE_HOVER,
+                      )}
+                    >
+                      <div className="flex-shrink-0">{type.icon}</div>
+                      <span className="text-base font-bold leading-snug">
+                        {t(`otherHelpSubcategories.${type.id}`)}
                       </span>
-                      {type.description ? (
-                        <span className="mt-1.5 max-w-[98%] text-[13px] font-bold leading-snug text-white/95 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)] max-md:line-clamp-2 sm:mt-1 sm:text-[11px] md:text-xs">
-                          {type.description}
-                        </span>
-                      ) : null}
-                    </div>
-                    <ChevronRight
-                      className="pointer-events-none absolute bottom-2 right-2 z-[3] h-4 w-4 text-white/95 drop-shadow-md sm:bottom-2 sm:right-2 sm:h-5 sm:w-5"
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-14 w-full text-lg font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98]"
+                  onClick={() => setOtherHelpSubOpen(false)}
+                >
+                  <HeaderBackChevron className="mr-2" /> {t("createJob.nav.back")}
+                </Button>
+              </div>
+            )}
+
+            {/* Step 1: Service Type — colored boxes with icons; 2 columns on mobile */}
+            {step === 1 && !otherHelpSubOpen && (
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 md:gap-3">
+                {SERVICE_TYPES.map((type) => {
+                  const meta = SERVICE_TYPE_META[type.id] ?? SERVICE_TYPE_META.other_help;
+                  const selected = jobData.service_type === type.id;
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => {
+                        updateField("service_type", type.id);
+                        if (type.id === "other_help") {
+                          setOtherHelpSubOpen(true);
+                        } else {
+                          setStep(2);
+                        }
+                      }}
+                      className={cn(
+                        "group relative flex aspect-square w-full shrink-0 flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl p-3 text-center outline-none",
+                        "shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.97]",
+                        "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        selected ? meta.selected : meta.idle,
+                      )}
+                    >
+                      {liveCounts[type.id] > 0 && (
+                        <div className="absolute right-1.5 top-1.5 z-[10] flex h-6 items-center gap-1.5 rounded-full bg-red-500 pl-1.5 pr-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-[0_4px_12px_rgba(239,68,68,0.45)] ring-1.5 ring-white animate-in zoom-in-50 duration-300">
+                          <div className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
+                            <div className="absolute inset-0 animate-ping rounded-full bg-white/70" />
+                            <div className="relative block h-1.5 w-1.5 rounded-full bg-white" />
+                          </div>
+                          <span className="truncate">
+                            {t("createJob.liveNow", { count: liveCounts[type.id] })}
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          "flex h-14 w-14 items-center justify-center rounded-2xl transition-colors",
+                          selected ? "bg-white/20 text-white" : meta.iconWrap,
+                        )}
+                      >
+                        {meta.icon}
+                      </div>
+                      <div className="space-y-0.5 px-1">
+                        <div className="text-base font-black leading-tight tracking-tight sm:text-[15px] md:text-base lg:text-lg">
+                          {t(`feed.categories.${type.id}`)}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-[12px] font-semibold leading-snug",
+                            selected ? "text-white/85" : "opacity-70",
+                          )}
+                        >
+                          {t(`createJob.serviceDescriptions.${type.id}`)}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1078,7 +1168,9 @@ export default function CreateJobPage() {
                     )}
                   >
                     <div className="flex-shrink-0">{freq.icon}</div>
-                    <span className="font-bold text-base">{freq.label}</span>
+                    <span className="font-bold text-lg">
+                      {t(`createJob.careFrequency.${freq.id}`)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1093,7 +1185,7 @@ export default function CreateJobPage() {
                     <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                        Using your saved location
+                        {t("createJob.savedLocation.title")}
                       </p>
                       <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
                         {profile.city}
@@ -1112,7 +1204,7 @@ export default function CreateJobPage() {
                         }));
                       }}
                     >
-                      Change
+                      {t("createJob.savedLocation.change")}
                     </Button>
                   </div>
                 )}
@@ -1150,7 +1242,9 @@ export default function CreateJobPage() {
                     )}
                   >
                     <div className="flex-shrink-0 mb-1">{duration.icon}</div>
-                    <p className="font-bold text-xs">{duration.label}</p>
+                    <p className="font-bold text-sm">
+                      {t(`createJob.timeDuration.${duration.id}`)}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -1160,11 +1254,11 @@ export default function CreateJobPage() {
             {step === 5 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Optional — leave blank to continue without a budget.
+                  {t("createJob.budget.optionalHint")}
                 </p>
                 <div className="space-y-1.5">
                   <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Budget
+                    {t("createJob.budget.label")}
                   </label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -1192,8 +1286,8 @@ export default function CreateJobPage() {
                       }
                       className="h-14 w-36 rounded-2xl border border-slate-200/90 bg-white px-3.5 text-base font-medium text-foreground outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 dark:border-white/[0.12] dark:bg-white/[0.04]"
                     >
-                      <option value="per_hour">per hour</option>
-                      <option value="fixed">fixed</option>
+                      <option value="per_hour">{t("createJob.budget.perHour")}</option>
+                      <option value="fixed">{t("createJob.budget.fixed")}</option>
                     </select>
                   </div>
                 </div>
@@ -1223,7 +1317,7 @@ export default function CreateJobPage() {
                           requestHelpWhenOptionButtonClass(isSel, opt.id),
                         )}
                       >
-                        {opt.label}
+                        {t(`createJob.when.options.${opt.id}`)}
                       </button>
                     );
                   })}
@@ -1243,13 +1337,13 @@ export default function CreateJobPage() {
                           <span className={cn(!customWhenDate && "text-muted-foreground")}>
                             {customWhenDate
                               ? format(customWhenDate, "EEEE, MMMM d, yyyy")
-                              : "Pick a date"}
+                              : t("createJob.when.pickDate")}
                           </span>
                         </button>
                       </DialogTrigger>
                       <DialogContent className="max-w-sm">
                         <DialogHeader>
-                          <DialogTitle>When do you need help?</DialogTitle>
+                          <DialogTitle>{t("createJob.when.dialogTitle")}</DialogTitle>
                         </DialogHeader>
                         <SimpleCalendar
                           selectedDate={customWhenDate}
@@ -1281,10 +1375,10 @@ export default function CreateJobPage() {
             {step === 7 && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Optional — add anything else helpers should know, or skip.
+                  {t("createJob.additional.hint")}
                 </p>
                 <Textarea
-                  placeholder="Describe what you need help with..."
+                  placeholder={t("createJob.additional.placeholder")}
                   value={jobData.additional_notes}
                   onChange={(e) => updateField("additional_notes", e.target.value)}
                   className="min-h-[140px] resize-none rounded-2xl border-slate-200/90 bg-white text-base dark:border-white/[0.12] dark:bg-white/[0.04]"
@@ -1296,7 +1390,7 @@ export default function CreateJobPage() {
             {step === 8 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Optional — add photos or videos to show the job.
+                  {t("createJob.media.hint")}
                 </p>
                 <input
                   ref={mediaInputRef}
@@ -1334,7 +1428,7 @@ export default function CreateJobPage() {
                           type="button"
                           onClick={() => removeComposeMedia(item.id)}
                           className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
-                          aria-label="Remove media"
+                          aria-label={t("createJob.media.removeAria")}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -1350,7 +1444,7 @@ export default function CreateJobPage() {
                     onClick={() => mediaInputRef.current?.click()}
                   >
                     <ImagePlus className="h-5 w-5" />
-                    Add photos or videos
+                    {t("createJob.media.addButton")}
                   </Button>
                 ) : null}
               </div>
@@ -1364,7 +1458,7 @@ export default function CreateJobPage() {
                   <div className="space-y-4">
                     <div className="grid gap-3">
                       <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Type of cleaning
+                        {t("createJob.cleaning.label")}
                       </label>
                       {CLEANING_TYPES.map((type) => (
                         <button
@@ -1381,8 +1475,8 @@ export default function CreateJobPage() {
                           )}
                         >
                           <div className="flex-shrink-0">{type.icon}</div>
-                          <span className="font-bold text-base">
-                            {type.label}
+                          <span className="font-bold text-lg">
+                            {t(`createJob.cleaning.${type.id}`)}
                           </span>
                         </button>
                       ))}
@@ -1395,7 +1489,7 @@ export default function CreateJobPage() {
                   <div className="space-y-4">
                     <div className="grid gap-3">
                       <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        How many people?
+                        {t("createJob.cooking.label")}
                       </label>
                       {COOKING_PEOPLE_COUNTS.map((count) => (
                         <button
@@ -1412,8 +1506,8 @@ export default function CreateJobPage() {
                           )}
                         >
                           <div className="flex-shrink-0">{count.icon}</div>
-                          <span className="font-bold text-base">
-                            {count.label}
+                          <span className="font-bold text-lg">
+                            {t(`createJob.cooking.${count.id}`)}
                           </span>
                         </button>
                       ))}
@@ -1425,8 +1519,8 @@ export default function CreateJobPage() {
                 {jobData.service_type === "pickup_delivery" && (
                   <div className="space-y-4">
                     <DualLocationPicker
-                      fromLabel="📍 Pick from location"
-                      toLabel="🎯 Deliver to location"
+                      fromLabel={t("createJob.pickup.fromLabel")}
+                      toLabel={t("createJob.pickup.toLabel")}
                       fromValue={{
                         address: jobData.service_details.from_address || "",
                         lat: jobData.service_details.from_lat,
@@ -1447,8 +1541,8 @@ export default function CreateJobPage() {
                         updateServiceDetail("to_lat", value.lat);
                         updateServiceDetail("to_lng", value.lng);
                       }}
-                      fromPlaceholder="Enter pickup address"
-                      toPlaceholder="Enter delivery address"
+                      fromPlaceholder={t("createJob.pickup.fromPlaceholder")}
+                      toPlaceholder={t("createJob.pickup.toPlaceholder")}
                     />
                   </div>
                 )}
@@ -1458,7 +1552,7 @@ export default function CreateJobPage() {
                   <div className="space-y-4">
                     <div className="grid gap-3">
                       <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        How many kids?
+                        {t("createJob.nanny.label")}
                       </label>
                       {NANNY_KIDS_COUNTS.map((count) => (
                         <button
@@ -1475,8 +1569,8 @@ export default function CreateJobPage() {
                           )}
                         >
                           <div className="flex-shrink-0">{count.icon}</div>
-                          <span className="font-bold text-base">
-                            {count.label}
+                          <span className="font-bold text-lg">
+                            {t(`createJob.nanny.${count.id}`)}
                           </span>
                         </button>
                       ))}
@@ -1484,41 +1578,71 @@ export default function CreateJobPage() {
                   </div>
                 )}
 
-                {/* Other Help Type */}
+                {/* Technical Help — free-form description */}
+                {jobData.service_type === "technical_help" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {t("createJob.technical.label")}
+                    </label>
+                    <Textarea
+                      placeholder={t("createJob.technical.placeholder")}
+                      value={jobData.service_details.description || ""}
+                      onChange={(e) =>
+                        updateServiceDetail("description", e.target.value)
+                      }
+                      className="min-h-[140px] resize-none rounded-2xl border-slate-200/90 bg-white text-base dark:border-white/[0.12] dark:bg-white/[0.04]"
+                    />
+                  </div>
+                )}
+
+                {/* Other Help: subcategory already chosen on step 1 — show it + extra details */}
                 {jobData.service_type === "other_help" && (
                   <div className="space-y-4">
-                    <div className="grid gap-3">
+                    <div className="space-y-3">
                       <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Type of help
+                        {t("createJob.otherHelp.label")}
                       </label>
-                      {OTHER_HELP_TYPES.map((type) => (
-                        <button
-                          key={type.id}
-                          onClick={() =>
-                            updateServiceDetail("other_type", type.id)
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded-2xl p-4 shadow-sm",
+                          JOB_CHOICE_IDLE,
+                        )}
+                      >
+                        <div className="flex-shrink-0">
+                          {
+                            OTHER_HELP_TYPES.find(
+                              (x) => x.id === jobData.service_details.other_type,
+                            )?.icon
                           }
-                          className={cn(
-                            "group flex items-center gap-4 rounded-2xl p-4 text-left shadow-sm transition-all",
-                            JOB_CHOICE_IDLE,
-                            jobData.service_details.other_type === type.id
-                              ? JOB_CHOICE_SELECTED
-                              : JOB_CHOICE_HOVER,
-                          )}
+                        </div>
+                        <span className="flex-1 text-base font-bold leading-snug">
+                          {jobData.service_details.other_type
+                            ? t(
+                                `otherHelpSubcategories.${jobData.service_details.other_type}`,
+                              )
+                            : ""}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                          onClick={() => {
+                            setStep(1);
+                            setOtherHelpSubOpen(true);
+                          }}
                         >
-                          <div className="flex-shrink-0">{type.icon}</div>
-                          <span className="font-bold text-base">
-                            {type.label}
-                          </span>
-                        </button>
-                      ))}
+                          {t("createJob.savedLocation.change")}
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                        Additional details (optional)
+                        {t("createJob.otherHelp.additionalDetailsLabel")}
                       </label>
                       <Input
-                        placeholder="Describe what you need help with..."
+                        placeholder={t("createJob.otherHelp.additionalDetailsPlaceholder")}
                         value={jobData.service_details.description || ""}
                         onChange={(e) =>
                           updateServiceDetail("description", e.target.value)
@@ -1550,24 +1674,24 @@ export default function CreateJobPage() {
                       <Loader2 className="h-6 w-6 animate-spin text-white" />
                     ) : (
                       <>
-                        Post My Request Now
+                        {t("createJob.nav.submit")}
                         <Sparkles className="ml-2 h-6 w-6 text-white" />
                       </>
                     )
                   ) : step === 5 || step === 7 || step === 8 ? (
                     <>
                       {step === 5 && !jobData.budget_amount.trim()
-                        ? "Skip"
+                        ? t("createJob.nav.skip")
                         : step === 7 && !jobData.additional_notes.trim()
-                          ? "Skip"
+                          ? t("createJob.nav.skip")
                           : step === 8 && composeMedia.length === 0
-                            ? "Skip"
-                            : "Next Step"}
+                            ? t("createJob.nav.skip")
+                            : t("createJob.nav.next")}
                       <ChevronRight className="ml-2 h-6 w-6" />
                     </>
                   ) : (
                     <>
-                      Next Step
+                      {t("createJob.nav.next")}
                       <ChevronRight className="ml-2 h-6 w-6" />
                     </>
                   )}
@@ -1579,7 +1703,7 @@ export default function CreateJobPage() {
                   className="h-14 w-full text-lg font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98]"
                   onClick={handleHeaderBack}
                 >
-                  <HeaderBackChevron className="mr-2" /> Back
+                  <HeaderBackChevron className="mr-2" /> {t("createJob.nav.back")}
                 </Button>
               </div>
             )}

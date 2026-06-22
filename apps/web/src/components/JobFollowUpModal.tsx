@@ -203,7 +203,7 @@ export default function JobFollowUpModal({
         );
 
       case "other_help":
-        if (otherType === "caregiving") {
+        if (otherType === "elderly_help") {
           return (
             <div className="space-y-4">
               <div>
@@ -243,7 +243,7 @@ export default function JobFollowUpModal({
     serviceType === "cooking" ||
     serviceType === "pickup_delivery" ||
     serviceType === "nanny" ||
-    (serviceType === "other_help" && otherType === "caregiving");
+    (serviceType === "other_help" && otherType === "elderly_help");
 
   if (!hasQuestions) {
     // No questions for this service type, close immediately

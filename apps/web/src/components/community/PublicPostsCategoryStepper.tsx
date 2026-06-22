@@ -15,6 +15,7 @@ import {
   Sparkles,
   Truck,
   UtensilsCrossed,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +38,9 @@ const THEMES: Record<DiscoverHomeCategoryId, Theme> = {
     pillGradient: "bg-gradient-to-r from-violet-500 to-indigo-600",
   },
   nanny: { pillGradient: "bg-gradient-to-r from-sky-500 to-blue-600" },
+  technical_help: {
+    pillGradient: "bg-gradient-to-r from-slate-600 to-slate-800",
+  },
   other_help: {
     pillGradient:
       "bg-gradient-to-r from-slate-500 to-zinc-700 dark:from-slate-600 dark:to-zinc-800",
@@ -49,6 +53,7 @@ const ICONS: Record<DiscoverHomeCategoryId, LucideIcon> = {
   cooking: UtensilsCrossed,
   pickup_delivery: Truck,
   nanny: Baby,
+  technical_help: Wrench,
   other_help: HelpCircle,
 };
 

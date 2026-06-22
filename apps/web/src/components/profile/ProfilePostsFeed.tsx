@@ -78,6 +78,8 @@ import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
   isServiceCategoryId,
   CUSTOM_POST_CATEGORY_MAX_LEN,
+  OTHER_HELP_SUBCATEGORIES,
+  otherHelpSubcategoryLabel,
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
@@ -257,13 +259,21 @@ const FEED_POST_TYPE_IDS = [
   "event",
 ] as const;
 
+/** Select value used when the user wants to type a free-form "Other" category. */
+const OTHER_CATEGORY_CUSTOM_VALUE = "__custom__";
+
 function feedCategoryLabel(
   t: TFunction,
   categoryId?: string | null,
   customCategory?: string | null,
 ): string {
   if (categoryId === "other_help" && customCategory?.trim()) {
-    return customCategory.trim();
+    const trimmed = customCategory.trim();
+    const subLabel = otherHelpSubcategoryLabel(trimmed);
+    if (subLabel) {
+      return t(`otherHelpSubcategories.${trimmed}`, { defaultValue: subLabel });
+    }
+    return trimmed;
   }
   if (categoryId && isServiceCategoryId(categoryId)) {
     return t(`feed.categories.${categoryId}`);
@@ -1460,6 +1470,7 @@ export function ComposeModal({
 
   const [communityTitle, setCommunityTitle] = useState("");
   const [customCategory, setCustomCategory] = useState("");
+  const [customCategoryText, setCustomCategoryText] = useState("");
   const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
   const isMobileViewport = useIsMobileViewport();
   const [sheetExpanded, setSheetExpanded] = useState(true);
@@ -1473,12 +1484,12 @@ export function ComposeModal({
 
   const captionPlaceholder =
     selectedPostTypeId === "request_help"
-      ? "Describe what you need help with..."
+      ? t("composePost.captionPlaceholder.request_help")
       : selectedPostTypeId === "offer_service"
-        ? "Describe your service..."
+        ? t("composePost.captionPlaceholder.offer_service")
         : selectedPostTypeId === "event"
-          ? "Describe your event details..."
-          : "Describe what you want to talk about...";
+          ? t("composePost.captionPlaceholder.event")
+          : t("composePost.captionPlaceholder.community");
 
   useEffect(() => {
     async function loadPostTypes() {
@@ -1536,6 +1547,7 @@ export function ComposeModal({
     setEventHelpersNeeded("");
     setCommunityTitle("");
     setCustomCategory("");
+    setCustomCategoryText("");
     setCaptionEditorOpen(false);
   }
 
@@ -1619,11 +1631,11 @@ export function ComposeModal({
       return;
     }
     if (!selectedPostTypeId) {
-      addToast({ title: "Please choose what you are posting", variant: "warning" });
+      addToast({ title: t("composePost.validation.choosePostType"), variant: "warning" });
       return;
     }
     if (selectedPostTypeId === "request_help" && !requestHelpCategory) {
-      addToast({ title: "Please choose what you need help with", variant: "warning" });
+      addToast({ title: t("composePost.validation.chooseHelpCategory"), variant: "warning" });
       return;
     }
     if (
@@ -1631,54 +1643,50 @@ export function ComposeModal({
       (postLocation.lat == null || postLocation.lng == null || !postLocation.address.trim())
     ) {
       addToast({
-        title: "Please pick a location",
-        description: "Choose from the suggestions or select a spot on the map.",
+        title: t("composePost.validation.pickLocation"),
+        description: t("composePost.validation.pickLocationDesc"),
         variant: "warning",
       });
       return;
     }
     if (selectedPostTypeId === "request_help" && timeframe === "custom") {
       if (!customWhenDate || !customWhenTime) {
-        addToast({ title: "Please pick a custom date and time", variant: "warning" });
+        addToast({ title: t("composePost.validation.pickCustomDateTime"), variant: "warning" });
         return;
       }
     }
     if (selectedPostTypeId === "offer_service" && !offerServiceCategory) {
-      addToast({ title: "Please choose which service you are offering", variant: "warning" });
+      addToast({ title: t("composePost.validation.chooseServiceCategory"), variant: "warning" });
       return;
     }
     const usesOtherHelpCategory =
       (selectedPostTypeId === "request_help" && requestHelpCategory === "other_help") ||
       (selectedPostTypeId === "offer_service" && offerServiceCategory === "other_help");
-    const trimmedCustomCategory = customCategory.trim();
+    const trimmedCustomCategory =
+      customCategory === OTHER_CATEGORY_CUSTOM_VALUE
+        ? customCategoryText.trim()
+        : customCategory.trim();
     if (usesOtherHelpCategory && !trimmedCustomCategory) {
-      addToast({ title: "Please name your category", variant: "warning" });
-      return;
-    }
-    if (usesOtherHelpCategory && trimmedCustomCategory.length > CUSTOM_POST_CATEGORY_MAX_LEN) {
-      addToast({
-        title: `Category must be ${CUSTOM_POST_CATEGORY_MAX_LEN} characters or less`,
-        variant: "warning",
-      });
+      addToast({ title: t("composePost.validation.chooseCategory"), variant: "warning" });
       return;
     }
     if (selectedPostTypeId === "event" && !eventName.trim()) {
-      addToast({ title: "Please enter an event name", variant: "warning" });
+      addToast({ title: t("composePost.validation.enterEventName"), variant: "warning" });
       return;
     }
     if (selectedPostTypeId === "event" && !eventDate) {
-      addToast({ title: "Please pick an event date", variant: "warning" });
+      addToast({ title: t("composePost.validation.pickEventDate"), variant: "warning" });
       return;
     }
     if (selectedPostTypeId === "event" && !eventTime) {
-      addToast({ title: "Please pick an event time", variant: "warning" });
+      addToast({ title: t("composePost.validation.pickEventTime"), variant: "warning" });
       return;
     }
     if (selectedPostTypeId === "event" && eventHelpersNeeded.trim()) {
       const needed = parseInt(eventHelpersNeeded, 10);
       if (!Number.isFinite(needed) || needed < 1) {
         addToast({
-          title: "Helpers needed must be at least 1",
+          title: t("composePost.validation.helpersMin"),
           variant: "warning",
         });
         return;
@@ -1689,18 +1697,18 @@ export function ComposeModal({
       (eventLocation.lat == null || eventLocation.lng == null || !eventLocation.address.trim())
     ) {
       addToast({
-        title: "Please pick a location",
-        description: "Choose from the suggestions or select a spot on the map.",
+        title: t("composePost.validation.pickLocation"),
+        description: t("composePost.validation.pickLocationDesc"),
         variant: "warning",
       });
       return;
     }
     if (selectedPostTypeId === "community" && !communityTitle.trim()) {
-      addToast({ title: "Please enter a title for your post", variant: "warning" });
+      addToast({ title: t("composePost.validation.enterTitle"), variant: "warning" });
       return;
     }
     if (!caption.trim() && composeMedia.length === 0) {
-      addToast({ title: "Add a caption or media", variant: "warning" });
+      addToast({ title: t("composePost.validation.addCaptionOrMedia"), variant: "warning" });
       return;
     }
     setSubmitting(true);
@@ -1874,30 +1882,68 @@ export function ComposeModal({
     }
   }
 
+  const resolvedCustomCategory =
+    customCategory === OTHER_CATEGORY_CUSTOM_VALUE
+      ? customCategoryText.trim()
+      : customCategory;
+
   const otherHelpCategoryField = (
-    <div className="space-y-1.5">
-      <label className="text-[13px] font-bold text-foreground">Your category</label>
-      <input
-        type="text"
-        value={customCategory}
-        onChange={(e) =>
-          setCustomCategory(e.target.value.slice(0, CUSTOM_POST_CATEGORY_MAX_LEN))
-        }
-        maxLength={CUSTOM_POST_CATEGORY_MAX_LEN}
-        placeholder="E.g. Dog walking"
-        className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
-        disabled={submitting}
-      />
-      <div className="text-right text-[10px] font-bold text-muted-foreground">
-        {customCategory.length}/{CUSTOM_POST_CATEGORY_MAX_LEN}
+    <div className="space-y-2.5">
+      <div className="space-y-1.5">
+        <label className="text-[13px] font-bold text-foreground">
+          {t("otherHelpSubcategories.selectLabel")}
+        </label>
+        <div className="relative">
+          <select
+            value={customCategory}
+            onChange={(e) => setCustomCategory(e.target.value)}
+            className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
+            disabled={submitting}
+          >
+            <option value="" disabled className="text-muted-foreground">
+              {t("otherHelpSubcategories.selectPlaceholder")}
+            </option>
+            {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {t(`otherHelpSubcategories.${sub.id}`, { defaultValue: sub.label })}
+              </option>
+            ))}
+            <option value={OTHER_CATEGORY_CUSTOM_VALUE}>
+              {t("otherHelpSubcategories.customOption")}
+            </option>
+          </select>
+        </div>
       </div>
+      {customCategory === OTHER_CATEGORY_CUSTOM_VALUE ? (
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-bold text-foreground">
+            {t("otherHelpSubcategories.customLabel")}
+          </label>
+          <input
+            type="text"
+            value={customCategoryText}
+            onChange={(e) =>
+              setCustomCategoryText(
+                e.target.value.slice(0, CUSTOM_POST_CATEGORY_MAX_LEN),
+              )
+            }
+            maxLength={CUSTOM_POST_CATEGORY_MAX_LEN}
+            placeholder={t("otherHelpSubcategories.customPlaceholder")}
+            className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
+            disabled={submitting}
+          />
+          <div className="text-right text-[10px] font-bold text-muted-foreground">
+            {customCategoryText.length}/{CUSTOM_POST_CATEGORY_MAX_LEN}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 
   const photoUploadSection = (
     <div className="space-y-2 pt-2">
       <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
-        Add photos (optional)
+        {t("composePost.addPhotos")}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         {composeMedia.map((item) => (
@@ -1913,8 +1959,8 @@ export function ComposeModal({
             <button
               type="button"
               onClick={() => removeComposeMedia(item.id)}
-              className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 shadow-md active:scale-[0.85] transition-transform"
-              aria-label="Remove media"
+            className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 shadow-md active:scale-[0.85] transition-transform"
+            aria-label={t("composePost.removeMedia")}
             >
               <X className="h-3 w-3" strokeWidth={2.5} />
             </button>
@@ -1927,7 +1973,7 @@ export function ComposeModal({
             onClick={() => mediaInputRef.current?.click()}
             className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-95 dark:border-zinc-800 dark:text-zinc-600 dark:hover:border-zinc-600 dark:hover:bg-zinc-900/30"
             disabled={submitting}
-            aria-label="Add photos or videos"
+            aria-label={t("composePost.addPhotosVideos")}
           >
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </button>
@@ -1939,7 +1985,7 @@ export function ComposeModal({
   const livePreviewSection = (
     <div className="space-y-2.5 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/60 sm:border-t-0 sm:pt-0">
       <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
-        Post Preview
+        {t("composePost.postPreview")}
       </div>
       <div className="rounded-2xl border-0 bg-zinc-100 dark:bg-zinc-800/55 overflow-hidden p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -2011,9 +2057,9 @@ export function ComposeModal({
         {(() => {
           const hasMeta =
             (selectedPostTypeId === "request_help" &&
-              (requestHelpCategory || postLocation.address || budgetAmount || customCategory.trim())) ||
+              (requestHelpCategory || postLocation.address || budgetAmount || resolvedCustomCategory.trim())) ||
             (selectedPostTypeId === "offer_service" &&
-              (offerServiceCategory || postLocation.address || offerRate || customCategory.trim())) ||
+              (offerServiceCategory || postLocation.address || offerRate || resolvedCustomCategory.trim())) ||
             (selectedPostTypeId === "event" &&
               (eventName ||
                 eventDate ||
@@ -2032,7 +2078,7 @@ export function ComposeModal({
                     {requestHelpCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 shrink-0" />
-                        <span>{feedCategoryLabel(t, requestHelpCategory, customCategory)}</span>
+                        <span>{feedCategoryLabel(t, requestHelpCategory, resolvedCustomCategory)}</span>
                       </div>
                     )}
                     {postLocation.address &&
@@ -2079,7 +2125,7 @@ export function ComposeModal({
                     {offerServiceCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 shrink-0" />
-                        <span>{feedCategoryLabel(t, offerServiceCategory, customCategory)}</span>
+                        <span>{feedCategoryLabel(t, offerServiceCategory, resolvedCustomCategory)}</span>
                       </div>
                     )}
                     {postLocation.address &&
@@ -2213,7 +2259,7 @@ export function ComposeModal({
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-inner", meta.iconBg, meta.iconColor)}>
                         <IconComponent className="h-5.5 w-5.5" strokeWidth={2.25} />
                       </div>
-                      <span className="font-extrabold text-[15px] text-foreground tracking-tight">{meta.title}</span>
+                      <span className="font-extrabold text-[15px] text-foreground tracking-tight">{t(`composePost.postTypes.${pt.id}.title`, { defaultValue: meta.title })}</span>
                     </div>
                     <button
                       type="button"
@@ -2223,7 +2269,7 @@ export function ComposeModal({
                       }}
                       className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
                     >
-                      Change
+                      {t("composePost.change")}
                     </button>
                   </div>
                 );
@@ -2234,7 +2280,7 @@ export function ComposeModal({
             {!selectedPostTypeId && postTypes.length > 0 && (
               <div className="space-y-3.5 pt-1">
                 <div className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground/90">
-                  What are you posting?
+                  {t("composePost.whatPosting")}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {postTypes.map((pt) => {
@@ -2276,11 +2322,11 @@ export function ComposeModal({
                             <IconComponent className="h-5 w-5" strokeWidth={2.25} />
                           </div>
                           <div className="min-w-0 text-base font-bold tracking-tight text-foreground">
-                            {meta.title}
+                            {t(`composePost.postTypes.${pt.id}.title`, { defaultValue: meta.title })}
                           </div>
                         </div>
                         <div className="w-full text-[13px] font-medium leading-snug text-muted-foreground">
-                          {meta.desc}
+                          {t(`composePost.postTypes.${pt.id}.desc`, { defaultValue: meta.desc })}
                         </div>
                       </button>
                     );
@@ -2297,22 +2343,25 @@ export function ComposeModal({
                   <>
                     {/* What do you need help with? */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">What do you need help with?</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.requestHelp.categoryLabel")}</label>
                       <div className="relative">
                         <select
                           value={requestHelpCategory}
                           onChange={(e) => {
                             const next = e.target.value;
                             setRequestHelpCategory(next);
-                            if (next !== "other_help") setCustomCategory("");
+                            if (next !== "other_help") {
+                              setCustomCategory("");
+                              setCustomCategoryText("");
+                            }
                           }}
                           className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
                           disabled={submitting}
                         >
-                          <option value="" disabled className="text-muted-foreground">E.g. Babysitter, Cleaning, Delivery..</option>
+                          <option value="" disabled className="text-muted-foreground">{t("composePost.categoryPlaceholder")}</option>
                           {SERVICE_CATEGORIES.map((cat) => (
                             <option key={cat.id} value={cat.id}>
-                              {cat.label}
+                              {t(`feed.categories.${cat.id}`)}
                             </option>
                           ))}
                         </select>
@@ -2323,10 +2372,10 @@ export function ComposeModal({
 
                     {/* Location */}
                     <LocationPicker
-                      label="Location"
+                      label={t("composePost.location")}
                       labelClassName="text-[13px] font-bold text-foreground"
                       inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder="Search for a place"
+                      placeholder={t("composePost.searchPlace")}
                       value={postLocation}
                       onChange={setPostLocation}
                       requireSelection
@@ -2334,7 +2383,7 @@ export function ComposeModal({
 
                     {/* When do you need it? */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">When do you need it?</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.whenNeed")}</label>
                       <div className="flex flex-wrap gap-2">
                         {REQUEST_HELP_WHEN_OPTIONS.map((opt) => {
                           const isSel = timeframe === opt.id;
@@ -2377,13 +2426,13 @@ export function ComposeModal({
                                 <span className={cn(!customWhenDate && "text-muted-foreground")}>
                                   {customWhenDate
                                     ? format(customWhenDate, "EEEE, MMMM d, yyyy")
-                                    : "Pick a date"}
+                                    : t("composePost.pickDate")}
                                 </span>
                               </button>
                             </DialogTrigger>
                             <DialogContent className="max-w-sm">
                               <DialogHeader>
-                                <DialogTitle>When do you need help?</DialogTitle>
+                                <DialogTitle>{t("composePost.whenDialogTitle")}</DialogTitle>
                               </DialogHeader>
                               <SimpleCalendar
                                 selectedDate={customWhenDate}
@@ -2414,7 +2463,7 @@ export function ComposeModal({
 
                     {/* Budget */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">Budget (optional)</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.budgetOptional")}</label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground pointer-events-none">₪</span>
@@ -2451,22 +2500,25 @@ export function ComposeModal({
                   <>
                     {/* What service are you offering? */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">What service are you offering?</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.offerService.categoryLabel")}</label>
                       <div className="relative">
                         <select
                           value={offerServiceCategory}
                           onChange={(e) => {
                             const next = e.target.value;
                             setOfferServiceCategory(next);
-                            if (next !== "other_help") setCustomCategory("");
+                            if (next !== "other_help") {
+                              setCustomCategory("");
+                              setCustomCategoryText("");
+                            }
                           }}
                           className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
                           disabled={submitting}
                         >
-                          <option value="" disabled className="text-muted-foreground">E.g. Babysitter, Cleaning, Delivery..</option>
+                          <option value="" disabled className="text-muted-foreground">{t("composePost.categoryPlaceholder")}</option>
                           {SERVICE_CATEGORIES.map((cat) => (
                             <option key={cat.id} value={cat.id}>
-                              {cat.label}
+                              {t(`feed.categories.${cat.id}`)}
                             </option>
                           ))}
                         </select>
@@ -2477,10 +2529,10 @@ export function ComposeModal({
 
                     {/* Location */}
                     <LocationPicker
-                      label="Location"
+                      label={t("composePost.location")}
                       labelClassName="text-[13px] font-bold text-foreground"
                       inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder="Search for a place (optional)"
+                      placeholder={t("composePost.searchPlaceOptional")}
                       value={postLocation}
                       onChange={setPostLocation}
                       requireSelection
@@ -2488,7 +2540,7 @@ export function ComposeModal({
 
                     {/* Rate */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">Rate (optional)</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.rateOptional")}</label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground pointer-events-none">₪</span>
@@ -2525,10 +2577,10 @@ export function ComposeModal({
                   <>
                     {/* Event Name */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">Event Name</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.event.nameLabel")}</label>
                       <input
                         type="text"
-                        placeholder="E.g. Community Gathering, Picnic, Meetup"
+                        placeholder={t("composePost.event.namePlaceholder")}
                         value={eventName}
                         onChange={(e) => setEventName(e.target.value)}
                         className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
@@ -2538,7 +2590,7 @@ export function ComposeModal({
 
                     {/* Date & Time */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">Date & Time</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.event.dateTimeLabel")}</label>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                         <Dialog open={eventDatePickerOpen} onOpenChange={setEventDatePickerOpen}>
                           <DialogTrigger asChild>
@@ -2549,13 +2601,13 @@ export function ComposeModal({
                             >
                               <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className={cn(!eventDate && "text-muted-foreground")}>
-                                {eventDate ? format(eventDate, "EEEE, MMMM d, yyyy") : "Pick a date"}
+                                {eventDate ? format(eventDate, "EEEE, MMMM d, yyyy") : t("composePost.pickDate")}
                               </span>
                             </button>
                           </DialogTrigger>
                           <DialogContent className="max-w-sm">
                             <DialogHeader>
-                              <DialogTitle>Event date</DialogTitle>
+                              <DialogTitle>{t("composePost.event.dateDialogTitle")}</DialogTitle>
                             </DialogHeader>
                             <SimpleCalendar
                               selectedDate={eventDate}
@@ -2585,10 +2637,10 @@ export function ComposeModal({
 
                     {/* Location */}
                     <LocationPicker
-                      label="Location"
+                      label={t("composePost.location")}
                       labelClassName="text-[13px] font-bold text-foreground"
                       inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder="Search for a place"
+                      placeholder={t("composePost.searchPlace")}
                       value={eventLocation}
                       onChange={setEventLocation}
                       requireSelection
@@ -2596,13 +2648,13 @@ export function ComposeModal({
 
                     <div className="space-y-1.5">
                       <label className="text-[13px] font-bold text-foreground">
-                        Helpers needed
+                        {t("composePost.event.helpersLabel")}
                       </label>
                       <input
                         type="number"
                         min={1}
                         inputMode="numeric"
-                        placeholder="How many helpers do you need?"
+                        placeholder={t("composePost.event.helpersPlaceholder")}
                         value={eventHelpersNeeded}
                         onChange={(e) => setEventHelpersNeeded(e.target.value)}
                         className={cn(
@@ -2620,10 +2672,10 @@ export function ComposeModal({
                   <>
                     {/* Title */}
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-foreground">Title</label>
+                      <label className="text-[13px] font-bold text-foreground">{t("composePost.community.titleLabel")}</label>
                       <input
                         type="text"
-                        placeholder="What is the topic or question?"
+                        placeholder={t("composePost.community.titlePlaceholder")}
                         value={communityTitle}
                         onChange={(e) => setCommunityTitle(e.target.value)}
                         className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
@@ -2635,7 +2687,7 @@ export function ComposeModal({
 
                 {/* Tell us more / Description — opens expanded editor */}
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[13px] font-bold text-foreground">Tell us more</label>
+                  <label className="text-[13px] font-bold text-foreground">{t("composePost.tellMore")}</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -2662,7 +2714,7 @@ export function ComposeModal({
                 <Dialog open={captionEditorOpen} onOpenChange={setCaptionEditorOpen}>
                   <DialogContent className="flex max-h-[min(92dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
                     <DialogHeader className="border-b border-border/60 px-5 py-4">
-                      <DialogTitle className="text-base font-bold">Tell us more</DialogTitle>
+                      <DialogTitle className="text-base font-bold">{t("composePost.tellMore")}</DialogTitle>
                     </DialogHeader>
                     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                       <Textarea
@@ -2689,7 +2741,7 @@ export function ComposeModal({
                         className="rounded-full px-5 font-bold"
                         onClick={() => setCaptionEditorOpen(false)}
                       >
-                        Done
+                        {t("composePost.done")}
                       </Button>
                     </div>
                   </DialogContent>
@@ -2704,7 +2756,7 @@ export function ComposeModal({
                     <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Tag someone…"
+                      placeholder={t("composePost.tagSomeone")}
                       value={tagQuery}
                       onChange={(e) => setTagQuery(e.target.value)}
                       onBlur={() => {
@@ -2790,7 +2842,7 @@ export function ComposeModal({
           titleId="compose-sheet-title"
           heightMode="viewport"
           maxHeight="min(92dvh, 860px)"
-          ariaLabel="Create Post"
+          ariaLabel={t("composePost.createPost")}
         >
           <div className="flex min-h-0 flex-col bg-background text-foreground dark:bg-[#121212]">
             <div className="flex shrink-0 items-center justify-between px-3 py-3">
@@ -2799,7 +2851,7 @@ export function ComposeModal({
                 id="compose-sheet-title"
                 className="text-[17px] font-bold tracking-tight text-foreground"
               >
-                Create Post
+                {t("composePost.createPost")}
               </h2>
               <button
                 type="button"
@@ -2821,7 +2873,7 @@ export function ComposeModal({
                 {submitting ? (
                   <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 ) : (
-                  "Post"
+                  t("composePost.post")
                 )}
               </button>
             </div>
@@ -2872,12 +2924,12 @@ export function ComposeModal({
             onClick={handleClose}
             disabled={submitting}
             className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/60 active:scale-95 disabled:opacity-50"
-            aria-label="Close"
+            aria-label={t("composePost.close")}
           >
             <X className="h-5 w-5" strokeWidth={2.25} />
           </button>
           <DialogTitle className="text-[17px] font-bold tracking-tight text-foreground">
-            Create Post
+            {t("composePost.createPost")}
           </DialogTitle>
           <button
             type="button"
@@ -2893,7 +2945,7 @@ export function ComposeModal({
             {submitting ? (
               <Loader2 className="mx-auto h-4 w-4 animate-spin" />
             ) : (
-              "Post"
+              t("composePost.post")
             )}
           </button>
         </div>
@@ -5550,6 +5602,7 @@ export function ProfilePostsFeed({
   viewerLocation = null,
   filterCategoryId = null,
 }: ProfilePostsFeedProps) {
+  const { t } = useTranslation();
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
   const effectivePostTypeFilter = useMemo(() => {
     if (filterPostTypeIds?.length) return filterPostTypeIds;
@@ -6735,7 +6788,7 @@ export function ProfilePostsFeed({
               <Plus className="h-5 w-5 text-orange-600 dark:text-orange-400" strokeWidth={2.5} />
             </div>
             <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">
-              Share something with your followers…
+              {t("composePost.shareTrigger")}
             </span>
           </button>
         </div>

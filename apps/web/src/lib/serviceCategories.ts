@@ -5,6 +5,7 @@ export const SERVICE_CATEGORY_IDS = [
   "cooking",
   "pickup_delivery",
   "nanny",
+  "technical_help",
   "other_help",
 ] as const;
 
@@ -41,9 +42,15 @@ export const SERVICE_CATEGORIES: {
     imageSrc: "/nanny-mar22.png",
   },
   {
+    id: "technical_help",
+    label: "Technical Help",
+    description: "Repairs & tech support",
+    imageSrc: "/pexels-tima-miroshnichenko-6197046.jpg",
+  },
+  {
     id: "other_help",
     label: "Other help",
-    description: "Repairs & more",
+    description: "Anything else",
     imageSrc: "/other-mar22.png",
   },
 ];
@@ -97,13 +104,44 @@ export function serviceCategoryLabel(id?: string | null): string {
   );
 }
 
-/** When category is `other_help`, show the user's custom label (max 15 chars) if provided. */
+/**
+ * Subcategories shown when the user picks the `other_help` category.
+ * These are a fixed list — when "Other" is chosen the user selects one of these
+ * rather than typing a free-form category.
+ */
+export const OTHER_HELP_SUBCATEGORIES: { id: string; label: string }[] = [
+  { id: "beauty_personal_care", label: "Beauty & Personal Care" },
+  { id: "heavy_lifting_moving", label: "Heavy Lifting & Moving Help" },
+  { id: "coaching_lessons", label: "Coaching & Lessons" },
+  { id: "shopping_errands", label: "Shopping & Errands" },
+  { id: "pet_help", label: "Pet Help" },
+  { id: "elderly_help", label: "Elderly Help" },
+  { id: "paperwork_bureaucracy", label: "Paperwork & Bureaucracy Help" },
+  { id: "event_help", label: "Event Help" },
+  { id: "home_maintenance", label: "Home Maintenance" },
+  { id: "digital_creative", label: "Digital & Creative Help" },
+  { id: "religious_community", label: "Religious / Community Help" },
+];
+
+/** Resolve an `other_help` subcategory id to its display label (null if unknown). */
+export function otherHelpSubcategoryLabel(
+  id?: string | null,
+): string | null {
+  if (!id) return null;
+  return OTHER_HELP_SUBCATEGORIES.find((s) => s.id === id)?.label ?? null;
+}
+
+/**
+ * When category is `other_help`, show the chosen subcategory label.
+ * Accepts both new subcategory ids and legacy free-text values (shown as-is).
+ */
 export function postServiceCategoryLabel(
   categoryId?: string | null,
   customCategory?: string | null,
 ): string {
   if (categoryId === "other_help" && customCategory?.trim()) {
-    return customCategory.trim();
+    const trimmed = customCategory.trim();
+    return otherHelpSubcategoryLabel(trimmed) ?? trimmed;
   }
   return serviceCategoryLabel(categoryId);
 }

@@ -21,6 +21,7 @@ import {
   isServiceCategoryId,
   serviceCategoryLabel,
   getServiceCategoryImage,
+  otherHelpSubcategoryLabel,
 } from "@/lib/serviceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
@@ -431,7 +432,11 @@ function ConfirmedRequestSummaryBody({
             {job.service_type?.replace("_", " & ")}
             {job.service_type === "other_help" &&
               job.service_details?.other_type &&
-              ` - ${job.service_details.other_type.replace(/_/g, " ").charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, " ").slice(1)}`}
+              ` - ${
+                otherHelpSubcategoryLabel(job.service_details.other_type) ??
+                job.service_details.other_type.replace(/_/g, " ").charAt(0).toUpperCase() +
+                  job.service_details.other_type.replace(/_/g, " ").slice(1)
+              }`}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {job.location_city ? (

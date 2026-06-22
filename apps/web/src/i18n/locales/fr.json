@@ -30,6 +30,213 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "createJob": {
+    "eyebrow": "Publier votre demande",
+    "titles": {
+      "default": "Publier votre demande",
+      "step1": "Type d'aide",
+      "step2": "Type de service",
+      "step3": "Lieu",
+      "step4": "Durée",
+      "step5": "Budget",
+      "step6": "Quand",
+      "step7": "Détails supplémentaires",
+      "step8": "Photos et vidéos",
+      "step9": "Détails du service"
+    },
+    "tips": {
+      "1": "Choisissez la catégorie qui correspond le mieux à votre besoin — vous pouvez publier une autre demande à tout moment.",
+      "2": "Une fois est pour une seule visite ; le temps partiel et régulier conviennent à une aide continue ou répétée.",
+      "3": "Choisissez votre ville parmi les suggestions (ou via GPS). Le texte libre seul ne débloque pas l'étape suivante.",
+      "4": "Choisissez une durée adaptée à la visite ; les aidants l'utilisent pour décider s'ils peuvent s'engager.",
+      "5": "Ajoutez un budget si vous en avez un en tête — vous pouvez ignorer et continuer.",
+      "6": "Quand avez-vous besoin d'aide ? Choisissez Maintenant pour les demandes urgentes.",
+      "7": "Ajoutez tout détail utile — ou ignorez si tout est prêt.",
+      "8": "Les photos ou vidéos sont facultatives mais peuvent clarifier le travail.",
+      "9": "Des détails précis donnent des correspondances plus rapides et meilleures — ajoutez tout ce qui clarifie la tâche."
+    },
+    "serviceDescriptions": {
+      "cleaning": "Entretien professionnel",
+      "cooking": "Repas à la maison",
+      "pickup_delivery": "Courses et livraison",
+      "nanny": "Garde d'enfants de confiance",
+      "technical_help": "Réparations et support technique",
+      "other_help": "Autre chose"
+    },
+    "careFrequency": {
+      "one_time": "Une fois",
+      "part_time": "Temps partiel",
+      "regularly": "Régulièrement"
+    },
+    "timeDuration": {
+      "1_2_hours": "1-2 heures",
+      "3_4_hours": "3-4 heures",
+      "5_6_hours": "5-6 heures",
+      "full_day": "Journée entière"
+    },
+    "cleaning": {
+      "label": "Type de ménage",
+      "house": "Ménage à domicile",
+      "office": "Ménage de bureau",
+      "garden": "Jardin (extérieur)"
+    },
+    "cooking": {
+      "label": "Combien de personnes ?",
+      "1_4": "1-4 personnes",
+      "4_6": "4-6 personnes",
+      "6_10": "6-10 personnes",
+      "10_plus": "10+ personnes"
+    },
+    "nanny": {
+      "label": "Combien d'enfants ?",
+      "1_2": "1-2 enfants",
+      "2_4": "2-4 enfants",
+      "4_6": "4-6 enfants",
+      "8_plus": "8+ enfants"
+    },
+    "otherHelp": {
+      "label": "Type d'aide",
+      "additionalDetailsLabel": "Détails supplémentaires (facultatif)",
+      "additionalDetailsPlaceholder": "Décrivez ce pour quoi vous avez besoin d'aide..."
+    },
+    "technical": {
+      "label": "De quoi avez-vous besoin ?",
+      "placeholder": "Décrivez le problème technique (facultatif)"
+    },
+    "budget": {
+      "optionalHint": "Facultatif — laissez vide pour continuer sans budget.",
+      "label": "Budget",
+      "perHour": "par heure",
+      "fixed": "forfait"
+    },
+    "when": {
+      "options": {
+        "now": "Maintenant",
+        "today": "Aujourd'hui",
+        "tomorrow": "Demain",
+        "this_week": "Cette semaine",
+        "custom": "Personnalisé"
+      },
+      "pickDate": "Choisir une date",
+      "dialogTitle": "Quand avez-vous besoin d'aide ?"
+    },
+    "additional": {
+      "hint": "Facultatif — ajoutez tout ce que les aidants devraient savoir, ou ignorez.",
+      "placeholder": "Décrivez ce pour quoi vous avez besoin d'aide..."
+    },
+    "media": {
+      "hint": "Facultatif — ajoutez des photos ou vidéos pour montrer le travail.",
+      "addButton": "Ajouter des photos ou vidéos",
+      "removeAria": "Supprimer le média"
+    },
+    "pickup": {
+      "fromLabel": "📍 Lieu de récupération",
+      "toLabel": "🎯 Lieu de livraison",
+      "fromPlaceholder": "Saisir l'adresse de récupération",
+      "toPlaceholder": "Saisir l'adresse de livraison"
+    },
+    "savedLocation": {
+      "title": "Utilisation de votre lieu enregistré",
+      "change": "Modifier"
+    },
+    "nav": {
+      "back": "Retour",
+      "next": "Étape suivante",
+      "skip": "Ignorer",
+      "submit": "Publier ma demande maintenant"
+    },
+    "liveNow": "{{count}} en direct",
+    "toast": {
+      "locationFound": "Lieu trouvé",
+      "locationSet": "Votre lieu a été défini sur {{city}}",
+      "locationError": "Erreur de localisation",
+      "locationFailed": "Impossible d'obtenir votre position"
+    }
+  },
+  "otherHelpSubcategories": {
+    "selectLabel": "Choisir une catégorie",
+    "selectPlaceholder": "Sélectionner une catégorie…",
+    "beauty_personal_care": "Beauté et soins personnels",
+    "technical_help": "Aide technique",
+    "heavy_lifting_moving": "Manutention et déménagement",
+    "coaching_lessons": "Coaching et cours",
+    "shopping_errands": "Courses et commissions",
+    "pet_help": "Aide pour animaux",
+    "elderly_help": "Aide aux personnes âgées",
+    "paperwork_bureaucracy": "Paperasse et démarches administratives",
+    "event_help": "Aide pour événements",
+    "home_maintenance": "Entretien de la maison",
+    "digital_creative": "Aide numérique et créative",
+    "religious_community": "Aide religieuse / communautaire",
+    "customOption": "Autre (aucun de ceux-ci)",
+    "customLabel": "Votre catégorie",
+    "customPlaceholder": "Ex. Promenade de chien"
+  },
+  "composePost": {
+    "createPost": "Créer une publication",
+    "post": "Publier",
+    "done": "Terminé",
+    "change": "Modifier",
+    "close": "Fermer",
+    "whatPosting": "Que publiez-vous ?",
+    "location": "Lieu",
+    "searchPlace": "Rechercher un lieu",
+    "searchPlaceOptional": "Rechercher un lieu (facultatif)",
+    "whenNeed": "Quand en avez-vous besoin ?",
+    "pickDate": "Choisir une date",
+    "whenDialogTitle": "Quand avez-vous besoin d'aide ?",
+    "budgetOptional": "Budget (facultatif)",
+    "rateOptional": "Tarif (facultatif)",
+    "categoryPlaceholder": "Ex. Baby-sitter, Ménage, Livraison..",
+    "tellMore": "En dire plus",
+    "tagSomeone": "Identifier quelqu'un…",
+    "addPhotos": "Ajouter des photos (facultatif)",
+    "addPhotosVideos": "Ajouter des photos ou vidéos",
+    "removeMedia": "Supprimer le média",
+    "postPreview": "Aperçu de la publication",
+    "shareTrigger": "Partagez quelque chose avec vos abonnés…",
+    "postTypes": {
+      "request_help": { "title": "Demander de l'aide", "desc": "J'ai besoin d'aide pour quelque chose" },
+      "offer_service": { "title": "Proposer un service", "desc": "Je veux proposer mes services" },
+      "community": { "title": "Publication communautaire", "desc": "Partagez avec la communauté" },
+      "event": { "title": "Événement", "desc": "Créer ou partager un événement" }
+    },
+    "captionPlaceholder": {
+      "request_help": "Décrivez ce dont vous avez besoin...",
+      "offer_service": "Décrivez votre service...",
+      "event": "Décrivez les détails de votre événement...",
+      "community": "Décrivez ce dont vous voulez parler..."
+    },
+    "requestHelp": { "categoryLabel": "De quoi avez-vous besoin ?" },
+    "offerService": { "categoryLabel": "Quel service proposez-vous ?" },
+    "event": {
+      "nameLabel": "Nom de l'événement",
+      "namePlaceholder": "Ex. Rassemblement, Pique-nique, Rencontre",
+      "dateTimeLabel": "Date et heure",
+      "dateDialogTitle": "Date de l'événement",
+      "helpersLabel": "Aides nécessaires",
+      "helpersPlaceholder": "Combien d'aides vous faut-il ?"
+    },
+    "community": {
+      "titleLabel": "Titre",
+      "titlePlaceholder": "Quel est le sujet ou la question ?"
+    },
+    "validation": {
+      "choosePostType": "Veuillez choisir ce que vous publiez",
+      "chooseHelpCategory": "Veuillez choisir ce dont vous avez besoin",
+      "chooseServiceCategory": "Veuillez choisir le service que vous proposez",
+      "chooseCategory": "Veuillez choisir une catégorie",
+      "pickLocation": "Veuillez choisir un lieu",
+      "pickLocationDesc": "Choisissez parmi les suggestions ou sélectionnez un point sur la carte.",
+      "pickCustomDateTime": "Veuillez choisir une date et une heure",
+      "enterEventName": "Veuillez saisir un nom d'événement",
+      "pickEventDate": "Veuillez choisir une date d'événement",
+      "pickEventTime": "Veuillez choisir une heure d'événement",
+      "helpersMin": "Le nombre d'aides doit être d'au moins 1",
+      "enterTitle": "Veuillez saisir un titre pour votre publication",
+      "addCaptionOrMedia": "Ajoutez un texte ou un média"
+    }
+  },
   "discover": {
     "whatAreYouHereFor": "Que cherchez-vous ?",
     "getHelpNow": "Obtenir de l'aide",
@@ -126,6 +333,7 @@
       "cooking": "Cuisine",
       "pickup_delivery": "Courses et livraison",
       "nanny": "Garde d'enfants",
+      "technical_help": "Aide technique",
       "other_help": "Autre aide",
       "help_request": "Demande d'aide"
     },

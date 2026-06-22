@@ -7,6 +7,7 @@ import {
   Sparkles,
   Truck,
   UtensilsCrossed,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +32,7 @@ const ICONS: Record<DiscoverHomeCategoryId, LucideIcon> = {
   cooking: UtensilsCrossed,
   pickup_delivery: Truck,
   nanny: Baby,
+  technical_help: Wrench,
   other_help: HelpCircle,
 };
 
@@ -74,6 +76,13 @@ const TAB_DEFS: TabDef[] = [
               "border-transparent bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-900/15",
             idleRing:
               "border-sky-200/70 bg-sky-50/45 text-sky-950/90 hover:bg-sky-50/90 dark:border-sky-500/25 dark:bg-sky-950/25 dark:text-sky-100",
+          };
+        case "technical_help":
+          return {
+            activeClass:
+              "border-transparent bg-gradient-to-r from-slate-600 to-slate-800 text-white shadow-md shadow-black/15",
+            idleRing:
+              "border-slate-200/80 bg-slate-100/60 text-slate-900 hover:bg-slate-100 dark:border-slate-600/50 dark:bg-slate-800/60 dark:text-slate-100",
           };
         case "other_help":
           return {
