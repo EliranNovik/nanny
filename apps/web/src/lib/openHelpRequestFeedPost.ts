@@ -27,6 +27,7 @@ export type JobRequestFeedPost = {
   };
   post_metadata: {
     category?: string | null;
+    other_type?: string | null;
     location?: string | null;
     timeframe?: string | null;
     time_duration?: string | null;
@@ -78,6 +79,11 @@ export function mapOpenHelpRequestToFeedPost(
     },
     post_metadata: {
       category: row.service_type,
+      other_type:
+        typeof (row.service_details as { other_type?: unknown } | null | undefined)
+          ?.other_type === "string"
+          ? ((row.service_details as { other_type?: string }).other_type ?? null)
+          : null,
       location: row.location_city,
       timeframe: row.when_timeframe,
       time_duration: row.time_duration,

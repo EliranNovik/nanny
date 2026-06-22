@@ -237,6 +237,52 @@
       "addCaptionOrMedia": "Add a caption or media"
     }
   },
+  "discoverHome": {
+    "actions": {
+      "explore": "Explore",
+      "goLive": "Go Live",
+      "live": "Live",
+      "sharePost": "Share Post",
+      "findHelpers": "Find Helpers",
+      "postRequest": "Post Request",
+      "myRequests": "My Requests",
+      "pending": "Pending"
+    },
+    "filters": {
+      "all": "All",
+      "cleaning": "Cleaning",
+      "cooking": "Cooking",
+      "pickup_delivery": "Pickup",
+      "nanny": "Nanny",
+      "technical_help": "Technical",
+      "other_help": "Other",
+      "allOther": "All other",
+      "pickSubcategory": "Filter by type"
+    },
+    "heroHire": {
+      "badge": "Fast & easy",
+      "title": "Find someone in minutes.",
+      "sub": "Post what you need and get matched with helpers nearby — fast."
+    },
+    "heroWork": {
+      "badge": "Posts near you",
+      "title": "Community requests",
+      "sub": "Go live and get requests instantly in your area."
+    }
+  },
+  "goLiveModal": {
+    "eyebrow": "Go live",
+    "title": "Go live for 24 hours?",
+    "body": "You'll show as available now to people nearby. Your live status lasts 24 hours, then expires automatically — you can go live again anytime.",
+    "cancel": "Cancel",
+    "confirm": "Go live",
+    "going": "Going live…",
+    "successTitle": "You're live",
+    "successBody": "You'll show as available for 24 hours.",
+    "locationTitle": "Location needed",
+    "locationBody": "Set your city and service area in settings before going live.",
+    "errorTitle": "Could not go live"
+  },
   "discover": {
     "whatAreYouHereFor": "What are you here for?",
     "getHelpNow": "Get help now",

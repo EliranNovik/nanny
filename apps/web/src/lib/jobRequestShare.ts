@@ -73,6 +73,39 @@ export function feedItemDomId(source: "post" | "job_request" | "availability", i
   return `feed-item-${id}`;
 }
 
+function scrollRootsFor(el: HTMLElement): HTMLElement[] {
+  const roots: HTMLElement[] = [];
+  const seen = new Set<HTMLElement>();
+
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const { overflowY } = getComputedStyle(node);
+    const scrollable =
+      (overflowY === "auto" ||
+        overflowY === "scroll" ||
+        overflowY === "overlay") &&
+      node.scrollHeight > node.clientHeight + 1;
+    if (scrollable && !seen.has(node)) {
+      seen.add(node);
+      roots.push(node);
+    }
+    node = node.parentElement;
+  }
+
+  for (const candidate of [
+    document.scrollingElement,
+    document.documentElement,
+    document.body,
+  ]) {
+    if (candidate instanceof HTMLElement && !seen.has(candidate)) {
+      seen.add(candidate);
+      roots.push(candidate);
+    }
+  }
+
+  return roots;
+}
+
 export function scrollToFeedItem(
   id: string,
   source: "post" | "job_request" | "availability",
@@ -83,9 +116,16 @@ export function scrollToFeedItem(
 
   const topInset = opts.topInset ?? 12;
   const behavior: ScrollBehavior = opts.instant ? "auto" : "smooth";
-  el.scrollIntoView({ behavior, block: "start" });
-  const rect = el.getBoundingClientRect();
-  return rect.top >= topInset - 8 && rect.top <= window.innerHeight - 88;
+  for (const root of scrollRootsFor(el)) {
+    const rootTop =
+      root === document.body || root === document.documentElement
+        ? 0
+        : root.getBoundingClientRect().top;
+    const rect = el.getBoundingClientRect();
+    const target = root.scrollTop + rect.top - rootTop - topInset;
+    root.scrollTo({ top: Math.max(0, target), behavior });
+  }
+  return true;
 }
 
 export function scrollToFeedItemWhenReady(

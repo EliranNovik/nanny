@@ -53,7 +53,7 @@ function isExcludedRoute(pathname: string): boolean {
   return false;
 }
 
-export function DesktopSidePanel() {
+export function DesktopSidePanel({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { guardKycAction } = useKycGate();
@@ -274,6 +274,7 @@ export function DesktopSidePanel() {
   // After all hooks: decide whether to render.
   if (!user || !profile) return null;
   if (isExcludedRoute(pathname)) return null;
+  if (collapsed) return null;
 
   return (
     <aside
@@ -412,7 +413,7 @@ export function DesktopSidePanel() {
       </div>
 
       {/* Independent scroll: panel content scrolls without moving the page */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
         <div className="mt-2 flex flex-col">
           <nav className="flex w-full flex-col items-stretch gap-1">

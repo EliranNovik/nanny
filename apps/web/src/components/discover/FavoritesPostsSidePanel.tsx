@@ -50,11 +50,11 @@ type FavoritePostRow = {
 
 /** Side panel width at each desktop breakpoint (visible from md / 768px). */
 export const FAVORITES_SIDE_PANEL_WIDTH_CLASS =
-  "md:w-[300px] lg:w-[360px] xl:w-[420px] 2xl:w-[460px]";
+  "md:w-[260px] lg:w-[320px] xl:w-[380px] 2xl:w-[420px]";
 
 /** Matches fixed panel width + right inset so feed header filters do not sit under the panel. */
 export const FAVORITES_SIDE_PANEL_RESERVE_CLASS =
-  "md:max-w-[calc(100%-316px)] lg:max-w-[calc(100%-376px)] xl:max-w-[calc(100%-436px)] 2xl:max-w-[calc(100%-476px)]";
+  "md:max-w-[calc(100%-276px)] lg:max-w-[calc(100%-336px)] xl:max-w-[calc(100%-396px)] 2xl:max-w-[calc(100%-436px)]";
 
 /** Fixed panel offset: slightly below app nav for a small gap from the feed header. */
 export const FAVORITES_SIDE_PANEL_FIXED_TOP_CLASS = "md:top-[4.75rem]";
@@ -63,7 +63,7 @@ export const FAVORITES_SIDE_PANEL_FIXED_MAX_H_CLASS =
   "md:max-h-[calc(100vh-4.75rem)]";
 
 const SIDE_PANEL_THUMB_CLASS =
-  "h-[84px] w-[118px] lg:h-[100px] lg:w-[152px] xl:h-[112px] xl:w-[180px] 2xl:h-[124px] 2xl:w-[200px]";
+  "h-[84px] w-[118px] lg:h-[96px] lg:w-[144px] xl:h-[108px] xl:w-[168px] 2xl:h-[120px] 2xl:w-[192px]";
 
 const SIDE_PANEL_SECTION_TITLE_CLASS =
   "text-[13px] lg:text-[14px] xl:text-[15px] font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-200";

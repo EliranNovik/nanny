@@ -3623,7 +3623,9 @@ function PostCard({
       ? "md:w-full md:rounded-xl"
       : cn("md:rounded-xl", portraitDesktopSizingClass);
   const portraitMediaObjectClass = isGlobalFeed
-    ? "object-cover object-center"
+    ? // Mobile keeps the full-bleed crop; desktop shows the whole image (letterboxed
+      // on the black box) so portrait posts are never cut off.
+      "object-cover object-center md:object-contain"
     : "object-cover";
   const landscapeMediaObjectClass = "object-contain";
   const mediaBoxBgClass =
@@ -3631,12 +3633,17 @@ function PostCard({
   // Feed column is always full width so the header type badge aligns across post types.
   // Portrait media alone shrinks below the header.
   const desktopDiscoverFeedColumnClass = isDiscover
-    ? discoverWideLayout
+    ? isGlobalFeed
+      ? "md:w-full md:max-w-none"
+      : discoverWideLayout
       ? "md:w-full md:max-w-none"
       : "md:w-full md:max-w-[820px]"
     : null;
-  const desktopDiscoverMediaColumnClass =
-    isDiscover && hasMedia
+  const desktopDiscoverMediaColumnClass = isGlobalFeed
+    ? // Keep global-feed media inset inside the wider card so desktop images/videos
+      // do not touch or appear clipped against the right edge.
+      "md:mx-3.5 md:w-[calc(100%-1.75rem)] md:max-w-none"
+    : isDiscover && hasMedia
       ? discoverWideLayout
         ? isLandscape
           ? "md:w-full md:max-w-none"
@@ -5570,6 +5577,8 @@ interface ProfilePostsFeedProps {
   viewerLocation?: ViewerLocation | null;
   /** Filter posts by job / service category. */
   filterCategoryId?: string | null;
+  /** When category is `other_help`, further filter by a subcategory id. */
+  filterOtherSubcategoryId?: string | null;
 }
 
 export function ProfilePostsFeed({
@@ -5601,6 +5610,7 @@ export function ProfilePostsFeed({
   globalFeedLayout = false,
   viewerLocation = null,
   filterCategoryId = null,
+  filterOtherSubcategoryId = null,
 }: ProfilePostsFeedProps) {
   const { t } = useTranslation();
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
@@ -5655,6 +5665,7 @@ export function ProfilePostsFeed({
     feedBudgetMax: advancedFilters?.budgetMax ?? null,
     feedFavoriteProfilesOnly: advancedFilters?.favoriteProfilesOnly ?? false,
     filterCategoryId: filterCategoryId ?? null,
+    filterOtherSubcategoryId: filterOtherSubcategoryId ?? null,
     limit,
   }), [
     userId,
@@ -5674,6 +5685,7 @@ export function ProfilePostsFeed({
     advancedFilters?.budgetMax,
     advancedFilters?.favoriteProfilesOnly,
     filterCategoryId,
+    filterOtherSubcategoryId,
     limit,
   ]);
 
@@ -6294,6 +6306,21 @@ export function ProfilePostsFeed({
           }
           return false;
         });
+
+        // Narrow "Other help" by the chosen subcategory.
+        if (target === "other_help" && filterOtherSubcategoryId) {
+          const sub = filterOtherSubcategoryId;
+          merged = merged.filter((post) => {
+            if (post.source === "job_request") {
+              return (post.post_metadata as any)?.other_type === sub;
+            }
+            if (post.source === "post") {
+              return (post.post_metadata as any)?.custom_category === sub;
+            }
+            // Availability (live helpers) have no subcategory tagging.
+            return false;
+          });
+        }
       }
 
       if (effectivePostTypeFilter?.length) {
@@ -6333,6 +6360,7 @@ export function ProfilePostsFeed({
     filterAcceptedRequests,
     advancedFilters,
     filterCategoryId,
+    filterOtherSubcategoryId,
     limit,
     hideOwnJobRequests,
     normalizedFocusRequestId,
@@ -6377,7 +6405,7 @@ export function ProfilePostsFeed({
         onSidePanelPostOpen(postId);
         return;
       }
-      scrollToProfilePostWhenReady(postId, {
+      scrollToFeedItemWhenReady(postId, "post", {
         topInset: appearance === "discover" ? 96 : 12,
       });
     },

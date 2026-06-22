@@ -236,8 +236,6 @@ export function scrollToProfilePost(
     root.scrollTo({ top: Math.max(0, target), behavior });
   }
 
-  el.scrollIntoView({ behavior, block: "start" });
-
   const rectAfter = el.getBoundingClientRect();
   const visible = isPostInView(el, topInset, bottomInset);
 
@@ -260,7 +258,7 @@ export function scrollToProfilePost(
     });
   }
 
-  return visible;
+  return true;
 }
 
 /** Retry scroll until the post card is mounted and visible. */

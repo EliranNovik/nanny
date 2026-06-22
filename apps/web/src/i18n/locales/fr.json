@@ -237,6 +237,52 @@
       "addCaptionOrMedia": "Ajoutez un texte ou un média"
     }
   },
+  "discoverHome": {
+    "actions": {
+      "explore": "Explorer",
+      "goLive": "En direct",
+      "live": "En direct",
+      "sharePost": "Partager",
+      "findHelpers": "Trouver de l'aide",
+      "postRequest": "Publier une demande",
+      "myRequests": "Mes demandes",
+      "pending": "En attente"
+    },
+    "filters": {
+      "all": "Tout",
+      "cleaning": "Ménage",
+      "cooking": "Cuisine",
+      "pickup_delivery": "Livraison",
+      "nanny": "Nounou",
+      "technical_help": "Technique",
+      "other_help": "Autre",
+      "allOther": "Tout autre",
+      "pickSubcategory": "Filtrer par type"
+    },
+    "heroHire": {
+      "badge": "Simple et rapide",
+      "title": "Trouvez quelqu'un en quelques minutes.",
+      "sub": "Publiez ce dont vous avez besoin et soyez mis en relation avec des aides à proximité — rapidement."
+    },
+    "heroWork": {
+      "badge": "Publications près de vous",
+      "title": "Demandes de la communauté",
+      "sub": "Passez en direct et recevez des demandes instantanément dans votre région."
+    }
+  },
+  "goLiveModal": {
+    "eyebrow": "En direct",
+    "title": "Passer en direct pendant 24 heures ?",
+    "body": "Vous apparaîtrez comme disponible maintenant auprès des personnes à proximité. Votre statut en direct dure 24 heures, puis expire automatiquement — vous pouvez repasser en direct à tout moment.",
+    "cancel": "Annuler",
+    "confirm": "Passer en direct",
+    "going": "Passage en direct…",
+    "successTitle": "Vous êtes en direct",
+    "successBody": "Vous apparaîtrez comme disponible pendant 24 heures.",
+    "locationTitle": "Localisation requise",
+    "locationBody": "Définissez votre ville et votre zone de service dans les paramètres avant de passer en direct.",
+    "errorTitle": "Impossible de passer en direct"
+  },
   "discover": {
     "whatAreYouHereFor": "Que cherchez-vous ?",
     "getHelpNow": "Obtenir de l'aide",

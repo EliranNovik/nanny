@@ -237,6 +237,52 @@
       "addCaptionOrMedia": "הוסיפו טקסט או מדיה"
     }
   },
+  "discoverHome": {
+    "actions": {
+      "explore": "גלו",
+      "goLive": "עלו לאוויר",
+      "live": "חי",
+      "sharePost": "שתפו פוסט",
+      "findHelpers": "מצאו עוזרים",
+      "postRequest": "פרסמו בקשה",
+      "myRequests": "הבקשות שלי",
+      "pending": "ממתין"
+    },
+    "filters": {
+      "all": "הכל",
+      "cleaning": "ניקיון",
+      "cooking": "בישול",
+      "pickup_delivery": "משלוחים",
+      "nanny": "מטפלת",
+      "technical_help": "טכני",
+      "other_help": "אחר",
+      "allOther": "כל השאר",
+      "pickSubcategory": "סינון לפי סוג"
+    },
+    "heroHire": {
+      "badge": "מהיר וקל",
+      "title": "מצאו מישהו תוך דקות.",
+      "sub": "פרסמו את מה שאתם צריכים והתחברו לעוזרים בקרבת מקום — מהר."
+    },
+    "heroWork": {
+      "badge": "פוסטים בקרבתכם",
+      "title": "בקשות מהקהילה",
+      "sub": "עלו לאוויר וקבלו בקשות באזורכם באופן מיידי."
+    }
+  },
+  "goLiveModal": {
+    "eyebrow": "עלייה לאוויר",
+    "title": "לעלות לאוויר ל-24 שעות?",
+    "body": "תופיעו כזמינים עכשיו לאנשים בקרבתכם. הסטטוס החי נמשך 24 שעות ואז פג אוטומטית — תוכלו לעלות לאוויר שוב בכל עת.",
+    "cancel": "ביטול",
+    "confirm": "עלו לאוויר",
+    "going": "עולים לאוויר…",
+    "successTitle": "אתם באוויר",
+    "successBody": "תופיעו כזמינים למשך 24 שעות.",
+    "locationTitle": "נדרש מיקום",
+    "locationBody": "הגדירו עיר ואזור שירות בהגדרות לפני העלייה לאוויר.",
+    "errorTitle": "לא ניתן לעלות לאוויר"
+  },
   "discover": {
     "whatAreYouHereFor": "למה אתה כאן?",
     "getHelpNow": "קבל עזרה עכשיו",

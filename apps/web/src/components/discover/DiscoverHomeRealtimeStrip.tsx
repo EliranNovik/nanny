@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -40,6 +41,7 @@ import {
   DISCOVER_HOME_CATEGORIES,
   ALL_HELP_CATEGORY_ID,
   SERVICE_CATEGORIES,
+  OTHER_HELP_SUBCATEGORIES,
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
@@ -73,6 +75,7 @@ import {
   Clock,
   Compass,
   CookingPot,
+  LayoutGrid,
   MapPin,
   Loader2,
   MessageCircle,
@@ -141,6 +144,10 @@ type Props = {
   explorePath: string;
   categoryFilter: DiscoverHomeCategoryFilter;
   onCategoryFilterChange: (category: DiscoverHomeCategoryFilter) => void;
+  /** Desktop-only quick action: open the viewer's posted requests. */
+  onOpenMyRequests?: () => void;
+  /** Desktop-only quick action: open the viewer's pending help responses. */
+  onOpenPending?: () => void;
 };
 
 type WorkRowItem = {
@@ -1559,6 +1566,7 @@ function categoryIconNode(
   if (serviceType === "cooking") return <CookingPot className={className} aria-hidden />;
   if (serviceType === "pickup_delivery") return <Truck className={className} aria-hidden />;
   if (serviceType === "nanny") return <UsersRound className={className} aria-hidden />;
+  if (serviceType === "other_help") return <LayoutGrid className={className} aria-hidden />;
   return <Wrench className={className} aria-hidden />;
 }
 
@@ -1787,13 +1795,19 @@ export function DiscoverHomeRealtimeStrip({
   explorePath,
   categoryFilter: selectedFilterCategory,
   onCategoryFilterChange: setSelectedFilterCategory,
+  onOpenMyRequests,
+  onOpenPending,
 }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
 
   const [composeOpen, setComposeOpen] = useState(false);
+  // "Other" category subcategory filter (requests only — helper avatars are not tagged by subcategory).
+  const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
+  const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
 
   const handleSharePost = () => {
     if (!user) {
@@ -2119,9 +2133,15 @@ export function DiscoverHomeRealtimeStrip({
     return list.filter(item => {
       // item.jobId is used to find the original row
       const original = openHelpRows.find(r => r.id === item.jobId);
-      return original?.service_type === selectedFilterCategory;
+      if (original?.service_type !== selectedFilterCategory) return false;
+      // Narrow "Other help" requests by the chosen subcategory when one is selected.
+      if (selectedFilterCategory === "other_help" && otherSubFilter) {
+        const otherType = (original?.service_details as { other_type?: unknown } | null | undefined)?.other_type;
+        return typeof otherType === "string" && otherType === otherSubFilter;
+      }
+      return true;
     });
-  }, [frData, profile?.role, openHelpRows, user?.id, fetchOpenHelpPool, selectedFilterCategory]);
+  }, [frData, profile?.role, openHelpRows, user?.id, fetchOpenHelpPool, selectedFilterCategory, otherSubFilter]);
 
   const fallbackHireItems = useMemo((): HireStripItem[] => {
     if (variant !== "hire" || hireItems.length > 0) return [];
@@ -2227,100 +2247,275 @@ export function DiscoverHomeRealtimeStrip({
     ? (isLoadingLive || (hireItems.length === 0 && isLoadingOffline))
     : (fetchOpenHelpPool ? isLoadingOpenHelp : false);
 
+  const quickActionBtnBase =
+    "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]";
+  const quickActionNeutral =
+    "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80";
+  const quickActionViolet =
+    "text-white bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20";
+
+  // Shared quick-action button row (used in loading / empty / populated states).
+  const renderQuickActions = () => {
+    if (variant === "hire") {
+      return (
+        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_find_helpers", { mode: "hire" });
+              navigate("/client/helpers");
+            }}
+            className={cn(quickActionBtnBase, quickActionNeutral)}
+          >
+            <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.findHelpers")}
+          </button>
+          {onOpenMyRequests && (
+            <button
+              type="button"
+              onClick={onOpenMyRequests}
+              className={cn(quickActionBtnBase, quickActionNeutral, "hidden md:flex")}
+            >
+              <ClipboardList className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              {t("discoverHome.actions.myRequests")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_post_request", { mode: "hire" });
+              navigate("/client/create");
+            }}
+            className={cn(
+              quickActionBtnBase,
+              "text-white bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20",
+            )}
+          >
+            <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.postRequest")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSharePost}
+            className={cn(quickActionBtnBase, quickActionViolet)}
+          >
+            <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.sharePost")}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_strip_quick_explore", { mode: "work" });
+            navigate("/community/feed");
+          }}
+          className={cn(quickActionBtnBase, quickActionNeutral)}
+        >
+          <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+          {t("discoverHome.actions.explore")}
+        </button>
+        {onOpenPending && (
+          <button
+            type="button"
+            onClick={onOpenPending}
+            className={cn(quickActionBtnBase, quickActionNeutral, "hidden md:flex")}
+          >
+            <Clock className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.pending")}
+          </button>
+        )}
+        {isUserLive ? (
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_live_timer", { mode: "work" });
+              navigate("/availability/post-now");
+            }}
+            className={cn(
+              quickActionBtnBase,
+              "text-white bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20",
+            )}
+          >
+            <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white" />
+            </span>
+            {t("discoverHome.actions.live")}
+            {liveCountdown ? (
+              <span className="ml-0.5 text-[11px] xs:text-[12px] md:text-[13px] font-black opacity-90 font-mono">
+                <LiveTimer countdownTo={liveCountdown} render={({ time }) => <span>{time}</span>} />
+              </span>
+            ) : null}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_go_live", { mode: "work" });
+              navigate("/availability/post-now");
+            }}
+            className={cn(
+              quickActionBtnBase,
+              "text-white bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20",
+            )}
+          >
+            <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.goLive")}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleSharePost}
+          className={cn(quickActionBtnBase, quickActionViolet)}
+        >
+          <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+          {t("discoverHome.actions.sharePost")}
+        </button>
+      </div>
+    );
+  };
+
+  // Shared category filter row + "Other" subcategory dropdown.
+  const filterAccent = variant === "work"
+    ? {
+        ring: "focus-visible:ring-emerald-400/70",
+        activeCircle:
+          "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none",
+        activeLabel: "text-emerald-700 dark:text-emerald-300",
+      }
+    : {
+        ring: "focus-visible:ring-orange-400/70",
+        activeCircle:
+          "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none",
+        activeLabel: "text-orange-700 dark:text-orange-300",
+      };
+
+  const selectCategoryFilter = (id: DiscoverHomeCategoryFilter) => {
+    if (id === "other_help") {
+      // Toggle the subcategory dropdown when re-tapping the already-active "Other" pill.
+      setOtherDropdownOpen((open) => (selectedFilterCategory === "other_help" ? !open : true));
+      setSelectedFilterCategory("other_help");
+      return;
+    }
+    setOtherDropdownOpen(false);
+    setOtherSubFilter(null);
+    setSelectedFilterCategory(id);
+  };
+
+  const renderCategoryRow = () => (
+    <div>
+      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
+        <button
+          onClick={() => selectCategoryFilter("all")}
+          className={cn(
+            "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
+            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            filterAccent.ring,
+          )}
+        >
+          <div className={cn(
+            stripCategoryCircleClass,
+            selectedFilterCategory === "all" ? filterAccent.activeCircle : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
+          )}>
+            <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
+          </div>
+          <span className={cn(
+            stripCategoryLabelClass,
+            selectedFilterCategory === "all" ? filterAccent.activeLabel : "text-slate-500 dark:text-zinc-500",
+          )}>{t("discoverHome.filters.all")}</span>
+        </button>
+
+        {DISCOVER_HOME_CATEGORIES.filter(c => c.id !== ALL_HELP_CATEGORY_ID).map(cat => {
+          const isOther = cat.id === "other_help";
+          const active = selectedFilterCategory === cat.id;
+          const subLabel = isOther && otherSubFilter
+            ? t(`otherHelpSubcategories.${otherSubFilter}`)
+            : null;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => selectCategoryFilter(cat.id as DiscoverHomeCategoryFilter)}
+              className={cn(
+                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
+                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                filterAccent.ring,
+              )}
+            >
+              <div className={cn(
+                stripCategoryCircleClass,
+                active ? filterAccent.activeCircle : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
+              )}>
+                <span className={stripCategoryIconShellClass}>
+                  {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
+                </span>
+              </div>
+              <span className={cn(
+                stripCategoryLabelClass,
+                "inline-flex items-center gap-0.5 max-w-[5.5rem] truncate",
+                active ? filterAccent.activeLabel : "text-slate-500 dark:text-zinc-500",
+              )}>
+                <span className="truncate">{subLabel ?? t(`discoverHome.filters.${cat.id}`)}</span>
+                {isOther && <ChevronDown className="h-3 w-3 shrink-0" strokeWidth={3} />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedFilterCategory === "other_help" && otherDropdownOpen && (
+        <div className="mx-4 mb-2 rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="px-2 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+            {t("discoverHome.filters.pickSubcategory")}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setOtherSubFilter(null);
+                setOtherDropdownOpen(false);
+              }}
+              className={cn(
+                "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                otherSubFilter === null
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+              )}
+            >
+              {t("discoverHome.filters.allOther")}
+            </button>
+            {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => {
+                  setOtherSubFilter(sub.id);
+                  setOtherDropdownOpen(false);
+                }}
+                className={cn(
+                  "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                  otherSubFilter === sub.id
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                )}
+              >
+                {t(`otherHelpSubcategories.${sub.id}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (isLoading) {
     return (
       <>
-        {variant === "hire" && (
-          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
-            <button
-              type="button"
-              onClick={() => navigate("/client/helpers")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-              )}
-            >
-              <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Find Helpers
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/client/create")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
-              )}
-            >
-              <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Post Request
-            </button>
-            <button
-              type="button"
-              onClick={handleSharePost}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-              )}
-            >
-              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Share Post
-            </button>
-          </div>
-        )}
-        {variant === "work" && (
-          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
-            <button
-              type="button"
-              onClick={() => navigate("/community/feed")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-              )}
-            >
-              <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Explore
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/availability/post-now")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
-              )}
-            >
-              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Go Live
-            </button>
-            <button
-              type="button"
-              onClick={handleSharePost}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-              )}
-            >
-              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Share Post
-            </button>
-          </div>
-        )}
-        {/* Category Icons Row Skeleton */}
-        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse">
-              <div className="h-[4.25rem] w-[4.25rem] rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <div className="h-2 w-10 bg-zinc-200 dark:bg-zinc-800 rounded" />
-            </div>
-          ))}
-        </div>
+        {renderQuickActions()}
+        {renderCategoryRow()}
         {/* Profile Circles Loader */}
         <div className="flex gap-1.5 pb-0.5 px-1 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -2355,45 +2550,8 @@ export function DiscoverHomeRealtimeStrip({
     if (variant === "hire") {
       return (
         <>
-          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
-            <button
-              type="button"
-              onClick={() => navigate("/client/helpers")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-              )}
-            >
-              <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Find Helpers
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/client/create")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
-              )}
-            >
-              <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Post Request
-            </button>
-            <button
-              type="button"
-              onClick={handleSharePost}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-              )}
-            >
-              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Share Post
-            </button>
-          </div>
+          {renderQuickActions()}
+          {renderCategoryRow()}
           <div className="flex items-center justify-between py-2 px-1">
             <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
               No helpers showing as available right now — try{" "}
@@ -2431,80 +2589,8 @@ export function DiscoverHomeRealtimeStrip({
 
     return (
       <>
-        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent("discover_strip_quick_explore", { mode: "work" });
-              navigate("/community/feed");
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-              "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-              "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-            )}
-          >
-            <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-            Explore
-          </button>
-          {isUserLive ? (
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_strip_quick_live_timer", { mode: "work" });
-                navigate("/availability/post-now");
-              }}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
-              )}
-            >
-              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white" />
-              </span>
-              Live
-              {liveCountdown ? (
-                <span className="ml-0.5 text-[11px] xs:text-[12px] md:text-[13px] font-black opacity-90 font-mono">
-                  <LiveTimer
-                    countdownTo={liveCountdown}
-                    render={({ time }) => <span>{time}</span>}
-                  />
-                </span>
-              ) : null}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_strip_quick_go_live", { mode: "work" });
-                navigate("/availability/post-now");
-              }}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
-              )}
-            >
-              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Go Live
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleSharePost}
-            className={cn(
-              "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-              "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-            )}
-          >
-            <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-            Share Post
-          </button>
-        </div>
+        {renderQuickActions()}
+        {renderCategoryRow()}
         <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
@@ -2576,133 +2662,8 @@ export function DiscoverHomeRealtimeStrip({
     return (
       <>
       <div className="space-y-4">
-        {/* Quick Action Buttons: Explore, Go Live, and Share Post */}
-        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent("discover_strip_quick_explore", { mode: "work" });
-              navigate("/community/feed");
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-              "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-              "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-            )}
-          >
-            <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-            Explore
-          </button>
-          {isUserLive ? (
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_strip_quick_live_timer", { mode: "work" });
-                navigate("/availability/post-now");
-              }}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
-              )}
-            >
-              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white" />
-              </span>
-              Live
-              {liveCountdown ? (
-                <span className="ml-0.5 text-[11px] xs:text-[12px] md:text-[13px] font-black opacity-90 font-mono">
-                  <LiveTimer
-                    countdownTo={liveCountdown}
-                    render={({ time }) => <span>{time}</span>}
-                  />
-                </span>
-              ) : null}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_strip_quick_go_live", { mode: "work" });
-                navigate("/availability/post-now");
-              }}
-              className={cn(
-                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
-              )}
-            >
-              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-              Go Live
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleSharePost}
-            className={cn(
-              "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-              "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-            )}
-          >
-            <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-            Share Post
-          </button>
-        </div>
-
-        {/* Category Icons Row - Work Mode */}
-        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
-          <button
-            onClick={() => setSelectedFilterCategory("all")}
-            className={cn(
-              "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-              "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            )}
-          >
-            <div className={cn(
-              stripCategoryCircleClass,
-              selectedFilterCategory === "all"
-                ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none"
-                : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
-            )}>
-              <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
-            </div>
-            <span className={cn(
-              stripCategoryLabelClass,
-              selectedFilterCategory === "all" ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
-            )}>All</span>
-          </button>
-
-          {DISCOVER_HOME_CATEGORIES.filter(c => c.id !== ALL_HELP_CATEGORY_ID).map(cat => {
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
-                className={cn(
-                  "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-                  "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                )}
-              >
-                <div className={cn(
-                  stripCategoryCircleClass,
-                  selectedFilterCategory === cat.id
-                    ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none"
-                    : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
-                )}>
-                  <span className={stripCategoryIconShellClass}>
-                    {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
-                  </span>
-                </div>
-                <span className={cn(
-                  stripCategoryLabelClass,
-                  selectedFilterCategory === cat.id ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
-                )}>{cat.label.split(' ')[0]}</span>
-              </button>
-            );
-          })}
-        </div>
+        {renderQuickActions()}
+        {renderCategoryRow()}
 
         <div
           className={cn(
@@ -2774,104 +2735,8 @@ export function DiscoverHomeRealtimeStrip({
   return (
     <>
     <div className="space-y-4">
-      {/* Quick Action Buttons: Find Helpers, Post Request, and Share Post */}
-      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1">
-        <button
-          type="button"
-          onClick={() => {
-            trackEvent("discover_strip_quick_find_helpers", { mode: "hire" });
-            navigate("/client/helpers");
-          }}
-          className={cn(
-            "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
-            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-            "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
-            "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
-          )}
-        >
-          <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-          Find Helpers
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            trackEvent("discover_strip_quick_post_request", { mode: "hire" });
-            navigate("/client/create");
-          }}
-          className={cn(
-            "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-            "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
-          )}
-        >
-          <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-          Post Request
-        </button>
-        <button
-          type="button"
-          onClick={handleSharePost}
-          className={cn(
-            "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
-            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
-            "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
-          )}
-        >
-          <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
-          Share Post
-        </button>
-      </div>
-
-      {/* Category Icons Row - Hire Mode */}
-      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
-        <button
-          onClick={() => setSelectedFilterCategory("all")}
-          className={cn(
-            "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          <div className={cn(
-            stripCategoryCircleClass,
-            selectedFilterCategory === "all"
-              ? "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none"
-              : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
-          )}>
-            <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
-          </div>
-          <span className={cn(
-            stripCategoryLabelClass,
-            selectedFilterCategory === "all" ? "text-orange-700 dark:text-orange-300" : "text-slate-500 dark:text-zinc-500"
-          )}>All</span>
-        </button>
-
-        {DISCOVER_HOME_CATEGORIES.filter(c => c.id !== ALL_HELP_CATEGORY_ID).map(cat => {
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
-              className={cn(
-                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
-            >
-              <div className={cn(
-                stripCategoryCircleClass,
-                selectedFilterCategory === cat.id
-                  ? "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none"
-                  : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
-              )}>
-                <span className={stripCategoryIconShellClass}>
-                  {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
-                </span>
-              </div>
-              <span className={cn(
-                stripCategoryLabelClass,
-                selectedFilterCategory === cat.id ? "text-orange-700 dark:text-orange-300" : "text-slate-500 dark:text-zinc-500"
-              )}>{cat.label.split(' ')[0]}</span>
-            </button>
-          );
-        })}
-      </div>
+      {renderQuickActions()}
+      {renderCategoryRow()}
 
       <div
         className={cn(

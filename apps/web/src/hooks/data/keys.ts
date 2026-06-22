@@ -70,6 +70,7 @@ export const queryKeys = {
     feedBudgetMax?: number | null;
     feedFavoriteProfilesOnly?: boolean;
     filterCategoryId?: string | null;
+    filterOtherSubcategoryId?: string | null;
     limit?: number | null;
   }) =>
     [
@@ -92,6 +93,7 @@ export const queryKeys = {
       opts.feedBudgetMax ?? "",
       opts.feedFavoriteProfilesOnly ? "fav" : "",
       opts.filterCategoryId ?? "",
+      opts.filterOtherSubcategoryId ?? "",
       opts.limit ?? 0,
     ] as const,
 

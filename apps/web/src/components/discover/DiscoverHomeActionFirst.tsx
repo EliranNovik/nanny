@@ -85,20 +85,6 @@ type Props = {
   createRequestPath: string;
 };
 
-const HIRE = {
-  badge: "FAST & EASY",
-  title: "Find someone in minutes.",
-  sub: "Post what you need and get matched with helpers nearby — fast.",
-  primary: "Post a request",
-} as const;
-
-const WORK = {
-  badge: "POSTS NEAR YOU",
-  title: "Community requests",
-  sub: "Go live and get requests instantly in your area.",
-  primary: "Go live now",
-} as const;
-
 /** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
   "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[12.5rem]";
@@ -527,115 +513,6 @@ export function DiscoverHomeActionFirst({
   }
 
   /** Desktop hero: three round icon badges + captions (no modal). */
-  function renderHeroQuickActionsDesktop() {
-    const countBadgeClass =
-      "absolute -right-0.5 -top-0.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white dark:ring-zinc-900";
-
-    const roundBadgeClass = cn(
-      "relative flex aspect-square h-16 w-16 shrink-0 items-center justify-center rounded-3xl border-0 p-0 shadow-lg transition-all duration-300 active:scale-[0.96] hover:scale-[1.06] group",
-      // On the page background: subtle slate fill in light mode, white-tinted glass in dark mode.
-      "bg-slate-900/85 text-white ring-1 ring-slate-900/15 hover:bg-slate-900",
-      "dark:bg-white/10 dark:text-white dark:ring-1 dark:ring-white/15 dark:hover:bg-white/15 dark:backdrop-blur-2xl",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950",
-    );
-
-    const badgeCaptionClass =
-      "max-w-[6rem] text-center text-[11px] font-black uppercase leading-tight tracking-[0.08em] text-slate-700 dark:text-zinc-200 transition-opacity duration-300 group-hover:opacity-100 opacity-90";
-
-    // Quick action buttons live in the right column, on the page background — no longer overlaid on the hero.
-    const desktopQuickWrap = "hidden md:flex md:flex-col md:items-center md:justify-center md:gap-4 md:h-full md:py-1";
-
-    if (isHire) {
-      return (
-        <div className={desktopQuickWrap}>
-          <div className="flex flex-col items-center gap-2.5 group">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                trackEvent("discover_actions_browse_helpers", { mode: homeMode });
-                navigateToHelpersBrowse(navigate);
-              }}
-              className={roundBadgeClass}
-              aria-label="Find helpers"
-            >
-              <Search className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
-              {hireLiveHelperCount > 0 ? (
-                <span className={countBadgeClass}>
-                  {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-                </span>
-              ) : null}
-            </button>
-            <span className={badgeCaptionClass}>Find helpers</span>
-          </div>
-          <div className="flex flex-col items-center gap-2.5 group">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMyRequestsOpen(true);
-              }}
-              className={roundBadgeClass}
-              aria-label="My requests"
-            >
-              <ClipboardList className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
-              {myRequestsCount > 0 ? (
-                <span className={countBadgeClass}>
-                  {myRequestsCount > 9 ? "9+" : myRequestsCount}
-                </span>
-              ) : null}
-            </button>
-            <span className={badgeCaptionClass}>My requests</span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={desktopQuickWrap}>
-        <div className="flex flex-col items-center gap-2.5 group">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              trackEvent("discover_actions_browse_requests", { mode: homeMode });
-              navigateToWorkBrowseRequests(navigate, profile);
-            }}
-            className={roundBadgeClass}
-            aria-label="Find requests"
-          >
-            <UsersRound className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
-            {workLivePostCount > 0 ? (
-              <span className={countBadgeClass}>
-                {workLivePostCount > 99 ? "99+" : workLivePostCount}
-              </span>
-            ) : null}
-          </button>
-          <span className={badgeCaptionClass}>Find requests</span>
-        </div>
-        <div className="flex flex-col items-center gap-2.5 group">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPendingWorkRequestsOpen(true);
-            }}
-            className={roundBadgeClass}
-            aria-label="Pending responses"
-          >
-            <Clock className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
-            {pendingWorkRequestsCount > 0 ? (
-              <span className={countBadgeClass}>
-                {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
-              </span>
-            ) : null}
-          </button>
-          <span className={badgeCaptionClass}>Pending</span>
-        </div>
-      </div>
-    );
-  }
-
   function renderDesktopWorkLiveBadge() {
     if (isHire) return null;
     if (!isInActive24hGoLiveWindow) return null;
@@ -748,8 +625,6 @@ export function DiscoverHomeActionFirst({
     );
   }
 
-  const workTheme = WORK;
-
   return (
     <div
       className={cn(
@@ -829,15 +704,7 @@ export function DiscoverHomeActionFirst({
 
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
       <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-hidden gap-5">
-        <div
-          className={cn(
-            "grid shrink-0 grid-cols-1 gap-4 md:gap-5 lg:gap-6",
-            // Both tabs: 2-col layout — hero on the left, quick action buttons on the right
-            // (sitting on the page background, not overlaid on the hero).
-            user?.id &&
-              "md:grid-cols-[minmax(0,1fr)_min(15rem,24%)] md:items-stretch",
-          )}
-        >
+        <div className="flex w-full shrink-0 flex-col gap-4 md:gap-5 lg:gap-6">
           <div className={cn("flex min-h-0 min-w-0 flex-col gap-4 md:h-full", !isHire && "hidden")}>
             <section
               className={cn(
@@ -868,7 +735,7 @@ export function DiscoverHomeActionFirst({
                             strokeWidth={DISCOVER_STROKE}
                             aria-hidden
                           />
-                          {HIRE.badge}
+                          {t("discoverHome.heroHire.badge")}
                         </div>
                       </div>
                       <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
@@ -878,13 +745,13 @@ export function DiscoverHomeActionFirst({
                             textShadow: "0 4px 30px rgba(0,0,0,0.5)",
                           }}
                         >
-                          {HIRE.title}
+                          {t("discoverHome.heroHire.title")}
                         </h2>
                         <p
                           className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
                           style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
                         >
-                          {HIRE.sub}
+                          {t("discoverHome.heroHire.sub")}
                         </p>
                       </div>
                     </div>
@@ -924,7 +791,7 @@ export function DiscoverHomeActionFirst({
                           strokeWidth={DISCOVER_STROKE}
                           aria-hidden
                         />
-                        {workTheme.badge}
+                        {t("discoverHome.heroWork.badge")}
                       </div>
                       <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                         <h2
@@ -933,13 +800,13 @@ export function DiscoverHomeActionFirst({
                             textShadow: "0 4px 30px rgba(0,0,0,0.5)",
                           }}
                         >
-                          {workTheme.title}
+                          {t("discoverHome.heroWork.title")}
                         </h2>
                         <p
                           className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
                           style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
                         >
-                          {workTheme.sub}
+                          {t("discoverHome.heroWork.sub")}
                         </p>
                       </div>
                     </div>
@@ -947,16 +814,16 @@ export function DiscoverHomeActionFirst({
                 </div>
               </div>
             </section>
-          {user?.id ? renderHeroQuickActionsDesktop() : null}
         </div>
 
-        <div className="min-h-0 overflow-hidden pt-2 flex flex-col gap-2">
+        <div className="min-h-0 w-full overflow-hidden pt-2 flex flex-col gap-2">
           <div className={cn(!isHire && "hidden")}>
             <DiscoverHomeRealtimeStrip
               variant="hire"
               explorePath={explorePath}
               categoryFilter={categoryFilter}
               onCategoryFilterChange={setCategoryFilter}
+              onOpenMyRequests={user?.id ? () => setMyRequestsOpen(true) : undefined}
             />
           </div>
           <div className={cn(isHire && "hidden")}>
@@ -965,6 +832,7 @@ export function DiscoverHomeActionFirst({
               explorePath={explorePath}
               categoryFilter={categoryFilter}
               onCategoryFilterChange={setCategoryFilter}
+              onOpenPending={user?.id ? () => setPendingWorkRequestsOpen(true) : undefined}
             />
           </div>
 

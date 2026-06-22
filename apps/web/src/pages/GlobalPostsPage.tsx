@@ -6,7 +6,8 @@ import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Send } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ChevronDown, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
@@ -39,7 +40,11 @@ import {
 } from "@/lib/communityFeedNav";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
-import { type DiscoverHomeCategoryId } from "@/lib/serviceCategories";
+import {
+  type DiscoverHomeCategoryId,
+  OTHER_HELP_SUBCATEGORIES,
+} from "@/lib/serviceCategories";
+import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
 
 type FeedMainContentProps = {
   user: User | null;
@@ -69,6 +74,9 @@ type FeedMainContentProps = {
   viewerLocation: ViewerLocation | null;
   categoryFilter: DiscoverHomeCategoryId;
   onCategoryFilterChange: (id: DiscoverHomeCategoryId) => void;
+  otherSubFilter: string | null;
+  onOtherSubFilterChange: (id: string | null) => void;
+  onSidePanelPostOpen?: (postId: string) => void;
 };
 
 function FeedMainContent({
@@ -93,7 +101,12 @@ function FeedMainContent({
   viewerLocation,
   categoryFilter,
   onCategoryFilterChange,
+  otherSubFilter,
+  onOtherSubFilterChange,
+  onSidePanelPostOpen,
 }: FeedMainContentProps) {
+  const { t } = useTranslation();
+  const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
   const sidePanelPostTypeIds = useMemo(
     () => (postTypeFilter === "all" ? null : [postTypeFilter]),
     [postTypeFilter],
@@ -133,11 +146,82 @@ function FeedMainContent({
       />
 
       {showCategoryTabs && (
-        <div className="mb-4 px-2 md:px-0">
+        <div className={cn("mb-4 px-2 md:px-0", FAVORITES_SIDE_PANEL_RESERVE_CLASS)}>
           <PublicPostsCategoryTabs
             activeId={categoryFilter}
-            onSelect={onCategoryFilterChange}
+            onSelect={(id) => {
+              onCategoryFilterChange(id);
+              if (id !== "other_help") {
+                onOtherSubFilterChange(null);
+                setOtherDropdownOpen(false);
+              }
+            }}
           />
+          {categoryFilter === "other_help" && (
+            <div className="relative mt-3">
+              <button
+                type="button"
+                onClick={() => setOtherDropdownOpen((o) => !o)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-colors md:w-auto md:min-w-[16rem]",
+                  "border-zinc-200/80 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
+                )}
+                aria-expanded={otherDropdownOpen}
+              >
+                <span className="truncate">
+                  {otherSubFilter
+                    ? t(`otherHelpSubcategories.${otherSubFilter}`)
+                    : t("discoverHome.filters.pickSubcategory")}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 transition-transform",
+                    otherDropdownOpen && "rotate-180",
+                  )}
+                  strokeWidth={2.5}
+                />
+              </button>
+              {otherDropdownOpen && (
+                <div className="absolute z-30 mt-2 w-full rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 md:w-[20rem]">
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOtherSubFilterChange(null);
+                        setOtherDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                        otherSubFilter === null
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                      )}
+                    >
+                      {t("discoverHome.filters.allOther")}
+                    </button>
+                    {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => {
+                          onOtherSubFilterChange(sub.id);
+                          setOtherDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                          otherSubFilter === sub.id
+                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                        )}
+                      >
+                        {t(`otherHelpSubcategories.${sub.id}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -161,6 +245,8 @@ function FeedMainContent({
         globalFeedLayout
         viewerLocation={viewerLocation}
         filterCategoryId={categoryFilter}
+        filterOtherSubcategoryId={categoryFilter === "other_help" ? otherSubFilter : null}
+        onSidePanelPostOpen={onSidePanelPostOpen}
       />
     </div>
   );
@@ -190,6 +276,7 @@ export default function GlobalPostsPage() {
   );
   const [favoriteAuthorFilterId, setFavoriteAuthorFilterId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<DiscoverHomeCategoryId>("all_help");
+  const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
 
   const viewerLocation = useMemo<ViewerLocation | null>(() => {
     if (!profile) return null;
@@ -234,6 +321,31 @@ export default function GlobalPostsPage() {
       if (filter === "request_help") {
         next.delete("post");
       }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleSidePanelPostOpen = useCallback(
+    (postId: string) => {
+      const cleanPostId = parseProfilePostShareId(postId) ?? postId.trim();
+      if (!cleanPostId) return;
+
+      // Side-panel posts are independent from the active feed filters. Clear filters
+      // first so the clicked post can mount in the main column, then scroll to it once.
+      setPostTypeFilter("all");
+      setCommentedFilterActive(false);
+      setAcceptedFilterActive(false);
+      setAdvancedFilters(DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS);
+      setFavoriteAuthorFilterId(null);
+      setCategoryFilter("all_help");
+      setOtherSubFilter(null);
+      setScrollToPostId(cleanPostId);
+
+      const next = new URLSearchParams(searchParams);
+      next.delete("type");
+      next.delete("post");
+      next.delete("request");
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
@@ -320,7 +432,7 @@ export default function GlobalPostsPage() {
       ) : null}
 
       {user ? (
-        <div className="app-desktop-shell flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6 pt-2 md:px-4 md:py-8">
+        <div className="app-desktop-shell flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6 pt-2 md:px-4 md:py-8 md:ps-8 lg:ps-10">
           <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none">
             <FeedMainContent
               user={user}
@@ -343,6 +455,9 @@ export default function GlobalPostsPage() {
               viewerLocation={viewerLocation}
               categoryFilter={categoryFilter}
               onCategoryFilterChange={setCategoryFilter}
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={setOtherSubFilter}
+              onSidePanelPostOpen={handleSidePanelPostOpen}
             />
           </div>
         </div>
@@ -372,6 +487,9 @@ export default function GlobalPostsPage() {
               viewerLocation={viewerLocation}
               categoryFilter={categoryFilter}
               onCategoryFilterChange={setCategoryFilter}
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={setOtherSubFilter}
+              onSidePanelPostOpen={handleSidePanelPostOpen}
             />
           </div>
         </div>
