@@ -7,5 +7,5 @@ export const DISCOVER_PRIMARY_HERO_IMAGES = {
   /** Alternate / secondary hire art */
   hireAlt: "/pexels-rdne-6646861.jpg",
   /** "Help others" — professional helper photo for work-mode hero */
-  work: "/pexels-tima-miroshnichenko-6197046.jpg",
+  work: "/pexels-roman-odintsov-12725452.jpg",
 } as const;

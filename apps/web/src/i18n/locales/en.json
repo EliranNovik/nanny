@@ -20,7 +20,9 @@
     "today": "Today",
     "now": "Now",
     "saved": "Saved",
-    "reportIssue": "Report an issue"
+    "reportIssue": "Report an issue",
+    "detectingLocation": "Detecting…",
+    "addLocation": "Add location"
   },
   "language": {
     "label": "Language",
@@ -246,7 +248,8 @@
       "findHelpers": "Find Helpers",
       "postRequest": "Post Request",
       "myRequests": "My Requests",
-      "pending": "Pending"
+      "pending": "Pending",
+      "liveHelp": "Live Help"
     },
     "filters": {
       "all": "All",
@@ -257,7 +260,9 @@
       "technical_help": "Technical",
       "other_help": "Other",
       "allOther": "All other",
-      "pickSubcategory": "Filter by type"
+      "pickSubcategory": "Filter by type",
+      "heading": "Searching for help, here we go.",
+      "workHeading": "Ready to help others?"
     },
     "heroHire": {
       "badge": "Fast & easy",

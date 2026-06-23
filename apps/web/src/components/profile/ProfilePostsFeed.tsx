@@ -1422,7 +1422,7 @@ export function ComposeModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onPosted: () => void;
+  onPosted: (postId?: string) => void;
   authorProfile: ProfileSnippet;
   initialPostTypeId?: string | null;
 }) {
@@ -1507,13 +1507,6 @@ export function ComposeModal({
     }
   }, [open, initialPostTypeId]);
 
-  useEffect(() => {
-    if (open && profile?.city) {
-      setPostLocation((prev) =>
-        prev.lat != null && prev.lng != null ? prev : { address: profile.city! },
-      );
-    }
-  }, [open, profile?.city]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const tagTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tagBoxRef = useRef<HTMLDivElement>(null);
@@ -1529,7 +1522,7 @@ export function ComposeModal({
     setTaggedUsers([]);
     setSelectedPostTypeId(null);
     setRequestHelpCategory("");
-    setPostLocation({ address: profile?.city || "" });
+    setPostLocation({ address: "" });
     setTimeframe("today");
     setCustomWhenDate(null);
     setCustomWhenTime("");
@@ -1659,6 +1652,17 @@ export function ComposeModal({
       addToast({ title: t("composePost.validation.chooseServiceCategory"), variant: "warning" });
       return;
     }
+    if (
+      selectedPostTypeId === "offer_service" &&
+      (postLocation.lat == null || postLocation.lng == null || !postLocation.address.trim())
+    ) {
+      addToast({
+        title: t("composePost.validation.pickLocation"),
+        description: t("composePost.validation.pickLocationDesc"),
+        variant: "warning",
+      });
+      return;
+    }
     const usesOtherHelpCategory =
       (selectedPostTypeId === "request_help" && requestHelpCategory === "other_help") ||
       (selectedPostTypeId === "offer_service" && offerServiceCategory === "other_help");
@@ -1759,13 +1763,9 @@ export function ComposeModal({
         metadata = {
           ...metadata,
           service: offerServiceCategory,
-          ...(postLocation.lat != null && postLocation.lng != null && postLocation.address.trim()
-            ? {
-                location: postLocation.address,
-                location_lat: postLocation.lat,
-                location_lng: postLocation.lng,
-              }
-            : {}),
+          location: postLocation.address,
+          location_lat: postLocation.lat,
+          location_lng: postLocation.lng,
           rate: offerRate ? Number(offerRate) : null,
           rate_type: offerRateType,
           ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
@@ -1806,6 +1806,7 @@ export function ComposeModal({
         generatedCopy?.short_text ||
         generatedCopy?.feed_preview ||
         null;
+      let insertedProfilePostId: string | null = null;
 
       if (selectedPostTypeId === "request_help") {
         const { data: insertedPost, error: insertErr } = await supabase
@@ -1825,6 +1826,7 @@ export function ComposeModal({
           .single();
         if (insertErr) throw insertErr;
         if (!insertedPost?.id) throw new Error("Could not create post");
+        insertedProfilePostId = insertedPost.id;
 
         try {
           const { jobId } = await createJobRequestFromRequestHelpCompose({
@@ -1852,23 +1854,28 @@ export function ComposeModal({
           throw jobErr;
         }
       } else {
-        const { error } = await supabase.from("profile_posts").insert({
-          author_id: user.id,
-          caption: captionToSave,
-          media_type: primaryMedia?.media_type ?? null,
-          storage_path: primaryMedia?.storage_path ?? null,
-          tagged_user_ids: taggedUsers.map((u) => u.id),
-          post_type_id: selectedPostTypeId,
-          post_metadata: metadata,
-          custom_category: savedCustomCategory,
-          ai_generated_copy: generatedCopy,
-        });
+        const { data: insertedPost, error } = await supabase
+          .from("profile_posts")
+          .insert({
+            author_id: user.id,
+            caption: captionToSave,
+            media_type: primaryMedia?.media_type ?? null,
+            storage_path: primaryMedia?.storage_path ?? null,
+            tagged_user_ids: taggedUsers.map((u) => u.id),
+            post_type_id: selectedPostTypeId,
+            post_metadata: metadata,
+            custom_category: savedCustomCategory,
+            ai_generated_copy: generatedCopy,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        insertedProfilePostId = insertedPost?.id ?? null;
       }
 
       addToast({ title: "Post shared!", variant: "success" });
       reset();
-      onPosted();
+      onPosted(insertedProfilePostId ?? undefined);
       onClose();
     } catch (e) {
       console.error("[ComposeModal] submit", e);
@@ -2532,7 +2539,7 @@ export function ComposeModal({
                       label={t("composePost.location")}
                       labelClassName="text-[13px] font-bold text-foreground"
                       inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder={t("composePost.searchPlaceOptional")}
+                      placeholder={t("composePost.searchPlace")}
                       value={postLocation}
                       onChange={setPostLocation}
                       requireSelection

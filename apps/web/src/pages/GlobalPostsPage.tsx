@@ -7,6 +7,7 @@ import { useKycGate } from "@/context/KycGateContext";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
@@ -38,6 +39,7 @@ import {
   type CommunityFeedLocationState,
   parseCommunityFeedTypeFilter,
 } from "@/lib/communityFeedNav";
+import { queryKeys } from "@/hooks/data/keys";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
 import {
@@ -259,6 +261,7 @@ export default function GlobalPostsPage() {
   const { guardKycAction } = useKycGate();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scrollToPostId, setScrollToPostId] = useState<string | null>(() => {
     const raw = (location.state as CommunityFeedLocationState | null)?.scrollToPostId;
@@ -710,8 +713,26 @@ export default function GlobalPostsPage() {
             setComposeOpen(false);
             setComposeInitialPostTypeId(null);
           }}
-          onPosted={() => {
-            window.location.reload();
+          onPosted={(postId) => {
+            setComposeOpen(false);
+            setComposeInitialPostTypeId(null);
+            setPostTypeFilter("all");
+            setCommentedFilterActive(false);
+            setAcceptedFilterActive(false);
+            setAdvancedFilters(DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS);
+            setFavoriteAuthorFilterId(null);
+            setCategoryFilter("all_help");
+            setOtherSubFilter(null);
+            if (postId) setScrollToPostId(postId);
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.community,
+              refetchType: "active",
+            });
+            const next = new URLSearchParams(searchParams);
+            next.delete("type");
+            next.delete("request");
+            if (postId) next.set("post", postId);
+            setSearchParams(next, { replace: true });
           }}
           authorProfile={authorProfile}
           initialPostTypeId={composeInitialPostTypeId}

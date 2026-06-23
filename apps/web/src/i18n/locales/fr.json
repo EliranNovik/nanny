@@ -20,7 +20,9 @@
     "today": "Aujourd'hui",
     "now": "Maintenant",
     "saved": "Enregistrés",
-    "reportIssue": "Signaler un problème"
+    "reportIssue": "Signaler un problème",
+    "detectingLocation": "Détection…",
+    "addLocation": "Ajouter un lieu"
   },
   "language": {
     "label": "Langue",
@@ -246,7 +248,8 @@
       "findHelpers": "Trouver de l'aide",
       "postRequest": "Publier une demande",
       "myRequests": "Mes demandes",
-      "pending": "En attente"
+      "pending": "En attente",
+      "liveHelp": "Aide en direct"
     },
     "filters": {
       "all": "Tout",
@@ -257,7 +260,9 @@
       "technical_help": "Technique",
       "other_help": "Autre",
       "allOther": "Tout autre",
-      "pickSubcategory": "Filtrer par type"
+      "pickSubcategory": "Filtrer par type",
+      "heading": "Vous cherchez de l'aide ? C'est parti.",
+      "workHeading": "Prêt à aider les autres ?"
     },
     "heroHire": {
       "badge": "Simple et rapide",

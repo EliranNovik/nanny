@@ -20,7 +20,9 @@
     "today": "היום",
     "now": "עכשיו",
     "saved": "שמורים",
-    "reportIssue": "דווח על בעיה"
+    "reportIssue": "דווח על בעיה",
+    "detectingLocation": "מזהים מיקום…",
+    "addLocation": "הוסיפו מיקום"
   },
   "language": {
     "label": "שפה",
@@ -246,7 +248,8 @@
       "findHelpers": "מצאו עוזרים",
       "postRequest": "פרסמו בקשה",
       "myRequests": "הבקשות שלי",
-      "pending": "ממתין"
+      "pending": "ממתין",
+      "liveHelp": "עזרה חיה"
     },
     "filters": {
       "all": "הכל",
@@ -257,7 +260,9 @@
       "technical_help": "טכני",
       "other_help": "אחר",
       "allOther": "כל השאר",
-      "pickSubcategory": "סינון לפי סוג"
+      "pickSubcategory": "סינון לפי סוג",
+      "heading": "מחפשים עזרה? קדימה מתחילים.",
+      "workHeading": "מוכנים לעזור לאחרים?"
     },
     "heroHire": {
       "badge": "מהיר וקל",

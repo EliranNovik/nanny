@@ -17,7 +17,8 @@ export function DiscoverHomeModeSegmentedControl({
   variant: _variant,
   className,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
 
   const getLabel = (m: "hire" | "work") => {
     const key = m === "hire" ? "explore.getHelpQuestion" : "explore.helpOthersQuestion";
@@ -27,7 +28,14 @@ export function DiscoverHomeModeSegmentedControl({
   const currentLabel = getLabel(mode);
 
   return (
-    <div className={cn("flex items-center gap-2.5 select-none", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-2.5 select-none",
+        isRtl && "flex-row-reverse",
+        className,
+      )}
+      dir={isRtl ? "rtl" : "ltr"}
+    >
       <Switch
         checked={mode === "work"}
         onCheckedChange={(checked) => {
@@ -39,7 +47,14 @@ export function DiscoverHomeModeSegmentedControl({
           "data-[state=unchecked]:bg-orange-600 dark:data-[state=unchecked]:bg-orange-500"
         )}
       />
-      <span className="text-[13.5px] md:text-[14px] font-black text-slate-900 dark:text-zinc-100 transition-colors leading-none min-w-[5.5rem] md:min-w-[6rem] text-left">
+      <span
+        className={cn(
+          "text-[13.5px] md:text-[14px] font-black text-slate-900 dark:text-zinc-100 transition-colors leading-none",
+          isRtl
+            ? "min-w-0 whitespace-nowrap text-right"
+            : "min-w-[7.25rem] md:min-w-[8.25rem] text-left",
+        )}
+      >
         {currentLabel}
       </span>
     </div>

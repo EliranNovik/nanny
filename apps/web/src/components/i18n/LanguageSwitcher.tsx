@@ -47,9 +47,9 @@ export function LanguageSwitcher({ className, variant = "header" }: Props) {
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        {variant !== "profile" ? (
+        {variant === "compact" ? (
           <Languages
-            className={cn(variant === "header" ? "h-6 w-6 md:h-7 md:w-7" : "h-5 w-5")}
+            className="h-5 w-5"
             strokeWidth={2}
           />
         ) : null}

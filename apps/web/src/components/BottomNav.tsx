@@ -142,6 +142,18 @@ const plusButtonClassName = cn(
   "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
 );
 
+function locationSlug(part: string): string | null {
+  const slug = part
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || null;
+}
+
 function MobileTabItem({
   active,
   label,
@@ -453,7 +465,16 @@ export function BottomNav() {
     options?: { besideBack?: boolean },
   ) {
     const { displayCity, displayCountry, gpsLoading } = activeLocation;
-    const primary = displayCity ?? (gpsLoading ? "Detecting…" : "Add location");
+    const cityKey = displayCity ? (locationSlug(displayCity) ?? displayCity) : null;
+    const primary = displayCity
+      ? t(`feed.location.cities.${cityKey}`, { defaultValue: displayCity })
+      : gpsLoading
+        ? t("common.detectingLocation")
+        : t("common.addLocation");
+    const country =
+      displayCountry && /^israel$/i.test(displayCountry.trim())
+        ? t("feed.location.countryIsrael")
+        : displayCountry;
     return (
       <>
         <button
@@ -473,11 +494,15 @@ export function BottomNav() {
                     : "max-w-[min(16rem,28vw)]",
                 ),
           )}
-          aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
+          aria-label={
+            displayCity
+              ? `${t("common.addLocation")}: ${primary}`
+              : t("common.addLocation")
+          }
         >
           <span className="min-w-0 flex-1 truncate text-[15px] font-bold leading-tight text-slate-900 dark:text-white sm:text-base">
             {primary}
-            {displayCountry ? `, ${displayCountry}` : null}
+            {country ? `, ${country}` : null}
           </span>
           <ChevronDown
             className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"

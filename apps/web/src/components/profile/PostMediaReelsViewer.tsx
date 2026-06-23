@@ -40,7 +40,6 @@ import {
   globalFeedPostTypeBadgeClass,
   globalFeedPostTypeBadgeLabel,
   globalFeedPrimaryCtaClass,
-  globalFeedTextOnlySurfaceClass,
 } from "@/lib/globalFeedPostUi";
 import {
   getEventJoinInterestStatus,
@@ -50,6 +49,22 @@ import {
 import { ReelDesktopCommentsPanel } from "@/components/profile/PostMediaDesktopViewer";
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+
+function textOnlyReelTypeCardClass(typeId: string | null): string {
+  const base =
+    "rounded-[1.75rem] border-0 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl";
+
+  switch (typeId) {
+    case "request_help":
+      return cn(base, "bg-red-400/45");
+    case "offer_service":
+      return cn(base, "bg-emerald-400/45");
+    case "event":
+      return cn(base, "bg-violet-400/45");
+    default:
+      return cn(base, "bg-blue-400/45");
+  }
+}
 
 /** Narrow post shape for reels (avoids circular imports with ProfilePostsFeed). */
 export type ReelFeedPost = {
@@ -109,7 +124,6 @@ type ReelSlideData = {
   mediaUrl: string | null;
   mediaType: "image" | "video" | null;
   isTextOnly: boolean;
-  isTypedTextOnly: boolean;
   title: string | null;
   description: string | null;
   caption: string | null;
@@ -386,11 +400,6 @@ export function PostMediaReelsViewer({
         title,
       );
       const isTextOnly = !hasMedia;
-      const isTypedTextOnly =
-        isTextOnly &&
-        (postTypeId === "request_help" ||
-          postTypeId === "offer_service" ||
-          postTypeId === "event");
       const postLike = {
         source: "post" as const,
         post_type_id: p.post_type_id,
@@ -433,7 +442,6 @@ export function PostMediaReelsViewer({
           : null,
         mediaType: hasMedia ? p.media_type : null,
         isTextOnly,
-        isTypedTextOnly,
         title,
         description: description || (isTextOnly ? p.caption?.trim() || null : null),
         caption: p.caption,
@@ -1086,7 +1094,6 @@ function reelSlideShowTitle(slide: ReelSlideData, bodyText: string | null): bool
 function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
   const bodyText = reelSlideBodyText(slide);
   const showTitle = reelSlideShowTitle(slide, bodyText);
-  const useCard = slide.isTypedTextOnly;
   const contentLayout = bidirectionalTextProps(bodyText || slide.title || "");
 
   if (!showTitle && !bodyText) {
@@ -1098,9 +1105,8 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
       <div
         className={cn(
           "mx-auto w-full max-w-md",
-          useCard && "rounded-2xl p-6",
-          useCard && globalFeedTextOnlySurfaceClass(slide.postTypeId),
-          useCard ? contentLayout.className : cn("text-center", contentLayout.className),
+          textOnlyReelTypeCardClass(slide.postTypeId),
+          contentLayout.className,
         )}
         dir={contentLayout.dir}
       >
@@ -1110,7 +1116,7 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
               slide.title!,
               cn(
                 "text-[22px] font-bold leading-snug",
-                useCard ? "text-foreground" : "text-white drop-shadow-md",
+                "text-white",
               ),
             )}
           >
@@ -1122,8 +1128,8 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
             text={bodyText}
             maxLines={10}
             slideKey={slide.postId}
-            variant={useCard ? "card" : "overlay"}
-            className={showTitle ? "mt-3" : undefined}
+            variant="card"
+            className={cn("text-white/95", showTitle && "mt-3")}
           />
         ) : null}
       </div>

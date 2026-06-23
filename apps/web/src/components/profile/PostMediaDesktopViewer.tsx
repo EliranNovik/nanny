@@ -38,6 +38,22 @@ import {
   type ReelFeedPost,
 } from "@/components/profile/PostMediaReelsViewer";
 
+function desktopTextOnlyTypeCardClass(typeId: string | null): string {
+  const base =
+    "max-h-[70vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border-0 p-8 text-white shadow-[0_24px_90px_rgba(0,0,0,0.5)] backdrop-blur-xl";
+
+  switch (typeId) {
+    case "request_help":
+      return cn(base, "bg-red-400/45");
+    case "offer_service":
+      return cn(base, "bg-emerald-400/45");
+    case "event":
+      return cn(base, "bg-violet-400/45");
+    default:
+      return cn(base, "bg-blue-400/45");
+  }
+}
+
 /** Render @-mentions as accent-coloured spans inside captions. */
 function captionWithMentions(text: string) {
   const parts = text.split(/(@\w+)/g);
@@ -101,20 +117,34 @@ export function PostMediaDesktopViewer({
 
   const slides = useMemo(() => {
     return posts
-      .filter(
-        (p): p is ReelFeedPost & {
-          media_type: "image" | "video";
-          storage_path: string;
-        } =>
-          p.source === "post" &&
+      .filter((p) => {
+        if (p.source !== "post") return false;
+        const hasMedia =
           p.media_type != null &&
-          Boolean(p.storage_path && String(p.storage_path).trim() !== ""),
-      )
-      .map((p) => ({
+          Boolean(p.storage_path && String(p.storage_path).trim() !== "");
+        if (hasMedia) return true;
+        return Boolean(
+          p.caption?.trim() ||
+            p.ai_generated_copy?.title?.trim() ||
+            p.ai_generated_copy?.short_text?.trim(),
+        );
+      })
+      .map((p) => {
+        const hasMedia =
+          p.media_type != null &&
+          Boolean(p.storage_path && String(p.storage_path).trim() !== "");
+        const generatedTitle = p.ai_generated_copy?.title?.trim() || null;
+        const generatedBody = p.ai_generated_copy?.short_text?.trim() || null;
+        const caption = p.caption?.trim() || null;
+        return {
         postId: p.id,
         authorId: p.author_id,
-        mediaUrl: publicProfileMediaPublicUrl(p.storage_path),
-        mediaType: p.media_type,
+        postTypeId: p.post_types?.id ?? p.post_type_id ?? null,
+        mediaUrl: hasMedia ? publicProfileMediaPublicUrl(p.storage_path!) : null,
+        mediaType: hasMedia ? p.media_type : null,
+        isTextOnly: !hasMedia,
+        title: generatedTitle,
+        text: generatedBody || caption,
         caption: p.caption,
         authorName: p.author?.full_name?.trim() || "User",
         authorPhotoUrl: p.author?.photo_url ?? null,
@@ -123,7 +153,8 @@ export function PostMediaDesktopViewer({
         commentCount: p.comment_count,
         shareClickCount: p.share_click_count,
         likedByMe: p.liked_by_me,
-      }));
+        };
+      });
   }, [posts]);
 
   const initialIndex = useMemo(() => {
@@ -357,7 +388,7 @@ export function PostMediaDesktopViewer({
           <DesktopSlideMedia key={activeSlide.postId} slide={activeSlide} />
 
           {/* Caption — overlay near the bottom */}
-          {activeSlide.caption?.trim() ? (
+          {!activeSlide.isTextOnly && activeSlide.caption?.trim() ? (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-7 pb-7 pt-16">
               <p
                 {...bidirectionalTextProps(
@@ -477,8 +508,12 @@ function DesktopSlideMedia({
 }: {
   slide: {
     postId: string;
-    mediaUrl: string;
-    mediaType: "image" | "video";
+    mediaUrl: string | null;
+    mediaType: "image" | "video" | null;
+    isTextOnly: boolean;
+    postTypeId: string | null;
+    title: string | null;
+    text: string | null;
   };
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -501,16 +536,56 @@ function DesktopSlideMedia({
     };
   }, [slide.mediaType, slide.postId]);
 
+  if (slide.isTextOnly) {
+    const text = slide.text?.trim() || "";
+    const title = slide.title?.trim() || "";
+    const hasDistinctTitle =
+      title && title.toLowerCase() !== text.toLowerCase();
+
+    return (
+      <div className="relative flex h-full w-full items-center justify-center bg-black px-8 py-24">
+        <article
+          className={desktopTextOnlyTypeCardClass(slide.postTypeId)}
+          dir={bidirectionalTextProps(text || title).dir}
+        >
+          {hasDistinctTitle ? (
+            <h2
+              {...bidirectionalTextProps(
+                title,
+                "text-[28px] font-black leading-tight text-white",
+              )}
+            >
+              {title}
+            </h2>
+          ) : null}
+          {text ? (
+            <p
+              {...bidirectionalTextProps(
+                text,
+                cn(
+                  "whitespace-pre-wrap break-words text-[19px] leading-relaxed text-white/95",
+                  hasDistinctTitle && "mt-4",
+                ),
+              )}
+            >
+              {captionWithMentions(text)}
+            </p>
+          ) : null}
+        </article>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-black">
-      {slide.mediaType === "image" ? (
+      {slide.mediaType === "image" && slide.mediaUrl ? (
         <img
           src={slide.mediaUrl}
           alt=""
           className="h-full max-h-full w-auto max-w-full object-contain"
           draggable={false}
         />
-      ) : (
+      ) : slide.mediaUrl ? (
         <video
           ref={videoRef}
           src={slide.mediaUrl}
@@ -520,7 +595,7 @@ function DesktopSlideMedia({
           loop
           preload="metadata"
         />
-      )}
+      ) : null}
     </div>
   );
 }

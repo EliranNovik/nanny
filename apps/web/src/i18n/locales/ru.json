@@ -20,7 +20,9 @@
     "today": "Сегодня",
     "now": "Сейчас",
     "saved": "Сохранённое",
-    "reportIssue": "Сообщить о проблеме"
+    "reportIssue": "Сообщить о проблеме",
+    "detectingLocation": "Определяем…",
+    "addLocation": "Добавить место"
   },
   "language": {
     "label": "Язык",
@@ -246,7 +248,8 @@
       "findHelpers": "Найти помощников",
       "postRequest": "Создать запрос",
       "myRequests": "Мои запросы",
-      "pending": "Ожидание"
+      "pending": "Ожидание",
+      "liveHelp": "Помощь сейчас"
     },
     "filters": {
       "all": "Все",
@@ -257,7 +260,9 @@
       "technical_help": "Техника",
       "other_help": "Другое",
       "allOther": "Всё другое",
-      "pickSubcategory": "Фильтр по типу"
+      "pickSubcategory": "Фильтр по типу",
+      "heading": "Ищете помощь? Поехали.",
+      "workHeading": "Готовы помогать другим?"
     },
     "heroHire": {
       "badge": "Быстро и просто",

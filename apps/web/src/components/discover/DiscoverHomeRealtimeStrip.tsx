@@ -100,6 +100,7 @@ import {
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
 import { discoverRequestPostedTimeBadgeBaseClass } from "@/components/discover/discoverRequestCarouselCardShared";
+import { globalProfilePostFeedPath, GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 
 const JobMapLazy = lazy(() => import("@/components/JobMap"));
 
@@ -148,6 +149,8 @@ type Props = {
   onOpenMyRequests?: () => void;
   /** Desktop-only quick action: open the viewer's pending help responses. */
   onOpenPending?: () => void;
+  /** Keep mobile quick actions, but let desktop render them elsewhere (hero overlay). */
+  hideDesktopQuickActions?: boolean;
 };
 
 type WorkRowItem = {
@@ -1797,6 +1800,7 @@ export function DiscoverHomeRealtimeStrip({
   onCategoryFilterChange: setSelectedFilterCategory,
   onOpenMyRequests,
   onOpenPending,
+  hideDesktopQuickActions = false,
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -1817,6 +1821,11 @@ export function DiscoverHomeRealtimeStrip({
     guardKycAction("share_post", () => {
       setComposeOpen(true);
     });
+  };
+
+  const handleComposePosted = (postId?: string) => {
+    setComposeOpen(false);
+    navigate(postId ? globalProfilePostFeedPath(postId) : GLOBAL_POSTS_PATH);
   };
 
   const authorProfile: ProfileSnippet | null = user
@@ -2258,7 +2267,12 @@ export function DiscoverHomeRealtimeStrip({
   const renderQuickActions = () => {
     if (variant === "hire") {
       return (
-        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4">
+        <div
+          className={cn(
+            "grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4",
+            hideDesktopQuickActions && "md:hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => {
@@ -2306,7 +2320,12 @@ export function DiscoverHomeRealtimeStrip({
       );
     }
     return (
-      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4">
+      <div
+        className={cn(
+          "grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1 md:grid-cols-4",
+          hideDesktopQuickActions && "md:hidden",
+        )}
+      >
         <button
           type="button"
           onClick={() => {
@@ -2408,6 +2427,15 @@ export function DiscoverHomeRealtimeStrip({
 
   const renderCategoryRow = () => (
     <div>
+      <div className="px-4 pt-2">
+        <h2 className="text-[17px] font-black tracking-tight text-slate-950 dark:text-white md:text-[19px]">
+          {t(
+            variant === "work"
+              ? "discoverHome.filters.workHeading"
+              : "discoverHome.filters.heading",
+          )}
+        </h2>
+      </div>
       <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
         <button
           onClick={() => selectCategoryFilter("all")}
@@ -2536,9 +2564,7 @@ export function DiscoverHomeRealtimeStrip({
           <ComposeModal
             open={composeOpen}
             onClose={() => setComposeOpen(false)}
-            onPosted={() => {
-              setComposeOpen(false);
-            }}
+            onPosted={handleComposePosted}
             authorProfile={authorProfile}
           />
         )}
@@ -2577,9 +2603,7 @@ export function DiscoverHomeRealtimeStrip({
             <ComposeModal
               open={composeOpen}
               onClose={() => setComposeOpen(false)}
-              onPosted={() => {
-                setComposeOpen(false);
-              }}
+              onPosted={handleComposePosted}
               authorProfile={authorProfile}
             />
           )}
@@ -2645,9 +2669,7 @@ export function DiscoverHomeRealtimeStrip({
           <ComposeModal
             open={composeOpen}
             onClose={() => setComposeOpen(false)}
-            onPosted={() => {
-              setComposeOpen(false);
-            }}
+            onPosted={handleComposePosted}
             authorProfile={authorProfile}
           />
         )}
@@ -2720,9 +2742,7 @@ export function DiscoverHomeRealtimeStrip({
         <ComposeModal
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
-          onPosted={() => {
-            setComposeOpen(false);
-          }}
+          onPosted={handleComposePosted}
           authorProfile={authorProfile}
         />
       )}
@@ -2794,9 +2814,7 @@ export function DiscoverHomeRealtimeStrip({
       <ComposeModal
         open={composeOpen}
         onClose={() => setComposeOpen(false)}
-        onPosted={() => {
-          setComposeOpen(false);
-        }}
+        onPosted={handleComposePosted}
         authorProfile={authorProfile}
       />
     )}
