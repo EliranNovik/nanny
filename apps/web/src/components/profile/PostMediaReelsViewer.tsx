@@ -359,6 +359,32 @@ export function PostMediaReelsViewer({
   const [eventJoinByPostId, setEventJoinByPostId] = useState<
     Record<string, EventJoinInterestStatus | null>
   >({});
+  const [acceptedJobIds, setAcceptedJobIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!open || !user?.id) {
+      setAcceptedJobIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("job_confirmations")
+          .select("job_id")
+          .eq("freelancer_id", user.id)
+          .eq("status", "available");
+        if (!cancelled && data) {
+          setAcceptedJobIds(new Set(data.map((row) => row.job_id as string)));
+        }
+      } catch (e) {
+        console.error("[PostMediaReelsViewer] fetch accepted confirmations", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user?.id]);
   const isMobileViewport = useIsMobileViewport();
   useCommunityFeedOverlayLock(open && isMobileViewport);
   useReelsVisualViewportSync(open && isMobileViewport);
@@ -831,25 +857,29 @@ export function PostMediaReelsViewer({
         >
           {slides.map((slide) => {
             const eventJoinStatus = eventJoinByPostId[slide.postId] ?? null;
+            const jobAccepted = slide.jobRequestId ? acceptedJobIds.has(slide.jobRequestId) : false;
             const actionLabel = globalFeedCtaLabel(t, {
               isJobRequest: false,
-              jobAcceptedAt: null,
+              jobAcceptedAt: jobAccepted ? "accepted" : null,
               postTypeId: slide.postTypeId,
               authorFirstName: slide.authorFirstName,
               isOwnEventPost: user?.id === slide.authorId && slide.postTypeId === "event",
               eventJoinStatus,
             });
-            const actionClassName = globalFeedPrimaryCtaClass(
-              slide.postTypeId,
-              eventJoinStatus === "accepted"
-                ? "accepted"
-                : eventJoinStatus === "declined"
-                  ? "declined"
-                  : eventJoinStatus === "pending"
-                    ? "pending"
-                    : undefined,
-            );
+            const actionClassName = jobAccepted
+              ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
+              : globalFeedPrimaryCtaClass(
+                  slide.postTypeId,
+                  eventJoinStatus === "accepted"
+                    ? "accepted"
+                    : eventJoinStatus === "declined"
+                      ? "declined"
+                      : eventJoinStatus === "pending"
+                        ? "pending"
+                        : undefined,
+                );
             const actionDisabled =
+              jobAccepted ||
               primaryActionPostId === slide.postId ||
               (slide.postTypeId === "event" &&
                 (eventJoinStatus === "accepted" || eventJoinStatus === "declined"));
@@ -884,7 +914,7 @@ export function PostMediaReelsViewer({
         </button>
 
         {/* Right action rail — mobile + desktop media column */}
-        <div className="pointer-events-none absolute right-2 top-[42%] z-30 flex -translate-y-1/2 flex-col items-center gap-8">
+        <div className="pointer-events-none absolute right-4 md:right-8 top-[42%] z-30 flex -translate-y-1/2 flex-col items-center gap-8">
           <div className="pointer-events-auto flex flex-col items-center gap-8 pr-1">
             {!hideLikeButton ? (
             <button
@@ -949,7 +979,7 @@ export function PostMediaReelsViewer({
 
         <div
           data-reels-comment-bar
-          className="absolute inset-x-0 bottom-0 z-50 flex items-center border-t border-white/10 bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
+          className="absolute inset-x-0 bottom-0 z-50 flex items-center bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
         >
           <button
             type="button"
@@ -1376,12 +1406,12 @@ function ReelSlide({
 
   const mediaObjectClass = cn(
     isPortraitMobile &&
-      "max-md:absolute max-md:inset-0 max-md:h-full max-md:w-full max-md:object-cover max-md:object-top",
+      "max-md:absolute max-md:inset-0 max-md:h-full max-md:w-full max-md:object-contain max-md:object-center",
     isLandscapeMedia === true &&
       "max-md:max-h-full max-md:max-w-full max-md:object-contain max-md:object-center",
     "md:h-full md:w-full",
     isLandscapeMedia === true && "md:object-contain md:object-center",
-    isLandscapeMedia === false && "md:object-cover md:object-center",
+    isLandscapeMedia === false && "md:object-contain md:object-center",
     isLandscapeMedia === null && "md:object-contain md:object-center",
   );
 

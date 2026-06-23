@@ -3473,7 +3473,8 @@ function PostCard({
   }, [isJobRequest, post.id, commentsOpen]);
 
   useEffect(() => {
-    if (!isJobRequest || !user?.id) {
+    const targetJobId = isJobRequest ? post.id : linkedJobRequestId;
+    if (!targetJobId || !user?.id) {
       setJobAcceptedAt(null);
       return;
     }
@@ -3483,7 +3484,7 @@ function PostCard({
       .select("job_id, created_at")
       .eq("freelancer_id", user.id)
       .eq("status", "available")
-      .eq("job_id", post.id)
+      .eq("job_id", targetJobId)
       .maybeSingle()
       .then(({ data }) => {
         if (!cancelled) {
@@ -3493,7 +3494,7 @@ function PostCard({
     return () => {
       cancelled = true;
     };
-  }, [isJobRequest, user?.id, post.id]);
+  }, [isJobRequest, user?.id, post.id, linkedJobRequestId]);
 
   useEffect(() => {
     if (!canSaveAuthor || !currentUserId) {
@@ -3564,29 +3565,21 @@ function PostCard({
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
-  const isGlobalFeedPortrait = isGlobalFeed && !isLandscape && !isEventPost;
-  const isGlobalFeedEventPortrait = isGlobalFeed && isEventPost && !isLandscape;
-  // Global feed: fixed 4:5 frame for portrait (avoids extreme crop/height from tall photos).
-  const globalFeedPortraitBoxClass = isGlobalFeedPortrait ? "aspect-[4/5] w-full" : null;
-  const globalFeedEventPortraitBoxClass = isGlobalFeedEventPortrait
-    ? "aspect-video w-full max-md:max-h-[min(52vw,20rem)]"
-    : null;
+  const isGlobalFeedPortrait = isGlobalFeed && !isLandscape;
+  // Global feed: fixed 3:4 frame for portrait (avoids extreme crop/height from tall photos).
+  const globalFeedPortraitBoxClass = isGlobalFeedPortrait ? "aspect-[3/4] w-full" : null;
   // Mobile media sizing:
   // - Portrait: near full screen (Instagram-like); discover/profile feeds use shorter caps
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
   const mobilePortraitMaxHeight = isGlobalFeed
-    ? isEventPost
-      ? "max-md:max-h-[min(50vw,18rem)]"
-      : null
+    ? null
     : isDiscover
     ? "max-md:max-h-[min(76dvh,44rem)]"
     : isProfile
       ? "max-md:max-h-[min(78dvh,42rem)]"
       : "max-md:max-h-[min(90dvh,54rem)]";
   const mobilePortraitFallbackHeight = isGlobalFeed
-    ? isEventPost
-      ? "max-md:h-[min(50vw,18rem)]"
-      : "aspect-[4/5]"
+    ? "aspect-[3/4]"
     : isDiscover
     ? "max-md:h-[min(74dvh,42rem)]"
     : isProfile
@@ -3595,20 +3588,18 @@ function PostCard({
   const mobileMediaBoxClass =
     globalFeedPortraitBoxClass
       ? cn(mobileMediaInsetClass, globalFeedPortraitBoxClass)
-      : globalFeedEventPortraitBoxClass
-        ? cn(mobileMediaInsetClass, globalFeedEventPortraitBoxClass)
-        : mediaAspectRatio
-          ? cn(
+      : mediaAspectRatio
+        ? cn(
+          mobileMediaInsetClass,
+          // Portrait media can otherwise become extremely tall when width is full.
+          !isLandscape && mobilePortraitMaxHeight,
+        )
+        : isLandscape
+          ? mobileMediaInsetClass
+          : cn(
             mobileMediaInsetClass,
-            // Portrait media can otherwise become extremely tall when width is full.
-            !isLandscape && mobilePortraitMaxHeight,
-          )
-          : isLandscape
-            ? mobileMediaInsetClass
-            : cn(
-              mobileMediaInsetClass,
-              mobilePortraitFallbackHeight,
-            );
+            mobilePortraitFallbackHeight,
+          );
   const feedMediaAspectStyle: React.CSSProperties | undefined =
     isGlobalFeed && !isLandscape ? undefined : mediaAspectStyle;
   const mobileMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
@@ -3617,9 +3608,7 @@ function PostCard({
   // - Portrait: height-capped box with width derived from aspect ratio (no side letterboxing)
   // - Landscape: full width, sized to the media's real aspect ratio
   const portraitDesktopSizingClass = isGlobalFeed
-    ? isEventPost
-      ? "md:aspect-video md:w-full"
-      : "md:aspect-[4/5] md:w-full"
+    ? "md:aspect-[3/4] md:w-full"
     : isDiscover
     ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
     : isProfile
@@ -3633,11 +3622,7 @@ function PostCard({
     : isLandscape
       ? "md:w-full md:rounded-xl"
       : cn("md:rounded-xl", portraitDesktopSizingClass);
-  const portraitMediaObjectClass = isGlobalFeed
-    ? // Mobile keeps the full-bleed crop; desktop shows the whole image (letterboxed
-      // on the black box) so portrait posts are never cut off.
-      "object-cover object-center md:object-contain"
-    : "object-cover";
+  const portraitMediaObjectClass = "object-cover object-center";
   const landscapeMediaObjectClass = "object-contain";
   const mediaBoxBgClass =
     isLandscape || isGlobalFeedPortrait ? "bg-black/90 dark:bg-black/80" : "bg-transparent";
@@ -4194,7 +4179,7 @@ function PostCard({
           isGlobalFeed
             ? cn(
                 cardPadX,
-                "mt-1 border-t border-zinc-200/70 dark:border-zinc-700/45",
+                "mt-1",
                 "bg-zinc-50/70 dark:bg-transparent",
                 "rounded-b-2xl pb-3.5 pt-2",
               )
@@ -4443,12 +4428,7 @@ function PostCard({
                   ) : null}
                 </div>
                 <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
-                  {post.author?.is_verified ? (
-                    <>
-                      <span>{t("feed.global.verified")}</span>
-                      <span aria-hidden> · </span>
-                    </>
-                  ) : null}
+
                   <time className="tabular-nums">{postedLabel}</time>
                   {postLocationLine ? (
                     <>
@@ -4541,12 +4521,7 @@ function PostCard({
             ) : null}
           </div>
           <p className="text-[14px] font-medium leading-snug text-muted-foreground">
-            {post.author?.is_verified ? (
-              <>
-                <span>{t("feed.global.verified")}</span>
-                <span aria-hidden> · </span>
-              </>
-            ) : null}
+
             <time className="tabular-nums">{postedLabel}</time>
             {postLocationLine ? (
               <>
@@ -5383,14 +5358,11 @@ function PostCard({
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                 ) : null}
                 <span className="truncate">
-                  {isJobRequest
-                    ? jobAcceptedAt
-                      ? "Accepted"
-                      : t("feed.iCanHelp")
-                    : null}
-                  {!isJobRequest && post.source === "post" && post.post_types ? (
+                  {isAcceptableHelpRequest ? (
+                    jobAcceptedAt ? "Pending confirmation" : t("feed.iCanHelp")
+                  ) : null}
+                  {!isJobRequest && post.source === "post" && post.post_types && post.post_types.id !== "request_help" ? (
                     <>
-                      {post.post_types.id === "request_help" && t("feed.iCanHelp")}
                       {post.post_types.id === "offer_service" &&
                         feedContactLabel(t, post.author?.full_name)}
                       {post.post_types.id === "event" &&

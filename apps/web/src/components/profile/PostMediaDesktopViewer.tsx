@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
@@ -25,7 +24,6 @@ import {
 } from "@/lib/textDirection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
@@ -403,7 +401,7 @@ export function PostMediaDesktopViewer({
         </div>
 
         {/* Right-edge action rail (like / share) */}
-        <div className="pointer-events-none absolute right-4 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-4">
+        <div className="pointer-events-none absolute right-8 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-4">
           {!hideLikeButton ? (
             <button
               type="button"
@@ -729,12 +727,6 @@ export function ReelDesktopCommentsPanel({
     }
   }
 
-  function onComposerKeyDown(e: ReactKeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void submitComment();
-    }
-  }
 
   return (
     <section className="flex h-full min-h-0 flex-col">
@@ -830,36 +822,43 @@ export function ReelDesktopCommentsPanel({
         </div>
       </ScrollArea>
 
-      <div className="shrink-0 border-t border-border/40 px-5 py-3">
+      <div className="shrink-0 px-5 py-3">
         {currentUserId ? (
-          <div className="flex items-end gap-2">
-            <Textarea
-              placeholder="Write a comment…"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onComposerKeyDown}
-              maxLength={4000}
-              rows={2}
-              {...bidirectionalInputProps(
-                draft,
-                "min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0",
-              )}
-              disabled={submitting}
-            />
-            <Button
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1 rounded-full bg-zinc-800/95 px-4 py-2.5 dark:bg-zinc-700/90">
+              <input
+                type="text"
+                placeholder="Write a comment…"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void submitComment();
+                  }
+                }}
+                maxLength={4000}
+                disabled={submitting}
+                {...bidirectionalInputProps(
+                  draft,
+                  "w-full border-0 bg-transparent py-0.5 text-[15px] text-white outline-none placeholder:text-white/45 disabled:opacity-60",
+                )}
+                aria-label="Write a comment…"
+              />
+            </div>
+            <button
               type="button"
-              size="icon"
-              className="h-10 w-10 shrink-0 rounded-full bg-orange-600 text-white hover:bg-orange-700"
               disabled={submitting || !draft.trim()}
               onClick={() => void submitComment()}
+              className="shrink-0 p-1 text-foreground transition active:scale-95 disabled:opacity-35 dark:text-white"
               aria-label="Post comment"
             >
               {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 translate-x-[1px]" />
+                <Send className="h-6 w-6" strokeWidth={2.25} />
               )}
-            </Button>
+            </button>
           </div>
         ) : (
           <div className="space-y-2">

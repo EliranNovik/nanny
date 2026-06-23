@@ -173,8 +173,12 @@ export function globalFeedCtaLabel(
     eventJoinStatus: "accepted" | "declined" | "pending" | null;
   },
 ): string {
+  if (opts.jobAcceptedAt) {
+    return "Pending confirmation";
+  }
+
   if (opts.isJobRequest) {
-    return opts.jobAcceptedAt ? t("feed.global.accepted") : t("feed.global.offerHelp");
+    return t("feed.global.offerHelp");
   }
 
   switch (opts.postTypeId) {
