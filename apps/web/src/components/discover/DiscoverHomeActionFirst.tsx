@@ -639,8 +639,8 @@ export function DiscoverHomeActionFirst({
       "flex h-12 items-center justify-center gap-2 rounded-2xl px-4 text-[14px] font-black tracking-tight shadow-lg transition-all active:scale-[0.98]";
     const neutral =
       "bg-white/90 text-zinc-950 backdrop-blur-md hover:bg-white";
-    const violet =
-      "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 text-white shadow-violet-950/25 hover:from-violet-600 hover:to-purple-700";
+    const blue =
+      "bg-gradient-to-r from-slate-900 via-blue-950 to-slate-950 text-white shadow-blue-950/25 hover:from-slate-950 hover:via-blue-950 hover:to-black";
 
     const sharePost = () => {
       if (!user) {
@@ -688,7 +688,7 @@ export function DiscoverHomeActionFirst({
             <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
             {t("discoverHome.actions.postRequest")}
           </button>
-          <button type="button" onClick={sharePost} className={cn(buttonBase, violet)}>
+          <button type="button" onClick={sharePost} className={cn(buttonBase, blue)}>
             <Send className="h-5 w-5 shrink-0" strokeWidth={2.5} />
             {t("discoverHome.actions.sharePost")}
           </button>
@@ -733,7 +733,7 @@ export function DiscoverHomeActionFirst({
             ? t("discoverHome.actions.live")
             : t("discoverHome.actions.goLive")}
         </button>
-        <button type="button" onClick={sharePost} className={cn(buttonBase, violet)}>
+        <button type="button" onClick={sharePost} className={cn(buttonBase, blue)}>
           <Send className="h-5 w-5 shrink-0" strokeWidth={2.5} />
           {t("discoverHome.actions.sharePost")}
         </button>

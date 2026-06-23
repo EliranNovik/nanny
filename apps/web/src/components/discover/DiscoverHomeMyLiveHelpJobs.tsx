@@ -296,7 +296,11 @@ function DiscoverHomeLiveHelpSection({
               key={job.id}
               row={toLiveHelpCardRow(job)}
               layout="carousel"
-              className={discoverRequestCardCarouselItemClass}
+              className={cn(
+                discoverRequestCardCarouselItemClass,
+                "min-h-[14.5rem] md:min-h-[15rem]",
+              )}
+              categoryIconTone={otherPartyLabel === "Helper" ? "orange" : "green"}
               otherPartyLabel={otherPartyLabel}
               otherPartyName={otherPartyName}
               onOpen={() => {

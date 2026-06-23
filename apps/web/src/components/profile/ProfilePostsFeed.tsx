@@ -1819,7 +1819,7 @@ export function ComposeModal({
             tagged_user_ids: taggedUsers.map((u) => u.id),
             post_type_id: selectedPostTypeId,
             post_metadata: metadata,
-            custom_category: savedCustomCategory,
+            custom_category: null,
             ai_generated_copy: generatedCopy,
           })
           .select("id")
@@ -1864,7 +1864,7 @@ export function ComposeModal({
             tagged_user_ids: taggedUsers.map((u) => u.id),
             post_type_id: selectedPostTypeId,
             post_metadata: metadata,
-            custom_category: savedCustomCategory,
+            custom_category: null,
             ai_generated_copy: generatedCopy,
           })
           .select("id")
@@ -2437,7 +2437,7 @@ export function ComposeModal({
                                 </span>
                               </button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-sm">
+                            <DialogContent className="max-w-sm" aria-describedby={undefined}>
                               <DialogHeader>
                                 <DialogTitle>{t("composePost.whenDialogTitle")}</DialogTitle>
                               </DialogHeader>
@@ -2612,7 +2612,7 @@ export function ComposeModal({
                               </span>
                             </button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-sm">
+                          <DialogContent className="max-w-sm" aria-describedby={undefined}>
                             <DialogHeader>
                               <DialogTitle>{t("composePost.event.dateDialogTitle")}</DialogTitle>
                             </DialogHeader>
@@ -2719,7 +2719,10 @@ export function ComposeModal({
                 </div>
 
                 <Dialog open={captionEditorOpen} onOpenChange={setCaptionEditorOpen}>
-                  <DialogContent className="flex max-h-[min(92dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+                  <DialogContent
+                    className="flex max-h-[min(92dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+                    aria-describedby={undefined}
+                  >
                     <DialogHeader className="border-b border-border/60 px-5 py-4">
                       <DialogTitle className="text-base font-bold">{t("composePost.tellMore")}</DialogTitle>
                     </DialogHeader>
@@ -2914,6 +2917,7 @@ export function ComposeModal({
       {!isMobileViewport ? (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent
+        aria-describedby={undefined}
         onPointerDownOutside={preventDialogDismissForGooglePlacesPac}
         onFocusOutside={preventDialogDismissForGooglePlacesPac}
         className={cn(
@@ -4019,6 +4023,16 @@ function PostCard({
     () => feedPostDescription(generatedCopy, effectiveCaption, postTitle),
     [effectiveCaption, generatedCopy, postTitle],
   );
+  const globalTextOnlyBody = useMemo(() => {
+    const fullCaption = effectiveCaption.trim();
+    if (
+      fullCaption &&
+      (!postTitle || fullCaption.toLowerCase() !== postTitle.toLowerCase())
+    ) {
+      return fullCaption;
+    }
+    return postDescription;
+  }, [effectiveCaption, postDescription, postTitle]);
 
   const postTitleLayout = useMemo(
     () => (postTitle ? bidirectionalTextProps(postTitle) : null),
@@ -4833,14 +4847,14 @@ function PostCard({
                     <span>{postTitle}</span>
                   </h3>
                 ) : null}
-                {postDescription ? (
+                {globalTextOnlyBody ? (
                   <p
                     {...bidirectionalTextProps(
-                      postDescription,
+                      globalTextOnlyBody,
                       "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
                     )}
                   >
-                    {renderCaptionWithMentions(postDescription)}
+                    {renderCaptionWithMentions(globalTextOnlyBody)}
                   </p>
                 ) : null}
                 <div

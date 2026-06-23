@@ -227,6 +227,10 @@ function PageLayoutWithHeader() {
     pathname === "/messages" ||
     pathname.startsWith("/messages/") ||
     pathname.startsWith("/chat/");
+  const shouldShowMobileFooter =
+    pathname === "/community/feed" ||
+    pathname === "/client/home" ||
+    pathname === "/freelancer/home";
 
   // When on a keep-alive route, render the persistent page instead of the Outlet
   const isKeepAliveRoute = KEEP_ALIVE_ROUTES.some(
@@ -254,7 +258,7 @@ function PageLayoutWithHeader() {
           {/* Normal outlet — hidden when a keep-alive route is active */}
           {!isKeepAliveRoute && <Outlet />}
           {!shouldHideDesktopFooter ? (
-            <div className="hidden md:block">
+            <div className={shouldShowMobileFooter ? "block" : "hidden md:block"}>
               <Footer />
             </div>
           ) : null}

@@ -85,7 +85,7 @@ export function whenBadgeToneClass(timeframe: string | null | undefined): string
 }
 
 export const requestHelpExpiredBadgeClass =
-  "border-0 bg-neutral-600/90 text-white dark:bg-neutral-700/90";
+  "request-help-expired-badge border-0 bg-zinc-200/90 text-zinc-600 dark:bg-neutral-700/90 dark:text-white";
 
 export function isOpenHelpRequestWhenExpired(
   timeframe: string | null | undefined,
@@ -95,13 +95,14 @@ export function isOpenHelpRequestWhenExpired(
   return isRequestHelpWhenExpired(timeframe, createdAt);
 }
 
-export function categoryIconCircleClass(serviceType: string | null | undefined): string {
-  const k = (serviceType ?? "").toLowerCase();
-  if (k.includes("clean")) return "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25";
-  if (k.includes("cook")) return "bg-orange-500 text-white shadow-lg shadow-orange-500/25";
-  if (k.includes("nanny") || k.includes("bab")) return "bg-violet-500 text-white shadow-lg shadow-violet-500/25";
-  if (k.includes("pickup") || k.includes("deliver")) return "bg-sky-500 text-white shadow-lg shadow-sky-500/25";
-  return "bg-zinc-600 text-white shadow-lg shadow-zinc-600/20";
+export function categoryIconCircleClass(
+  serviceType: string | null | undefined,
+  tone: "green" | "orange" = "green",
+): string {
+  void serviceType;
+  return tone === "orange"
+    ? "bg-orange-500 text-white shadow-lg shadow-orange-500/25"
+    : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25";
 }
 
 export function categoryAccentClass(serviceType: string | null | undefined): string {

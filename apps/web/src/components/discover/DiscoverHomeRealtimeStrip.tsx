@@ -2260,8 +2260,8 @@ export function DiscoverHomeRealtimeStrip({
     "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]";
   const quickActionNeutral =
     "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80";
-  const quickActionViolet =
-    "text-white bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20";
+  const quickActionBlue =
+    "text-white bg-gradient-to-r from-slate-900 via-blue-950 to-slate-950 hover:from-slate-950 hover:via-blue-950 hover:to-black shadow-md shadow-blue-950/20";
 
   // Shared quick-action button row (used in loading / empty / populated states).
   const renderQuickActions = () => {
@@ -2311,7 +2311,7 @@ export function DiscoverHomeRealtimeStrip({
           <button
             type="button"
             onClick={handleSharePost}
-            className={cn(quickActionBtnBase, quickActionViolet)}
+            className={cn(quickActionBtnBase, quickActionBlue)}
           >
             <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
             {t("discoverHome.actions.sharePost")}
@@ -2389,7 +2389,7 @@ export function DiscoverHomeRealtimeStrip({
         <button
           type="button"
           onClick={handleSharePost}
-          className={cn(quickActionBtnBase, quickActionViolet)}
+          className={cn(quickActionBtnBase, quickActionBlue)}
         >
           <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
           {t("discoverHome.actions.sharePost")}

@@ -93,8 +93,8 @@ const discoverMyRequestMetaRowClass =
 const discoverMyRequestMetaIconClass = "h-[1.125rem] w-[1.125rem] shrink-0 md:h-5 md:w-5";
 
 const myRequestPostedBadgeClass = cn(
-  "inline-flex rounded-lg bg-zinc-100 px-2.5 py-1 text-sm font-semibold text-zinc-600",
-  "dark:bg-zinc-700/80 dark:text-zinc-300",
+  "inline-flex text-sm font-semibold text-muted-foreground",
+  "dark:text-zinc-300",
 );
 
 type AcceptedHelperProfile = {
@@ -370,9 +370,9 @@ const acceptRequestPendingCarouselClass = cn(
 );
 
 const dismissOpenHelpRequestBtnClass = cn(
-  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-  "border border-zinc-200/80 bg-white text-muted-foreground transition-colors",
-  "hover:bg-zinc-100 hover:text-foreground active:scale-[0.98]",
+  "discover-request-cancel-btn inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+  "border border-zinc-200/80 bg-white/80 text-muted-foreground backdrop-blur-md transition-colors",
+  "hover:bg-white hover:text-foreground active:scale-[0.98]",
   "dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
@@ -411,6 +411,7 @@ export function DiscoverOpenHelpRequestCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+    layout === "carousel" && "discover-home-request-card-orange",
     onOpen &&
       cn(
         "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -442,10 +443,10 @@ export function DiscoverOpenHelpRequestCard({
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                categoryIconCircleClass(row.service_type),
+                categoryIconCircleClass(row.service_type, "green"),
               )}
             >
-              <CategoryIcon serviceType={row.service_type} className="h-4 w-4" />
+              <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
             </div>
             <span
               className={cn(
@@ -579,10 +580,10 @@ export function DiscoverOpenHelpRequestCard({
         <div
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-            categoryIconCircleClass(row.service_type),
+            categoryIconCircleClass(row.service_type, "green"),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
+          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
@@ -757,6 +758,9 @@ const viewRequestBtnCarouselClass = cn(
   "text-[11px] font-black uppercase tracking-[0.12em]",
 );
 
+const viewRequestBtnOrangeCarouselClass =
+  "bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 shadow-orange-950/20 hover:from-orange-600 hover:via-orange-700 hover:to-orange-800 focus-visible:ring-orange-300/80";
+
 export function DiscoverMyOpenRequestCard({
   row,
   acceptedCount = 0,
@@ -802,6 +806,7 @@ export function DiscoverMyOpenRequestCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+    layout === "carousel" && "discover-home-my-request-card-orange",
     "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
     className,
@@ -829,10 +834,10 @@ export function DiscoverMyOpenRequestCard({
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                categoryIconCircleClass(row.service_type),
+                categoryIconCircleClass(row.service_type, "orange"),
               )}
             >
-              <CategoryIcon serviceType={row.service_type} className="h-4 w-4" />
+              <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
             </div>
             <span
               className={cn(
@@ -863,32 +868,31 @@ export function DiscoverMyOpenRequestCard({
             ) : null}
             <div className="min-w-0 flex-1 text-left">
               <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
+              <div className={discoverMyRequestMetaRowClass}>
+                {row.location_city ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className={discoverMyRequestMetaIconClass} aria-hidden />
+                    {row.location_city}
+                  </span>
+                ) : null}
+                {detailLine ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    {row.service_type === "cleaning" ? (
+                      <Home className={discoverMyRequestMetaIconClass} aria-hidden />
+                    ) : (
+                      <Users className={discoverMyRequestMetaIconClass} aria-hidden />
+                    )}
+                    {detailLine}
+                  </span>
+                ) : null}
+                {scheduleLine ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className={discoverMyRequestMetaIconClass} aria-hidden />
+                    {scheduleLine}
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
-
-          <div className={discoverMyRequestMetaRowClass}>
-            {row.location_city ? (
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className={discoverMyRequestMetaIconClass} aria-hidden />
-                {row.location_city}
-              </span>
-            ) : null}
-            {detailLine ? (
-              <span className="inline-flex items-center gap-1.5">
-                {row.service_type === "cleaning" ? (
-                  <Home className={discoverMyRequestMetaIconClass} aria-hidden />
-                ) : (
-                  <Users className={discoverMyRequestMetaIconClass} aria-hidden />
-                )}
-                {detailLine}
-              </span>
-            ) : null}
-            {scheduleLine ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className={discoverMyRequestMetaIconClass} aria-hidden />
-                {scheduleLine}
-              </span>
-            ) : null}
           </div>
         </div>
 
@@ -911,7 +915,10 @@ export function DiscoverMyOpenRequestCard({
           <div className={discoverRequestCardCarouselFooterActionClass}>
             <button
               type="button"
-              className={viewRequestBtnCarouselClass}
+              className={cn(
+                viewRequestBtnCarouselClass,
+                viewRequestBtnOrangeCarouselClass,
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpen();
@@ -940,10 +947,10 @@ export function DiscoverMyOpenRequestCard({
         <div
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-            categoryIconCircleClass(row.service_type),
+            categoryIconCircleClass(row.service_type, "orange"),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
+          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
@@ -1069,6 +1076,7 @@ export function DiscoverMyLiveHelpCard({
   onOpen,
   className,
   layout = "default",
+  categoryIconTone = "green",
 }: {
   row: Pick<
     DiscoverOpenHelpRequestRow,
@@ -1088,6 +1096,7 @@ export function DiscoverMyLiveHelpCard({
   onOpen: () => void;
   className?: string;
   layout?: "default" | "carousel";
+  categoryIconTone?: "green" | "orange";
 }) {
   const { t } = useTranslation();
   const title = openHelpRequestTitle(row);
@@ -1130,6 +1139,7 @@ export function DiscoverMyLiveHelpCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+    layout === "carousel" && "discover-home-live-card-navy",
     "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
     className,
@@ -1157,10 +1167,10 @@ export function DiscoverMyLiveHelpCard({
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                categoryIconCircleClass(row.service_type),
+                categoryIconCircleClass(row.service_type, categoryIconTone),
               )}
             >
-              <CategoryIcon serviceType={row.service_type} className="h-4 w-4" />
+              <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
             </div>
             <span
               className={cn(
@@ -1184,23 +1194,22 @@ export function DiscoverMyLiveHelpCard({
             ) : null}
             <div className="min-w-0 flex-1 text-left">
               <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
+              <div className={discoverRequestCardCarouselMetaRowClass}>
+                {row.location_city ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                    {row.location_city}
+                  </span>
+                ) : null}
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <Users className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
+                    {otherPartyName}
+                  </span>
+                </span>
+              </div>
             </div>
-          </div>
-
-          <div className={discoverRequestCardCarouselMetaRowClass}>
-            {row.location_city ? (
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                {row.location_city}
-              </span>
-            ) : null}
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Users className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="truncate">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
-                {otherPartyName}
-              </span>
-            </span>
           </div>
         </div>
 
@@ -1223,7 +1232,10 @@ export function DiscoverMyLiveHelpCard({
           <div className={discoverRequestCardCarouselFooterActionClass}>
             <button
               type="button"
-              className={viewRequestBtnCarouselClass}
+              className={cn(
+                viewRequestBtnCarouselClass,
+                categoryIconTone === "orange" && viewRequestBtnOrangeCarouselClass,
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpen();
@@ -1248,10 +1260,10 @@ export function DiscoverMyLiveHelpCard({
         <div
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-            categoryIconCircleClass(row.service_type),
+            categoryIconCircleClass(row.service_type, categoryIconTone),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
+          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">

@@ -152,13 +152,13 @@ export function globalFeedPostTypeAccentClass(typeId: string | null): string {
 export function globalFeedTextOnlySurfaceClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
-      return "bg-zinc-100/90 dark:bg-red-950/25";
+      return "bg-zinc-50/90 dark:bg-red-950/25";
     case "offer_service":
-      return "bg-emerald-50/90 dark:bg-emerald-950/25";
+      return "bg-zinc-50/90 dark:bg-emerald-950/25";
     case "event":
       return "bg-violet-50/90 dark:bg-violet-950/25";
     default:
-      return "bg-zinc-100/90 dark:bg-zinc-800/55";
+      return "bg-zinc-50/90 dark:bg-zinc-800/55";
   }
 }
 

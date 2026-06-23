@@ -135,6 +135,9 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
     (typeof meta?.category === "string" && meta.category) ||
     (typeof meta?.service === "string" && meta.service) ||
     null;
+  const customCategory =
+    (typeof meta?.custom_category === "string" && meta.custom_category.trim()) ||
+    row.custom_category;
   const name = profile?.full_name ?? "Member";
   const description =
     clampText(generated?.short_text ?? row.caption) ||
@@ -149,8 +152,8 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
     authorInitials: memberInitials(name),
     roleLabel:
       kind === "request"
-        ? `${postServiceCategoryLabel(categoryId, row.custom_category)} request`
-        : `${postServiceCategoryLabel(categoryId, row.custom_category)} offer`,
+        ? `${postServiceCategoryLabel(categoryId, customCategory)} request`
+        : `${postServiceCategoryLabel(categoryId, customCategory)} offer`,
     description,
     rateLabel: profilePostBudgetLabel(meta),
     href: globalProfilePostFeedPath(row.id),

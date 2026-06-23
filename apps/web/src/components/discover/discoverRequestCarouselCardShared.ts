@@ -13,8 +13,8 @@ export const discoverRequestCardsCarouselContainerClass = cn(
 
 /** Fixed-width snap item for open-request / my-request cards. */
 export const discoverRequestCardCarouselItemClass = cn(
-  "flex h-auto w-[min(calc(100vw-2rem),22rem)] shrink-0 snap-start self-stretch",
-  "md:w-[26rem] lg:w-[28rem]",
+  "flex h-auto min-h-[12.5rem] w-[min(calc(100vw-2rem),22rem)] shrink-0 snap-start self-stretch",
+  "md:min-h-[13rem] md:w-[26rem] lg:w-[28rem]",
 );
 
 export const discoverRequestCardCarouselBodyClass = "flex min-h-0 flex-1 flex-col";
@@ -46,12 +46,11 @@ export const discoverRequestCarouselArrowBtnClass = cn(
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
 );
 
-/** White posted-time pill — matches My Requests carousel. */
+/** Plain posted-time text for request cards. */
 export const discoverRequestPostedTimeBadgeBaseClass = cn(
-  "inline-flex max-w-[85%] min-h-[1.75rem] items-center rounded-full bg-white px-2 py-1",
-  "text-[13px] font-bold uppercase leading-none tracking-wide text-zinc-900 shadow-md",
-  "sm:min-h-[1.5rem] sm:px-1.5 sm:py-0.5 sm:text-[11px]",
-  "lg:min-h-[1.75rem] lg:px-2 lg:py-1 lg:text-[12.5px] xl:text-[13.5px]",
+  "inline-flex max-w-[85%] items-center",
+  "text-[13px] font-semibold leading-snug text-muted-foreground",
+  "sm:text-[11px] lg:text-[12.5px] xl:text-[13.5px]",
 );
 
 export const discoverRequestPostedTimeBadgeClass = cn(

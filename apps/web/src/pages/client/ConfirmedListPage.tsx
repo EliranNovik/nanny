@@ -1641,7 +1641,7 @@ function ConfirmedApplicantMediaHero({
   return (
     <div
       className={cn(
-        "relative aspect-[3/4] w-full max-md:max-h-[min(48vh,380px)] max-md:min-h-[200px] shrink-0 overflow-hidden rounded-t-[26px] bg-transparent text-left",
+        "relative aspect-[3/4] w-full max-md:max-h-[min(56vh,460px)] max-md:min-h-[240px] shrink-0 overflow-hidden rounded-t-[26px] bg-transparent text-left",
         "transition-[transform,filter] group-hover:brightness-[1.02]",
       )}
     >
@@ -2614,13 +2614,12 @@ export default function ConfirmedListPage() {
           id="applicants-section"
           className={cn(
             "mb-8 flex gap-4 pb-3",
-            "max-md:flex-col max-md:overflow-x-visible max-md:overflow-y-visible",
+            "max-md:-mx-3 max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:overflow-y-visible max-md:px-3 max-md:scroll-smooth max-md:overscroll-x-contain max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:none] max-md:[touch-action:pan-x_pan-y] max-md:[&::-webkit-scrollbar]:hidden",
             "md:-mx-4 md:mx-0 md:snap-x md:snap-mandatory md:overflow-x-auto md:overflow-y-hidden md:scroll-smooth md:px-4 md:px-0",
             freelancers.length === 0 && "hidden",
           )}
-          style={{ scrollbarWidth: "thin" }}
         >
-          <div className="flex w-full max-md:flex-col max-md:gap-4 md:flex-shrink-0 md:flex-row md:gap-4 md:pr-1">
+          <div className="flex max-md:w-max max-md:flex-row max-md:gap-3 md:w-full md:flex-shrink-0 md:flex-row md:gap-4 md:pr-1">
             {freelancers.map((freelancer) => {
               const fp = freelancer.freelancer_profiles;
               const initials =
@@ -2659,7 +2658,7 @@ export default function ConfirmedListPage() {
                   className={cn(
                     "group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[22px] bg-zinc-950 shadow-2xl shadow-black/40 outline-none transition-transform active:scale-[0.995]",
                     "focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "max-md:mx-auto max-md:max-w-lg",
+                    "max-md:w-[min(82vw,21rem)] max-md:shrink-0 max-md:snap-center",
                     "md:w-[min(82vw,300px)] md:flex-shrink-0 md:snap-start",
                   )}
                 >
