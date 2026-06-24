@@ -37,7 +37,7 @@ export default function LegalPage() {
   else if (currentPath.includes("disclaimer")) defaultDoc = "disclaimer";
 
   const [activeTab, setActiveTab] = useState<DocType>(defaultDoc);
-  
+
   // Local language override to view terms in other languages
   const [docLang, setDocLang] = useState<string>("en");
 
@@ -70,7 +70,7 @@ export default function LegalPage() {
   // Get active document content based on chosen language
   const translations = legalContent[docLang] || legalContent["en"];
   const doc = translations[activeTab];
-  
+
   const isRtl = docLang === "he";
 
   // Page level titles/ui in current UI language
@@ -132,11 +132,10 @@ export default function LegalPage() {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`flex items-center justify-between p-3.5 rounded-xl font-bold transition-all ${
-                      isActive
+                    className={`flex items-center justify-between p-3.5 rounded-xl font-bold transition-all ${isActive
                         ? "bg-primary/10 text-primary dark:bg-primary/25 dark:text-emerald-400"
                         : "text-zinc-600 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800/50 hover:text-zinc-950 dark:hover:text-white"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="w-5 h-5" />
@@ -157,11 +156,10 @@ export default function LegalPage() {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-full font-bold whitespace-nowrap text-sm transition-all border ${
-                      isActive
+                    className={`flex items-center gap-2 px-5 py-3 rounded-full font-bold whitespace-nowrap text-sm transition-all border ${isActive
                         ? "bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white shadow-sm"
                         : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800"
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.labelKey}</span>
@@ -183,11 +181,10 @@ export default function LegalPage() {
                     <button
                       key={langCode}
                       onClick={() => setDocLang(langCode)}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${
-                        isCurrent
+                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${isCurrent
                           ? "bg-primary text-white border-primary shadow-sm"
                           : "bg-zinc-50 hover:bg-zinc-100 border-zinc-200 text-zinc-700 dark:bg-slate-800/30 dark:hover:bg-slate-800/80 dark:border-slate-800 dark:text-slate-300"
-                      }`}
+                        }`}
                     >
                       {LANG_LABELS[langCode]}
                     </button>
@@ -197,13 +194,12 @@ export default function LegalPage() {
             </div>
           </div>
 
-          {/* Document Content View */}
+          {/* Document Content View only */}
           <div className="lg:col-span-3">
             <div
               dir={isRtl ? "rtl" : "ltr"}
-              className={`bg-white dark:bg-slate-900 shadow-sm rounded-3xl p-6 md:p-12 border border-zinc-200/60 dark:border-slate-800 relative transition-all ${
-                isRtl ? "text-right" : "text-left"
-              }`}
+              className={`bg-white dark:bg-slate-900 shadow-sm rounded-3xl p-6 md:p-12 border border-zinc-200/60 dark:border-slate-800 relative transition-all ${isRtl ? "text-right" : "text-left"
+                }`}
             >
               {/* Header inside Card */}
               <div className="border-b border-zinc-100 dark:border-slate-800 pb-6 mb-8">
