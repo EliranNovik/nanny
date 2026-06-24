@@ -35,6 +35,7 @@ export function useDebouncedProfileSearch(
       let dbQuery = supabase
         .from("profiles")
         .select("id, full_name, photo_url, average_rating, total_ratings, role, categories, phone")
+        .eq("is_admin", false)
         .limit(limit);
 
       if (isPhoneQuery) {

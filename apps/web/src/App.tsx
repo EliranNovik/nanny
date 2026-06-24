@@ -86,6 +86,12 @@ import PublicCommunityPostsPage from "@/pages/PublicCommunityPostsPage";
 import ChatPage from "@/pages/ChatPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
+import AdminActiveJobsPage from "@/pages/admin/AdminActiveJobsPage";
+import AdminRequestedJobsPage from "@/pages/admin/AdminRequestedJobsPage";
+import AdminCompletedJobsPage from "@/pages/admin/AdminCompletedJobsPage";
+import AdminUsersPage from "@/pages/admin/AdminUsersPage";
+import AdminStatisticsPage from "@/pages/admin/AdminStatisticsPage";
+import AdminPostsPage from "@/pages/admin/AdminPostsPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
@@ -117,6 +123,21 @@ function ProtectedRoute({
   }
 
   void skipKycGate;
+
+  return <>{children}</>;
+}
+
+// Protected admin route wrapper
+function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
+  const { profile, user, loading } = useAuth();
+
+  if (loading) {
+    return <AppBootSplash />;
+  }
+
+  if (!user || !profile || !profile.is_admin) {
+    return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 }
@@ -589,9 +610,57 @@ function AppRoutes() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <ProtectedAdminRoute>
               <AdminPage />
-            </ProtectedRoute>
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/jobs/active"
+          element={
+            <ProtectedAdminRoute>
+              <AdminActiveJobsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/jobs/requested"
+          element={
+            <ProtectedAdminRoute>
+              <AdminRequestedJobsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/jobs/completed"
+          element={
+            <ProtectedAdminRoute>
+              <AdminCompletedJobsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedAdminRoute>
+              <AdminUsersPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/statistics"
+          element={
+            <ProtectedAdminRoute>
+              <AdminStatisticsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/posts"
+          element={
+            <ProtectedAdminRoute>
+              <AdminPostsPage />
+            </ProtectedAdminRoute>
           }
         />
 

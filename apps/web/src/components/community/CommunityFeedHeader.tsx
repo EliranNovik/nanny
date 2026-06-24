@@ -168,7 +168,7 @@ export function CommunityFeedHeader({
             "transition-transform active:scale-[0.97]",
             "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
-          aria-label={t("feed.filters.addYourStory")}
+          aria-label={t("discoverHome.actions.sharePost")}
         >
           <div className="relative h-[5.5rem] w-[5.5rem] shrink-0">
             {variant === "global" ? (
@@ -202,7 +202,7 @@ export function CommunityFeedHeader({
             )}
           </div>
           <span className="max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground">
-            {t("feed.filters.yourStory")}
+            {t("discoverHome.actions.sharePost")}
           </span>
         </button>
 

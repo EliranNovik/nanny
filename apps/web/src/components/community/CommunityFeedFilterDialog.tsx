@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
@@ -550,7 +551,7 @@ export function CommunityFeedFilterDialog({
   if (isMobile) {
     if (!open) return null;
 
-    return (
+    return createPortal(
       <MobileSnapBottomSheet
         expanded={sheetExpanded}
         onExpandedChange={(next) => {
@@ -559,7 +560,7 @@ export function CommunityFeedFilterDialog({
         }}
         onDismiss={() => onOpenChange(false)}
         bottomOffsetClass={discoverMobileSheetBottomOffset}
-        className="z-[240]"
+        className="z-[9999]"
         maxHeight="min(90dvh, 640px)"
         ariaLabel={t("feed.filters.filterPosts")}
         collapsed={
@@ -576,7 +577,8 @@ export function CommunityFeedFilterDialog({
           {formBody}
           {formFooter}
         </div>
-      </MobileSnapBottomSheet>
+      </MobileSnapBottomSheet>,
+      document.body
     );
   }
 

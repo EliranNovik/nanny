@@ -544,15 +544,49 @@ export default function CreateJobPage() {
 
   const categoryLabel = categoryId ? t(`feed.categories.${categoryId}`) : "";
 
+  const chosenCategoryLabel = useMemo(() => {
+    if (!jobData.service_type) return "";
+    if (jobData.service_type === "other_help" && jobData.service_details.other_type) {
+      return t(`otherHelpSubcategories.${jobData.service_details.other_type}`);
+    }
+    return t(`feed.categories.${jobData.service_type}`);
+  }, [jobData.service_type, jobData.service_details.other_type, t]);
+
+  const chosenCategoryIcon = useMemo(() => {
+    if (!jobData.service_type) return null;
+    if (jobData.service_type === "other_help" && jobData.service_details.other_type) {
+      return OTHER_HELP_ICONS[jobData.service_details.other_type] ?? null;
+    }
+    return SERVICE_TYPE_META[jobData.service_type]?.icon ?? null;
+  }, [jobData.service_type, jobData.service_details.other_type]);
+
   /** Step 1 = choosing category — no hero image or category name in header */
   const showCategoryHero = Boolean(categoryImageSrc && step > 1);
 
-  const shellTitle = useMemo(() => {
-    if (step >= 1 && step <= TOTAL_STEPS) {
-      return t(`createJob.titles.step${step}`);
+  const renderShellTitle = useCallback(() => {
+    const baseTitle =
+      step >= 1 && step <= TOTAL_STEPS
+        ? t(`createJob.titles.step${step}`)
+        : categoryLabel || t("createJob.titles.default");
+
+    const shouldShowCategory = step > 1 || (step === 1 && otherHelpSubOpen);
+
+    if (shouldShowCategory && chosenCategoryLabel) {
+      return (
+        <span className="inline-flex items-center gap-2 align-middle justify-center md:justify-start">
+          {chosenCategoryIcon && (
+            <span className="inline-flex items-center justify-center shrink-0 [&_svg]:h-5.5 [&_svg]:w-5.5 [&_svg]:text-current [&_svg]:stroke-[2.2]">
+              {chosenCategoryIcon}
+            </span>
+          )}
+          <span>{chosenCategoryLabel}</span>
+          <span className="opacity-60 font-medium mx-0.5">-</span>
+          <span>{baseTitle}</span>
+        </span>
+      );
     }
-    return categoryLabel || t("createJob.titles.default");
-  }, [step, categoryLabel, t]);
+    return <span>{baseTitle}</span>;
+  }, [step, otherHelpSubOpen, chosenCategoryLabel, chosenCategoryIcon, categoryLabel, t]);
 
   const stepTip =
     step >= 1 && step <= TOTAL_STEPS
@@ -879,7 +913,7 @@ export default function CreateJobPage() {
                         {t("createJob.eyebrow")}
                       </p>
                       <h1 className="text-lg font-black leading-snug tracking-tight text-white drop-shadow-md sm:text-xl">
-                        {shellTitle}
+                        {renderShellTitle()}
                       </h1>
                     </div>
                     <div className="flex justify-end">
@@ -945,7 +979,7 @@ export default function CreateJobPage() {
                     {t("createJob.eyebrow")}
                   </p>
                   <h1 className="text-lg font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
-                    {shellTitle}
+                    {renderShellTitle()}
                   </h1>
                 </div>
                 <div className="flex justify-end">
@@ -977,32 +1011,37 @@ export default function CreateJobPage() {
       </div>
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-8 pt-2 md:pt-0">
-        <div className="hidden items-start justify-between gap-4 md:flex">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              {t("createJob.eyebrow")}
-            </p>
-            <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
-              {shellTitle}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-start gap-3">
-            {showCategoryHero ? (
+        <div className="hidden md:block">
+          {showCategoryHero ? (
+            <div className="relative w-full h-36 md:h-40 rounded-3xl overflow-hidden shadow-lg border border-slate-200/10 dark:border-white/10 flex flex-col justify-end p-6 md:p-8">
+              <img
+                src={categoryImageSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
               <div
-                className={cn(
-                  "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md sm:h-24 sm:w-24",
-                  "dark:border-white/15 dark:bg-white/[0.06]",
-                )}
+                className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/60"
                 aria-hidden
-              >
-                <img
-                  src={categoryImageSrc ?? ""}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+              />
+              <div className="relative z-10 w-full">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80 drop-shadow-sm mb-1">
+                  {t("createJob.eyebrow")}
+                </p>
+                <h1 className="text-2xl md:text-3xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+                  {renderShellTitle()}
+                </h1>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                {t("createJob.eyebrow")}
+              </p>
+              <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
+                {renderShellTitle()}
+              </h1>
+            </div>
+          )}
         </div>
 
         <div className="hidden md:block">

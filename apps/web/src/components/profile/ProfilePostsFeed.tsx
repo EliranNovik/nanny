@@ -4208,7 +4208,7 @@ function PostCard({
                 className={cn(iconClass, "transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
                 strokeWidth={2.75}
               />
-              {post.like_count > 0 && !isGlobalFeed && (
+              {post.like_count > 0 && (
                 <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
               )}
             </button>
@@ -4226,7 +4226,14 @@ function PostCard({
           >
             <MessageCircle className={iconClass} strokeWidth={2.75} />
             {isGlobalFeed ? (
-              <span>{t("feed.global.comment")}</span>
+              <>
+                <span>{t("feed.global.comment")}</span>
+                {(isJobRequest ? jobCommentCount : commentCount) > 0 && (
+                  <span className="min-w-[1ch] tabular-nums">
+                    {isJobRequest ? jobCommentCount : commentCount}
+                  </span>
+                )}
+              </>
             ) : (isJobRequest ? jobCommentCount : commentCount) > 0 ? (
               <span className="min-w-[1ch] tabular-nums">
                 {isJobRequest ? jobCommentCount : commentCount}
@@ -4251,7 +4258,14 @@ function PostCard({
           >
             <Send className={iconClass} strokeWidth={2.75} />
             {isGlobalFeed ? (
-              <span>{t("feed.global.share")}</span>
+              <>
+                <span>{t("feed.global.share")}</span>
+                {post.share_click_count > 0 && (
+                  <span className="min-w-[1ch] tabular-nums">
+                    {post.share_click_count}
+                  </span>
+                )}
+              </>
             ) : post.share_click_count > 0 ? (
               <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
             ) : null}

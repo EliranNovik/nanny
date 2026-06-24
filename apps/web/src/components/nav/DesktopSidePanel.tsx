@@ -26,6 +26,12 @@ import {
   Zap,
   LogOut,
   Menu,
+  Shield,
+  CheckCircle2,
+  BarChart3,
+  Clock,
+  Briefcase,
+  Newspaper,
 } from "lucide-react";
 
 type SavedProfileRow = {
@@ -139,6 +145,58 @@ export function DesktopSidePanel({
       href: profileHref,
       icon: User,
       activeMatch: (p) => p.startsWith(profileHref),
+    },
+  ];
+
+  const adminItems = [
+    {
+      id: "admin-home",
+      label: "Admin Overview",
+      href: "/admin",
+      icon: Shield,
+      activeMatch: (p: string) => p === "/admin" || p.startsWith("/admin?"),
+    },
+    {
+      id: "admin-active",
+      label: "Active Jobs",
+      href: "/admin/jobs/active",
+      icon: Briefcase,
+      activeMatch: (p: string) => p.startsWith("/admin/jobs/active"),
+    },
+    {
+      id: "admin-requested",
+      label: "Requested Jobs",
+      href: "/admin/jobs/requested",
+      icon: Clock,
+      activeMatch: (p: string) => p.startsWith("/admin/jobs/requested"),
+    },
+    {
+      id: "admin-completed",
+      label: "Completed Jobs",
+      href: "/admin/jobs/completed",
+      icon: CheckCircle2,
+      activeMatch: (p: string) => p.startsWith("/admin/jobs/completed"),
+    },
+    {
+      id: "admin-users",
+      label: "Users Registry",
+      href: "/admin/users",
+      icon: UsersRound,
+      activeMatch: (p: string) => p.startsWith("/admin/users"),
+    },
+    {
+      id: "admin-stats",
+      label: "Platform Stats",
+      href: "/admin/statistics",
+      icon: BarChart3,
+      activeMatch: (p: string) => p.startsWith("/admin/statistics"),
+    },
+    {
+      id: "admin-posts",
+      label: "Posts Management",
+      href: "/admin/posts",
+      icon: Newspaper,
+      activeMatch: (p: string) => p.startsWith("/admin/posts"),
     },
   ];
 
@@ -440,6 +498,30 @@ export function DesktopSidePanel({
             })}
           </nav>
 
+          {profile?.is_admin && (
+            <nav className="flex w-full flex-col items-center gap-2 mt-2 pt-2 border-t border-border/40">
+              {adminItems.map((it) => {
+                const active = it.activeMatch(pathname);
+                const Icon = it.icon;
+                return (
+                  <Link
+                    key={it.href}
+                    to={it.href}
+                    className={cn(
+                      "relative flex h-11 w-11 items-center justify-center rounded-2xl transition-colors",
+                      "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      active && "bg-muted/75 text-foreground",
+                    )}
+                    aria-label={it.label}
+                    title={it.label}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" strokeWidth={2.4} />
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
           <div className="mt-auto flex w-full flex-col items-center gap-2 rounded-2xl bg-muted/20 py-2">
             <button
               type="button"
@@ -688,6 +770,39 @@ export function DesktopSidePanel({
               );
             })}
           </nav>
+
+          {profile?.is_admin && (
+            <div className="mt-4 pt-4 border-t border-border/40">
+              <div className="px-3 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/80">
+                  Administration
+                </span>
+              </div>
+              <nav className="flex w-full flex-col items-stretch gap-1">
+                {adminItems.map((it) => {
+                  const active = it.activeMatch(pathname);
+                  const Icon = it.icon;
+                  return (
+                    <Link
+                      key={it.href}
+                      to={it.href}
+                      className={cn(
+                        "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
+                        "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                        active && "bg-muted/70 text-foreground",
+                      )}
+                      title={it.label}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2.4} />
+                      <span className="text-[13px] font-bold leading-none tracking-tight">
+                        {it.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
 
           <div className="mt-auto pt-4">
             <div className="rounded-2xl bg-muted/20 p-2">

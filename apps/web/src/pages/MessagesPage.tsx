@@ -199,6 +199,7 @@ export default function MessagesPage() {
         .select("id, full_name, photo_url, role")
         .ilike("full_name", `%${userSearchQuery}%`)
         .neq("id", user?.id || "")
+        .eq("is_admin", false)
         .limit(10);
       if (!cancelled && data) {
         setUserSearchResults(data);
