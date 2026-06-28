@@ -1,6 +1,5 @@
-/**
- * Serve Open Graph HTML to link-preview crawlers for shared posts and requests.
- */
+import type { Context } from "@netlify/edge-functions";
+
 const BOT_UA =
   /bot|facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|applebot|Pinterest|Google-InspectionTool/i;
 
@@ -13,43 +12,12 @@ function parseShareId(raw: string | null): string | null {
   return match ? match[0].toLowerCase() : null;
 }
 
-function apiBaseUrl(): string | null {
-  const apiBase =
-    process.env.API_BASE_URL ||
-    process.env.OG_API_BASE_URL ||
-    process.env.VITE_API_BASE_URL;
-  return apiBase ? apiBase.replace(/\/$/, "") : null;
-}
-
-async function fetchOgHtml(apiPath: string): Promise<string | null> {
-  const apiBase = apiBaseUrl();
-  if (!apiBase) return null;
-
-  try {
-    const ogRes = await fetch(`${apiBase}${apiPath}`, {
-      headers: { Accept: "text/html" },
-    });
-    if (!ogRes.ok) return null;
-    return ogRes.text();
-  } catch {
-    return null;
-  }
-}
-
-function ogResponse(html: string): Response {
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
-    },
-  });
-}
-
-export default async function middleware(request: Request): Promise<Response | undefined> {
+export default async function handler(request: Request, context: Context) {
   const url = new URL(request.url);
   const ua = request.headers.get("user-agent") ?? "";
-  if (!BOT_UA.test(ua)) return undefined;
+  if (!BOT_UA.test(ua)) {
+    return context.next();
+  }
 
   let apiPath: string | null = null;
 
@@ -73,13 +41,40 @@ export default async function middleware(request: Request): Promise<Response | u
     }
   }
 
-  if (!apiPath) return undefined;
+  if (!apiPath) {
+    return context.next();
+  }
 
-  const html = await fetchOgHtml(apiPath);
-  if (!html) return undefined;
-  return ogResponse(html);
+  const apiBase =
+    Netlify.env.get("API_BASE_URL") ||
+    Netlify.env.get("OG_API_BASE_URL") ||
+    Netlify.env.get("VITE_API_BASE_URL");
+  if (!apiBase) {
+    return context.next();
+  }
+
+  try {
+    const ogUrl = `${apiBase.replace(/\/$/, "")}${apiPath}`;
+    const ogRes = await fetch(ogUrl, {
+      headers: { Accept: "text/html" },
+    });
+    if (!ogRes.ok) {
+      return context.next();
+    }
+
+    const html = await ogRes.text();
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
+    });
+  } catch {
+    return context.next();
+  }
 }
 
 export const config = {
-  matcher: ["/community/feed", "/posts/:path*", "/requests/:path*"],
+  path: ["/community/feed", "/posts/*", "/requests/*"],
 };

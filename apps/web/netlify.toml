@@ -8,5 +8,13 @@
   status = 200
 
 [[edge_functions]]
-  function = "og-profile-post"
+  function = "og-share"
   path = "/community/feed"
+
+[[edge_functions]]
+  function = "og-share"
+  path = "/posts/*"
+
+[[edge_functions]]
+  function = "og-share"
+  path = "/requests/*"

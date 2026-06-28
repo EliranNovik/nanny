@@ -14,7 +14,6 @@ import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
 import { parseJobRequestShareId } from "@/lib/jobRequestShare";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
-import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +45,11 @@ import {
   type DiscoverHomeCategoryId,
   OTHER_HELP_SUBCATEGORIES,
 } from "@/lib/serviceCategories";
-import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
+import {
+  FAVORITES_SIDE_PANEL_RESERVE_CLASS,
+  FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+  FavoritesPostsSidePanel,
+} from "@/components/discover/FavoritesPostsSidePanel";
 
 type FeedMainContentProps = {
   user: User | null;
@@ -79,6 +82,8 @@ type FeedMainContentProps = {
   otherSubFilter: string | null;
   onOtherSubFilterChange: (id: string | null) => void;
   onSidePanelPostOpen?: (postId: string) => void;
+  /** Guest global feed: grey main column + white cards on desktop light mode. */
+  guestDesktopLightLayout?: boolean;
 };
 
 function FeedMainContent({
@@ -106,6 +111,7 @@ function FeedMainContent({
   otherSubFilter,
   onOtherSubFilterChange,
   onSidePanelPostOpen,
+  guestDesktopLightLayout = false,
 }: FeedMainContentProps) {
   const { t } = useTranslation();
   const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
@@ -123,32 +129,44 @@ function FeedMainContent({
     <div
       className={cn(
         !focusPostId && !focusRequestId && "animate-in fade-in slide-in-from-bottom-4 duration-1000",
+        guestDesktopLightLayout && "md:flex md:w-full md:items-start",
       )}
     >
-      <CommunityFeedHeader
-        activeFilter={postTypeFilter}
-        onFilterChange={onPostTypeFilterChange}
-        onAddStory={openCompose}
-        viewer={profile}
-        viewerUserId={user?.id ?? null}
-        commentedFilterActive={commentedFilterActive}
-        onCommentedFilterChange={onCommentedFilterChange}
-        acceptedFilterActive={acceptedFilterActive}
-        onAcceptedFilterChange={onAcceptedFilterChange}
-        advancedFilters={advancedFilters}
-        onAdvancedFiltersChange={onAdvancedFiltersChange}
-        selectedAuthorFilterId={favoriteAuthorFilterId}
-        onAuthorFilterChange={onFavoriteAuthorFilterChange}
-        reserveSidePanelSpace
-        variant="global"
+      <div
         className={cn(
-          "mb-4 px-2 md:mb-5 md:mt-4 md:px-0",
-          expandDiscoverLayout ? "mt-0" : "mt-3",
+          guestDesktopLightLayout &&
+            "md:min-w-0 md:flex-1 md:bg-slate-100 md:px-6 md:pb-8 md:pt-6 lg:px-10 xl:px-12 dark:md:bg-transparent",
         )}
-      />
+      >
+        <CommunityFeedHeader
+          activeFilter={postTypeFilter}
+          onFilterChange={onPostTypeFilterChange}
+          onAddStory={openCompose}
+          viewer={profile}
+          viewerUserId={user?.id ?? null}
+          commentedFilterActive={commentedFilterActive}
+          onCommentedFilterChange={onCommentedFilterChange}
+          acceptedFilterActive={acceptedFilterActive}
+          onAcceptedFilterChange={onAcceptedFilterChange}
+          advancedFilters={advancedFilters}
+          onAdvancedFiltersChange={onAdvancedFiltersChange}
+          selectedAuthorFilterId={favoriteAuthorFilterId}
+          onAuthorFilterChange={onFavoriteAuthorFilterChange}
+          reserveSidePanelSpace={!guestDesktopLightLayout}
+          variant="global"
+          className={cn(
+            "mb-4 px-2 md:mb-5 md:mt-4 md:px-0",
+            expandDiscoverLayout ? "mt-0" : "mt-3",
+          )}
+        />
 
-      {showCategoryTabs && (
-        <div className={cn("mb-4 px-2 md:px-0", FAVORITES_SIDE_PANEL_RESERVE_CLASS)}>
+        {showCategoryTabs && (
+          <div
+            className={cn(
+              "mb-4 px-2 md:px-0",
+              !guestDesktopLightLayout && FAVORITES_SIDE_PANEL_RESERVE_CLASS,
+            )}
+          >
           <PublicPostsCategoryTabs
             activeId={categoryFilter}
             onSelect={(id) => {
@@ -224,32 +242,52 @@ function FeedMainContent({
               )}
             </div>
           )}
-        </div>
-      )}
+          </div>
+        )}
 
-      <ProfilePostsFeed
-        appearance="discover"
-        discoverSidePanel="favorites"
-        focusPostId={focusPostId}
-        focusRequestId={focusRequestId}
-        expandDiscoverLayout={expandDiscoverLayout}
-        filterPostTypeId={postTypeFilter === "all" ? null : postTypeFilter}
-        sidePanelPostTypeIds={sidePanelPostTypeIds}
-        filterCommentedOwnPosts={commentedFilterActive}
-        filterAcceptedRequests={acceptedFilterActive}
-        filterAuthorId={favoriteAuthorFilterId ?? undefined}
-        feedAdvancedFilters={advancedFilters}
-        excludeOwnJobRequests={false}
-        fixedFavoritesSidePanel
-        scrollToPostId={scrollToPostId}
-        onScrollToPostDone={onScrollToPostDone}
-        plainCards
-        globalFeedLayout
-        viewerLocation={viewerLocation}
-        filterCategoryId={categoryFilter}
-        filterOtherSubcategoryId={categoryFilter === "other_help" ? otherSubFilter : null}
-        onSidePanelPostOpen={onSidePanelPostOpen}
-      />
+        <ProfilePostsFeed
+          appearance="discover"
+          discoverSidePanel="favorites"
+          focusPostId={focusPostId}
+          focusRequestId={focusRequestId}
+          expandDiscoverLayout={expandDiscoverLayout}
+          filterPostTypeId={postTypeFilter === "all" ? null : postTypeFilter}
+          sidePanelPostTypeIds={sidePanelPostTypeIds}
+          filterCommentedOwnPosts={commentedFilterActive}
+          filterAcceptedRequests={acceptedFilterActive}
+          filterAuthorId={favoriteAuthorFilterId ?? undefined}
+          feedAdvancedFilters={advancedFilters}
+          excludeOwnJobRequests={false}
+          fixedFavoritesSidePanel={!guestDesktopLightLayout}
+          externalFavoritesSidePanel={guestDesktopLightLayout}
+          scrollToPostId={scrollToPostId}
+          onScrollToPostDone={onScrollToPostDone}
+          plainCards
+          globalFeedLayout
+          viewerLocation={viewerLocation}
+          filterCategoryId={categoryFilter}
+          filterOtherSubcategoryId={categoryFilter === "other_help" ? otherSubFilter : null}
+          onSidePanelPostOpen={onSidePanelPostOpen}
+          guestDesktopLightLayout={guestDesktopLightLayout}
+        />
+      </div>
+
+      {guestDesktopLightLayout ? (
+        <div
+          className={cn(
+            "hidden md:sticky md:top-6 md:flex md:max-h-[calc(100dvh-1.5rem)] md:min-h-0 md:flex-col md:shrink-0 md:self-start",
+            FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+            "md:bg-white md:px-5 md:pb-6 md:pt-6 lg:px-8 xl:px-10 dark:md:bg-background",
+          )}
+        >
+          <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            <FavoritesPostsSidePanel
+              postTypeIds={sidePanelPostTypeIds}
+              onPostOpen={onSidePanelPostOpen}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -266,6 +304,10 @@ export default function GlobalPostsPage() {
   const [scrollToPostId, setScrollToPostId] = useState<string | null>(() => {
     const raw = (location.state as CommunityFeedLocationState | null)?.scrollToPostId;
     return raw ? (parseProfilePostShareId(raw) ?? raw) : null;
+  });
+  const [scrollToRequestId] = useState<string | null>(() => {
+    const raw = (location.state as CommunityFeedLocationState | null)?.scrollToRequestId;
+    return raw ? (parseJobRequestShareId(raw) ?? raw) : null;
   });
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeInitialPostTypeId, setComposeInitialPostTypeId] = useState<string | null>(null);
@@ -293,12 +335,13 @@ export default function GlobalPostsPage() {
 
   const rawPostParam = searchParams.get("post");
   const rawRequestParam = searchParams.get("request");
-  const focusPostId = parseProfilePostShareId(rawPostParam);
-  const focusRequestId = parseJobRequestShareId(rawRequestParam);
+  const focusPostId = parseProfilePostShareId(rawPostParam) ?? scrollToPostId;
+  const focusRequestId = parseJobRequestShareId(rawRequestParam) ?? scrollToRequestId;
   const typeParam = searchParams.get("type");
 
   useEffect(() => {
-    if (!(location.state as CommunityFeedLocationState | null)?.scrollToPostId) return;
+    const state = location.state as CommunityFeedLocationState | null;
+    if (!state?.scrollToPostId && !state?.scrollToRequestId) return;
     navigate(
       { pathname: location.pathname, search: location.search },
       { replace: true, state: null },
@@ -442,69 +485,43 @@ export default function GlobalPostsPage() {
         />
       ) : null}
 
-      {user ? (
-        <div className="app-desktop-shell flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6 pt-2 md:px-4 md:py-8 md:ps-8 lg:ps-10">
-          <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none">
-            <FeedMainContent
-              user={user}
-              profile={profile}
-              focusPostId={focusPostId}
-              focusRequestId={focusRequestId}
-              openCompose={openCompose}
-              postTypeFilter={postTypeFilter}
-              onPostTypeFilterChange={handlePostTypeFilterChange}
-              commentedFilterActive={commentedFilterActive}
-              onCommentedFilterChange={setCommentedFilterActive}
-              acceptedFilterActive={acceptedFilterActive}
-              onAcceptedFilterChange={setAcceptedFilterActive}
-              advancedFilters={advancedFilters}
-              onAdvancedFiltersChange={setAdvancedFilters}
-              favoriteAuthorFilterId={favoriteAuthorFilterId}
-              onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
-              scrollToPostId={scrollToPostId}
-              onScrollToPostDone={() => setScrollToPostId(null)}
-              viewerLocation={viewerLocation}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              otherSubFilter={otherSubFilter}
-              onOtherSubFilterChange={setOtherSubFilter}
-              onSidePanelPostOpen={handleSidePanelPostOpen}
-            />
-          </div>
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6",
+          user
+            ? "app-desktop-shell md:px-4 md:py-8 md:ps-8 lg:ps-10 pt-2"
+            : "w-full max-md:pt-[4.25rem] md:px-0 md:pb-0 md:pt-0",
+        )}
+      >
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-visible px-0">
+          <FeedMainContent
+            user={user}
+            profile={profile}
+            focusPostId={focusPostId}
+            focusRequestId={focusRequestId}
+            openCompose={openCompose}
+            postTypeFilter={postTypeFilter}
+            onPostTypeFilterChange={handlePostTypeFilterChange}
+            commentedFilterActive={commentedFilterActive}
+            onCommentedFilterChange={setCommentedFilterActive}
+            acceptedFilterActive={acceptedFilterActive}
+            onAcceptedFilterChange={setAcceptedFilterActive}
+            advancedFilters={advancedFilters}
+            onAdvancedFiltersChange={setAdvancedFilters}
+            favoriteAuthorFilterId={favoriteAuthorFilterId}
+            onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
+            scrollToPostId={scrollToPostId}
+            onScrollToPostDone={() => setScrollToPostId(null)}
+            viewerLocation={viewerLocation}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            otherSubFilter={otherSubFilter}
+            onOtherSubFilterChange={setOtherSubFilter}
+            onSidePanelPostOpen={handleSidePanelPostOpen}
+            guestDesktopLightLayout={!user}
+          />
         </div>
-      ) : (
-        <div className="flex w-full items-start pb-6 pt-[4.25rem] md:pt-32">
-          <GuestCommunityFeedAside />
-          <div className="min-w-0 flex-1 px-0 md:px-6 lg:px-8">
-            <FeedMainContent
-              user={user}
-              profile={profile}
-              focusPostId={focusPostId}
-              focusRequestId={focusRequestId}
-              openCompose={openCompose}
-              expandDiscoverLayout
-              postTypeFilter={postTypeFilter}
-              onPostTypeFilterChange={handlePostTypeFilterChange}
-              commentedFilterActive={commentedFilterActive}
-              onCommentedFilterChange={setCommentedFilterActive}
-              acceptedFilterActive={acceptedFilterActive}
-              onAcceptedFilterChange={setAcceptedFilterActive}
-              advancedFilters={advancedFilters}
-              onAdvancedFiltersChange={setAdvancedFilters}
-              favoriteAuthorFilterId={favoriteAuthorFilterId}
-              onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
-              scrollToPostId={scrollToPostId}
-              onScrollToPostDone={() => setScrollToPostId(null)}
-              viewerLocation={viewerLocation}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              otherSubFilter={otherSubFilter}
-              onOtherSubFilterChange={setOtherSubFilter}
-              onSidePanelPostOpen={handleSidePanelPostOpen}
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Guest mobile: "What is tebnu?" bottom sheet */}
       {!user && aboutOpen ? (

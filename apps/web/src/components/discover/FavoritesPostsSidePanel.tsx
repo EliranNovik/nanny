@@ -581,7 +581,7 @@ export function FavoritesPostsSidePanel({
     postTypeIds,
   );
 
-  if (!user?.id) return null;
+  const includePersonalSections = Boolean(user?.id);
 
   const openPost = (postId: string) => {
     if (onPostOpen) {
@@ -611,6 +611,7 @@ export function FavoritesPostsSidePanel({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {renderPanelSections({
             t,
+            includePersonalSections,
             favPosts,
             favLoading,
             hasFav,
@@ -641,6 +642,7 @@ export function FavoritesPostsSidePanel({
       <div className="pr-1">
         {renderPanelSections({
           t,
+          includePersonalSections,
           favPosts,
           favLoading,
           hasFav,
@@ -662,6 +664,7 @@ export function FavoritesPostsSidePanel({
 
 function renderPanelSections({
   t,
+  includePersonalSections,
   favPosts,
   favLoading,
   hasFav,
@@ -677,6 +680,7 @@ function renderPanelSections({
   openPost,
 }: {
   t: ReturnType<typeof useTranslation>["t"];
+  includePersonalSections: boolean;
   favPosts: FavoritePostRow[] | undefined;
   favLoading: boolean;
   hasFav: boolean;
@@ -693,7 +697,7 @@ function renderPanelSections({
 }) {
   return (
     <>
-        {/* Section 1: From your favorites */}
+        {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
             <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
@@ -725,6 +729,7 @@ function renderPanelSections({
             )}
           </div>
         </section>
+        ) : null}
 
         {/* Section 2: Most liked */}
         <section className={SIDE_PANEL_SECTION_CLASS}>
@@ -794,7 +799,7 @@ function renderPanelSections({
           </div>
         </section>
 
-        {/* Section 4: Your community posts */}
+        {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
             <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
@@ -826,6 +831,7 @@ function renderPanelSections({
             )}
           </div>
         </section>
+        ) : null}
     </>
   );
 }

@@ -566,8 +566,18 @@
     }
 
     /* Guest community feed: no desktop nav gutter — sidebar slot is used in-page. */
-    .app-content-below-fixed-header:has([data-community-feed-guest]) .md\:pl-\[220px\] {
-      padding-left: 0;
+    .app-content-below-fixed-header:has([data-community-feed-guest]) .app-mobile-scroll-top-clearance {
+      padding-inline-start: 0;
+    }
+
+    /* Guest community feed: hide page + panel scrollbars (scroll still works). */
+    body:has([data-community-feed-guest]) {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    body:has([data-community-feed-guest])::-webkit-scrollbar {
+      display: none;
     }
 
     /* Guest public profile: header is in-flow, and sidebar gutter should be removed. */

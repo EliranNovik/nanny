@@ -4,5 +4,29 @@
       "source": "/((?!assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/p/:id",
+      "destination": "/posts/:id",
+      "permanent": true
+    },
+    {
+      "source": "/r/:id",
+      "destination": "/requests/:id",
+      "permanent": true
+    },
+    {
+      "source": "/community/feed",
+      "has": [{ "type": "query", "key": "post", "value": "(?<id>.*)" }],
+      "destination": "/posts/:id",
+      "permanent": true
+    },
+    {
+      "source": "/community/feed",
+      "has": [{ "type": "query", "key": "request", "value": "(?<id>.*)" }],
+      "destination": "/requests/:id",
+      "permanent": true
+    }
   ]
 }

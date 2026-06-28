@@ -1,9 +1,16 @@
-import { GLOBAL_POSTS_PATH, parseProfilePostShareId, shortenPostCaption } from "@/lib/profilePostShare";
+import {
+  GLOBAL_POSTS_PATH,
+  parseProfilePostShareId,
+  shortenPostCaption,
+} from "@/lib/profilePostShare";
+import { formatShareMessageText } from "@/lib/shareLandingMeta";
 
 export type JobRequestShareInput = {
   jobId: string;
   authorName?: string | null;
   caption?: string | null;
+  title?: string | null;
+  body?: string | null;
 };
 
 export type JobRequestSharePayload = {
@@ -12,14 +19,22 @@ export type JobRequestSharePayload = {
   text: string;
 };
 
+/** Canonical public share path for an open help request. */
+export function globalJobRequestSharePath(jobId: string): string {
+  const cleanId = parseProfilePostShareId(jobId) ?? jobId.trim();
+  return `/requests/${encodeURIComponent(cleanId)}`;
+}
+
+/** In-app path to open a help request focused in the global feed. */
 export function globalJobRequestFeedPath(jobId: string): string {
   const cleanId = parseProfilePostShareId(jobId) ?? jobId.trim();
   return `${GLOBAL_POSTS_PATH}?request=${encodeURIComponent(cleanId)}`;
 }
 
+/** Canonical share URL for a help request (matches mobile app). */
 export function globalJobRequestShareUrl(jobId: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${globalJobRequestFeedPath(jobId)}`;
+  return `${origin}${globalJobRequestSharePath(jobId)}`;
 }
 
 export function parseJobRequestShareId(raw: string | null | undefined): string | null {
@@ -31,11 +46,20 @@ export function buildJobRequestSharePayload(
 ): JobRequestSharePayload {
   const url = globalJobRequestShareUrl(input.jobId);
   const authorName = input.authorName?.trim() || "Member";
-  const caption = shortenPostCaption(input.caption);
-  const title = caption
-    ? `${authorName} needs help on tebnu`
-    : `${authorName} posted a help request on tebnu`;
-  const text = caption || `See this help request from ${authorName} on tebnu`;
+  const title =
+    input.title?.trim() ||
+    shortenPostCaption(input.caption) ||
+    `${authorName} needs help on tebnu`;
+  const body =
+    input.body?.trim() ||
+    shortenPostCaption(input.caption, 500) ||
+    "";
+  const text = formatShareMessageText({
+    title,
+    authorName,
+    body,
+    url,
+  });
   return { url, title, text };
 }
 

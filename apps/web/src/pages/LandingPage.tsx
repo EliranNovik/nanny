@@ -18,6 +18,7 @@ import {
   Loader2,
   Heart,
   LifeBuoy,
+  Radio,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
@@ -27,6 +28,7 @@ import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { useTheme } from "@/context/ThemeContext";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
@@ -283,6 +285,10 @@ export default function LandingPage() {
     navigate("/onboarding?role=client");
   };
 
+  const handleCommunityLive = () => {
+    navigate(GLOBAL_POSTS_PATH);
+  };
+
   return (
     <div
       className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-slate-50/50 text-slate-900 max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
@@ -368,6 +374,16 @@ export default function LandingPage() {
                 </span>
                 <span>Fast response</span>
               </p>
+              <Button
+                type="button"
+                onClick={handleCommunityLive}
+                className="mt-2 flex h-16 w-full items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/95 px-8 text-lg font-black tracking-tight text-slate-900 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)] transition-all hover:bg-white hover:scale-[1.02] active:scale-[0.98] md:mt-4 md:h-[4.25rem] md:w-auto md:min-w-[320px] md:text-xl"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-md">
+                  <Radio className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                </span>
+                Community Live
+              </Button>
             </div>
 
             <div
@@ -449,6 +465,14 @@ export default function LandingPage() {
 
         {/* Mobile Hero CTAs - below the background image */}
         <div className="px-6 py-8 bg-white border-b border-slate-100 md:hidden">
+          <Button
+            type="button"
+            onClick={handleCommunityLive}
+            className="mb-4 flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-lg font-black text-white shadow-lg shadow-orange-500/25 hover:from-orange-600 hover:to-red-700 active:scale-[0.98] transition-all"
+          >
+            <Radio className="h-6 w-6 shrink-0" strokeWidth={2.5} aria-hidden />
+            Community Live
+          </Button>
           <div ref={mobileHeroButtonsRef} className="flex flex-row gap-3">
             <Button
               onClick={handleHiringHelper}

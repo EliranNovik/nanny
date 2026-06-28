@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "94850081749",
+    "project_id": "tebnu-3d438",
+    "storage_bucket": "tebnu-3d438.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94850081749:android:9668ece18859381b74d35c",
+        "android_client_info": {
+          "package_name": "com.tebnu.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBz_lKPSPeXQDu-aKdEvS8gsDE0wx_HFeA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -25,6 +25,17 @@ PORT=4000
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 CORS_ORIGIN=http://localhost:5173
+
+# Push notifications (FCM) — see docs/PUSH_NOTIFICATIONS.md
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+PUSH_CRON_SECRET=your-long-random-secret
+
+# In-process scheduler (default on when PUSH_CRON_SECRET is set). Set false if using external cron only.
+PUSH_CRON_ENABLED=true
+# Interval in ms (default 120000 = 2 minutes)
+PUSH_CRON_INTERVAL_MS=120000
 ```
 
 ## File Structure

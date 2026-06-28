@@ -13,6 +13,7 @@ import {
   User,
   Briefcase,
   Palette,
+  UserCircle,
   AlertCircle,
   Image as ImageIcon,
   Heart,
@@ -50,6 +51,7 @@ export default function ClientProfileHub() {
             <ProfileMenuRow to="/client/profile/services" icon={Briefcase} label={t("profile.servicesArea")} />
             <ProfileLanguageMenuRow to="/client/profile/language" />
             <ProfileMenuRow to="/client/profile/appearance" icon={Palette} label={t("profile.appearance")} />
+            <ProfileMenuRow to="/client/profile/account" icon={UserCircle} label={t("profile.myAccount")} />
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-3 pb-4">

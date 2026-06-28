@@ -4,6 +4,7 @@ import {
   scrollMetrics,
   warnProfilePostDeepLink,
 } from "@/lib/profilePostDeepLinkDebug";
+import { formatShareMessageText } from "@/lib/shareLandingMeta";
 
 export const GLOBAL_POSTS_PATH = "/community/feed";
 
@@ -13,7 +14,7 @@ const PROFILE_POST_UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
 
 /**
- * Extract a profile post UUID from a `?post=` value.
+ * Extract a profile post UUID from a share id or legacy `?post=` value.
  * Messengers sometimes append caption text to the link — take the first UUID only.
  */
 export function parseProfilePostShareId(
@@ -24,17 +25,23 @@ export function parseProfilePostShareId(
   return match ? match[0].toLowerCase() : null;
 }
 
-/** In-app path for a profile post on the global community feed. */
+/** Canonical public share path for a profile / community post. */
+export function globalProfilePostSharePath(postId: string): string {
+  const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
+  return `/posts/${encodeURIComponent(cleanId)}`;
+}
+
+/** In-app path to open a profile post focused in the global feed. */
 export function globalProfilePostFeedPath(postId: string): string {
   const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
   return `${GLOBAL_POSTS_PATH}?post=${encodeURIComponent(cleanId)}`;
 }
 
-/** Canonical deep link for a profile post on the global community feed. */
+/** Canonical share URL for a profile post (matches mobile app). */
 export function globalProfilePostShareUrl(postId: string): string {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${globalProfilePostFeedPath(postId)}`;
+  return `${origin}${globalProfilePostSharePath(postId)}`;
 }
 
 /** Plain-text caption trimmed for share sheets and link previews. */
@@ -53,6 +60,8 @@ export type ProfilePostShareInput = {
   postId: string;
   authorName?: string | null;
   caption?: string | null;
+  title?: string | null;
+  body?: string | null;
   mediaUrl?: string | null;
   mediaType?: "image" | "video" | null;
 };
@@ -81,11 +90,21 @@ export async function buildProfilePostSharePayload(
   input: ProfilePostShareInput,
 ): Promise<ProfilePostSharePayload> {
   const url = globalProfilePostShareUrl(input.postId);
-  const authorName = input.authorName?.trim() || "User";
-  const caption = shortenPostCaption(input.caption);
-  const title = caption ? `${authorName} on tebnu` : `${authorName} shared a post on tebnu`;
-  const text =
-    caption || `See ${authorName}'s post on tebnu`;
+  const authorName = input.authorName?.trim() || "Member";
+  const title =
+    input.title?.trim() ||
+    shortenPostCaption(input.caption) ||
+    `${authorName} on tebnu`;
+  const body =
+    input.body?.trim() ||
+    shortenPostCaption(input.caption, 500) ||
+    "";
+  const text = formatShareMessageText({
+    title,
+    authorName,
+    body,
+    url,
+  });
 
   const payload: ProfilePostSharePayload = { url, title, text };
 

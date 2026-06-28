@@ -20,6 +20,7 @@ import {
   Shield,
   DollarSign,
   Palette,
+  UserCircle,
   Image as ImageIcon,
   Activity,
   CalendarDays,
@@ -78,6 +79,7 @@ export default function FreelancerProfileHub() {
               <ProfileMenuRow to="/freelancer/profile/rates" icon={DollarSign} label={t("profile.hourlyRates")} />
               <ProfileLanguageMenuRow to="/freelancer/profile/language" />
               <ProfileMenuRow to="/freelancer/profile/appearance" icon={Palette} label={t("profile.appearance")} />
+              <ProfileMenuRow to="/freelancer/profile/account" icon={UserCircle} label={t("profile.myAccount")} />
             </div>
           </div>
 

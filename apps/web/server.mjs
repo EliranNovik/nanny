@@ -1,7 +1,6 @@
 /**
  * Production server for Render (and other Node hosts).
- * Serves the Vite build and returns Open Graph HTML to link-preview crawlers
- * for `/community/feed?post={uuid}`.
+ * Serves OG HTML to crawlers for shared post/request URLs.
  */
 import express from "express";
 import path from "path";
@@ -16,7 +15,7 @@ const BOT_UA =
 const PROFILE_POST_UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
 
-function parsePostId(raw) {
+function parseShareId(raw) {
   if (!raw || typeof raw !== "string") return null;
   const match = raw.trim().match(PROFILE_POST_UUID_RE);
   return match ? match[0].toLowerCase() : null;
@@ -31,12 +30,9 @@ function apiBaseUrl() {
   ).replace(/\/$/, "");
 }
 
-const app = express();
-
-app.get("/community/feed", async (req, res, next) => {
-  const postId = parsePostId(req.query.post);
+async function maybeServeOg(req, res, next, apiPath) {
   const ua = req.get("user-agent") ?? "";
-  if (!postId || !BOT_UA.test(ua)) {
+  if (!BOT_UA.test(ua)) {
     next();
     return;
   }
@@ -48,10 +44,9 @@ app.get("/community/feed", async (req, res, next) => {
   }
 
   try {
-    const ogRes = await fetch(
-      `${apiBase}/api/og/profile-post/${encodeURIComponent(postId)}`,
-      { headers: { Accept: "text/html" } },
-    );
+    const ogRes = await fetch(`${apiBase}${apiPath}`, {
+      headers: { Accept: "text/html" },
+    });
     if (!ogRes.ok) {
       next();
       return;
@@ -63,6 +58,60 @@ app.get("/community/feed", async (req, res, next) => {
   } catch {
     next();
   }
+}
+
+const app = express();
+
+app.get("/posts/:id", (req, res, next) => {
+  const postId = parseShareId(req.params.id);
+  if (!postId) {
+    next();
+    return;
+  }
+  void maybeServeOg(
+    req,
+    res,
+    next,
+    `/api/og/profile-post/${encodeURIComponent(postId)}`,
+  );
+});
+
+app.get("/requests/:id", (req, res, next) => {
+  const requestId = parseShareId(req.params.id);
+  if (!requestId) {
+    next();
+    return;
+  }
+  void maybeServeOg(
+    req,
+    res,
+    next,
+    `/api/og/job-request/${encodeURIComponent(requestId)}`,
+  );
+});
+
+app.get("/community/feed", (req, res, next) => {
+  const postId = parseShareId(req.query.post);
+  const requestId = parseShareId(req.query.request);
+  if (postId) {
+    void maybeServeOg(
+      req,
+      res,
+      next,
+      `/api/og/profile-post/${encodeURIComponent(postId)}`,
+    );
+    return;
+  }
+  if (requestId) {
+    void maybeServeOg(
+      req,
+      res,
+      next,
+      `/api/og/job-request/${encodeURIComponent(requestId)}`,
+    );
+    return;
+  }
+  next();
 });
 
 app.use(

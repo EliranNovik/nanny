@@ -17,14 +17,20 @@ export function parseCommunityFeedTypeFilter(
   return FEED_TYPE_FILTERS.has(normalized) ? normalized : null;
 }
 
-/** Router location state: scroll to a post after opening the community feed. */
+/** Router location state: scroll to a post or request after opening the community feed. */
 export type CommunityFeedLocationState = {
   scrollToPostId?: string;
+  scrollToRequestId?: string;
 };
 
 export function communityFeedScrollState(postId: string): CommunityFeedLocationState {
   const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
   return { scrollToPostId: cleanId };
+}
+
+export function communityFeedRequestScrollState(requestId: string): CommunityFeedLocationState {
+  const cleanId = parseProfilePostShareId(requestId) ?? requestId.trim();
+  return { scrollToRequestId: cleanId };
 }
 
 export function globalCommunityFeedPath(opts?: {

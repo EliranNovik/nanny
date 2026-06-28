@@ -1,75 +1,67 @@
 import { supabaseAdmin } from "../supabase";
+import {
+  brandMarkImageUrl,
+  buildShareOgHtml,
+  parseGeneratedCopy,
+  parseShareUuid,
+  publicProfileMediaRenderUrl,
+  resolveShareDescription,
+  resolveShareTitle,
+  type ShareOgMeta,
+  webAppOrigin,
+} from "./shareOgCommon";
 
-const PROFILE_POST_UUID_RE =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+export {
+  buildShareOgHtml,
+  parseShareUuid as parseProfilePostShareId,
+} from "./shareOgCommon";
 
-const PUBLIC_PROFILE_MEDIA_BUCKET = "public-profile-media";
-const DEFAULT_CAPTION_MAX = 140;
-
-export function parseProfilePostShareId(
-  raw: string | null | undefined,
-): string | null {
-  if (!raw) return null;
-  const match = raw.trim().match(PROFILE_POST_UUID_RE);
-  return match ? match[0].toLowerCase() : null;
-}
-
-function shortenPostCaption(
-  caption: string | null | undefined,
-  maxLen = DEFAULT_CAPTION_MAX,
-): string {
-  const trimmed = caption?.trim();
-  if (!trimmed) return "";
-  const normalized = trimmed.replace(/\s+/g, " ");
-  if (normalized.length <= maxLen) return normalized;
-  return `${normalized.slice(0, maxLen - 1).trimEnd()}…`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function encodeStoragePath(storagePath: string): string {
-  return storagePath
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-}
-
-function publicProfileMediaOgImageUrl(storagePath: string): string {
-  const supabaseUrl = (process.env.SUPABASE_URL ?? "").replace(/\/$/, "");
-  const encodedPath = encodeStoragePath(storagePath);
-  return `${supabaseUrl}/storage/v1/render/image/public/${PUBLIC_PROFILE_MEDIA_BUCKET}/${encodedPath}?width=1200&quality=85`;
-}
-
-function webAppOrigin(): string {
-  const raw = process.env.WEB_APP_ORIGIN || process.env.CORS_ORIGIN || "";
-  const first = raw.split(",")[0]?.trim() || "";
-  return first.replace(/\/$/, "");
-}
-
-export type ProfilePostOgMeta = {
-  postId: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  canonicalUrl: string;
+type MediaItem = {
+  storage_path?: string;
+  media_type?: string;
 };
+
+function firstOgImagePath(post: {
+  media_type: string | null;
+  storage_path: string | null;
+  post_metadata: unknown;
+}): string | null {
+  if (post.media_type === "image" && post.storage_path) {
+    return post.storage_path;
+  }
+
+  const meta = post.post_metadata as Record<string, unknown> | null;
+  const items = meta?.media_items;
+  if (Array.isArray(items)) {
+    for (const raw of items) {
+      if (!raw || typeof raw !== "object") continue;
+      const item = raw as MediaItem;
+      if (item.media_type === "image" && item.storage_path) {
+        return item.storage_path;
+      }
+    }
+    for (const raw of items) {
+      if (!raw || typeof raw !== "object") continue;
+      const item = raw as MediaItem;
+      if (item.storage_path) return item.storage_path;
+    }
+  }
+
+  if (post.storage_path) return post.storage_path;
+  return null;
+}
 
 export async function fetchProfilePostOgMeta(
   postId: string,
-): Promise<ProfilePostOgMeta | null> {
-  const cleanId = parseProfilePostShareId(postId);
+): Promise<ShareOgMeta | null> {
+  const cleanId = parseShareUuid(postId);
   if (!cleanId) return null;
 
   const { data: post, error } = await supabaseAdmin
     .from("profile_posts")
-    .select("id, author_id, caption, media_type, storage_path")
+    .select(
+      "id, author_id, caption, created_at, post_type_id, post_metadata, ai_generated_copy, media_type, storage_path",
+    )
     .eq("id", cleanId)
     .maybeSingle();
 
@@ -81,67 +73,45 @@ export async function fetchProfilePostOgMeta(
     .eq("id", post.author_id as string)
     .maybeSingle();
 
-  const authorName =
-    (author?.full_name as string | null)?.trim() || "User";
-  const caption = shortenPostCaption(post.caption as string | null);
-  const title = caption
-    ? `${authorName} on tebnu`
-    : `${authorName} shared a post on tebnu`;
-  const description =
-    caption || `See ${authorName}'s post on tebnu`;
+  const authorName = (author?.full_name as string | null)?.trim() || "Member";
+  const generatedCopy = parseGeneratedCopy(post.ai_generated_copy);
+  const postMetadata = (post.post_metadata as Record<string, unknown> | null) ?? null;
+  const title = resolveShareTitle({
+    generatedCopy,
+    postTypeId: post.post_type_id as string | null,
+    postMetadata,
+    caption: post.caption as string | null,
+  });
+  const description = resolveShareDescription({
+    generatedCopy,
+    caption: post.caption as string | null,
+    title,
+  });
 
   const origin = webAppOrigin();
-  const fallbackImage = origin ? `${origin}/brand-mark.png` : "";
-
-  let imageUrl = fallbackImage;
-  const storagePath = post.storage_path as string | null;
-  const mediaType = post.media_type as "image" | "video" | null;
-
-  if (storagePath && mediaType === "image") {
-    imageUrl = publicProfileMediaOgImageUrl(storagePath);
-  }
+  const imagePath = firstOgImagePath({
+    media_type: post.media_type as string | null,
+    storage_path: post.storage_path as string | null,
+    post_metadata: post.post_metadata,
+  });
+  const imageUrl = imagePath
+    ? publicProfileMediaRenderUrl(imagePath)
+    : brandMarkImageUrl(origin);
 
   const canonicalUrl = origin
-    ? `${origin}/community/feed?post=${encodeURIComponent(cleanId)}`
-    : `/community/feed?post=${encodeURIComponent(cleanId)}`;
+    ? `${origin}/posts/${encodeURIComponent(cleanId)}`
+    : `/posts/${encodeURIComponent(cleanId)}`;
 
   return {
-    postId: cleanId,
+    id: cleanId,
     title,
     description,
+    authorName,
     imageUrl,
     canonicalUrl,
   };
 }
 
-export function buildProfilePostOgHtml(meta: ProfilePostOgMeta): string {
-  const title = escapeHtml(meta.title);
-  const description = escapeHtml(meta.description);
-  const imageUrl = escapeHtml(meta.imageUrl);
-  const canonicalUrl = escapeHtml(meta.canonicalUrl);
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${title}</title>
-  <meta name="description" content="${description}" />
-  <meta property="og:type" content="article" />
-  <meta property="og:site_name" content="tebnu" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${description}" />
-  <meta property="og:image" content="${imageUrl}" />
-  <meta property="og:url" content="${canonicalUrl}" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${title}" />
-  <meta name="twitter:description" content="${description}" />
-  <meta name="twitter:image" content="${imageUrl}" />
-  <link rel="canonical" href="${canonicalUrl}" />
-  <meta http-equiv="refresh" content="0;url=${canonicalUrl}" />
-</head>
-<body>
-  <p><a href="${canonicalUrl}">View post on tebnu</a></p>
-</body>
-</html>`;
+export function buildProfilePostOgHtml(meta: ShareOgMeta): string {
+  return buildShareOgHtml(meta);
 }

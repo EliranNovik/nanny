@@ -3229,6 +3229,7 @@ type PostCardProps = {
   discoverWideLayout?: boolean;
   plainCard?: boolean;
   globalFeedLayout?: boolean;
+  guestDesktopLightLayout?: boolean;
   viewerLocation?: ViewerLocation | null;
 };
 
@@ -3261,6 +3262,7 @@ function PostCard({
   discoverWideLayout = false,
   plainCard = false,
   globalFeedLayout = false,
+  guestDesktopLightLayout = false,
   viewerLocation = null,
 }: {
   post: FeedPost;
@@ -3279,6 +3281,7 @@ function PostCard({
   discoverWideLayout?: boolean;
   plainCard?: boolean;
   globalFeedLayout?: boolean;
+  guestDesktopLightLayout?: boolean;
   viewerLocation?: ViewerLocation | null;
 }) {
   const { t, i18n } = useTranslation();
@@ -3840,69 +3843,6 @@ function PostCard({
     }
   }
 
-  async function handleShare() {
-    if (post.source !== "post" && post.source !== "job_request") return;
-
-    const result =
-      post.source === "job_request"
-        ? await shareJobRequest({
-            jobId: post.id,
-            authorName,
-            caption: effectiveCaption,
-          })
-        : await shareProfilePost({
-            postId: post.id,
-            authorName: authorName,
-            caption: post.caption,
-            mediaUrl,
-            mediaType: post.media_type,
-          });
-
-    if (result === "cancelled") return;
-    if (result === "copied") {
-      addToast({
-        title: "Link copied",
-        description:
-          post.source === "job_request"
-            ? "Paste anywhere to share this request."
-            : "Paste anywhere to share this post.",
-        variant: "success",
-      });
-    } else if (result === "failed") {
-      addToast({
-        title: "Could not share",
-        description: "Try copying the page URL manually.",
-        variant: "error",
-      });
-      return;
-    }
-
-    if (!currentUserId) return;
-
-    if (post.source === "job_request") {
-      const { error } = await supabase.from("job_request_shares").insert({
-        job_id: post.id,
-        user_id: currentUserId,
-      });
-      if (error) {
-        console.error("[PostCard] job_request_shares insert", error);
-        return;
-      }
-      void refreshPostShareStats(post.id, "job_request");
-      return;
-    }
-
-    const { error } = await supabase.from("profile_post_shares").insert({
-      post_id: post.id,
-      user_id: currentUserId,
-    });
-    if (error) {
-      console.error("[PostCard] profile_post_shares insert", error);
-      return;
-    }
-    void refreshPostShareStats(post.id, "post");
-  }
-
   async function handleDelete() {
     if (!currentUserId || post.source !== "post") return;
     setDeleting(true);
@@ -4008,6 +3948,80 @@ function PostCard({
     () => feedPostDescription(generatedCopy, effectiveCaption, postTitle),
     [effectiveCaption, generatedCopy, postTitle],
   );
+
+  async function handleShare() {
+    if (post.source !== "post" && post.source !== "job_request") return;
+
+    const shareTitle =
+      postTitle ||
+      effectiveCaption ||
+      (post.source === "job_request" ? "Help request on tebnu" : "Post on tebnu");
+    const shareBody = postDescription || effectiveCaption;
+
+    const result =
+      post.source === "job_request"
+        ? await shareJobRequest({
+            jobId: post.id,
+            authorName,
+            caption: effectiveCaption,
+            title: shareTitle,
+            body: shareBody,
+          })
+        : await shareProfilePost({
+            postId: post.id,
+            authorName,
+            caption: post.caption,
+            title: shareTitle,
+            body: shareBody,
+            mediaUrl,
+            mediaType: post.media_type,
+          });
+
+    if (result === "cancelled") return;
+    if (result === "copied") {
+      addToast({
+        title: "Link copied",
+        description:
+          post.source === "job_request"
+            ? "Paste anywhere to share this request."
+            : "Paste anywhere to share this post.",
+        variant: "success",
+      });
+    } else if (result === "failed") {
+      addToast({
+        title: "Could not share",
+        description: "Try copying the page URL manually.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!currentUserId) return;
+
+    if (post.source === "job_request") {
+      const { error } = await supabase.from("job_request_shares").insert({
+        job_id: post.id,
+        user_id: currentUserId,
+      });
+      if (error) {
+        console.error("[PostCard] job_request_shares insert", error);
+        return;
+      }
+      void refreshPostShareStats(post.id, "job_request");
+      return;
+    }
+
+    const { error } = await supabase.from("profile_post_shares").insert({
+      post_id: post.id,
+      user_id: currentUserId,
+    });
+    if (error) {
+      console.error("[PostCard] profile_post_shares insert", error);
+      return;
+    }
+    void refreshPostShareStats(post.id, "post");
+  }
+
   const globalTextOnlyBody = useMemo(() => {
     const fullCaption = effectiveCaption.trim();
     if (
@@ -4397,7 +4411,12 @@ function PostCard({
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
         isGlobalFeed
-          ? cn("rounded-2xl", globalFeedCardSurfaceClass)
+          ? cn(
+              "rounded-2xl",
+              guestDesktopLightLayout
+                ? "bg-white shadow-sm ring-1 ring-slate-200/80 md:shadow-md dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
+                : globalFeedCardSurfaceClass,
+            )
           : isDiscover || isPlainCard
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
           : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
@@ -5580,6 +5599,10 @@ interface ProfilePostsFeedProps {
   excludeOwnJobRequests?: boolean;
   /** Unified community feed card layout (Global Posts page). */
   globalFeedLayout?: boolean;
+  /** Guest global feed on desktop light mode: grey feed column + white post cards. */
+  guestDesktopLightLayout?: boolean;
+  /** Side panel rendered by the page wrapper (guest desktop layout). */
+  externalFavoritesSidePanel?: boolean;
   /** Viewer location for distance labels on global feed cards. */
   viewerLocation?: ViewerLocation | null;
   /** Filter posts by job / service category. */
@@ -5615,6 +5638,8 @@ export function ProfilePostsFeed({
   feedAdvancedFilters,
   excludeOwnJobRequests,
   globalFeedLayout = false,
+  guestDesktopLightLayout = false,
+  externalFavoritesSidePanel = false,
   viewerLocation = null,
   filterCategoryId = null,
   filterOtherSubcategoryId = null,
@@ -6858,8 +6883,21 @@ export function ProfilePostsFeed({
         // Two-column layout for the whole feed: posts stack on the left,
         // sidebar spans the full feed height on the right (no extra gaps
         // between posts when the sidebar is long).
-        <div className="md:flex md:items-start md:justify-start md:gap-5 md:pr-2 lg:gap-8 lg:pr-4 xl:gap-10 xl:pr-8">
-          <div className="min-w-0 space-y-7 md:flex-1 md:space-y-8">
+        <div
+          className={cn(
+            "md:flex md:items-start md:justify-start",
+            !externalFavoritesSidePanel &&
+              "md:gap-5 md:pr-2 lg:gap-8 lg:pr-4 xl:gap-10 xl:pr-8",
+          )}
+        >
+          <div
+            className={cn(
+              "min-w-0 space-y-7 md:flex-1 md:space-y-8",
+              guestDesktopLightLayout &&
+                !externalFavoritesSidePanel &&
+                "md:rounded-[1.75rem] md:bg-slate-100 md:p-4 md:pb-6 dark:md:bg-transparent dark:md:p-0",
+            )}
+          >
             {displayPosts.map((post) => (
               <FeedPostItem
                 key={post.id}
@@ -6877,15 +6915,18 @@ export function ProfilePostsFeed({
                 isFocused={isFocusedFeedItem(post)}
                 plainCard={plainCards}
                 globalFeedLayout={globalFeedLayout}
+                guestDesktopLightLayout={guestDesktopLightLayout}
                 viewerLocation={viewerLocation}
               />
             ))}
           </div>
-          <FavoritesPostsSidePanel
-            postTypeIds={resolvedSidePanelPostTypeIds}
-            fixed={fixedFavoritesSidePanel}
-            onPostOpen={handleSidePanelPostOpen}
-          />
+          {!externalFavoritesSidePanel ? (
+            <FavoritesPostsSidePanel
+              postTypeIds={resolvedSidePanelPostTypeIds}
+              fixed={fixedFavoritesSidePanel}
+              onPostOpen={handleSidePanelPostOpen}
+            />
+          ) : null}
         </div>
       ) : (
         displayPosts.map((post) => {

@@ -60,6 +60,7 @@ import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePerso
 import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
 import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
 import { ProfileAppLanguagePage } from "@/components/profile/ProfileAppLanguagePage";
+import { ProfileAccountPage } from "@/components/profile/ProfileAccountPage";
 import ClientProfileSavedPage from "@/pages/client/profile/ClientProfileSavedPage";
 import ClientProfileEventsPage from "@/pages/client/profile/ClientProfileEventsPage";
 import PublicProfileMediaManagePage from "@/pages/profile/PublicProfileMediaManagePage";
@@ -96,6 +97,12 @@ import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
+import {
+  LegacySharedPostRedirect,
+  LegacySharedRequestRedirect,
+  SharedPostLandingPage,
+  SharedRequestLandingPage,
+} from "@/pages/SharedContentLandingPage";
 import KycVerificationPage from "@/pages/KycVerificationPage";
 import { KycGateProvider } from "@/context/KycGateContext";
 import { GuestAuthPromptProvider } from "@/context/GuestAuthPromptContext";
@@ -332,6 +339,10 @@ function AppRoutes() {
         />
         <Route path="/public/posts" element={<PublicCommunityPostsPage />} />
         <Route path="/community/feed" element={<GlobalPostsPage />} />
+        <Route path="/posts/:id" element={<SharedPostLandingPage />} />
+        <Route path="/requests/:id" element={<SharedRequestLandingPage />} />
+        <Route path="/p/:id" element={<LegacySharedPostRedirect />} />
+        <Route path="/r/:id" element={<LegacySharedRequestRedirect />} />
         {/* Client routes */}
         <Route
           path="/client/home"
@@ -480,6 +491,7 @@ function AppRoutes() {
           <Route path="personal" element={<ClientProfilePersonalPage />} />
           <Route path="services" element={<ClientProfileServicesPage />} />
           <Route path="appearance" element={<ClientProfileAppearancePage />} />
+          <Route path="account" element={<ProfileAccountPage />} />
           <Route path="language" element={<ProfileAppLanguagePage />} />
         </Route>
 
@@ -540,6 +552,7 @@ function AppRoutes() {
             path="appearance"
             element={<FreelancerProfileAppearancePage />}
           />
+          <Route path="account" element={<ProfileAccountPage />} />
           <Route path="language" element={<ProfileAppLanguagePage />} />
         </Route>
         <Route
