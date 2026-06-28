@@ -49,20 +49,24 @@ import {
 import { ReelDesktopCommentsPanel } from "@/components/profile/PostMediaDesktopViewer";
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { useContentTranslation } from "@/hooks/useContentTranslation";
+import { TranslateLinkButton } from "@/components/translate/TranslateTextControl";
 
 function textOnlyReelTypeCardClass(typeId: string | null): string {
   const base =
-    "rounded-[1.75rem] border-0 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl";
+    "rounded-[1.75rem] border-0 p-6 text-white max-md:shadow-none max-md:backdrop-blur-none";
+  const desktopFrost =
+    "md:shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:backdrop-blur-xl";
 
   switch (typeId) {
     case "request_help":
-      return cn(base, "bg-red-400/45");
+      return cn(base, desktopFrost, "max-md:bg-red-950/40 md:bg-red-400/45");
     case "offer_service":
-      return cn(base, "bg-emerald-400/45");
+      return cn(base, desktopFrost, "max-md:bg-emerald-950/40 md:bg-emerald-400/45");
     case "event":
-      return cn(base, "bg-violet-400/45");
+      return cn(base, desktopFrost, "max-md:bg-violet-950/40 md:bg-violet-400/45");
     default:
-      return cn(base, "bg-blue-400/45");
+      return cn(base, desktopFrost, "max-md:bg-blue-950/35 md:bg-blue-400/45");
   }
 }
 
@@ -1124,9 +1128,19 @@ function reelSlideShowTitle(slide: ReelSlideData, bodyText: string | null): bool
 function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
   const bodyText = reelSlideBodyText(slide);
   const showTitle = reelSlideShowTitle(slide, bodyText);
-  const contentLayout = bidirectionalTextProps(bodyText || slide.title || "");
+  const translation = useContentTranslation({
+    contentKind: "profile_post",
+    contentId: slide.postId,
+    title: slide.title,
+    body: bodyText,
+  });
+  const displayTitle = translation.displayTitle ?? slide.title;
+  const displayBody = translation.displayBody ?? bodyText;
+  const contentLayout = bidirectionalTextProps(
+    displayBody || displayTitle || "",
+  );
 
-  if (!showTitle && !bodyText) {
+  if (!showTitle && !displayBody) {
     return <div className="relative min-h-0 flex-1 bg-black" aria-hidden />;
   }
 
@@ -1140,26 +1154,38 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
         )}
         dir={contentLayout.dir}
       >
-        {showTitle ? (
+        {showTitle && displayTitle ? (
           <h2
             {...bidirectionalTextProps(
-              slide.title!,
+              displayTitle,
               cn(
                 "text-[22px] font-bold leading-snug",
                 "text-white",
               ),
             )}
           >
-            {slide.title}
+            {displayTitle}
           </h2>
         ) : null}
-        {bodyText ? (
+        {displayBody ? (
           <ReelExpandableCaption
-            text={bodyText}
+            text={displayBody}
             maxLines={10}
             slideKey={slide.postId}
             variant="card"
             className={cn("text-white/95", showTitle && "mt-3")}
+          />
+        ) : null}
+        {translation.showControl ? (
+          <TranslateLinkButton
+            loading={translation.loading}
+            label={translation.controlLabel}
+            variant="onDark"
+            className="mt-3"
+            onClick={(e) => {
+              e.stopPropagation();
+              void translation.toggle();
+            }}
           />
         ) : null}
       </div>
@@ -1191,6 +1217,15 @@ function ReelSlideBottomPanel({
     : slide.caption?.trim() || slide.description?.trim() || null;
   const showTitle =
     !slide.isTextOnly && reelSlideShowTitle(slide, bodyText);
+  const translation = useContentTranslation({
+    contentKind: "profile_post",
+    contentId: slide.postId,
+    title: showTitle ? slide.title : null,
+    body: bodyText,
+    enabled: !slide.isTextOnly,
+  });
+  const displayTitle = translation.displayTitle ?? slide.title;
+  const displayBody = translation.displayBody ?? bodyText;
 
   return (
     <div
@@ -1252,26 +1287,39 @@ function ReelSlideBottomPanel({
           </GuestAwareProfileLink>
         </div>
 
-        {showTitle ? (
+        {showTitle && displayTitle ? (
           <h3
             {...bidirectionalTextProps(
-              slide.title!,
+              displayTitle,
               "mt-2 text-[19px] font-bold leading-snug text-white drop-shadow-md",
             )}
           >
-            {slide.title}
+            {displayTitle}
           </h3>
         ) : null}
 
-        {bodyText ? (
+        {displayBody ? (
           <div className="mt-1.5">
             <ReelExpandableCaption
-              text={bodyText}
+              text={displayBody}
               maxLines={2}
               slideKey={slide.postId}
               variant="overlay"
             />
           </div>
+        ) : null}
+
+        {translation.showControl ? (
+          <TranslateLinkButton
+            loading={translation.loading}
+            label={translation.controlLabel}
+            variant="onDark"
+            className="mt-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              void translation.toggle();
+            }}
+          />
         ) : null}
 
         <ReelPostDetails slide={slide} variant="overlay" />

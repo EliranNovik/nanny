@@ -54,6 +54,11 @@ import {
   bidirectionalInputProps,
   bidirectionalTextProps,
 } from "@/lib/textDirection";
+import { useContentTranslation } from "@/hooks/useContentTranslation";
+import {
+  TranslatableCommentBody,
+  TranslateLinkButton,
+} from "@/components/translate/TranslateTextControl";
 import {
   Dialog,
   DialogContent,
@@ -123,6 +128,16 @@ import {
   feedPostTypeId,
   globalFeedCtaLabel,
   globalFeedCardSurfaceClass,
+  globalFeedMobileCardClass,
+  globalFeedMobileCardPadClass,
+  globalFeedMobileCommentsComposerWrapClass,
+  globalFeedMobileCommentsInputClass,
+  globalFeedMobileCommentsInputShellClass,
+  globalFeedMobileCommentsSendBtnClass,
+  globalFeedMobileCommentsSheetClass,
+  globalFeedMobileEngagementRowClass,
+  globalFeedMobilePostTypeBadgeClass,
+  globalFeedMobileTextOnlySurfaceClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
   globalFeedTextOnlySurfaceClass,
@@ -436,6 +451,7 @@ function ReelsStyleCommentComposer({
   placeholder,
   signedIn,
   onSignIn,
+  variant = "reels",
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
@@ -444,6 +460,7 @@ function ReelsStyleCommentComposer({
   placeholder: string;
   signedIn: boolean;
   onSignIn: () => void;
+  variant?: "reels" | "feed";
 }) {
   if (!signedIn) {
     return (
@@ -465,9 +482,18 @@ function ReelsStyleCommentComposer({
     );
   }
 
+  const isFeedVariant = variant === "feed";
+
   return (
     <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1 rounded-full bg-zinc-800/95 px-4 py-2.5 dark:bg-zinc-700/90">
+      <div
+        className={cn(
+          "min-w-0 flex-1 rounded-full px-4 py-2.5",
+          isFeedVariant
+            ? cn(globalFeedMobileCommentsInputShellClass, "md:rounded-full md:bg-zinc-800/95 md:px-4 md:py-2.5 md:dark:bg-zinc-700/90")
+            : "bg-zinc-800/95 dark:bg-zinc-700/90",
+        )}
+      >
         <input
           type="text"
           placeholder={placeholder}
@@ -483,7 +509,12 @@ function ReelsStyleCommentComposer({
           disabled={submitting}
           {...bidirectionalInputProps(
             draft,
-            "w-full border-0 bg-transparent py-0.5 text-[15px] text-white outline-none placeholder:text-white/45 disabled:opacity-60",
+            cn(
+              "w-full border-0 bg-transparent py-0.5 text-[15px] outline-none disabled:opacity-60",
+              isFeedVariant
+                ? cn(globalFeedMobileCommentsInputClass, "md:text-white md:placeholder:text-white/45")
+                : "text-white placeholder:text-white/45",
+            ),
           )}
           aria-label={placeholder}
         />
@@ -492,7 +523,16 @@ function ReelsStyleCommentComposer({
         type="button"
         disabled={submitting || !draft.trim()}
         onClick={onSubmit}
-        className="shrink-0 p-1 text-foreground transition active:scale-95 disabled:opacity-35 dark:text-white"
+        className={cn(
+          "shrink-0 p-1 transition active:scale-95 disabled:opacity-35",
+          isFeedVariant
+            ? cn(
+                globalFeedMobileCommentsSendBtnClass,
+                "md:p-1 md:h-auto md:w-auto md:rounded-none md:bg-transparent md:text-foreground dark:md:text-white",
+                draft.trim() ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500",
+              )
+            : "text-foreground dark:text-white",
+        )}
         aria-label="Post comment"
       >
         {submitting ? (
@@ -505,7 +545,8 @@ function ReelsStyleCommentComposer({
   );
 }
 
-const MOBILE_COMMENTS_SHEET_MAX_HEIGHT = "min(52dvh, 480px)";
+const MOBILE_COMMENTS_SHEET_MAX_HEIGHT = "min(62dvh, 520px)";
+const MOBILE_COMMENTS_SHEET_EXPANDED_HEIGHT = "min(92dvh, 720px)";
 const MOBILE_COMMENTS_ANIM_MS = 420;
 
 type CommentsPostPreview = {
@@ -771,11 +812,11 @@ function CommentsDialog({
   };
 
   const commentsHeader = (
-    <div className="flex shrink-0 items-center gap-2 px-5 py-3">
+    <div className="flex shrink-0 items-center gap-2 px-4 py-3 max-md:px-4 md:px-5">
       <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
       <h2
         id="comments-sheet-title"
-        className="text-base font-bold text-foreground"
+        className="text-base font-bold text-foreground max-md:text-[15px] max-md:font-extrabold"
       >
         {t("common.comments")}
       </h2>
@@ -783,8 +824,8 @@ function CommentsDialog({
   );
 
   const commentsBody = (
-    <ScrollArea className="min-h-0 flex-1 px-5">
-      <div className="space-y-5 py-4">
+    <ScrollArea className="min-h-0 flex-1 px-4 max-md:px-4 md:px-5">
+      <div className="space-y-4 py-4 max-md:space-y-4 md:space-y-5">
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -797,7 +838,7 @@ function CommentsDialog({
           comments.map((c) => {
             const name = c.author?.full_name?.trim() || "Member";
             return (
-              <div key={c.id} className="flex gap-3">
+              <div key={c.id} className="flex gap-2.5 max-md:gap-2.5 md:gap-3">
                 {c.author?.id ? (
                   <GuestAwareProfileLink
                     userId={c.author.id}
@@ -805,7 +846,7 @@ function CommentsDialog({
                     aria-label={`View ${name} profile`}
                     onClick={() => onClose()}
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-9 w-9 max-md:h-9 max-md:w-9 md:h-8 md:w-8">
                       <AvatarImage src={c.author?.photo_url ?? undefined} />
                       <AvatarFallback className="text-xs font-bold">
                         {name.charAt(0).toUpperCase()}
@@ -813,7 +854,7 @@ function CommentsDialog({
                     </Avatar>
                   </GuestAwareProfileLink>
                 ) : (
-                  <Avatar className="h-8 w-8 shrink-0 opacity-60">
+                  <Avatar className="h-9 w-9 shrink-0 opacity-60 max-md:h-9 max-md:w-9 md:h-8 md:w-8">
                     <AvatarImage src={c.author?.photo_url ?? undefined} />
                     <AvatarFallback className="text-xs font-bold">
                       {name.charAt(0).toUpperCase()}
@@ -825,32 +866,40 @@ function CommentsDialog({
                     {c.author?.id ? (
                       <GuestAwareProfileLink
                         userId={c.author.id}
-                        className="text-sm font-semibold text-foreground hover:underline underline-offset-2"
+                        className="text-sm font-extrabold text-foreground hover:underline underline-offset-2 max-md:text-[14px]"
                         aria-label={`View ${name} profile`}
                         onClick={() => onClose()}
                       >
                         {name}
                       </GuestAwareProfileLink>
                     ) : (
-                      <span className="text-sm font-semibold text-foreground">
+                      <span className="text-sm font-extrabold text-foreground max-md:text-[14px]">
                         {name}
                       </span>
                     )}
-                    <time className="text-xs text-muted-foreground">
+                    <time className="text-xs font-medium text-muted-foreground max-md:text-[12px]">
                       {formatDistanceToNow(new Date(c.created_at), {
                         addSuffix: true,
                         locale: dateLocale,
                       })}
                     </time>
                   </div>
-                  <p
-                    {...bidirectionalTextProps(
-                      c.body,
-                      "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                  <TranslatableCommentBody
+                    contentKind="profile_post_comment"
+                    contentId={c.id}
+                    body={c.body}
+                    className="mt-1"
+                    renderBody={(text) => (
+                      <p
+                        {...bidirectionalTextProps(
+                          text,
+                          "mt-0.5 whitespace-pre-wrap break-words text-[15px] leading-[21px] font-medium text-foreground/90 max-md:text-[15px] md:text-sm md:leading-relaxed",
+                        )}
+                      >
+                        {text}
+                      </p>
                     )}
-                  >
-                    {c.body}
-                  </p>
+                  />
                 </div>
               </div>
             );
@@ -864,7 +913,8 @@ function CommentsDialog({
   const commentsComposer = (
     <div
       className={cn(
-        "shrink-0 px-4 py-2.5",
+        "shrink-0 px-3 py-2.5",
+        globalFeedMobileCommentsComposerWrapClass,
         mobileSheetSafePaddingBottom,
       )}
     >
@@ -876,6 +926,7 @@ function CommentsDialog({
         placeholder={t("feed.writeComment")}
         signedIn={Boolean(user)}
         onSignIn={() => openGuestAuthPrompt({ variant: "engage" })}
+        variant="feed"
       />
     </div>
   );
@@ -924,10 +975,19 @@ function CommentsDialog({
           presented={presented}
           titleId="comments-sheet-title"
           className="z-[2]"
-          maxHeight={MOBILE_COMMENTS_SHEET_MAX_HEIGHT}
+          maxHeight={
+            sheetExpanded
+              ? MOBILE_COMMENTS_SHEET_EXPANDED_HEIGHT
+              : MOBILE_COMMENTS_SHEET_MAX_HEIGHT
+          }
           ariaLabel="Drag down to close comments"
         >
-          <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+          <div
+            className={cn(
+              "flex h-full min-h-0 flex-col bg-background text-foreground",
+              globalFeedMobileCommentsSheetClass,
+            )}
+          >
             {commentsHeader}
             {commentsBody}
             {commentsComposer}
@@ -1158,14 +1218,22 @@ function CommentsSidePanel({
                           })}
                         </time>
                       </div>
-                      <p
-                        {...bidirectionalTextProps(
-                          c.body,
-                          "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                      <TranslatableCommentBody
+                        contentKind="profile_post_comment"
+                        contentId={c.id}
+                        body={c.body}
+                        className="mt-1"
+                        renderBody={(text) => (
+                          <p
+                            {...bidirectionalTextProps(
+                              text,
+                              "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                            )}
+                          >
+                            {text}
+                          </p>
                         )}
-                      >
-                        {c.body}
-                      </p>
+                      />
                     </div>
                   </div>
                 );
@@ -1324,12 +1392,14 @@ function PostTypeBadge({
   className,
   size = "default",
   compact = false,
+  mobileGlobalFeed = false,
 }: {
   typeId: string;
   typeName?: string;
   className?: string;
   size?: "default" | "lg";
   compact?: boolean;
+  mobileGlobalFeed?: boolean;
 }) {
   const { t } = useTranslation();
   const meta = POST_TYPE_METADATA[typeId];
@@ -1337,7 +1407,14 @@ function PostTypeBadge({
 
   if (compact) {
     return (
-      <span className={cn(postTypeBadgeClassName(typeId, "default"), "px-3 py-1 text-[12px] tracking-wide", className)}>
+      <span
+        className={cn(
+          postTypeBadgeClassName(typeId, "default"),
+          "px-3 py-1 text-[12px] tracking-wide",
+          mobileGlobalFeed && globalFeedMobilePostTypeBadgeClass(typeId),
+          className,
+        )}
+      >
         {feedPostTypeBadgeLabel(t, typeId, typeName)}
       </span>
     );
@@ -1390,6 +1467,7 @@ function PostTypeBadgeWithExpired({
   compact = false,
   showExpired = false,
   className,
+  mobileGlobalFeed = false,
 }: {
   typeId: string;
   typeName?: string;
@@ -1397,6 +1475,7 @@ function PostTypeBadgeWithExpired({
   compact?: boolean;
   showExpired?: boolean;
   className?: string;
+  mobileGlobalFeed?: boolean;
 }) {
   return (
     <div className={cn("flex shrink-0 items-center gap-1.5", className)}>
@@ -1408,6 +1487,7 @@ function PostTypeBadgeWithExpired({
         typeName={typeName}
         size={size}
         compact={compact}
+        mobileGlobalFeed={mobileGlobalFeed}
       />
     </div>
   );
@@ -3559,7 +3639,11 @@ function PostCard({
   const isPlainCard = Boolean(plainCard);
   const isGlobalFeed = Boolean(globalFeedLayout);
   const cardPadX =
-    isGlobalFeed ? "px-3 max-md:px-2.5 md:px-3.5" : isDiscover || isPlainCard ? "px-2 md:px-4" : "px-4";
+    isGlobalFeed
+      ? cn("px-3 md:px-3.5", globalFeedMobileCardPadClass)
+      : isDiscover || isPlainCard
+        ? "px-2 md:px-4"
+        : "px-4";
   const cardMarginX =
     isGlobalFeed ? "mx-0" : isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
   const mobileMediaInsetClass = isGlobalFeed
@@ -4033,14 +4117,29 @@ function PostCard({
     return postDescription;
   }, [effectiveCaption, postDescription, postTitle]);
 
-  const postTitleLayout = useMemo(
-    () => (postTitle ? bidirectionalTextProps(postTitle) : null),
-    [postTitle],
-  );
   const globalFeedContentLayout = useMemo(() => {
     const text = postDescription || postTitle || effectiveCaption;
     return text ? bidirectionalTextProps(text) : null;
   }, [postDescription, postTitle, effectiveCaption]);
+
+  const translateContentKind =
+    post.source === "job_request" ? "job_request" : "profile_post";
+  const postTranslation = useContentTranslation({
+    contentKind: translateContentKind,
+    contentId: post.id,
+    title: postTitle,
+    body: globalTextOnlyBody || postDescription || null,
+    enabled: post.source === "post" || post.source === "job_request",
+  });
+  const displayPostTitle = postTranslation.displayTitle ?? postTitle;
+  const displayTextOnlyBody =
+    postTranslation.displayBody ?? globalTextOnlyBody;
+  const displayPostDescription =
+    postTranslation.displayBody ?? postDescription;
+  const displayPostTitleLayout = useMemo(
+    () => (displayPostTitle ? bidirectionalTextProps(displayPostTitle) : null),
+    [displayPostTitle],
+  );
 
   const authorFirstName = authorName.split(" ")[0] || authorName;
 
@@ -4196,6 +4295,7 @@ function PostCard({
                 "mt-1",
                 "bg-zinc-50/70 dark:bg-transparent",
                 "rounded-b-2xl pb-3.5 pt-2",
+                globalFeedMobileEngagementRowClass,
               )
             : cn("mt-1.5 bg-transparent", cardMarginX, isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0"),
         )}
@@ -4413,6 +4513,7 @@ function PostCard({
         isGlobalFeed
           ? cn(
               "rounded-2xl",
+              globalFeedMobileCardClass,
               guestDesktopLightLayout
                 ? "bg-white shadow-sm ring-1 ring-slate-200/80 md:shadow-md dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
                 : globalFeedCardSurfaceClass,
@@ -4480,6 +4581,7 @@ function PostCard({
                       : undefined
                   }
                   compact
+                  mobileGlobalFeed
                   showExpired={whenExpired && postTypeId === "request_help"}
                 />
               ) : null}
@@ -4834,17 +4936,18 @@ function PostCard({
                   "w-full rounded-xl p-4 transition-opacity active:opacity-90 max-md:cursor-pointer",
                   globalFeedContentLayout?.className,
                   globalFeedTextOnlySurfaceClass(postTypeId),
+                  globalFeedMobileTextOnlySurfaceClass(postTypeId),
                 )}
                 dir={globalFeedContentLayout?.dir}
                 aria-label="View post full screen"
               >
-                {postTitle ? (
+                {displayPostTitle ? (
                   <h3
                     className={cn(
                       "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
-                      postTitleLayout?.className,
+                      displayPostTitleLayout?.className,
                     )}
-                    dir={postTitleLayout?.dir}
+                    dir={displayPostTitleLayout?.dir}
                   >
                     {serviceCategoryMeta?.id ? (
                       <CategoryIcon
@@ -4852,18 +4955,31 @@ function PostCard({
                         className="h-6 w-6 shrink-0"
                       />
                     ) : null}
-                    <span>{postTitle}</span>
+                    <span>{displayPostTitle}</span>
                   </h3>
                 ) : null}
-                {globalTextOnlyBody ? (
+                {displayTextOnlyBody ? (
                   <p
                     {...bidirectionalTextProps(
-                      globalTextOnlyBody,
+                      displayTextOnlyBody,
                       "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
                     )}
                   >
-                    {renderCaptionWithMentions(globalTextOnlyBody)}
+                    {renderCaptionWithMentions(displayTextOnlyBody)}
                   </p>
+                ) : null}
+                {postTranslation.showControl ? (
+                  <div className="mt-2 text-left">
+                    <TranslateLinkButton
+                      loading={postTranslation.loading}
+                      label={postTranslation.controlLabel}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void postTranslation.toggle();
+                      }}
+                    />
+                  </div>
                 ) : null}
                 <div
                   className={cn(
@@ -4955,7 +5071,7 @@ function PostCard({
             </div>
           ) : (
             <>
-              {(postTitle || postDescription) && (
+              {(displayPostTitle || displayPostDescription) && (
                 <button
                   type="button"
                   onClick={tryOpenMobileReels}
@@ -4970,29 +5086,42 @@ function PostCard({
                   aria-label={!hasMedia ? "View post full screen" : undefined}
                   disabled={hasMedia}
                 >
-                  {postTitle ? (
+                  {displayPostTitle ? (
                     <h3
                       className={cn(
                         "text-[19px] font-bold leading-snug text-foreground",
-                        postTitleLayout?.className,
+                        displayPostTitleLayout?.className,
                       )}
-                      dir={postTitleLayout?.dir}
+                      dir={displayPostTitleLayout?.dir}
                     >
-                      {postTitle}
+                      {displayPostTitle}
                     </h3>
                   ) : null}
-                  {postDescription ? (
+                  {displayPostDescription ? (
                     <p
                       {...bidirectionalTextProps(
-                        postDescription,
+                        displayPostDescription,
                         cn(
                           "text-[17px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
-                          postTitle && "mt-1",
+                          displayPostTitle && "mt-1",
                         ),
                       )}
                     >
-                      {renderCaptionWithMentions(postDescription)}
+                      {renderCaptionWithMentions(displayPostDescription)}
                     </p>
+                  ) : null}
+                  {postTranslation.showControl ? (
+                    <div className="mt-1 text-left">
+                      <TranslateLinkButton
+                        loading={postTranslation.loading}
+                        label={postTranslation.controlLabel}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void postTranslation.toggle();
+                        }}
+                      />
+                    </div>
                   ) : null}
                 </button>
               )}

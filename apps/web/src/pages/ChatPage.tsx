@@ -112,6 +112,7 @@ import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
 import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
 import { bidirectionalTextProps } from "@/lib/textDirection";
+import { TranslatableChatMessage } from "@/components/translate/TranslateTextControl";
 import { bodyHasNonPreviewText } from "@/lib/chatBodyPreviewText";
 import {
   extractChatUrlsFromText,
@@ -2569,23 +2570,32 @@ export default function ChatPage({
                                           : chatReceivedBubbleCn,
                                       )}
                                     >
-                                      <p
-                                        {...bidirectionalTextProps(
-                                          msg.body,
-                                          cn(
-                                            chatBubbleBodyTextCn,
-                                            isOwn
-                                              ? "text-white"
-                                              : chatReceivedMessageTextCn,
-                                          ),
+                                      <TranslatableChatMessage
+                                        messageId={msg.id}
+                                        body={msg.body}
+                                        enabled={!isOwn}
+                                        variant={isOwn ? "onDark" : "default"}
+                                        className="mt-1"
+                                        renderBody={(text) => (
+                                          <p
+                                            {...bidirectionalTextProps(
+                                              text,
+                                              cn(
+                                                chatBubbleBodyTextCn,
+                                                isOwn
+                                                  ? "text-white"
+                                                  : chatReceivedMessageTextCn,
+                                              ),
+                                            )}
+                                          >
+                                            {linkifyMessageBody(
+                                              text,
+                                              chatBubbleLinkCn,
+                                              previewHrefOmitSet(linkPreviewUrls),
+                                            )}
+                                          </p>
                                         )}
-                                      >
-                                        {linkifyMessageBody(
-                                          msg.body,
-                                          chatBubbleLinkCn,
-                                          previewHrefOmitSet(linkPreviewUrls),
-                                        )}
-                                      </p>
+                                      />
                                     </div>
                                   )}
                                 <div className="w-full min-w-0 max-w-full">
@@ -2605,21 +2615,32 @@ export default function ChatPage({
                                     : chatReceivedBubbleCn,
                                 )}
                               >
-                                <p
-                                  {...bidirectionalTextProps(
-                                    msg.body,
-                                    cn(
-                                      chatBubbleBodyTextCn,
-                                      isOwn ? "text-white" : chatReceivedMessageTextCn,
-                                    ),
+                                <TranslatableChatMessage
+                                  messageId={msg.id}
+                                  body={msg.body}
+                                  enabled={!isOwn}
+                                  variant={isOwn ? "onDark" : "default"}
+                                  className="mt-1"
+                                  renderBody={(text) => (
+                                    <p
+                                      {...bidirectionalTextProps(
+                                        text,
+                                        cn(
+                                          chatBubbleBodyTextCn,
+                                          isOwn
+                                            ? "text-white"
+                                            : chatReceivedMessageTextCn,
+                                        ),
+                                      )}
+                                    >
+                                      {linkifyMessageBody(
+                                        text,
+                                        chatBubbleLinkCn,
+                                        previewHrefOmitSet(linkPreviewUrls),
+                                      )}
+                                    </p>
                                   )}
-                                >
-                                  {linkifyMessageBody(
-                                    msg.body,
-                                    chatBubbleLinkCn,
-                                    previewHrefOmitSet(linkPreviewUrls),
-                                  )}
-                                </p>
+                                />
                               </div>
                             ) : null}
                           </div>
@@ -2758,21 +2779,32 @@ export default function ChatPage({
                                     : chatReceivedBubbleCn,
                                 )}
                               >
-                                <p
-                                  {...bidirectionalTextProps(
-                                    msg.body,
-                                    cn(
-                                      chatBubbleBodyTextCn,
-                                      isOwn ? "text-white" : chatReceivedMessageTextCn,
-                                    ),
+                                <TranslatableChatMessage
+                                  messageId={msg.id}
+                                  body={msg.body}
+                                  enabled={!isOwn}
+                                  variant={isOwn ? "onDark" : "default"}
+                                  className="mt-1"
+                                  renderBody={(text) => (
+                                    <p
+                                      {...bidirectionalTextProps(
+                                        text,
+                                        cn(
+                                          chatBubbleBodyTextCn,
+                                          isOwn
+                                            ? "text-white"
+                                            : chatReceivedMessageTextCn,
+                                        ),
+                                      )}
+                                    >
+                                      {linkifyMessageBody(
+                                        text,
+                                        chatBubbleLinkCn,
+                                        previewHrefOmitSet(linkPreviewUrls),
+                                      )}
+                                    </p>
                                   )}
-                                >
-                                  {linkifyMessageBody(
-                                    msg.body,
-                                    chatBubbleLinkCn,
-                                    previewHrefOmitSet(linkPreviewUrls),
-                                  )}
-                                </p>
+                                />
                               </div>
                             ) : null}
 
@@ -2830,21 +2862,32 @@ export default function ChatPage({
                                 </p>
                               </div>
                             ) : msg.body ? (
-                              <p
-                                {...bidirectionalTextProps(
-                                  msg.body,
-                                  cn(
-                                    chatBubbleBodyTextCn,
-                                    isOwn ? "text-white" : chatReceivedMessageTextCn,
-                                  ),
+                              <TranslatableChatMessage
+                                messageId={msg.id}
+                                body={msg.body}
+                                enabled={!isOwn}
+                                variant={isOwn ? "onDark" : "default"}
+                                className="mt-1"
+                                renderBody={(text) => (
+                                  <p
+                                    {...bidirectionalTextProps(
+                                      text,
+                                      cn(
+                                        chatBubbleBodyTextCn,
+                                        isOwn
+                                          ? "text-white"
+                                          : chatReceivedMessageTextCn,
+                                      ),
+                                    )}
+                                  >
+                                    {linkifyMessageBody(
+                                      text,
+                                      chatBubbleLinkCn,
+                                      previewHrefOmitSet(linkPreviewUrls),
+                                    )}
+                                  </p>
                                 )}
-                              >
-                                {linkifyMessageBody(
-                                  msg.body,
-                                  chatBubbleLinkCn,
-                                  previewHrefOmitSet(linkPreviewUrls),
-                                )}
-                              </p>
+                              />
                             ) : null}
                           </div>
                         )}

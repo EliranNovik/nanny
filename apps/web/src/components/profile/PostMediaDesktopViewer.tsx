@@ -22,6 +22,7 @@ import {
   bidirectionalInputProps,
   bidirectionalTextProps,
 } from "@/lib/textDirection";
+import { TranslatableCommentBody } from "@/components/translate/TranslateTextControl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -805,14 +806,22 @@ export function ReelDesktopCommentsPanel({
                           })}
                         </time>
                       </div>
-                      <p
-                        {...bidirectionalTextProps(
-                          c.body,
-                          "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                      <TranslatableCommentBody
+                        contentKind="profile_post_comment"
+                        contentId={c.id}
+                        body={c.body}
+                        className="mt-1"
+                        renderBody={(text) => (
+                          <p
+                            {...bidirectionalTextProps(
+                              text,
+                              "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                            )}
+                          >
+                            {text}
+                          </p>
                         )}
-                      >
-                        {c.body}
-                      </p>
+                      />
                     </div>
                   </div>
                 );

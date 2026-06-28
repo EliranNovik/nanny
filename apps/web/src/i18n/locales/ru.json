@@ -32,6 +32,13 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "translate": {
+    "seeTranslation": "Показать перевод",
+    "seeOriginal": "Показать оригинал",
+    "translating": "Перевод…",
+    "error": "Не удалось перевести. Попробуйте снова.",
+    "alreadyInLanguage": "Уже на вашем языке"
+  },
   "createJob": {
     "eyebrow": "Опубликовать запрос",
     "titles": {

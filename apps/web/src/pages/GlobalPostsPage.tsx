@@ -38,8 +38,9 @@ import {
   type CommunityFeedLocationState,
   parseCommunityFeedTypeFilter,
 } from "@/lib/communityFeedNav";
-import { queryKeys } from "@/hooks/data/keys";
+import { globalFeedMobilePageClass } from "@/lib/globalFeedPostUi";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
+import { queryKeys } from "@/hooks/data/keys";
 import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
 import {
   type DiscoverHomeCategoryId,
@@ -469,7 +470,7 @@ export default function GlobalPostsPage() {
   return (
     <PageFrame
       variant="fullBleed"
-      className="bg-white dark:bg-background"
+      className={cn("bg-white dark:bg-background", globalFeedMobilePageClass)}
       frameName="community-feed"
       data-community-feed-page={user ? "" : undefined}
       data-community-feed-guest={!user ? "" : undefined}

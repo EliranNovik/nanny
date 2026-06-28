@@ -16,6 +16,7 @@ import {
   bidirectionalInputProps,
   bidirectionalTextProps,
 } from "@/lib/textDirection";
+import { TranslatableCommentBody } from "@/components/translate/TranslateTextControl";
 import { cn } from "@/lib/utils";
 
 type ProfileSnippet = {
@@ -230,14 +231,22 @@ export function JobRequestCommentsSidePanel({
                           })}
                         </time>
                       </div>
-                      <p
-                        {...bidirectionalTextProps(
-                          c.body,
-                          "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                      <TranslatableCommentBody
+                        contentKind="job_request_comment"
+                        contentId={c.id}
+                        body={c.body}
+                        className="mt-1"
+                        renderBody={(text) => (
+                          <p
+                            {...bidirectionalTextProps(
+                              text,
+                              "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                            )}
+                          >
+                            {text}
+                          </p>
                         )}
-                      >
-                        {c.body}
-                      </p>
+                      />
                     </div>
                   </div>
                 );

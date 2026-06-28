@@ -16,6 +16,7 @@ import { ogProfilePostRouter } from "./routes/ogProfilePost";
 import { ogJobRequestRouter } from "./routes/ogJobRequest";
 import { postsRouter } from "./routes/posts";
 import { contactRouter } from "./routes/contact";
+import { translateRouter } from "./routes/translate";
 import { pushRouter } from "./routes/push";
 import { handleProcessPushQueue } from "./routes/pushCron";
 import { requireCronSecret } from "./middleware/cronSecret";
@@ -50,6 +51,7 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 app.use("/api/og", ogProfilePostRouter);
 app.use("/api/og", ogJobRequestRouter);
 app.use("/api/contact", contactRouter);
+app.use("/api/translate", translateRouter);
 
 // Push queue worker — cron secret only (no user JWT)
 app.post("/api/push/process-queue", requireCronSecret, handleProcessPushQueue);

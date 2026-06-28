@@ -144,6 +144,8 @@ export function globalFeedPostTypeAccentClass(typeId: string | null): string {
       return "text-emerald-600 dark:text-emerald-400";
     case "event":
       return "text-violet-600 dark:text-violet-400";
+    case "community":
+      return "text-blue-600 dark:text-blue-400";
     default:
       return "text-muted-foreground";
   }
@@ -379,6 +381,67 @@ export function globalFeedPostTypeBadgeClass(typeId: string): string {
     typeId === "event" && "bg-violet-500/25 text-violet-200",
   );
 }
+
+/** Mobile global feed page background — mirrors native DiscoverPalette background. */
+export const globalFeedMobilePageClass =
+  "max-md:bg-[#f5f5f5] dark:max-md:bg-[#101214]";
+
+/** Mobile global feed card shell — edge-to-edge, elevated surface, 12px vertical gap. */
+export const globalFeedMobileCardClass =
+  "max-md:rounded-none max-md:mb-3 max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
+
+/** Mobile card inner horizontal padding. */
+export const globalFeedMobileCardPadClass = "max-md:px-4";
+
+export function globalFeedMobileTextOnlySurfaceClass(typeId: string | null): string {
+  switch (typeId) {
+    case "request_help":
+      return "max-md:bg-red-50 dark:max-md:bg-red-950/25";
+    case "offer_service":
+      return "max-md:bg-emerald-50 dark:max-md:bg-emerald-950/25";
+    case "event":
+      return "max-md:bg-violet-50 dark:max-md:bg-violet-950/25";
+    case "community":
+      return "max-md:bg-blue-50 dark:max-md:bg-blue-950/20";
+    default:
+      return "max-md:bg-zinc-50 dark:max-md:bg-zinc-800/55";
+  }
+}
+
+/** Mobile feed header type badge — theme-aware pill (11px / 900), max-md only. */
+export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
+  return cn(
+    "max-md:gap-0 max-md:rounded-md max-md:border-0 max-md:px-2.5 max-md:py-0.5 max-md:text-[11px] max-md:font-black max-md:uppercase max-md:tracking-[0.06em] max-md:shadow-none",
+    typeId === "request_help" &&
+      "max-md:bg-red-100 max-md:text-red-700 dark:max-md:bg-red-500/25 dark:max-md:text-red-200",
+    typeId === "offer_service" &&
+      "max-md:bg-emerald-100 max-md:text-emerald-700 dark:max-md:bg-emerald-500/25 dark:max-md:text-emerald-200",
+    typeId === "community" &&
+      "max-md:bg-blue-100 max-md:text-blue-700 dark:max-md:bg-blue-500/25 dark:max-md:text-blue-200",
+    typeId === "event" &&
+      "max-md:bg-violet-100 max-md:text-violet-700 dark:max-md:bg-violet-500/25 dark:max-md:text-violet-200",
+  );
+}
+
+/** Mobile engagement row — flush with card surface. */
+export const globalFeedMobileEngagementRowClass =
+  "max-md:rounded-none max-md:bg-white max-md:border-t max-md:border-zinc-100 dark:max-md:bg-[#181b1f] dark:max-md:border-zinc-800/80";
+
+/** Mobile comments bottom sheet shell. */
+export const globalFeedMobileCommentsSheetClass =
+  "max-md:bg-white max-md:text-zinc-900 dark:max-md:bg-[#101214] dark:max-md:text-zinc-100";
+
+export const globalFeedMobileCommentsComposerWrapClass =
+  "max-md:bg-white max-md:pt-2.5 dark:max-md:bg-[#101214] max-md:border-t max-md:border-zinc-100 dark:max-md:border-zinc-800/80";
+
+export const globalFeedMobileCommentsInputShellClass =
+  "max-md:rounded-full max-md:bg-[#f5f5f5] dark:max-md:bg-zinc-800";
+
+export const globalFeedMobileCommentsInputClass =
+  "max-md:text-[15px] max-md:font-medium max-md:text-zinc-900 max-md:placeholder:text-zinc-400 dark:max-md:text-zinc-100 dark:max-md:placeholder:text-zinc-500";
+
+export const globalFeedMobileCommentsSendBtnClass =
+  "max-md:h-[42px] max-md:w-[42px] max-md:rounded-full max-md:bg-white max-md:text-zinc-900 dark:max-md:bg-[#101214] dark:max-md:text-zinc-100";
 
 export function feedPostReelLocationLine(
   t: TFunction,

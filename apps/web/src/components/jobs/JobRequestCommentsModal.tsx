@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TranslatableCommentBody } from "@/components/translate/TranslateTextControl";
 
 interface CommentAuthor {
   id: string;
@@ -299,9 +300,17 @@ export function JobRequestCommentsModal({
                       <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">
                         {comment.profiles?.full_name || "Member"}
                       </p>
-                      <p className="mt-1 text-sm leading-snug text-zinc-700 dark:text-zinc-300">
-                        {comment.body}
-                      </p>
+                      <TranslatableCommentBody
+                        contentKind="job_request_comment"
+                        contentId={comment.id}
+                        body={comment.body}
+                        className="mt-1"
+                        renderBody={(text) => (
+                          <p className="text-sm leading-snug text-zinc-700 dark:text-zinc-300">
+                            {text}
+                          </p>
+                        )}
+                      />
                     </div>
                   </div>
                 );

@@ -97,6 +97,40 @@ export async function requireUser(
   }
 }
 
+/** Parse bearer token when present; never rejects anonymous requests. */
+export async function optionalUser(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      next();
+      return;
+    }
+
+    if (
+      !supabaseUrl ||
+      supabaseUrl.includes("your-project-id") ||
+      !supabaseServiceKey ||
+      supabaseServiceKey.includes("your-service-role-key")
+    ) {
+      next();
+      return;
+    }
+
+    const { data, error } = await supa.auth.getUser(token);
+    if (!error && data?.user) {
+      (req as AuthenticatedRequest).user = data.user;
+    }
+    next();
+  } catch {
+    next();
+  }
+}
+
 export async function requireAdmin(
   req: Request,
   res: Response,

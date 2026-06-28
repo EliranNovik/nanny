@@ -76,7 +76,6 @@ export async function apiPost<T = unknown>(
 
     return res.json();
   } catch (err: any) {
-    // Handle network errors
     if (
       err.message?.includes("fetch failed") ||
       err.message?.includes("Failed to fetch")
@@ -126,6 +125,60 @@ export async function apiPublicPost<T = unknown>(
   }
 }
 
+export type TranslateContentKind =
+  | "profile_post"
+  | "job_request"
+  | "profile_post_comment"
+  | "job_request_comment"
+  | "chat_message";
+
+export type TranslateContentResponse = {
+  fields: { title?: string; body?: string };
+  sourceLocale: string | null;
+  targetLocale: string;
+  cached: boolean;
+  alreadyInTargetLanguage: boolean;
+  skipped?: boolean;
+  skipReason?: string;
+};
+
+async function optionalAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) return { Authorization: `Bearer ${token}` };
+  } catch {
+    /* guest */
+  }
+  return {};
+}
+
+export async function apiTranslateContent(input: {
+  contentKind: TranslateContentKind;
+  contentId: string;
+  targetLocale?: string;
+}): Promise<TranslateContentResponse> {
+  const headers = await optionalAuthHeader();
+  const res = await fetch(`${base}/api/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    let errorMessage = "Could not translate";
+    try {
+      const err = await res.json();
+      errorMessage = err.error || errorMessage;
+    } catch {
+      errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  return res.json();
+}
+
 export async function apiGet<T = unknown>(path: string): Promise<T> {
   try {
     const headers = await authHeader();
@@ -147,7 +200,6 @@ export async function apiGet<T = unknown>(path: string): Promise<T> {
 
     return res.json();
   } catch (err: any) {
-    // Handle network errors
     if (
       err.message?.includes("fetch failed") ||
       err.message?.includes("Failed to fetch")
