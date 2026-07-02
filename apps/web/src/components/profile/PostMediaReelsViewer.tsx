@@ -54,7 +54,6 @@ import { TranslateLinkButton } from "@/components/translate/TranslateTextControl
 import {
   requestPostAccentTextClass,
   requestPostCtaPendingClass,
-  requestPostReelTextOnlyDesktopClass,
   requestPostReelTextOnlyMobileClass,
 } from "@/lib/requestPostTheme";
 

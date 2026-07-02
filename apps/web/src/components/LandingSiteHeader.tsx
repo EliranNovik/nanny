@@ -177,6 +177,7 @@ export function LandingSiteHeader({
   const landingBrandTextClass = cn(
     "hidden text-lg font-black tracking-tight md:inline md:text-xl lg:text-2xl",
     "text-white",
+    leftLogoTextClassName,
   );
 
   return (

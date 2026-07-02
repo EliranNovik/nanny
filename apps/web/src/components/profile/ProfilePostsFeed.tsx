@@ -155,6 +155,7 @@ import {
   type RequestHelpTimeframe,
 } from "@/lib/requestHelpWhen";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
+import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
   requestPostAccentTextClass,
   requestPostAccentTextStrongClass,

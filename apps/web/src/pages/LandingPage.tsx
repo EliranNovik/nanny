@@ -41,10 +41,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
-import {
-  requestPostAccentTextClass,
-  requestPostBadgeClass,
-} from "@/lib/requestPostTheme";
+import { requestPostBadgeClass } from "@/lib/requestPostTheme";
 
 function landingCategoryGradient(categoryId: string | null): string {
   const k = (categoryId || "").toLowerCase();
