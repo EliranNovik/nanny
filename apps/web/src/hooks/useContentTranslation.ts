@@ -71,6 +71,14 @@ export function useContentTranslation({
         return response;
       }
       if (response.skipped) {
+        setError(t("translate.error"));
+        return response;
+      }
+      if (
+        !response.fields.body?.trim() &&
+        !response.fields.title?.trim()
+      ) {
+        setError(t("translate.error"));
         return response;
       }
       setMode("translated");

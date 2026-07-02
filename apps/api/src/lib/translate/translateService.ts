@@ -86,7 +86,22 @@ export async function translateContent(
   const googleResult = await translateTextsWithGoogle(textsToTranslate, targetLocale);
   sourceLocale = googleResult.detectedSourceLanguage ?? sourceLocale;
 
-  if (localesMatch(sourceLocale, targetLocale)) {
+  const translatedTextsByField = new Map<TranslateField, string>();
+  for (let i = 0; i < missingFields.length; i += 1) {
+    const field = missingFields[i]!;
+    const sourceText = sourceFields[field]!.trim();
+    const translatedText = googleResult.translatedTexts[i]?.trim() ?? sourceText;
+    translatedTextsByField.set(field, translatedText);
+  }
+
+  // Google reports one detected language per batch — often from the first string.
+  // Posts may mix languages (e.g. English title + Hebrew body); still apply per-field results.
+  const anyFieldChanged = missingFields.some((field) => {
+    const sourceText = sourceFields[field]!.trim();
+    return translatedTextsByField.get(field) !== sourceText;
+  });
+
+  if (!anyFieldChanged) {
     return {
       fields: sourceFields,
       sourceLocale,
@@ -110,8 +125,8 @@ export async function translateContent(
       continue;
     }
 
-    const missingIndex = missingFields.indexOf(field);
-    const translatedText = googleResult.translatedTexts[missingIndex] ?? sourceFields[field]!;
+    const translatedText =
+      translatedTextsByField.get(field) ?? sourceFields[field]!;
     translatedFields[field] = translatedText;
     newEntries.push({
       fieldName: field,

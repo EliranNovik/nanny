@@ -4234,14 +4234,14 @@ function PostCard({
     contentKind: translateContentKind,
     contentId: post.id,
     title: postTitle,
-    body: globalTextOnlyBody || postDescription || null,
+    body: globalTextOnlyBody || postDescription || effectiveCaption || null,
     enabled: post.source === "post" || post.source === "job_request",
   });
   const displayPostTitle = postTranslation.displayTitle ?? postTitle;
   const displayTextOnlyBody =
-    postTranslation.displayBody ?? globalTextOnlyBody;
+    postTranslation.displayBody ?? (globalTextOnlyBody || effectiveCaption);
   const displayPostDescription =
-    postTranslation.displayBody ?? postDescription;
+    postTranslation.displayBody ?? (postDescription || effectiveCaption);
   const displayPostTitleLayout = useMemo(
     () => (displayPostTitle ? bidirectionalTextProps(displayPostTitle) : null),
     [displayPostTitle],
@@ -4642,106 +4642,59 @@ function PostCard({
             />
           </GuestAwareProfileLink>
           <div className="min-w-0 flex-1">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <GuestAwareProfileLink
-                  userId={post.author_id}
-                  className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
-                  aria-label={`View ${authorName} profile`}
-                >
-                  {authorName}
-                </GuestAwareProfileLink>
-                {post.author?.is_verified ? (
-                  <BadgeCheck
-                    className="h-5 w-5 shrink-0"
-                    fill="#0ea5e9"
-                    color="#ffffff"
-                    aria-label="Verified"
-                  />
-                ) : null}
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <GuestAwareProfileLink
+                    userId={post.author_id}
+                    className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
+                    aria-label={`View ${authorName} profile`}
+                  >
+                    {authorName}
+                  </GuestAwareProfileLink>
+                  {post.author?.is_verified ? (
+                    <BadgeCheck
+                      className="h-5 w-5 shrink-0"
+                      fill="#0ea5e9"
+                      color="#ffffff"
+                      aria-label="Verified"
+                    />
+                  ) : null}
+                </div>
+                <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
+                  <time className="tabular-nums">{postedLabel}</time>
+                  {postLocationLine ? (
+                    <>
+                      <span aria-hidden> · </span>
+                      <span>{postLocationLine}</span>
+                    </>
+                  ) : null}
+                </p>
               </div>
-              <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
-                <time className="tabular-nums">{postedLabel}</time>
-                {postLocationLine ? (
-                  <>
-                    <span aria-hidden> · </span>
-                    <span>{postLocationLine}</span>
-                  </>
-                ) : null}
-              </p>
+              {activeListingStatus || postTypeId ? (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                  {activeListingStatus ? (
+                    <ProfilePostListingStatusBadge
+                      status={activeListingStatus}
+                      size="compact"
+                    />
+                  ) : null}
+                  {postTypeId ? (
+                    <PostTypeBadgeWithExpired
+                      typeId={postTypeId}
+                      typeName={
+                        post.source === "post" || post.source === "job_request"
+                          ? post.post_types?.name
+                          : undefined
+                      }
+                      compact
+                      mobileGlobalFeed
+                      showExpired={whenExpired && postTypeId === "request_help"}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            {activeListingStatus || postTypeId || (isOwnFeed && post.source === "post") ? (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {activeListingStatus ? (
-                  <ProfilePostListingStatusBadge
-                    status={activeListingStatus}
-                    size="compact"
-                  />
-                ) : null}
-                {postTypeId ? (
-                  <PostTypeBadgeWithExpired
-                    typeId={postTypeId}
-                    typeName={
-                      post.source === "post" || post.source === "job_request"
-                        ? post.post_types?.name
-                        : undefined
-                    }
-                    compact
-                    mobileGlobalFeed
-                    showExpired={whenExpired && postTypeId === "request_help"}
-                  />
-                ) : null}
-                {isOwnFeed && post.source === "post" ? (
-                  <div className="ml-auto flex shrink-0 items-center gap-1">
-                    {isProfile && listingStatusType ? (
-                      <button
-                        type="button"
-                        disabled={listingStatusUpdating || deleting}
-                        onClick={handleListingStatusToggle}
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50",
-                          isListingStatusActive
-                            ? profilePostListingStatusButtonActiveClass(listingStatusType)
-                            : "text-muted-foreground hover:bg-muted/60",
-                        )}
-                        aria-label={
-                          isListingStatusActive
-                            ? t("feed.listingStatus.clear")
-                            : profilePostListingStatusMarkLabel(t, listingStatusType)
-                        }
-                        title={
-                          isListingStatusActive
-                            ? t("feed.listingStatus.clear")
-                            : profilePostListingStatusMarkLabel(t, listingStatusType)
-                        }
-                      >
-                        {listingStatusUpdating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <ProfilePostListingStatusIcon
-                            status={listingStatusType}
-                            className="h-4 w-4"
-                          />
-                        )}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      disabled={deleting}
-                      onClick={handleDelete}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
-                      aria-label="Delete post"
-                    >
-                      {deleting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
             {serviceCategoryMeta?.label && postTypeId ? (
               <p
                 className={cn(
@@ -4761,6 +4714,55 @@ function PostCard({
               </p>
             ) : null}
           </div>
+          {isOwnFeed && post.source === "post" ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {isProfile && listingStatusType ? (
+                <button
+                  type="button"
+                  disabled={listingStatusUpdating || deleting}
+                  onClick={handleListingStatusToggle}
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50",
+                    isListingStatusActive
+                      ? profilePostListingStatusButtonActiveClass(listingStatusType)
+                      : "text-muted-foreground hover:bg-muted/60",
+                  )}
+                  aria-label={
+                    isListingStatusActive
+                      ? t("feed.listingStatus.clear")
+                      : profilePostListingStatusMarkLabel(t, listingStatusType)
+                  }
+                  title={
+                    isListingStatusActive
+                      ? t("feed.listingStatus.clear")
+                      : profilePostListingStatusMarkLabel(t, listingStatusType)
+                  }
+                >
+                  {listingStatusUpdating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ProfilePostListingStatusIcon
+                      status={listingStatusType}
+                      className="h-4 w-4"
+                    />
+                  )}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDelete}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
+                aria-label="Delete post"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : (
       <div
@@ -4819,96 +4821,90 @@ function PostCard({
               </>
             ) : null}
           </p>
-          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ||
-          activeListingStatus ||
-          (post.source === "post" && (post.post_types?.id ?? post.post_type_id)) ||
-          (isJobRequest && post.post_types) ||
-          (isOwnFeed && post.source === "post") ? (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-                  <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {eventHelpersNeeded != null
-                    ? t("feed.event.helpersBadge", {
-                        accepted: eventAcceptedHelpers,
-                        needed: eventHelpersNeeded,
-                      })
-                    : t("feed.event.helpersAcceptedOnly", {
-                        count: eventAcceptedHelpers,
-                      })}
-                </span>
-              ) : null}
-              {activeListingStatus ? (
-                <ProfilePostListingStatusBadge
-                  status={activeListingStatus}
-                  size={isDiscover ? "default" : "compact"}
-                />
-              ) : null}
-              {post.source === "post" &&
-              (post.post_types?.id ?? post.post_type_id) ? (
-                <PostTypeBadgeWithExpired
-                  typeId={post.post_types?.id ?? post.post_type_id!}
-                  typeName={post.post_types?.name}
-                  size={isDiscover ? "lg" : "default"}
-                  showExpired={
-                    whenExpired &&
-                    (post.post_types?.id ?? post.post_type_id) === "request_help"
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-start pt-0.5">
+          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {eventHelpersNeeded != null
+                ? t("feed.event.helpersBadge", {
+                    accepted: eventAcceptedHelpers,
+                    needed: eventHelpersNeeded,
+                  })
+                : t("feed.event.helpersAcceptedOnly", {
+                    count: eventAcceptedHelpers,
+                  })}
+            </span>
+          ) : null}
+          {activeListingStatus ? (
+            <ProfilePostListingStatusBadge
+              status={activeListingStatus}
+              size={isDiscover ? "default" : "compact"}
+            />
+          ) : null}
+          {post.source === "post" &&
+          (post.post_types?.id ?? post.post_type_id) ? (
+            <PostTypeBadgeWithExpired
+              typeId={post.post_types?.id ?? post.post_type_id!}
+              typeName={post.post_types?.name}
+              size={isDiscover ? "lg" : "default"}
+              showExpired={
+                whenExpired &&
+                (post.post_types?.id ?? post.post_type_id) === "request_help"
+              }
+            />
+          ) : isJobRequest && post.post_types ? (
+            <PostTypeBadgeWithExpired
+              typeId={post.post_types.id}
+              typeName={post.post_types.name}
+              size={isDiscover ? "lg" : "default"}
+              showExpired={whenExpired}
+            />
+          ) : null}
+          {isOwnFeed && post.source === "post" ? (
+            <>
+              {isProfile && listingStatusType ? (
+                <button
+                  type="button"
+                  disabled={listingStatusUpdating || deleting}
+                  onClick={handleListingStatusToggle}
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 transition-colors disabled:opacity-50",
+                    isListingStatusActive
+                      ? profilePostListingStatusButtonActiveClass(listingStatusType)
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted/60",
+                  )}
+                  aria-label={
+                    isListingStatusActive
+                      ? t("feed.listingStatus.clear")
+                      : profilePostListingStatusMarkLabel(t, listingStatusType)
                   }
-                />
-              ) : isJobRequest && post.post_types ? (
-                <PostTypeBadgeWithExpired
-                  typeId={post.post_types.id}
-                  typeName={post.post_types.name}
-                  size={isDiscover ? "lg" : "default"}
-                  showExpired={whenExpired}
-                />
+                  title={
+                    isListingStatusActive
+                      ? t("feed.listingStatus.clear")
+                      : profilePostListingStatusMarkLabel(t, listingStatusType)
+                  }
+                >
+                  {listingStatusUpdating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <ProfilePostListingStatusIcon
+                      status={listingStatusType}
+                      className="h-5 w-5"
+                    />
+                  )}
+                </button>
               ) : null}
-              {isOwnFeed && post.source === "post" ? (
-                <div className="ml-auto flex shrink-0 items-center gap-1">
-                  {isProfile && listingStatusType ? (
-                    <button
-                      type="button"
-                      disabled={listingStatusUpdating || deleting}
-                      onClick={handleListingStatusToggle}
-                      className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 transition-colors disabled:opacity-50",
-                        isListingStatusActive
-                          ? profilePostListingStatusButtonActiveClass(listingStatusType)
-                          : "bg-muted/40 text-muted-foreground hover:bg-muted/60",
-                      )}
-                      aria-label={
-                        isListingStatusActive
-                          ? t("feed.listingStatus.clear")
-                          : profilePostListingStatusMarkLabel(t, listingStatusType)
-                      }
-                      title={
-                        isListingStatusActive
-                          ? t("feed.listingStatus.clear")
-                          : profilePostListingStatusMarkLabel(t, listingStatusType)
-                      }
-                    >
-                      {listingStatusUpdating ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <ProfilePostListingStatusIcon
-                          status={listingStatusType}
-                          className="h-5 w-5"
-                        />
-                      )}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    onClick={handleDelete}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
-                    aria-label="Delete post"
-                  >
-                    {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDelete}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
+                aria-label="Delete post"
+              >
+                {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+              </button>
+            </>
           ) : null}
         </div>
       </div>
@@ -5125,56 +5121,56 @@ function PostCard({
                 isGlobalFeed ? "max-md:px-0 px-3 md:px-3.5" : cardPadX,
               )}
             >
-              <button
-                type="button"
-                onClick={tryOpenReelsViewer}
+              <div
                 className={cn(
-                  "w-full cursor-pointer p-4 transition-opacity active:opacity-90",
+                  "w-full p-4",
                   isGlobalFeed ? "max-md:rounded-none md:rounded-xl" : "rounded-xl",
                   globalFeedContentLayout?.className,
                   globalFeedTextOnlySurfaceClass(postTypeId),
                   globalFeedMobileTextOnlySurfaceClass(postTypeId),
                 )}
                 dir={globalFeedContentLayout?.dir}
-                aria-label="View post full screen"
               >
-                {displayPostTitle ? (
-                  <h3
-                    className={cn(
-                      "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
-                      displayPostTitleLayout?.className,
-                    )}
-                    dir={displayPostTitleLayout?.dir}
-                  >
-                    {serviceCategoryMeta?.id ? (
-                      <CategoryIcon
-                        categoryId={serviceCategoryMeta.id}
-                        className="h-6 w-6 shrink-0"
-                      />
-                    ) : null}
-                    <span>{displayPostTitle}</span>
-                  </h3>
-                ) : null}
-                {displayTextOnlyBody ? (
-                  <p
-                    {...bidirectionalTextProps(
-                      displayTextOnlyBody,
-                      "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
-                    )}
-                  >
-                    {renderCaptionWithMentions(displayTextOnlyBody)}
-                  </p>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={tryOpenReelsViewer}
+                  className="w-full cursor-pointer text-left transition-opacity active:opacity-90"
+                  aria-label="View post full screen"
+                >
+                  {displayPostTitle ? (
+                    <h3
+                      className={cn(
+                        "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
+                        displayPostTitleLayout?.className,
+                      )}
+                      dir={displayPostTitleLayout?.dir}
+                    >
+                      {serviceCategoryMeta?.id ? (
+                        <CategoryIcon
+                          categoryId={serviceCategoryMeta.id}
+                          className="h-6 w-6 shrink-0"
+                        />
+                      ) : null}
+                      <span>{displayPostTitle}</span>
+                    </h3>
+                  ) : null}
+                  {displayTextOnlyBody ? (
+                    <p
+                      {...bidirectionalTextProps(
+                        displayTextOnlyBody,
+                        "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
+                      )}
+                    >
+                      {renderCaptionWithMentions(displayTextOnlyBody)}
+                    </p>
+                  ) : null}
+                </button>
                 {postTranslation.showControl ? (
-                  <div className="mt-2 text-left">
+                  <div className="relative z-10 mt-2 text-left">
                     <TranslateLinkButton
                       loading={postTranslation.loading}
                       label={postTranslation.controlLabel}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void postTranslation.toggle();
-                      }}
+                      onClick={() => void postTranslation.toggle()}
                     />
                   </div>
                 ) : null}
@@ -5264,62 +5260,74 @@ function PostCard({
                     </div>
                   ) : null}
                 </div>
-              </button>
+              </div>
             </div>
           ) : (
             <>
               {(displayPostTitle || displayPostDescription) && (
-                <button
-                  type="button"
-                  onClick={tryOpenReelsViewer}
+                <div
                   className={cn(
                     cardPadX,
                     hasMedia ? "pt-2.5" : "pt-2",
-                    "w-full cursor-pointer active:opacity-90",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
-                  aria-label={!hasMedia ? "View post full screen" : undefined}
-                  disabled={hasMedia}
                 >
-                  {displayPostTitle ? (
-                    <h3
-                      className={cn(
-                        "text-[19px] font-bold leading-snug text-foreground",
-                        displayPostTitleLayout?.className,
-                      )}
-                      dir={displayPostTitleLayout?.dir}
-                    >
-                      {displayPostTitle}
-                    </h3>
-                  ) : null}
-                  {displayPostDescription ? (
-                    <p
-                      {...bidirectionalTextProps(
-                        displayPostDescription,
-                        cn(
-                          "text-[17px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
-                          displayPostTitle && "mt-1",
-                        ),
-                      )}
-                    >
-                      {renderCaptionWithMentions(displayPostDescription)}
-                    </p>
-                  ) : null}
+                  <div
+                    role={!hasMedia ? "button" : undefined}
+                    tabIndex={!hasMedia ? 0 : undefined}
+                    onClick={!hasMedia ? tryOpenReelsViewer : undefined}
+                    onKeyDown={
+                      !hasMedia
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              tryOpenReelsViewer();
+                            }
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      "w-full text-left",
+                      !hasMedia && "cursor-pointer active:opacity-90",
+                    )}
+                    aria-label={!hasMedia ? "View post full screen" : undefined}
+                  >
+                    {displayPostTitle ? (
+                      <h3
+                        className={cn(
+                          "text-[19px] font-bold leading-snug text-foreground",
+                          displayPostTitleLayout?.className,
+                        )}
+                        dir={displayPostTitleLayout?.dir}
+                      >
+                        {displayPostTitle}
+                      </h3>
+                    ) : null}
+                    {displayPostDescription ? (
+                      <p
+                        {...bidirectionalTextProps(
+                          displayPostDescription,
+                          cn(
+                            "text-[17px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
+                            displayPostTitle && "mt-1",
+                          ),
+                        )}
+                      >
+                        {renderCaptionWithMentions(displayPostDescription)}
+                      </p>
+                    ) : null}
+                  </div>
                   {postTranslation.showControl ? (
-                    <div className="mt-1 text-left">
+                    <div className="relative z-10 mt-1 text-left">
                       <TranslateLinkButton
                         loading={postTranslation.loading}
                         label={postTranslation.controlLabel}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void postTranslation.toggle();
-                        }}
+                        onClick={() => void postTranslation.toggle()}
                       />
                     </div>
                   ) : null}
-                </button>
+                </div>
               )}
               {showFeedMetadataBox ? (
                 <div
