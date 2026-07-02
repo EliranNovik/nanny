@@ -4,13 +4,15 @@ import {
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
-import { globalJobRequestSharePath } from "@/lib/jobRequestShare";
+import { globalJobRequestFeedPath } from "@/lib/jobRequestShare";
 import {
   formatOpenHelpRequestBudget,
   openHelpRequestDescription,
   serviceCategoryTitle,
 } from "@/lib/openHelpRequestDisplay";
-import { globalProfilePostSharePath } from "@/lib/profilePostShare";
+import {
+  globalProfilePostFeedPath,
+} from "@/lib/profilePostShare";
 import {
   postServiceCategoryLabel,
   serviceCategoryLabel,
@@ -30,6 +32,7 @@ export type LandingActivityItem = {
   description: string;
   rateLabel: string | null;
   href: string;
+  feedTarget: "post" | "request";
   categoryId: string | null;
 };
 
@@ -119,7 +122,8 @@ function mapJobRequest(
     roleLabel: serviceCategoryTitle(row.service_type),
     description,
     rateLabel: budget ? `${budget}${rateType}` : null,
-    href: globalJobRequestSharePath(row.id),
+    href: globalJobRequestFeedPath(row.id),
+    feedTarget: "request",
     categoryId: row.service_type ?? null,
   };
 }
@@ -156,7 +160,8 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
         : `${postServiceCategoryLabel(categoryId, customCategory)} offer`,
     description,
     rateLabel: profilePostBudgetLabel(meta),
-    href: globalProfilePostSharePath(row.id),
+    href: globalProfilePostFeedPath(row.id),
+    feedTarget: "post",
     categoryId,
   };
 }
@@ -177,7 +182,8 @@ function mapCommunityOffer(row: CommunityFeedRow): LandingActivityItem {
     roleLabel: `${serviceCategoryLabel(row.category)} offer`,
     description,
     rateLabel: formatPriceHintFromPayload(row.availability_payload),
-    href: globalProfilePostSharePath(row.id),
+    href: globalProfilePostFeedPath(row.id),
+    feedTarget: "post",
     categoryId: row.category ?? null,
   };
 }

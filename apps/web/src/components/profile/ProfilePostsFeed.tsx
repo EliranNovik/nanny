@@ -31,6 +31,9 @@ import {
   HelpCircle,
   LifeBuoy,
   Clock,
+  UserCheck,
+  HeartHandshake,
+  CalendarX,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -148,10 +151,30 @@ import {
   REQUEST_HELP_WHEN_OPTIONS,
   isRequestHelpWhenExpired,
   isRequestHelpWhenUrgent,
+  requestHelpWhenOptionButtonClass,
   type RequestHelpTimeframe,
 } from "@/lib/requestHelpWhen";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
-import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
+  requestPostAccentTextClass,
+  requestPostAccentTextStrongClass,
+  requestPostBadgeClass,
+  requestPostBudgetTextClass,
+  requestPostCtaClass,
+  requestPostCtaPendingClass,
+  requestPostThemeMeta,
+  requestPostUrgentBadgeClass,
+} from "@/lib/requestPostTheme";
+import {
+  getProfilePostListingStatus,
+  isProfilePostListingStatusActive,
+  listingStatusForPostType,
+  profilePostListingStatusBadgeClass,
+  profilePostListingStatusButtonActiveClass,
+  profilePostListingStatusLabel,
+  profilePostListingStatusMarkLabel,
+  type ProfilePostListingStatus,
+} from "@/lib/profilePostListingStatus";
 import {
   isReelsViewerPost,
   PostMediaReelsViewer,
@@ -1317,12 +1340,7 @@ const POST_TYPE_METADATA: Record<string, {
     title: "Request Help",
     desc: "I need help with something",
     icon: LifeBuoy,
-    themeColor: "text-red-500 dark:text-red-400",
-    iconBg: "bg-red-500/10 dark:bg-red-500/20",
-    iconColor: "text-red-500 dark:text-red-400",
-    activeBorder: "border-red-500 dark:border-red-500/80 ring-red-500/15",
-    activeBg: "bg-red-50/20 dark:bg-red-950/10",
-    textClass: "text-red-600 dark:text-red-400",
+    ...requestPostThemeMeta,
   },
   offer_service: {
     title: "Offer Service",
@@ -1375,8 +1393,7 @@ function postTypeBadgeClassName(
     size === "lg"
       ? "gap-2.5 rounded-lg px-4 py-2 text-[14px]"
       : "gap-2 rounded-md px-3.5 py-1.5 text-[13px]",
-    typeId === "request_help" &&
-      "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+    typeId === "request_help" && requestPostBadgeClass,
     typeId === "offer_service" &&
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
     typeId === "community" &&
@@ -1456,6 +1473,53 @@ function RequestHelpExpiredBadge({
     >
       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white/90" aria-hidden />
       {t("feed.whenExpired")}
+    </span>
+  );
+}
+
+function ProfilePostListingStatusIcon({
+  status,
+  className,
+}: {
+  status: ProfilePostListingStatus;
+  className?: string;
+}) {
+  switch (status) {
+    case "helper_found":
+      return <UserCheck className={className} aria-hidden />;
+    case "already_helping":
+      return <HeartHandshake className={className} aria-hidden />;
+    case "expired":
+      return <CalendarX className={className} aria-hidden />;
+  }
+}
+
+function ProfilePostListingStatusBadge({
+  status,
+  size = "default",
+  className,
+}: {
+  status: ProfilePostListingStatus;
+  size?: "default" | "compact";
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 font-black uppercase tracking-wide",
+        size === "compact"
+          ? "rounded-md px-2.5 py-1 text-[11px] max-md:px-2 max-md:py-0.5 max-md:text-[10px] max-md:tracking-normal"
+          : "rounded-lg px-3 py-1.5 text-[12px]",
+        profilePostListingStatusBadgeClass(status),
+        className,
+      )}
+    >
+      <ProfilePostListingStatusIcon
+        status={status}
+        className="h-3.5 w-3.5 shrink-0 text-white/90"
+      />
+      {profilePostListingStatusLabel(t, status)}
     </span>
   );
 }
@@ -2181,7 +2245,7 @@ export function ComposeModal({
                         className={cn(
                           "flex items-center gap-1.5 font-bold",
                           isRequestHelpWhenUrgent(timeframe)
-                            ? "text-red-600 dark:text-red-400"
+                            ? requestPostAccentTextClass
                             : "text-foreground",
                         )}
                       >
@@ -2195,7 +2259,7 @@ export function ComposeModal({
                     ) : null}
                   </div>
                   {budgetAmount && (
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 text-xs font-black text-rose-600 dark:text-rose-400">
+                    <div className={cn("flex items-center gap-1.5 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 text-xs font-black", requestPostBudgetTextClass)}>
                       <Coins className="h-3.5 w-3.5 shrink-0" />
                       <span>₪{budgetAmount}</span>
                       <span className="text-[10px] text-muted-foreground font-semibold">
@@ -2291,7 +2355,7 @@ export function ComposeModal({
             disabled
             className={cn(
               "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black uppercase tracking-wider opacity-75 cursor-not-allowed",
-              selectedPostTypeId === "request_help" && "bg-red-600 text-white",
+              selectedPostTypeId === "request_help" && requestPostCtaClass,
               selectedPostTypeId === "offer_service" && "bg-emerald-600 text-white",
               selectedPostTypeId === "event" && "bg-violet-600 text-white",
             )}
@@ -3124,8 +3188,7 @@ const mediaTaggedAtBadgeClass =
 const mediaWhenBadgeClass =
   "inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-sm font-black text-slate-900 shadow-md backdrop-blur-xl";
 
-const mediaWhenUrgentBadgeClass =
-  "inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-black uppercase tracking-wide text-white shadow-md shadow-red-900/35 ring-2 ring-red-400/40 backdrop-blur-sm";
+const mediaWhenUrgentBadgeClass = requestPostUrgentBadgeClass;
 
 const mediaWhenBadgeIconClass = "h-4 w-4 shrink-0";
 
@@ -3154,21 +3217,6 @@ function whenBadgeIconClassForTimeframe(
   return isRequestHelpWhenUrgent(timeframe)
     ? mediaWhenUrgentBadgeIconClass
     : mediaWhenBadgeIconClass;
-}
-
-function requestHelpWhenOptionButtonClass(
-  selected: boolean,
-  option: RequestHelpTimeframe,
-) {
-  if (selected) {
-    return option === "now"
-      ? "bg-red-600 border-transparent text-white dark:bg-red-700 shadow-sm shadow-red-900/25"
-      : "bg-emerald-600 border-transparent text-white dark:bg-emerald-700 shadow-sm";
-  }
-  if (option === "now") {
-    return "bg-red-50 border-red-200 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/45";
-  }
-  return "bg-muted/40 border-input text-foreground hover:bg-muted/60 dark:bg-zinc-800/60";
 }
 
 function MediaTopBadges({
@@ -3299,6 +3347,10 @@ type PostCardProps = {
   onLikeToggle: (postId: string, liked: boolean) => void;
   isOwnFeed: boolean;
   onDeleted: (postId: string) => void;
+  onListingStatusChange: (
+    postId: string,
+    metadata: Record<string, unknown> | null,
+  ) => void;
   globalVideoUnmuted: boolean;
   onGlobalVideoUnmutedChange: (next: boolean) => void;
   refreshPostShareStats: (postId: string, source?: FeedPost["source"]) => void;
@@ -3332,6 +3384,7 @@ function PostCard({
   onLikeToggle,
   isOwnFeed,
   onDeleted,
+  onListingStatusChange,
   globalVideoUnmuted,
   onGlobalVideoUnmutedChange,
   refreshPostShareStats,
@@ -3350,6 +3403,10 @@ function PostCard({
   onLikeToggle: (postId: string, liked: boolean) => void;
   isOwnFeed: boolean;
   onDeleted: (postId: string) => void;
+  onListingStatusChange: (
+    postId: string,
+    metadata: Record<string, unknown> | null,
+  ) => void;
   globalVideoUnmuted: boolean;
   onGlobalVideoUnmutedChange: (next: boolean) => void;
   refreshPostShareStats: (postId: string, source?: FeedPost["source"]) => void;
@@ -3385,6 +3442,7 @@ function PostCard({
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [liking, setLiking] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [listingStatusUpdating, setListingStatusUpdating] = useState(false);
   const [eventJoinStatus, setEventJoinStatus] = useState<EventJoinInterestStatus | null>(
     null,
   );
@@ -3946,6 +4004,45 @@ function PostCard({
     }
   }
 
+  async function handleListingStatusToggle() {
+    if (
+      !currentUserId ||
+      post.source !== "post" ||
+      !listingStatusType ||
+      !isProfile
+    ) {
+      return;
+    }
+    setListingStatusUpdating(true);
+    try {
+      const nextMetadata = {
+        ...((post.post_metadata as Record<string, unknown> | null | undefined) ??
+          {}),
+      };
+      if (isListingStatusActive) {
+        delete nextMetadata.listing_status;
+      } else {
+        nextMetadata.listing_status = listingStatusType;
+      }
+      const { error } = await supabase
+        .from("profile_posts")
+        .update({ post_metadata: nextMetadata })
+        .eq("id", post.id);
+      if (error) throw error;
+      addToast({
+        title: isListingStatusActive
+          ? t("feed.listingStatus.clear")
+          : profilePostListingStatusLabel(t, listingStatusType),
+        variant: "success",
+      });
+      onListingStatusChange(post.id, nextMetadata);
+    } catch {
+      addToast({ title: "Could not update status", variant: "error" });
+    } finally {
+      setListingStatusUpdating(false);
+    }
+  }
+
   const authorName = post.author?.full_name?.trim() || "User";
   const generatedCopy =
     post.source === "post" || post.source === "job_request"
@@ -4012,6 +4109,14 @@ function PostCard({
   }, [post, t]);
 
   const postTypeId = feedPostTypeId(post);
+  const listingStatusType =
+    post.source === "post" ? listingStatusForPostType(postTypeId) : null;
+  const activeListingStatus =
+    post.source === "post" &&
+    isProfilePostListingStatusActive(postTypeId, post.post_metadata)
+      ? getProfilePostListingStatus(post.post_metadata)
+      : null;
+  const isListingStatusActive = activeListingStatus !== null;
   const postLocationRaw = useMemo(() => {
     const address = feedPostLocationAddress(post);
     if (!address) return null;
@@ -4181,13 +4286,7 @@ function PostCard({
 
   const canOpenInReelsViewer = isReelsViewerPost(post as ReelFeedPost);
 
-  function tryOpenMobileReels() {
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 768px)").matches
-    ) {
-      return;
-    }
+  function tryOpenReelsViewer() {
     if (!canOpenInReelsViewer) return;
     onOpenMediaReels(post.id);
   }
@@ -4205,7 +4304,7 @@ function PostCard({
     if (target.closest("a, button, input, textarea, select, video, [data-feed-interactive]")) {
       return;
     }
-    onOpenMediaReels(post.id);
+    tryOpenReelsViewer();
   }
 
   function toggleInlineVideoMute(e: React.MouseEvent) {
@@ -4483,8 +4582,8 @@ function PostCard({
     "inline-flex h-9 w-[10.75rem] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
     (post.source === "post" && post.post_types?.id === "request_help") || isJobRequest
       ? jobAcceptedAt
-        ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
-        : "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600"
+        ? requestPostCtaPendingClass
+        : requestPostCtaClass
       : null,
     post.source === "post" &&
       post.post_types?.id === "offer_service" &&
@@ -4515,7 +4614,7 @@ function PostCard({
               "rounded-2xl",
               globalFeedMobileCardClass,
               guestDesktopLightLayout
-                ? "bg-white shadow-sm ring-1 ring-slate-200/80 md:shadow-md dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
+                ? "bg-white shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
                 : globalFeedCardSurfaceClass,
             )
           : isDiscover || isPlainCard
@@ -4542,50 +4641,106 @@ function PostCard({
             />
           </GuestAwareProfileLink>
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <GuestAwareProfileLink
-                    userId={post.author_id}
-                    className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
-                    aria-label={`View ${authorName} profile`}
-                  >
-                    {authorName}
-                  </GuestAwareProfileLink>
-                  {post.author?.is_verified ? (
-                    <BadgeCheck
-                      className="h-5 w-5 shrink-0"
-                      fill="#0ea5e9"
-                      color="#ffffff"
-                      aria-label="Verified"
-                    />
-                  ) : null}
-                </div>
-                <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
-
-                  <time className="tabular-nums">{postedLabel}</time>
-                  {postLocationLine ? (
-                    <>
-                      <span aria-hidden> · </span>
-                      <span>{postLocationLine}</span>
-                    </>
-                  ) : null}
-                </p>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <GuestAwareProfileLink
+                  userId={post.author_id}
+                  className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
+                  aria-label={`View ${authorName} profile`}
+                >
+                  {authorName}
+                </GuestAwareProfileLink>
+                {post.author?.is_verified ? (
+                  <BadgeCheck
+                    className="h-5 w-5 shrink-0"
+                    fill="#0ea5e9"
+                    color="#ffffff"
+                    aria-label="Verified"
+                  />
+                ) : null}
               </div>
-              {postTypeId ? (
-                <PostTypeBadgeWithExpired
-                  typeId={postTypeId}
-                  typeName={
-                    post.source === "post" || post.source === "job_request"
-                      ? post.post_types?.name
-                      : undefined
-                  }
-                  compact
-                  mobileGlobalFeed
-                  showExpired={whenExpired && postTypeId === "request_help"}
-                />
-              ) : null}
+              <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
+                <time className="tabular-nums">{postedLabel}</time>
+                {postLocationLine ? (
+                  <>
+                    <span aria-hidden> · </span>
+                    <span>{postLocationLine}</span>
+                  </>
+                ) : null}
+              </p>
             </div>
+            {activeListingStatus || postTypeId || (isOwnFeed && post.source === "post") ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {activeListingStatus ? (
+                  <ProfilePostListingStatusBadge
+                    status={activeListingStatus}
+                    size="compact"
+                  />
+                ) : null}
+                {postTypeId ? (
+                  <PostTypeBadgeWithExpired
+                    typeId={postTypeId}
+                    typeName={
+                      post.source === "post" || post.source === "job_request"
+                        ? post.post_types?.name
+                        : undefined
+                    }
+                    compact
+                    mobileGlobalFeed
+                    showExpired={whenExpired && postTypeId === "request_help"}
+                  />
+                ) : null}
+                {isOwnFeed && post.source === "post" ? (
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    {isProfile && listingStatusType ? (
+                      <button
+                        type="button"
+                        disabled={listingStatusUpdating || deleting}
+                        onClick={handleListingStatusToggle}
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50",
+                          isListingStatusActive
+                            ? profilePostListingStatusButtonActiveClass(listingStatusType)
+                            : "text-muted-foreground hover:bg-muted/60",
+                        )}
+                        aria-label={
+                          isListingStatusActive
+                            ? t("feed.listingStatus.clear")
+                            : profilePostListingStatusMarkLabel(t, listingStatusType)
+                        }
+                        title={
+                          isListingStatusActive
+                            ? t("feed.listingStatus.clear")
+                            : profilePostListingStatusMarkLabel(t, listingStatusType)
+                        }
+                      >
+                        {listingStatusUpdating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ProfilePostListingStatusIcon
+                            status={listingStatusType}
+                            className="h-4 w-4"
+                          />
+                        )}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={handleDelete}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
+                      aria-label="Delete post"
+                    >
+                      {deleting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {serviceCategoryMeta?.label && postTypeId ? (
               <p
                 className={cn(
@@ -4605,17 +4760,6 @@ function PostCard({
               </p>
             ) : null}
           </div>
-          {isOwnFeed && post.source === "post" ? (
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={handleDelete}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
-              aria-label="Delete post"
-            >
-              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </button>
-          ) : null}
         </div>
       ) : (
       <div
@@ -4674,50 +4818,96 @@ function PostCard({
               </>
             ) : null}
           </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 self-start pt-0.5">
-          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {eventHelpersNeeded != null
-                ? t("feed.event.helpersBadge", {
-                    accepted: eventAcceptedHelpers,
-                    needed: eventHelpersNeeded,
-                  })
-                : t("feed.event.helpersAcceptedOnly", {
-                    count: eventAcceptedHelpers,
-                  })}
-            </span>
-          ) : null}
-          {post.source === "post" &&
-          (post.post_types?.id ?? post.post_type_id) ? (
-            <PostTypeBadgeWithExpired
-              typeId={post.post_types?.id ?? post.post_type_id!}
-              typeName={post.post_types?.name}
-              size={isDiscover ? "lg" : "default"}
-              showExpired={
-                whenExpired &&
-                (post.post_types?.id ?? post.post_type_id) === "request_help"
-              }
-            />
-          ) : isJobRequest && post.post_types ? (
-            <PostTypeBadgeWithExpired
-              typeId={post.post_types.id}
-              typeName={post.post_types.name}
-              size={isDiscover ? "lg" : "default"}
-              showExpired={whenExpired}
-            />
-          ) : null}
-          {isOwnFeed && post.source === "post" ? (
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={handleDelete}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
-              aria-label="Delete post"
-            >
-              {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-            </button>
+          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ||
+          activeListingStatus ||
+          (post.source === "post" && (post.post_types?.id ?? post.post_type_id)) ||
+          (isJobRequest && post.post_types) ||
+          (isOwnFeed && post.source === "post") ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+                  <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  {eventHelpersNeeded != null
+                    ? t("feed.event.helpersBadge", {
+                        accepted: eventAcceptedHelpers,
+                        needed: eventHelpersNeeded,
+                      })
+                    : t("feed.event.helpersAcceptedOnly", {
+                        count: eventAcceptedHelpers,
+                      })}
+                </span>
+              ) : null}
+              {activeListingStatus ? (
+                <ProfilePostListingStatusBadge
+                  status={activeListingStatus}
+                  size={isDiscover ? "default" : "compact"}
+                />
+              ) : null}
+              {post.source === "post" &&
+              (post.post_types?.id ?? post.post_type_id) ? (
+                <PostTypeBadgeWithExpired
+                  typeId={post.post_types?.id ?? post.post_type_id!}
+                  typeName={post.post_types?.name}
+                  size={isDiscover ? "lg" : "default"}
+                  showExpired={
+                    whenExpired &&
+                    (post.post_types?.id ?? post.post_type_id) === "request_help"
+                  }
+                />
+              ) : isJobRequest && post.post_types ? (
+                <PostTypeBadgeWithExpired
+                  typeId={post.post_types.id}
+                  typeName={post.post_types.name}
+                  size={isDiscover ? "lg" : "default"}
+                  showExpired={whenExpired}
+                />
+              ) : null}
+              {isOwnFeed && post.source === "post" ? (
+                <div className="ml-auto flex shrink-0 items-center gap-1">
+                  {isProfile && listingStatusType ? (
+                    <button
+                      type="button"
+                      disabled={listingStatusUpdating || deleting}
+                      onClick={handleListingStatusToggle}
+                      className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 transition-colors disabled:opacity-50",
+                        isListingStatusActive
+                          ? profilePostListingStatusButtonActiveClass(listingStatusType)
+                          : "bg-muted/40 text-muted-foreground hover:bg-muted/60",
+                      )}
+                      aria-label={
+                        isListingStatusActive
+                          ? t("feed.listingStatus.clear")
+                          : profilePostListingStatusMarkLabel(t, listingStatusType)
+                      }
+                      title={
+                        isListingStatusActive
+                          ? t("feed.listingStatus.clear")
+                          : profilePostListingStatusMarkLabel(t, listingStatusType)
+                      }
+                    >
+                      {listingStatusUpdating ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <ProfilePostListingStatusIcon
+                          status={listingStatusType}
+                          className="h-5 w-5"
+                        />
+                      )}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={handleDelete}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
+                    aria-label="Delete post"
+                  >
+                    {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -4928,12 +5118,18 @@ function PostCard({
       {isGlobalFeed ? (
         <>
           {isGlobalTextOnlyCard ? (
-            <div className={cn(cardPadX, "pb-1")}>
+            <div
+              className={cn(
+                "pb-1",
+                isGlobalFeed ? "max-md:px-0 px-3 md:px-3.5" : cardPadX,
+              )}
+            >
               <button
                 type="button"
-                onClick={tryOpenMobileReels}
+                onClick={tryOpenReelsViewer}
                 className={cn(
-                  "w-full rounded-xl p-4 transition-opacity active:opacity-90 max-md:cursor-pointer",
+                  "w-full cursor-pointer p-4 transition-opacity active:opacity-90",
+                  isGlobalFeed ? "max-md:rounded-none md:rounded-xl" : "rounded-xl",
                   globalFeedContentLayout?.className,
                   globalFeedTextOnlySurfaceClass(postTypeId),
                   globalFeedMobileTextOnlySurfaceClass(postTypeId),
@@ -5021,7 +5217,7 @@ function PostCard({
                   {post.source === "post" &&
                   post.post_type_id === "request_help" &&
                   post.post_metadata?.budget ? (
-                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
                       <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
@@ -5032,7 +5228,7 @@ function PostCard({
                     </div>
                   ) : null}
                   {isJobRequest && post.post_metadata?.budget ? (
-                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
                       <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
@@ -5074,13 +5270,12 @@ function PostCard({
               {(displayPostTitle || displayPostDescription) && (
                 <button
                   type="button"
-                  onClick={tryOpenMobileReels}
+                  onClick={tryOpenReelsViewer}
                   className={cn(
                     cardPadX,
                     hasMedia ? "pt-2.5" : "pt-2",
-                    "w-full max-md:active:opacity-90",
+                    "w-full cursor-pointer active:opacity-90",
                     globalFeedContentLayout?.className,
-                    !hasMedia && "max-md:cursor-pointer",
                   )}
                   dir={globalFeedContentLayout?.dir}
                   aria-label={!hasMedia ? "View post full screen" : undefined}
@@ -5167,7 +5362,7 @@ function PostCard({
                   {post.source === "post" &&
                   post.post_type_id === "request_help" &&
                   post.post_metadata?.budget ? (
-                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
                       <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
@@ -5303,16 +5498,16 @@ function PostCard({
             <div
               role="button"
               tabIndex={0}
-              onClick={tryOpenMobileReels}
+              onClick={tryOpenReelsViewer}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  tryOpenMobileReels();
+                  tryOpenReelsViewer();
                 }
               }}
               className={cn(
                 cardPadX,
-                "w-full pb-0 pt-2 max-md:cursor-pointer max-md:active:opacity-90 md:pt-3 md:pb-1",
+                "w-full cursor-pointer pb-0 pt-2 active:opacity-90 md:pt-3 md:pb-1",
                 captionLayout?.className,
               )}
               dir={captionLayout?.dir}
@@ -5389,7 +5584,7 @@ function PostCard({
                       whenExpired
                         ? "text-muted-foreground"
                         : isRequestHelpWhenUrgent(post.post_metadata.timeframe)
-                          ? "text-red-600 dark:text-red-400"
+                          ? requestPostAccentTextClass
                           : "text-foreground",
                     )}
                   >
@@ -5399,7 +5594,7 @@ function PostCard({
                         whenExpired
                           ? "text-muted-foreground"
                           : isRequestHelpWhenUrgent(post.post_metadata.timeframe)
-                            ? "text-red-500 dark:text-red-400"
+                            ? requestPostAccentTextStrongClass
                             : "text-muted-foreground",
                       )}
                     />
@@ -5417,7 +5612,7 @@ function PostCard({
                 ) : null}
               </div>
               {post.post_metadata.budget && (
-                <div className="flex items-center gap-2 pt-1 border-t border-zinc-200/70 dark:border-zinc-800/50 text-[15px] font-black text-rose-600 dark:text-rose-400">
+                <div className={cn("flex items-center gap-2 pt-1 border-t border-zinc-200/70 dark:border-zinc-800/50 text-[15px] font-black", requestPostBudgetTextClass)}>
                   <Coins className="h-4 w-4 shrink-0" />
                   <span>₪{post.post_metadata.budget}</span>
                   <span className="text-xs text-muted-foreground font-semibold">
@@ -6872,6 +7067,19 @@ export function ProfilePostsFeed({
     queryClient.setQueryData<FeedPost[]>(qk, (prev) => prev?.filter((p) => p.id !== postId));
   }
 
+  function handleListingStatusChange(
+    postId: string,
+    metadata: Record<string, unknown> | null,
+  ) {
+    queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
+      prev?.map((p) =>
+        p.id === postId && p.source === "post"
+          ? { ...p, post_metadata: metadata }
+          : p,
+      ),
+    );
+  }
+
   const refreshPostShareStats = useCallback(
     async (postId: string, source: FeedPost["source"] = "post") => {
       if (source === "job_request") {
@@ -7035,6 +7243,7 @@ export function ProfilePostsFeed({
                 onLikeToggle={handleLikeToggle}
                 isOwnFeed={isOwnProfile}
                 onDeleted={handleDeleted}
+                onListingStatusChange={handleListingStatusChange}
                 globalVideoUnmuted={globalVideoUnmuted}
                 onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
                 refreshPostShareStats={refreshPostShareStats}
@@ -7076,6 +7285,7 @@ export function ProfilePostsFeed({
                 onLikeToggle={handleLikeToggle}
                 isOwnFeed={isOwnProfile}
                 onDeleted={handleDeleted}
+                onListingStatusChange={handleListingStatusChange}
                 globalVideoUnmuted={globalVideoUnmuted}
                 onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
                 refreshPostShareStats={refreshPostShareStats}
@@ -7106,6 +7316,7 @@ export function ProfilePostsFeed({
                   onLikeToggle={handleLikeToggle}
                   isOwnFeed={isOwnProfile}
                   onDeleted={handleDeleted}
+                onListingStatusChange={handleListingStatusChange}
                   globalVideoUnmuted={globalVideoUnmuted}
                   onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
                   refreshPostShareStats={refreshPostShareStats}

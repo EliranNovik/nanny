@@ -232,8 +232,8 @@ function DiscoverHomeLiveHelpSection({
           </h2>
           <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-5 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-400/15 dark:text-emerald-200 dark:ring-emerald-400/25">
+        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-100/80 px-4 py-5 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200/90 text-zinc-600 ring-1 ring-zinc-300/60 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/80">
             <Zap className="h-5 w-5" strokeWidth={2.25} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
@@ -254,10 +254,10 @@ function DiscoverHomeLiveHelpSection({
                 navigate(createRequestPath as string);
               }}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1 rounded-full border border-emerald-600/20 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-900 shadow-sm transition-colors",
-                "hover:bg-emerald-100 active:scale-95",
-                "dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:shadow-none",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
+                "shrink-0 inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-zinc-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-zinc-800 shadow-sm transition-colors",
+                "hover:bg-zinc-200 active:scale-95",
+                "dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:shadow-none",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50",
               )}
               aria-label={t("discover.postRequest")}
             >

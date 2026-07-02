@@ -4,6 +4,7 @@ import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
+import { useScrollToTopOnPathnameChange } from "@/hooks/useScrollToTopOnPathnameChange";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -295,6 +296,7 @@ function FeedMainContent({
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
+  useScrollToTopOnPathnameChange();
   useMobileShellScrollCollapse(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
@@ -339,6 +341,16 @@ export default function GlobalPostsPage() {
   const focusPostId = parseProfilePostShareId(rawPostParam) ?? scrollToPostId;
   const focusRequestId = parseJobRequestShareId(rawRequestParam) ?? scrollToRequestId;
   const typeParam = searchParams.get("type");
+
+  useEffect(() => {
+    if (focusPostId || focusRequestId) return;
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    };
+    resetScroll();
+    const t = window.setTimeout(resetScroll, 120);
+    return () => window.clearTimeout(t);
+  }, [focusPostId, focusRequestId, location.pathname]);
 
   useEffect(() => {
     const state = location.state as CommunityFeedLocationState | null;

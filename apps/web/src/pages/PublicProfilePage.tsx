@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -43,17 +43,17 @@ import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
-import { type AvailabilityPayload } from "@/lib/availabilityPosts";
+import { type PublicProfileServiceBoardPost, PublicProfileServiceBoard } from "@/components/profile/PublicProfileServiceBoard";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import {
   getServiceCategoryImage,
   isServiceCategoryId,
   serviceCategoryLabel,
-  type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import { scrollToProfilePostWhenReady } from "@/lib/profilePostShare";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import {
   readPublicProfileCache,
@@ -83,13 +83,6 @@ type PostedHelpEngagement =
 
 
 
-function livePostCategoryLabel(category: string): string {
-  return isServiceCategoryId(category)
-    ? serviceCategoryLabel(category as ServiceCategoryId)
-    : category.replace(/_/g, " ");
-}
-
-/** Medal @1, trophy @6–10, crown @11+ — same tiers as helper search / confirmed cards. */
 function liveHelpCornerTierFromCount(
   n: number | null | undefined,
 ): { kind: "medal" | "trophy" | "crown"; title: string } | null {
@@ -112,24 +105,12 @@ function liveHelpCornerTierFromCount(
   return null;
 }
 
-type LiveCommunityPostRow = {
-  id: string;
-  category: string;
-  title: string;
-  note: string | null;
-  expires_at: string;
-  availability_payload: AvailabilityPayload | null;
-  created_at: string;
-};
-
 function jobServiceLabel(serviceType: string | undefined): string {
   if (!serviceType) return "Job";
   return isServiceCategoryId(serviceType)
     ? serviceCategoryLabel(serviceType)
     : serviceType.replace(/_/g, " ");
 }
-
-
 
 type ProfilePostedHelpRequest = {
   id: string;
@@ -438,8 +419,8 @@ export default function PublicProfilePage() {
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
-  const [liveCommunityPosts, setLiveCommunityPosts] = useState<
-    LiveCommunityPostRow[]
+  const [serviceBoardPosts, setServiceBoardPosts] = useState<
+    PublicProfileServiceBoardPost[]
   >([]);
   const [postedHelpRequests, setPostedHelpRequests] = useState<
     ProfilePostedHelpRequest[]
@@ -470,6 +451,9 @@ export default function PublicProfilePage() {
   >(null);
   const [profileMediaTab, setProfileMediaTab] =
     useState<ProfileMediaSectionTab>("posts");
+  const [postsTabScrollToId, setPostsTabScrollToId] = useState<string | null>(
+    null,
+  );
   /** Completed live-help bookings in the last 7 days (helpers only). */
   const [liveHelpWeekCount, setLiveHelpWeekCount] = useState<number | null>(
     null,
@@ -645,8 +629,10 @@ export default function PublicProfilePage() {
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
       setMediaItems(cached.mediaItems as PublicProfileMediaRow[]);
-      setLiveCommunityPosts(
-        cached.liveCommunityPosts as LiveCommunityPostRow[],
+      setServiceBoardPosts(
+        (cached.serviceBoardPosts ??
+          (cached as { liveCommunityPosts?: unknown }).liveCommunityPosts ??
+          []) as PublicProfileServiceBoardPost[],
       );
       setPostedHelpRequests(
         cached.postedHelpRequests as ProfilePostedHelpRequest[],
@@ -714,13 +700,13 @@ export default function PublicProfilePage() {
               .eq("user_id", userId)
               .order("sort_order", { ascending: true }),
             supabase
-              .from("community_posts")
+              .from("profile_posts")
               .select(
-                "id, category, title, note, expires_at, availability_payload, created_at",
+                "id, caption, media_type, storage_path, created_at, post_type_id, post_metadata, ai_generated_copy, post_types (id, name, emoji, color)",
               )
               .eq("author_id", userId)
               .order("created_at", { ascending: false })
-              .limit(40),
+              .limit(12),
           ];
           if (runHelperRpcs) {
             guestBatch.push(
@@ -731,7 +717,7 @@ export default function PublicProfilePage() {
           }
           const guestResults = await Promise.all(guestBatch);
           type PgResult = { data: unknown; error: unknown };
-          const [reviewsData, mediaData, communityData] = guestResults.slice(
+          const [reviewsData, mediaData, serviceBoardData] = guestResults.slice(
             0,
             3,
           ) as [PgResult, PgResult, PgResult];
@@ -770,14 +756,16 @@ export default function PublicProfilePage() {
 
           if (reviewsData.error) throw reviewsData.error;
           if (mediaData.error) throw mediaData.error;
-          if (communityData.error) throw communityData.error;
+          if (serviceBoardData.error) throw serviceBoardData.error;
 
           if (!cancelled) {
             setLiveHelpWeekCount(nextLiveHelpWeek);
             setSharedJobs([]);
             setReviews((reviewsData.data || []) as unknown as UserReview[]);
             setMediaItems((mediaData.data || []) as PublicProfileMediaRow[]);
-            setLiveCommunityPosts(communityData.data as LiveCommunityPostRow[]);
+            setServiceBoardPosts(
+              (serviceBoardData.data || []) as PublicProfileServiceBoardPost[],
+            );
             setPostedHelpRequests([]);
             setLoading(false);
           }
@@ -834,13 +822,13 @@ export default function PublicProfilePage() {
             .eq("user_id", userId)
             .order("sort_order", { ascending: true }),
           supabase
-            .from("community_posts")
+            .from("profile_posts")
             .select(
-              "id, category, title, note, expires_at, availability_payload, created_at",
+              "id, caption, media_type, storage_path, created_at, post_type_id, post_metadata, ai_generated_copy, post_types (id, name, emoji, color)",
             )
             .eq("author_id", userId)
             .order("created_at", { ascending: false })
-            .limit(40),
+            .limit(12),
           supabase
             .from("job_requests")
             .select("id, service_type, status, created_at, location_city")
@@ -866,7 +854,7 @@ export default function PublicProfilePage() {
           notifWhenViewerIsHelper,
           reviewsData,
           mediaData,
-          communityData,
+          serviceBoardData,
           postedHelpData,
         ] = batchResults.slice(0, 8) as [
           PgResult,
@@ -925,7 +913,7 @@ export default function PublicProfilePage() {
 
         if (reviewsData.error) throw reviewsData.error;
         if (mediaData.error) throw mediaData.error;
-        if (communityData.error) throw communityData.error;
+        if (serviceBoardData.error) throw serviceBoardData.error;
         if (postedHelpData.error) throw postedHelpData.error;
 
         function embeddedJobRequest(n: any): SharedJob | null {
@@ -976,7 +964,9 @@ export default function PublicProfilePage() {
           setSharedJobs(shared);
           setReviews((reviewsData.data || []) as unknown as UserReview[]);
           setMediaItems((mediaData.data || []) as PublicProfileMediaRow[]);
-          setLiveCommunityPosts(communityData.data as LiveCommunityPostRow[]);
+          setServiceBoardPosts(
+            (serviceBoardData.data || []) as PublicProfileServiceBoardPost[],
+          );
           setPostedHelpRequests(
             postedHelpData.data as ProfilePostedHelpRequest[],
           );
@@ -991,7 +981,7 @@ export default function PublicProfilePage() {
             sharedJobs: shared,
             reviews: reviewsData.data,
             mediaItems: mediaData.data,
-            liveCommunityPosts: communityData.data,
+            serviceBoardPosts: serviceBoardData.data,
             postedHelpRequests: postedHelpData.data,
           });
         }
@@ -1087,9 +1077,29 @@ export default function PublicProfilePage() {
       plainCards: true,
       globalFeedLayout: true,
       viewerLocation,
+      scrollToPostId: postsTabScrollToId,
+      onScrollToPostDone: () => setPostsTabScrollToId(null),
     }),
-    [userId, isOwnProfile, viewerLocation],
+    [userId, isOwnProfile, viewerLocation, postsTabScrollToId],
   );
+
+  const openServiceBoardPost = (postId: string) => {
+    setProfileMediaTab("posts");
+    setPostsTabScrollToId(postId);
+    window.requestAnimationFrame(() => {
+      const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+      const section = document.getElementById(
+        isDesktop ? "profile-social-feed-desktop" : "profile-social-feed-mobile",
+      );
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    window.setTimeout(() => {
+      scrollToProfilePostWhenReady(postId, {
+        topInset: 96,
+        maxAttempts: 24,
+      });
+    }, 120);
+  };
 
   const helpedOthersCount = sharedJobs.filter(
     (j) => j.status === "completed" && j.selected_freelancer_id === userId,
@@ -1824,7 +1834,10 @@ export default function PublicProfilePage() {
           </TabsContent>
 
           <TabsContent value="posts" className="m-0 focus-visible:outline-none">
-            <div className="bg-background pt-1">
+            <div
+              id="profile-social-feed-mobile"
+              className="bg-background pt-1 scroll-mt-24"
+            >
               <ProfilePostsFeed {...profilePostsFeedProps} />
             </div>
           </TabsContent>
@@ -1868,7 +1881,7 @@ export default function PublicProfilePage() {
             <section className="space-y-10">
               {/* Needs Help — Restored to original styles */}
               <div>
-                <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10"><HeartHandshake className="h-5 w-5 text-rose-600 dark:text-rose-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
+                <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/10"><HeartHandshake className="h-5 w-5 text-orange-600 dark:text-orange-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
                 <div className="space-y-4">{postedHelpRequests.length > 0 ? postedHelpRequests.map((job) => renderPostedHelpRow(job)) : (<div className="flex flex-col items-center gap-3 px-2 py-4 text-center"><HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden /><p className="text-sm font-medium text-slate-400 dark:text-slate-500">No open help requests right now.</p></div>)}</div>
               </div>
 
@@ -1957,7 +1970,7 @@ export default function PublicProfilePage() {
       <div className="hidden md:block app-desktop-shell py-8">
         <div className="grid grid-cols-3 gap-8 items-start">
           {/* Main content (2/3) */}
-          <div className="col-span-2">
+          <div id="profile-social-feed-desktop" className="col-span-2 scroll-mt-24">
             {profileMediaTab === "images" && (
               <div className="space-y-4">
                 {imageRows.length === 0 ? (
@@ -2020,54 +2033,10 @@ export default function PublicProfilePage() {
           <div className="col-span-1 space-y-6">
             <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
               <div className="flex items-center gap-2.5 mb-5"><Sparkles className="h-4 w-4 text-orange-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Public Service Board</h3></div>
-              {liveCommunityPosts.length > 0 ? (
-                <div className="space-y-2">
-                  {liveCommunityPosts.map((post) =>
-                    currentUser ? (
-                      <Link
-                        key={post.id}
-                        to={`/public/posts?post=${encodeURIComponent(post.id)}`}
-                        className="flex flex-col gap-1 rounded-2xl p-4 bg-white/60 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 hover:bg-white dark:hover:bg-white/10 transition-all group outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
-                      >
-                        <div className="flex items-center justify-between gap-2 overflow-hidden">
-                          <p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-orange-600 transition-colors uppercase tracking-tight">
-                            {post.title}
-                          </p>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-100/90 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200"
-                          >
-                            {livePostCategoryLabel(post.category)}
-                          </Badge>
-                        </div>
-                      </Link>
-                    ) : (
-                      <div
-                        key={post.id}
-                        className="flex flex-col gap-1 rounded-2xl p-4 bg-slate-50/80 dark:bg-white/5 border border-slate-200/50 dark:border-white/5"
-                      >
-                        <div className="flex items-center justify-between gap-2 overflow-hidden">
-                          <p className="text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
-                            {post.title}
-                          </p>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-200/70 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200"
-                          >
-                            {livePostCategoryLabel(post.category)}
-                          </Badge>
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              ) : <p className="text-xs text-muted-foreground py-2 text-center bg-slate-50/50 dark:bg-white/5 rounded-2xl">No live board posts.</p>}
+              <PublicProfileServiceBoard
+                posts={serviceBoardPosts}
+                onPostOpen={openServiceBoardPost}
+              />
             </div>
 
             {reviews.length > 0 ? (

@@ -13,7 +13,7 @@ export type PublicProfileCachePayload = {
   sharedJobs: unknown;
   reviews: unknown;
   mediaItems: unknown;
-  liveCommunityPosts: unknown;
+  serviceBoardPosts: unknown;
   postedHelpRequests: unknown;
 };
 
@@ -44,7 +44,9 @@ export function readPublicProfileCache(
       sharedJobs: parsed.sharedJobs,
       reviews: parsed.reviews,
       mediaItems: parsed.mediaItems,
-      liveCommunityPosts: parsed.liveCommunityPosts,
+      serviceBoardPosts:
+        parsed.serviceBoardPosts ??
+        (parsed as { liveCommunityPosts?: unknown }).liveCommunityPosts,
       postedHelpRequests: parsed.postedHelpRequests,
     };
   } catch {

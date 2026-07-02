@@ -309,7 +309,7 @@ export function DiscoverHomeActionFirst({
    */
   function renderQuickActionDockMobile() {
     const badgeRow =
-      "ml-auto flex h-8 min-w-[2rem] items-center justify-center rounded-full px-2 text-[15px] font-black tabular-nums text-white bg-red-500 shadow-md";
+      "ml-auto flex h-8 min-w-[2rem] items-center justify-center rounded-full px-2 text-[15px] font-black tabular-nums text-white bg-orange-500 shadow-md";
 
     const quickMoreBody = (
       <div className={cn("flex flex-col gap-1 bg-background p-2", mobileSheetSafePaddingBottom)}>

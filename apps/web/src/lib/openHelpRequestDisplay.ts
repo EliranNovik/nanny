@@ -12,6 +12,7 @@ import {
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { requestPostWhenNowBadgeClass } from "@/lib/requestPostTheme";
 
 export function prettyDurationLabel(label: string | null | undefined): string | null {
   if (!label) return null;
@@ -72,7 +73,7 @@ export function openHelpRequestWhenBadgeLabel(
 export function whenBadgeToneClass(timeframe: string | null | undefined): string {
   switch (timeframe) {
     case "now":
-      return "border-0 bg-red-500/5 text-red-700 dark:bg-black/30 dark:text-red-300";
+      return requestPostWhenNowBadgeClass;
     case "today":
       return "border-0 bg-amber-500/5 text-amber-700 dark:bg-black/30 dark:text-amber-300";
     case "tomorrow":

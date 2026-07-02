@@ -121,12 +121,12 @@ export function RoleOnboardingGuide({
               className={cn(
                 "rounded-2xl border p-4 dark:border-white/10",
                 !isFreelancer
-                  ? "border-red-200 bg-red-50/70 dark:bg-red-950/20"
+                  ? "border-orange-200 bg-orange-50/70 dark:bg-orange-950/20"
                   : "border-border bg-muted/30",
               )}
             >
               <div className="flex gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-600 text-white">
                   <LifeBuoy className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -136,7 +136,7 @@ export function RoleOnboardingGuide({
                   </p>
                   <Button
                     type="button"
-                    className="mt-3 h-10 rounded-xl bg-red-600 px-4 font-bold text-white hover:bg-red-700"
+                    className="mt-3 h-10 rounded-xl bg-orange-600 px-4 font-bold text-white hover:bg-orange-700"
                     onClick={() => closeAndNavigate(requestPostPath)}
                   >
                     Share request post

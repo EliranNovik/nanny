@@ -457,7 +457,7 @@ function ConfirmedRequestSummaryBody({
               <div
                 className={cn(
                   "flex items-center gap-1.5",
-                  whenUrgent && "font-semibold text-red-600 dark:text-red-400",
+                  whenUrgent && "font-semibold text-orange-600 dark:text-orange-400",
                 )}
               >
                 {whenUrgent ? (

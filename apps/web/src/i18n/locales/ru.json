@@ -348,6 +348,15 @@
     "refresh": "Обновить",
     "noCommentsYet": "Пока нет комментариев. Будьте первым!",
     "whenExpired": "Истекло",
+    "listingStatus": {
+      "helperFound": "Помощник найден",
+      "alreadyHelping": "Уже помогает",
+      "expired": "Истекло",
+      "markHelperFound": "Отметить: помощник найден",
+      "markAlreadyHelping": "Отметить: уже помогает",
+      "markExpired": "Отметить истекшим",
+      "clear": "Сбросить статус"
+    },
     "iCanHelp": "Могу помочь",
     "contactName": "Связаться с {{name}}",
     "defaultUser": "Пользователь",

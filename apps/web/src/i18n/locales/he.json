@@ -348,6 +348,15 @@
     "refresh": "רענן",
     "noCommentsYet": "אין תגובות עדיין. תהיה הראשון!",
     "whenExpired": "פג תוקף",
+    "listingStatus": {
+      "helperFound": "נמצא עוזר",
+      "alreadyHelping": "כבר עוזר",
+      "expired": "פג תוקף",
+      "markHelperFound": "סמן שנמצא עוזר",
+      "markAlreadyHelping": "סמן שכבר עוזר",
+      "markExpired": "סמן כפג תוקף",
+      "clear": "נקה סטטוס"
+    },
     "iCanHelp": "אני יכול לעזור",
     "contactName": "צור קשר עם {{name}}",
     "defaultUser": "משתמש",

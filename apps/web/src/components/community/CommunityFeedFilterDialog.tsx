@@ -24,6 +24,10 @@ import {
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
+  requestPostComposeSelectedClass,
+  requestPostComposeUnselectedClass,
+} from "@/lib/requestPostTheme";
+import {
   COMMUNITY_FEED_WHEN_OPTIONS,
   DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
   countActiveFeedModalFilters,
@@ -316,10 +320,10 @@ function CommunityFeedFilterFormBody({
                   "h-9 rounded-full border px-3.5 text-xs font-semibold transition-all active:scale-95",
                   selected
                     ? opt.id === "now"
-                      ? "border-red-600 bg-red-600 text-white"
+                      ? requestPostComposeSelectedClass
                       : "border-emerald-600 bg-emerald-600 text-white"
                     : opt.id === "now"
-                      ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+                      ? requestPostComposeUnselectedClass
                       : "border-border bg-background text-foreground hover:bg-muted/50",
                 )}
               >

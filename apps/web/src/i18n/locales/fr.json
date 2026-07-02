@@ -348,6 +348,15 @@
     "refresh": "Actualiser",
     "noCommentsYet": "Pas encore de commentaires. Soyez le premier !",
     "whenExpired": "Expiré",
+    "listingStatus": {
+      "helperFound": "Aide trouvée",
+      "alreadyHelping": "Déjà en aide",
+      "expired": "Expiré",
+      "markHelperFound": "Marquer aide trouvée",
+      "markAlreadyHelping": "Marquer déjà en aide",
+      "markExpired": "Marquer expiré",
+      "clear": "Effacer le statut"
+    },
     "iCanHelp": "Je peux aider",
     "contactName": "Contacter {{name}}",
     "defaultUser": "Utilisateur",

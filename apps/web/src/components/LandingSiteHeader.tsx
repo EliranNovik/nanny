@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -80,16 +80,6 @@ export function LandingSiteHeader({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
@@ -108,9 +98,7 @@ export function LandingSiteHeader({
 
   const headerBgClass = cn(
     isLandingGlass
-      ? isScrolled
-        ? "bg-white/90 backdrop-blur-md shadow-sm md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
-        : "bg-white/10 backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
+      ? "max-md:border-0 max-md:bg-white/95 max-md:shadow-none max-md:backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
       : variant === "glassy"
         ? glassyHeaderBgClass
         : brandHeaderBgClass,
@@ -126,8 +114,8 @@ export function LandingSiteHeader({
   const menuIconClass = cn(
     variant === "glassy"
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-      : (isLandingGlass && isScrolled)
-        ? "text-zinc-800 hover:text-zinc-950"
+      : isLandingGlass
+        ? "max-md:text-slate-900 max-md:hover:text-slate-700 md:text-white md:hover:text-white/80"
         : "text-white hover:text-white/80",
     mobileMatchLanding &&
       variant !== "landingGlass" &&
@@ -137,7 +125,9 @@ export function LandingSiteHeader({
   const signInBtnClass = cn(
     variant === "glassy"
       ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
-      : "text-white hover:bg-white/10",
+      : isLandingGlass
+        ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10"
+        : "text-white hover:bg-white/10",
     mobileMatchLanding &&
       variant !== "landingGlass" &&
       "max-md:text-white max-md:hover:bg-white/10",
@@ -193,24 +183,32 @@ export function LandingSiteHeader({
     <>
       {!hideLeftLogo && !scrollWithPage &&
         (leftCorner === "logo" ? (
-          <Link
-            to="/"
-            className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 group/logo transition-all duration-300"
-          >
-            <img
-              src={BRAND_LOGO_SRC}
-              alt="Tebnu"
-              className="h-20 w-auto md:h-24 lg:h-28 transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
-            />
-            <span
-              className={cn(
-                "text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block",
-                leftLogoTextClassName,
-              )}
+          onBrandClick ? (
+            <button
+              type="button"
+              onClick={onBrandClick}
+              className="fixed top-5 left-8 z-[60] hidden md:block group/logo transition-all duration-300"
+              aria-label="What is Tebnu?"
             >
-              Tebnu
-            </span>
-          </Link>
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="Tebnu"
+                className="h-20 w-auto md:h-24 lg:h-28 transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
+              />
+            </button>
+          ) : (
+            <Link
+              to="/"
+              className="fixed top-5 left-8 z-[60] hidden md:block group/logo transition-all duration-300"
+              aria-label="Tebnu home"
+            >
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="Tebnu"
+                className="h-20 w-auto md:h-24 lg:h-28 transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
+              />
+            </Link>
+          )
         ) : (
           <Link
             to="/"
@@ -246,36 +244,22 @@ export function LandingSiteHeader({
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
             {isLandingGlass ? mobileMenuButton : null}
-            {isLandingGlass ? (
+            {!isLandingGlass ? (
               onBrandClick ? (
                 <button
                   type="button"
                   onClick={onBrandClick}
-                  className="flex shrink-0 items-center gap-2.5 rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99] md:gap-3"
+                  className="flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99]"
                   aria-label="What is Tebnu?"
                 >
-                  <img
-                    src={BRAND_LOGO_SRC}
-                    alt="Tebnu"
-                    className="h-9 w-auto md:h-11 lg:h-12"
-                    loading="eager"
-                    decoding="async"
-                  />
                   <span className={landingBrandTextClass}>Tebnu</span>
                 </button>
               ) : (
                 <Link
                   to="/"
-                  className="flex shrink-0 items-center gap-2.5 md:gap-3"
+                  className="flex shrink-0 items-center"
                   aria-label="Tebnu home"
                 >
-                  <img
-                    src={BRAND_LOGO_SRC}
-                    alt="Tebnu"
-                    className="h-9 w-auto md:h-11 lg:h-12"
-                    loading="eager"
-                    decoding="async"
-                  />
                   <span className={landingBrandTextClass}>Tebnu</span>
                 </Link>
               )
@@ -318,10 +302,17 @@ export function LandingSiteHeader({
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className={cn(
                     "h-9 w-9 flex-shrink-0 border",
-                    isLandingGlass && isScrolled ? "border-slate-200 md:border-white/30" : "border-white/30"
+                    isLandingGlass
+                      ? "max-md:border-slate-200 md:border-white/30"
+                      : "border-white/30"
                   )}>
                     <AvatarImage src={profile?.photo_url || undefined} alt="" />
-                    <AvatarFallback className="bg-white/20 text-white text-xs font-bold">
+                    <AvatarFallback className={cn(
+                      "text-xs font-bold",
+                      isLandingGlass
+                        ? "max-md:bg-slate-100 max-md:text-slate-700 md:bg-white/20 md:text-white"
+                        : "bg-white/20 text-white",
+                    )}>
                       {profile?.full_name
                         ?.split(" ")
                         .map((n) => n[0])
@@ -332,7 +323,7 @@ export function LandingSiteHeader({
                   </Avatar>
                   <span className={cn(
                     "text-sm font-bold truncate",
-                    isLandingGlass && isScrolled ? "text-slate-800 md:text-white" : "text-white"
+                    isLandingGlass ? "text-slate-900 md:text-white" : "text-white",
                   )}>
                     Hi, {profile?.full_name?.split(" ")[0] || "User"}
                   </span>
@@ -390,9 +381,7 @@ export function LandingSiteHeader({
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-5",
                     isLandingGlass
-                      ? isScrolled
-                        ? "text-zinc-800 hover:bg-zinc-100 hover:text-zinc-950 md:text-white md:hover:bg-white/10 md:hover:text-white"
-                        : "text-white hover:bg-white/10 hover:text-white"
+                      ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10 md:hover:text-white"
                       : signInBtnClass,
                   )}
                 >
@@ -403,11 +392,9 @@ export function LandingSiteHeader({
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-4",
                     simpleRegisterCta
-                      ? "text-white shadow-none hover:bg-white/10 hover:text-white/90"
+                      ? "max-md:text-slate-900 max-md:hover:bg-slate-100 md:text-white md:hover:bg-white/10 md:hover:text-white/90"
                       : isLandingGlass
-                        ? isScrolled
-                          ? "bg-orange-600 text-white hover:bg-orange-700 md:bg-white md:text-orange-600 md:hover:bg-white/90 shadow-sm"
-                          : "bg-white text-orange-600 hover:bg-white/90 shadow-sm"
+                        ? "max-md:bg-orange-600 max-md:text-white max-md:hover:bg-orange-700 md:bg-white md:text-orange-600 md:hover:bg-white/90 shadow-sm"
                         : cn(
                             "shadow-sm",
                             variant === "glassy"
@@ -437,7 +424,7 @@ export function LandingSiteHeader({
                 onClick={() => navigate(dashboardPath)}
                 className={cn(
                   "md:hidden p-2 transition-colors",
-                  isLandingGlass && isScrolled ? "text-slate-800" : "text-white"
+                  isLandingGlass ? "text-slate-900 md:text-white" : "text-white",
                 )}
               >
                 <Home className="w-6 h-6" />

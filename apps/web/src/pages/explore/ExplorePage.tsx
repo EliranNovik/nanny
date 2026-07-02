@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useScrollToTopOnPathnameChange } from "@/hooks/useScrollToTopOnPathnameChange";
 import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExploreLiveHelpNow } from "@/components/discover/ExploreLiveHelpNow";
@@ -127,6 +128,7 @@ function ExploreSecondaryUnderlineTabs({
  */
 export default function ExplorePage() {
   const { t } = useTranslation();
+  useScrollToTopOnPathnameChange();
   const location = useLocation();
   const isClientExplore = location.pathname.startsWith("/client/");
   const [searchParams, setSearchParams] = useSearchParams();

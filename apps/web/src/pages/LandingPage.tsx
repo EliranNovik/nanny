@@ -13,11 +13,10 @@ import {
   Soup,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Truck,
-  ShieldCheck,
+  BadgeCheck,
   Loader2,
-  Heart,
-  LifeBuoy,
   Radio,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
@@ -29,9 +28,23 @@ import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
+import {
+  communityFeedRequestScrollState,
+  communityFeedScrollState,
+} from "@/lib/communityFeedNav";
+import {
+  globalFeedCardSurfaceClass,
+  globalFeedPostTypeAccentClass,
+  globalFeedPrimaryCtaClass,
+} from "@/lib/globalFeedPostUi";
 import { useTheme } from "@/context/ThemeContext";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
+import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
+import {
+  requestPostAccentTextClass,
+  requestPostBadgeClass,
+} from "@/lib/requestPostTheme";
 
 function landingCategoryGradient(categoryId: string | null): string {
   const k = (categoryId || "").toLowerCase();
@@ -42,29 +55,26 @@ function landingCategoryGradient(categoryId: string | null): string {
   return "from-orange-400 to-amber-500";
 }
 
-function LandingCategoryIcon({
-  categoryId,
-  className,
-}: {
-  categoryId: string | null;
-  className?: string;
-}) {
-  const k = (categoryId || "").toLowerCase();
-  if (k.includes("nanny") || k.includes("child")) {
-    return <Baby className={className} />;
-  }
-  if (k.includes("clean")) return <Sparkles className={className} />;
-  if (k.includes("cook")) return <Soup className={className} />;
-  if (k.includes("pickup") || k.includes("deliver")) {
-    return <Truck className={className} />;
-  }
-  return <Briefcase className={className} />;
+function landingActivityTypeId(kind: LandingActivityKind): "request_help" | "offer_service" {
+  return kind === "request" ? "request_help" : "offer_service";
 }
 
-function activityKindBadge(kind: LandingActivityKind) {
-  return kind === "request"
-    ? { label: "Request", Icon: LifeBuoy, className: "text-orange-600" }
-    : { label: "Offer", Icon: Heart, className: "text-emerald-600" };
+function landingActivityBadgeLabel(kind: LandingActivityKind): string {
+  return kind === "request" ? "Request" : "Offer";
+}
+
+function landingActivityBadgeClass(typeId: "request_help" | "offer_service"): string {
+  return cn(
+    "inline-flex shrink-0 items-center rounded-md px-2.5 py-0.5 text-[11px] font-black uppercase tracking-[0.06em]",
+    typeId === "request_help" && requestPostBadgeClass,
+    typeId === "offer_service" && "bg-emerald-100 text-emerald-700",
+  );
+}
+
+function landingActivityCtaLabel(kind: LandingActivityKind, authorName: string): string {
+  if (kind === "request") return "Offer help";
+  const first = authorName.trim().split(/\s+/)[0] || "user";
+  return `Message ${first}`;
 }
 
 function helperInitials(name: string | null | undefined): string {
@@ -87,7 +97,8 @@ export default function LandingPage() {
   const [showFixedButtons, setShowFixedButtons] = useState(false);
   const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const { activityLoading, activityItems, reviewsLoading, reviews } =
+  const [tebnuApartOpen, setTebnuApartOpen] = useState(false);
+  const { activityLoading, activityItems, heroPosts, heroPostsLoading, reviewsLoading, reviews } =
     useLandingPagePreview();
 
   const showcaseCategories = [
@@ -295,7 +306,6 @@ export default function LandingPage() {
       style={{ colorScheme: "light" }}
     >
       <LandingSiteHeader
-        hideLeftLogo
         hideBackButton
         hideBackButtonMobile
         variant="landingGlass"
@@ -304,196 +314,228 @@ export default function LandingPage() {
 
       <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
-      {/* Bottom-Left Fixed CTAs when scrolled past - Desktop Only */}
+      {/* Sticky hero CTAs when scrolled past — desktop only */}
       <div
         className={cn(
-          "fixed bottom-8 left-8 z-[60] hidden md:flex items-center gap-4 transition-all duration-500 transform",
+          "fixed inset-x-0 bottom-8 z-[60] hidden justify-center px-6 transition-all duration-500 md:flex",
           showFixedButtons
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-10 pointer-events-none",
         )}
       >
-        <Button
-          onClick={handleSearchingForJob}
-          className="h-14 px-8 rounded-2xl bg-white/90 hover:bg-white backdrop-blur-xl border border-white/40 shadow-2xl flex items-center gap-3 text-slate-900 font-bold transition-all hover:scale-105 active:scale-95 group/fixed-btn"
-        >
-          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-transform group-hover/fixed-btn:scale-110">
-            <Briefcase className="w-4 h-4" />
-          </div>
-          <span>Offer Help</span>
-        </Button>
-        <Button
-          onClick={handleHiringHelper}
-          className="h-14 px-8 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-xl flex items-center gap-3 font-bold transition-all hover:scale-105 active:scale-95 group/fixed-btn"
-        >
-          <div className="h-8 w-8 rounded-lg bg-white/20 text-white flex items-center justify-center transition-transform group-hover/fixed-btn:scale-110">
-            <Users className="w-4 h-4" />
-          </div>
-          <span>Need Help</span>
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
+          <Button
+            onClick={handleSearchingForJob}
+            className="h-12 gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50"
+          >
+            <Briefcase className="h-4 w-4 text-orange-600" strokeWidth={2.25} />
+            Offer Help
+          </Button>
+          <Button
+            type="button"
+            onClick={handleCommunityLive}
+            className="h-12 gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50"
+          >
+            <Radio className="h-4 w-4 text-orange-600" strokeWidth={2.25} aria-hidden />
+            Community Live
+          </Button>
+          <Button
+            onClick={handleHiringHelper}
+            className="h-12 gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 text-sm font-bold text-white shadow-md hover:from-orange-600 hover:to-red-700"
+          >
+            <Users className="h-4 w-4" strokeWidth={2.25} />
+            Need Help
+          </Button>
+        </div>
       </div>
 
       <main className="flex-1">
         {/* Full-Screen Hero Section */}
-        <section
-          className="relative w-full min-h-[90vh] overflow-hidden group/hero"
-        >
-          <img
-            src="/pexels-silverkblack-36715260.jpg"
-            alt="Hero Background"
-            className="absolute inset-0 z-0 min-h-full w-full object-cover transition-transform duration-1000 group-hover/hero:scale-105"
-          />
+        <section className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-slate-50">
+          {/* Mobile — white hero with same post collage as desktop */}
+          <div className="relative bg-white md:hidden">
+            <div className="relative flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(5.75rem,calc(env(safe-area-inset-top,0px)+4.5rem))]">
+              <div className="relative z-10 space-y-4 pb-1 animate-in fade-in slide-in-from-bottom-3 duration-700">
+                <h1 className="max-w-[19rem] text-[2.5rem] font-black leading-[1.05] tracking-tight text-slate-900 sm:text-[2.65rem]">
+                  One{" "}
+                  <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-orange-600 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.25)]">
+                    community
+                  </span>
+                  . Many helpers.
+                </h1>
+                <p className="max-w-[20rem] text-[1.05rem] font-medium leading-relaxed text-slate-600">
+                  Find support, share skills, and connect within minutes.
+                </p>
+              </div>
 
-          {/* Lighter overlays — keep the photo vivid while preserving text contrast */}
-          <div className="absolute inset-0 z-[1] bg-black/5" />
-          <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/25 via-transparent to-transparent" />
+              <LandingHeroCollage
+                embedded
+                posts={heroPosts}
+                loading={heroPostsLoading}
+                className="relative left-1/2 z-0 mt-1 w-screen max-w-[100vw] -translate-x-1/2"
+              />
 
-          <div className="absolute inset-0 z-[2] hidden bg-gradient-to-t from-black/45 via-black/10 to-transparent md:block" />
-
-          {/* Hero copy + Didit trust card — stacked on mobile; anchored corners on desktop */}
-          <div className="relative z-10 flex min-h-[calc(90vh-4.5rem)] w-full flex-col justify-between px-6 pb-10 pt-28 md:block md:min-h-screen md:px-0 md:pb-0 md:pt-0">
-            <div className="w-[90%] max-w-2xl space-y-5 text-left animate-in fade-in slide-in-from-left-10 duration-1000 md:absolute md:left-8 md:top-36 md:w-auto md:max-w-lg lg:left-12 lg:top-44 lg:max-w-xl xl:max-w-2xl md:rounded-[2rem] md:border md:border-white/10 md:bg-white/5 md:p-8 md:backdrop-blur-sm md:shadow-sm md:space-y-6">
-              <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white drop-shadow-lg md:text-6xl lg:text-7xl">
-                One{" "}
-                <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-400/20 bg-primary/40 px-3 py-1 text-orange-200">
-                  community
-                </span>
-                . Many helpers.
-              </h1>
-              <p className="max-w-lg text-lg font-medium text-white/90 drop-shadow-md md:text-xl">
-                Find support, share skills, and connect within minutes.
-              </p>
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-white/85 md:text-base">
-                <span>Verified users</span>
-                <span className="text-white/40" aria-hidden>
-                  ·
-                </span>
-                <span>Local helpers</span>
-                <span className="text-white/40" aria-hidden>
-                  ·
-                </span>
-                <span>Fast response</span>
-              </p>
-              <Button
-                type="button"
-                onClick={handleCommunityLive}
-                className="mt-2 flex h-16 w-full items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/95 px-8 text-lg font-black tracking-tight text-slate-900 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)] transition-all hover:bg-white hover:scale-[1.02] active:scale-[0.98] md:mt-4 md:h-[4.25rem] md:w-auto md:min-w-[320px] md:text-xl"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-md">
-                  <Radio className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-                </span>
-                Community Live
-              </Button>
-            </div>
-
-            <div
-              className="hidden md:absolute md:bottom-12 md:left-8 md:block md:w-auto md:max-w-xs lg:bottom-16 lg:left-12 lg:max-w-md xl:max-w-lg"
-              aria-label="Secure registration powered by Didit"
-            >
-              <div className="animate-in fade-in slide-in-from-left-10 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)] duration-1000 delay-150 lg:px-6 lg:py-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 md:h-14 md:w-14">
-                    <ShieldCheck
-                      className="h-6 w-6 text-emerald-600 lg:h-7 lg:w-7"
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
-                      What sets Tebnu apart
-                    </p>
-                    <p className="mt-1 text-base font-bold leading-snug text-slate-900 md:text-lg lg:text-xl">
-                      Every member verified with{" "}
-                      <span className="text-emerald-600">Didit</span>
-                    </p>
-                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px] lg:text-base">
-                      Real ID and a live selfie before anyone can hire or work.
-                    </p>
-                    <ul className="mt-2.5 space-y-1.5 md:space-y-2">
-                      {[
-                        "Encrypted ID checks at signup",
-                        "Verified before posting, hiring, or going live",
-                      ].map((line) => (
-                        <li
-                          key={line}
-                          className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 md:text-[15px]"
-                        >
-                          <CheckCircle2
-                            className="h-4 w-4 shrink-0 text-emerald-600"
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              <div ref={mobileHeroButtonsRef} className="mt-2 space-y-3">
+                <Button
+                  type="button"
+                  onClick={handleCommunityLive}
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-orange-500 to-red-600 text-base font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    <Radio className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  Community Live
+                </Button>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Button
+                    type="button"
+                    onClick={handleHiringHelper}
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-sm font-black text-white shadow-md transition-all hover:bg-slate-800 active:scale-[0.98]"
+                  >
+                    <Users className="h-4 w-4 shrink-0 text-orange-300" strokeWidth={2.25} aria-hidden />
+                    Need Help
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSearchingForJob}
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-black text-slate-900 transition-all hover:bg-slate-100 active:scale-[0.98]"
+                  >
+                    <Briefcase className="h-4 w-4 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+                    Offer Help
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom-right CTAs — desktop */}
-          <div
-            ref={buttonsRef}
-            className="absolute bottom-10 right-8 z-20 hidden md:block lg:bottom-14 lg:right-12 xl:right-16"
-          >
-            <div className="flex flex-col gap-3 xl:flex-row xl:gap-4">
-              <Button
-                onClick={handleSearchingForJob}
-                className="group/btn flex h-16 min-w-[240px] items-center justify-center gap-3.5 rounded-2xl border border-slate-200/90 bg-white px-7 text-base font-bold text-slate-900 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.35)] transition-all hover:bg-slate-50 active:scale-[0.98] lg:h-[4.5rem] lg:min-w-[260px] lg:px-8 lg:text-lg"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 lg:h-11 lg:w-11">
-                  <Briefcase className="h-5 w-5 lg:h-[1.35rem] lg:w-[1.35rem]" strokeWidth={2.25} />
-                </div>
-                <span>Offer Help</span>
-              </Button>
+          {/* Desktop — Facebook-style post collage + copy column */}
+          <div className="hidden md:grid md:min-h-screen md:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+            <LandingHeroCollage posts={heroPosts} loading={heroPostsLoading} />
 
-              <Button
-                onClick={handleHiringHelper}
-                className="group/btn flex h-16 min-w-[240px] items-center justify-center gap-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-7 text-base font-bold text-white shadow-[0_16px_36px_-10px_rgba(249,115,22,0.55)] transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[4.5rem] lg:min-w-[260px] lg:px-8 lg:text-lg"
+            <div className="relative flex flex-col justify-center bg-slate-50 px-10 py-28 lg:px-14 xl:px-16">
+              <div className="max-w-xl space-y-6 animate-in fade-in slide-in-from-right-10 duration-1000">
+                <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-slate-900 lg:text-6xl xl:text-7xl">
+                  One{" "}
+                  <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-200 bg-orange-50 px-3 py-1 text-orange-600">
+                    community
+                  </span>
+                  . Many helpers.
+                </h1>
+                <p className="max-w-lg text-lg font-medium text-slate-600 lg:text-xl">
+                  Find support, share skills, and connect within minutes.
+                </p>
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-slate-500 lg:text-base">
+                  <span>Verified users</span>
+                  <span className="text-slate-300" aria-hidden>
+                    ·
+                  </span>
+                  <span>Local helpers</span>
+                  <span className="text-slate-300" aria-hidden>
+                    ·
+                  </span>
+                  <span>Fast response</span>
+                </p>
+              </div>
+
+              <div
+                className="mt-10 max-w-md"
+                aria-label="Secure registration powered by Didit"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white lg:h-11 lg:w-11">
-                  <Users className="h-5 w-5 lg:h-[1.35rem] lg:w-[1.35rem]" strokeWidth={2.25} />
+                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.12)]">
+                  <button
+                    type="button"
+                    onClick={() => setTebnuApartOpen((open) => !open)}
+                    aria-expanded={tebnuApartOpen}
+                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50/80 lg:px-6 lg:py-5"
+                  >
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-[0_6px_18px_-4px_rgba(16,185,129,0.55)] ring-1 ring-emerald-400/30 md:h-14 md:w-14">
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.28),transparent_55%)]"
+                        aria-hidden
+                      />
+                      <BadgeCheck
+                        className="relative h-6 w-6 fill-white text-emerald-600 lg:h-7 lg:w-7"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </div>
+                    <span className="min-w-0 flex-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
+                      What sets Tebnu apart
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200",
+                        tebnuApartOpen && "rotate-180",
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                  {tebnuApartOpen ? (
+                    <div className="border-t border-slate-100 px-5 pb-4 pt-3 lg:px-6 lg:pb-5">
+                        <p className="text-base font-bold leading-snug text-slate-900 md:text-lg lg:text-xl">
+                          Every member verified with{" "}
+                          <span className="text-emerald-600">Didit</span>
+                        </p>
+                        <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px] lg:text-base">
+                          Real ID and a live selfie before anyone can hire or work.
+                        </p>
+                        <ul className="mt-2.5 space-y-1.5 md:space-y-2">
+                          {[
+                            "Encrypted ID checks at signup",
+                            "Verified before posting, hiring, or going live",
+                          ].map((line) => (
+                            <li
+                              key={line}
+                              className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 md:text-[15px]"
+                            >
+                              <CheckCircle2
+                                className="h-4 w-4 shrink-0 text-emerald-600"
+                                strokeWidth={2.5}
+                                aria-hidden
+                              />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
+                    </div>
+                  ) : null}
                 </div>
-                <span>Need Help</span>
-              </Button>
+              </div>
+
+              <div
+                ref={buttonsRef}
+                className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap"
+              >
+                <Button
+                  onClick={handleSearchingForJob}
+                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
+                >
+                  <Briefcase className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} />
+                  Offer Help
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCommunityLive}
+                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
+                >
+                  <Radio className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+                  Community Live
+                </Button>
+                <Button
+                  onClick={handleHiringHelper}
+                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-6 text-base font-bold text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
+                >
+                  <Users className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                  Need Help
+                </Button>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Mobile Hero CTAs - below the background image */}
-        <div className="px-6 py-8 bg-white border-b border-slate-100 md:hidden">
-          <Button
-            type="button"
-            onClick={handleCommunityLive}
-            className="mb-4 flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-lg font-black text-white shadow-lg shadow-orange-500/25 hover:from-orange-600 hover:to-red-700 active:scale-[0.98] transition-all"
-          >
-            <Radio className="h-6 w-6 shrink-0" strokeWidth={2.5} aria-hidden />
-            Community Live
-          </Button>
-          <div ref={mobileHeroButtonsRef} className="flex flex-row gap-3">
-            <Button
-              onClick={handleHiringHelper}
-              className="flex-1 flex h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-base font-black text-white shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-red-700 active:scale-[0.98] transition-all"
-            >
-              <Users className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-              Need Help
-            </Button>
-            <Button
-              onClick={handleSearchingForJob}
-              className="flex-1 flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-base font-black text-slate-900 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
-            >
-              <Briefcase className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
-              Offer Help
-            </Button>
-          </div>
-        </div>
-
         <div className="max-w-7xl mx-auto px-4 md:px-0 space-y-24 py-24">
           {/* How finding a helper works - Premium Step-by-Step */}
-          <section className="max-w-7xl mx-auto pt-24 px-4 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 delay-200">
+          <section className="max-w-7xl mx-auto px-4 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 delay-200">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
                 How it <span className="text-primary italic">works</span>
@@ -612,7 +654,7 @@ export default function LandingPage() {
                             "relative transition-all duration-700 cursor-pointer flex-shrink-0 group",
                             isActive
                               ? "w-full md:w-[48%] lg:w-[44%] xl:w-[40%] z-20"
-                              : "hidden md:block w-[16%] lg:w-[15%] xl:w-[14%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
+                              : "hidden md:block w-[16%] lg:w-[15%] xl:w-[14%] z-10 opacity-60 grayscale hover:opacity-100 hover:grayscale-0",
                             isActive
                               ? "scale-100"
                               : "scale-90 translate-y-4",
@@ -827,7 +869,7 @@ export default function LandingPage() {
 
           <div
             ref={recentActivityRef}
-            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-8 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
+            className="flex w-full snap-x snap-mandatory items-stretch gap-5 overflow-x-auto scroll-smooth pb-8 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
           >
             {activityLoading ? (
               <div className="flex min-h-[220px] w-full items-center justify-center text-muted-foreground">
@@ -839,73 +881,88 @@ export default function LandingPage() {
               </div>
             ) : (
               activityItems.map((item) => {
-                const badge = activityKindBadge(item.kind);
-                const BadgeIcon = badge.Icon;
+                const typeId = landingActivityTypeId(item.kind);
                 return (
                   <Link
                     key={`${item.kind}-${item.id}`}
                     to={item.href}
-                    className="group block w-[min(88vw,320px)] shrink-0 snap-start rounded-3xl border border-gray-100 bg-white p-6 shadow-xl transition-all duration-500 hover:scale-[1.02] hover:bg-gray-50 sm:w-[340px] md:w-[360px] lg:w-[380px] xl:w-[400px]"
+                    state={
+                      item.feedTarget === "request"
+                        ? communityFeedRequestScrollState(item.id)
+                        : communityFeedScrollState(item.id)
+                    }
+                    className={cn(
+                      "group flex min-h-[320px] w-[min(88vw,320px)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl transition-shadow duration-300 hover:shadow-md sm:w-[340px] md:w-[360px] lg:w-[380px] xl:w-[400px]",
+                      globalFeedCardSurfaceClass,
+                    )}
                   >
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        {item.authorPhotoUrl ? (
-                          <Avatar className="h-16 w-16 border border-gray-100 shadow-inner">
-                            <AvatarImage src={item.authorPhotoUrl} alt="" />
-                            <AvatarFallback>{item.authorInitials}</AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div
-                            className={cn(
-                              "flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br text-lg font-bold text-white shadow-inner",
-                              landingCategoryGradient(item.categoryId),
-                            )}
-                          >
-                            {item.authorInitials}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-bold leading-tight text-gray-900 transition-colors group-hover:text-primary">
+                    <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
+                      {item.authorPhotoUrl ? (
+                        <Avatar className="h-12 w-12 shrink-0 ring-2 ring-white">
+                          <AvatarImage src={item.authorPhotoUrl} alt="" />
+                          <AvatarFallback>{item.authorInitials}</AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div
+                          className={cn(
+                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white ring-2 ring-white",
+                            landingCategoryGradient(item.categoryId),
+                          )}
+                        >
+                          {item.authorInitials}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <h3 className="truncate text-base font-bold leading-tight text-slate-900 transition-colors group-hover:text-primary lg:text-[17px]">
                             {item.authorName}
                           </h3>
-                          <div className="mt-0.5 flex items-center gap-1.5">
-                            <LandingCategoryIcon
-                              categoryId={item.categoryId}
-                              className="h-4 w-4 shrink-0 text-gray-500"
-                            />
-                            <span className="truncate text-xs font-semibold uppercase tracking-wider text-gray-600">
-                              {item.roleLabel}
-                            </span>
-                          </div>
+                          <span className={landingActivityBadgeClass(typeId)}>
+                            {landingActivityBadgeLabel(item.kind)}
+                          </span>
                         </div>
+                        <p
+                          className={cn(
+                            "mt-1.5 text-[11px] font-bold uppercase tracking-wide",
+                            globalFeedPostTypeAccentClass(typeId),
+                          )}
+                        >
+                          {item.roleLabel}
+                        </p>
                       </div>
-                      <span
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide",
-                          badge.className,
-                        )}
-                      >
-                        <BadgeIcon className="h-3 w-3" aria-hidden />
-                        {badge.label}
-                      </span>
                     </div>
 
-                    <p className="mb-6 min-h-[4.5rem] text-sm leading-relaxed text-gray-700">
-                      {item.description}
-                    </p>
+                    <div className="flex flex-1 flex-col px-4 pb-3">
+                      <p className="line-clamp-5 flex-1 text-sm leading-relaxed text-slate-800 lg:text-[15px]">
+                        {item.description}
+                      </p>
+                    </div>
 
-                    <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                          {item.rateLabel ? "Pricing" : "Posted"}
-                        </span>
-                        <span className="font-black text-xl text-primary">
-                          {item.rateLabel ?? "Open"}
+                    <div className="mt-auto border-t border-slate-100 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          {item.rateLabel ? (
+                            <>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                Pricing
+                              </span>
+                              <p className="truncate text-base font-bold text-slate-900 lg:text-lg">
+                                {item.rateLabel}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm font-medium text-slate-500">Open request</p>
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex h-9 shrink-0 items-center justify-center rounded-lg px-3 text-[11px] font-bold uppercase tracking-wide text-white transition-opacity group-hover:opacity-95",
+                            globalFeedPrimaryCtaClass(typeId),
+                          )}
+                        >
+                          {landingActivityCtaLabel(item.kind, item.authorName)}
                         </span>
                       </div>
-                      <span className="inline-flex h-9 items-center rounded-full border border-gray-100 bg-gray-50 px-4 text-xs font-bold uppercase tracking-tight text-gray-900 shadow-sm transition-colors group-hover:bg-gray-100">
-                        View Details
-                      </span>
                     </div>
                   </Link>
                 );
@@ -1045,7 +1102,8 @@ export default function LandingPage() {
       {/* WhatsApp Floating Contact Button */}
       <WhatsAppButton
         phoneNumber="972541234567"
-        className="max-md:bottom-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
+        message="Hi Tebnu! I have a question about your services."
+        className="max-md:bottom-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:bottom-28"
       />
     </div>
   );

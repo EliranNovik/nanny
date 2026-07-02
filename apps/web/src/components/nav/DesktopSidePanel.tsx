@@ -93,10 +93,13 @@ export function DesktopSidePanel({
   /** Explore now opens the community feed (the full Explore page is reachable via the Profile hub). */
   const exploreHref = communityHref;
   const messagesHref = "/messages";
-  const profileHref =
+  const profileHubHref =
     profile?.role === "freelancer"
       ? "/freelancer/profile"
       : "/client/profile";
+  const profileHref = profile?.id
+    ? `/profile/${profile.id}`
+    : profileHubHref;
   const requestHref = "/client/create";
   const goLiveHref = "/availability/post-now";
   const findHelpersHref = "/client/helpers";
@@ -144,7 +147,11 @@ export function DesktopSidePanel({
       labelKey: "common.profile",
       href: profileHref,
       icon: User,
-      activeMatch: (p) => p.startsWith(profileHref),
+      activeMatch: (p) =>
+        profile?.id
+          ? p === `/profile/${profile.id}` ||
+            p.startsWith(`/profile/${profile.id}/`)
+          : p.startsWith(profileHubHref),
     },
   ];
 

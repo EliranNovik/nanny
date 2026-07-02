@@ -37,13 +37,17 @@ import {
   type ReelFeedPost,
 } from "@/components/profile/PostMediaReelsViewer";
 
+import {
+  requestPostReelTextOnlyDesktopClass,
+} from "@/lib/requestPostTheme";
+
 function desktopTextOnlyTypeCardClass(typeId: string | null): string {
   const base =
     "max-h-[70vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border-0 p-8 text-white shadow-[0_24px_90px_rgba(0,0,0,0.5)] backdrop-blur-xl";
 
   switch (typeId) {
     case "request_help":
-      return cn(base, "bg-red-400/45");
+      return cn(base, requestPostReelTextOnlyDesktopClass);
     case "offer_service":
       return cn(base, "bg-emerald-400/45");
     case "event":

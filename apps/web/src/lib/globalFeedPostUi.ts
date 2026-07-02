@@ -5,6 +5,14 @@ import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
 import { isRequestHelpWhenExpired } from "@/lib/requestHelpWhen";
 import { cn } from "@/lib/utils";
+import {
+  requestPostAccentTextClass,
+  requestPostBadgeMobileClass,
+  requestPostBadgeOnDarkClass,
+  requestPostCtaClass,
+  requestPostTextOnlySurfaceClass,
+  requestPostTextOnlySurfaceMobileClass,
+} from "@/lib/requestPostTheme";
 
 const FEED_POST_TYPE_IDS = [
   "request_help",
@@ -139,7 +147,7 @@ export const globalFeedCardSurfaceClass =
 export function globalFeedPostTypeAccentClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
-      return "text-red-600 dark:text-red-400";
+      return requestPostAccentTextClass;
     case "offer_service":
       return "text-emerald-600 dark:text-emerald-400";
     case "event":
@@ -154,7 +162,7 @@ export function globalFeedPostTypeAccentClass(typeId: string | null): string {
 export function globalFeedTextOnlySurfaceClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
-      return "bg-zinc-50/90 dark:bg-red-950/25";
+      return requestPostTextOnlySurfaceClass;
     case "offer_service":
       return "bg-zinc-50/90 dark:bg-emerald-950/25";
     case "event":
@@ -212,7 +220,7 @@ export function globalFeedPrimaryCtaClass(typeId: string | null, state?: "accept
 
   switch (typeId) {
     case "request_help":
-      return "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600";
+      return requestPostCtaClass;
     case "offer_service":
       return "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600";
     case "event":
@@ -375,7 +383,7 @@ export function globalFeedPostTypeBadgeLabel(
 export function globalFeedPostTypeBadgeClass(typeId: string): string {
   return cn(
     "inline-flex items-center font-black uppercase tracking-wide rounded-md px-2.5 py-0.5 text-[11px]",
-    typeId === "request_help" && "bg-red-500/25 text-red-200",
+    typeId === "request_help" && requestPostBadgeOnDarkClass,
     typeId === "offer_service" && "bg-emerald-500/25 text-emerald-200",
     typeId === "community" && "bg-blue-500/25 text-blue-200",
     typeId === "event" && "bg-violet-500/25 text-violet-200",
@@ -396,7 +404,7 @@ export const globalFeedMobileCardPadClass = "max-md:px-4";
 export function globalFeedMobileTextOnlySurfaceClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
-      return "max-md:bg-red-50 dark:max-md:bg-red-950/25";
+      return requestPostTextOnlySurfaceMobileClass;
     case "offer_service":
       return "max-md:bg-emerald-50 dark:max-md:bg-emerald-950/25";
     case "event":
@@ -412,8 +420,7 @@ export function globalFeedMobileTextOnlySurfaceClass(typeId: string | null): str
 export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
   return cn(
     "max-md:gap-0 max-md:rounded-md max-md:border-0 max-md:px-2.5 max-md:py-0.5 max-md:text-[11px] max-md:font-black max-md:uppercase max-md:tracking-[0.06em] max-md:shadow-none",
-    typeId === "request_help" &&
-      "max-md:bg-red-100 max-md:text-red-700 dark:max-md:bg-red-500/25 dark:max-md:text-red-200",
+    typeId === "request_help" && requestPostBadgeMobileClass,
     typeId === "offer_service" &&
       "max-md:bg-emerald-100 max-md:text-emerald-700 dark:max-md:bg-emerald-500/25 dark:max-md:text-emerald-200",
     typeId === "community" &&

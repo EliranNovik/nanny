@@ -51,6 +51,12 @@ import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
 import { useContentTranslation } from "@/hooks/useContentTranslation";
 import { TranslateLinkButton } from "@/components/translate/TranslateTextControl";
+import {
+  requestPostAccentTextClass,
+  requestPostCtaPendingClass,
+  requestPostReelTextOnlyDesktopClass,
+  requestPostReelTextOnlyMobileClass,
+} from "@/lib/requestPostTheme";
 
 function textOnlyReelTypeCardClass(typeId: string | null): string {
   const base =
@@ -60,7 +66,7 @@ function textOnlyReelTypeCardClass(typeId: string | null): string {
 
   switch (typeId) {
     case "request_help":
-      return cn(base, desktopFrost, "max-md:bg-red-950/40 md:bg-red-400/45");
+      return cn(base, desktopFrost, requestPostReelTextOnlyMobileClass);
     case "offer_service":
       return cn(base, desktopFrost, "max-md:bg-emerald-950/40 md:bg-emerald-400/45");
     case "event":
@@ -73,7 +79,7 @@ function textOnlyReelTypeCardClass(typeId: string | null): string {
 /** Narrow post shape for reels (avoids circular imports with ProfilePostsFeed). */
 export type ReelFeedPost = {
   id: string;
-  source: "post" | "availability";
+  source: "post" | "availability" | "job_request";
   author_id: string;
   caption: string | null;
   media_type: "image" | "video" | null;
@@ -104,6 +110,7 @@ function postHasReelsMedia(p: ReelFeedPost): boolean {
 }
 
 export function isReelsViewerPost(p: ReelFeedPost): boolean {
+  if (p.source === "job_request") return true;
   if (p.source !== "post") return false;
   if (postHasReelsMedia(p)) return true;
 
@@ -403,7 +410,10 @@ export function PostMediaReelsViewer({
 
   const slides = useMemo((): ReelSlideData[] => {
     return posts.filter(isReelsViewerPost).map((p) => {
-      const postTypeId = p.post_types?.id ?? p.post_type_id ?? null;
+      const postTypeId =
+        p.source === "job_request"
+          ? "request_help"
+          : p.post_types?.id ?? p.post_type_id ?? null;
       const authorName = p.author?.full_name?.trim() || "User";
       const authorFirstName = authorName.split(" ")[0] || authorName;
       const hasMedia = postHasReelsMedia(p);
@@ -413,29 +423,46 @@ export function PostMediaReelsViewer({
         (typeof p.post_metadata?.custom_category === "string"
           ? p.post_metadata.custom_category.trim()
           : null);
-      const title = feedPostTitle(
-        t,
-        {
-          source: "post",
-          post_type_id: p.post_type_id,
-          post_types: p.post_types,
-          post_metadata: p.post_metadata,
-        },
-        generatedCopy,
-        categoryLabel,
-      );
+      const title =
+        p.source === "job_request"
+          ? feedPostTitle(
+              t,
+              {
+                source: "job_request",
+                post_metadata: p.post_metadata,
+              },
+              generatedCopy,
+              categoryLabel,
+            )
+          : feedPostTitle(
+              t,
+              {
+                source: "post",
+                post_type_id: p.post_type_id,
+                post_types: p.post_types,
+                post_metadata: p.post_metadata,
+              },
+              generatedCopy,
+              categoryLabel,
+            );
       const description = feedPostDescription(
         generatedCopy,
         p.caption ?? "",
         title,
       );
       const isTextOnly = !hasMedia;
-      const postLike = {
-        source: "post" as const,
-        post_type_id: p.post_type_id,
-        post_types: p.post_types,
-        post_metadata: p.post_metadata,
-      };
+      const postLike =
+        p.source === "job_request"
+          ? {
+              source: "job_request" as const,
+              post_metadata: p.post_metadata,
+            }
+          : {
+              source: "post" as const,
+              post_type_id: p.post_type_id,
+              post_types: p.post_types,
+              post_metadata: p.post_metadata,
+            };
       const locationLine = feedPostReelLocationLine(t, postLike);
       const whenTimeframe =
         postTypeId === "request_help"
@@ -454,14 +481,16 @@ export function PostMediaReelsViewer({
       );
       const budgetLine = feedPostBudgetLine(t, postTypeId, p.post_metadata);
       const jobRequestId =
-        postTypeId === "request_help"
-          ? linkedJobRequestIdFromPost({
-              source: "post",
-              id: p.id,
-              post_type_id: postTypeId,
-              post_metadata: p.post_metadata as Record<string, unknown> | null,
-            })
-          : null;
+        p.source === "job_request"
+          ? p.id
+          : postTypeId === "request_help"
+            ? linkedJobRequestIdFromPost({
+                source: "post",
+                id: p.id,
+                post_type_id: postTypeId,
+                post_metadata: p.post_metadata as Record<string, unknown> | null,
+              })
+            : null;
       const isOwnPost = user?.id === p.author_id;
 
       return {
@@ -491,18 +520,29 @@ export function PostMediaReelsViewer({
         shareClickCount: p.share_click_count,
         likedByMe: p.liked_by_me,
         actionLabel:
-          jobRequestId && isOwnPost
-            ? t("feed.global.viewRequest")
-            : globalFeedCtaLabel(t, {
-                isJobRequest: false,
+          p.source === "job_request"
+            ? globalFeedCtaLabel(t, {
+                isJobRequest: true,
                 jobAcceptedAt: null,
                 postTypeId,
                 authorFirstName,
-                isOwnEventPost: isOwnPost && postTypeId === "event",
+                isOwnEventPost: false,
                 eventJoinStatus: null,
-              }),
+              })
+            : jobRequestId && isOwnPost
+              ? t("feed.global.viewRequest")
+              : globalFeedCtaLabel(t, {
+                  isJobRequest: false,
+                  jobAcceptedAt: null,
+                  postTypeId,
+                  authorFirstName,
+                  isOwnEventPost: isOwnPost && postTypeId === "event",
+                  eventJoinStatus: null,
+                }),
         showActionButton:
-          !isOwnPost || Boolean(jobRequestId && postTypeId === "request_help"),
+          p.source === "job_request"
+            ? !isOwnPost
+            : !isOwnPost || Boolean(jobRequestId && postTypeId === "request_help"),
         jobRequestId,
       };
     });
@@ -871,7 +911,7 @@ export function PostMediaReelsViewer({
               eventJoinStatus,
             });
             const actionClassName = jobAccepted
-              ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
+              ? requestPostCtaPendingClass
               : globalFeedPrimaryCtaClass(
                   slide.postTypeId,
                   eventJoinStatus === "accepted"
@@ -1077,13 +1117,13 @@ function ReelPostDetails({
           "text-[14px] font-medium",
           slide.postTypeId === "offer_service"
             ? "text-emerald-300"
-            : "text-red-300",
+            : "text-orange-300",
         )
       : cn(
           "text-[14px] font-medium",
           slide.postTypeId === "offer_service"
             ? "text-emerald-600 dark:text-emerald-400"
-            : "text-red-600 dark:text-red-400",
+            : requestPostAccentTextClass,
         );
 
   return (

@@ -411,10 +411,9 @@ export function DiscoverOpenHelpRequestCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
-    layout === "carousel" && "discover-home-request-card-orange",
     onOpen &&
       cn(
-        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
       ),
     className,
@@ -806,8 +805,7 @@ export function DiscoverMyOpenRequestCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
-    layout === "carousel" && "discover-home-my-request-card-orange",
-    "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
     className,
   );
@@ -1139,8 +1137,7 @@ export function DiscoverMyLiveHelpCard({
     "rounded-[18px]",
     layout === "carousel" ? "p-3.5" : "p-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
-    layout === "carousel" && "discover-home-live-card-navy",
-    "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
     className,
   );

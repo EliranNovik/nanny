@@ -22,7 +22,7 @@ const benefits = [
       "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
     icon: <ShieldCheck className="h-8 w-8 text-emerald-500" />,
     color: "bg-emerald-50/80",
-    angle: -18,
+    angle: -28,
   },
   {
     title: "Real reviews",
@@ -44,27 +44,27 @@ const benefits = [
     description: "AI handles the hard stuff, making finding help stress‑free.",
     icon: <Zap className="h-8 w-8 text-orange-500" />,
     color: "bg-orange-50/80",
-    angle: 198,
+    angle: 208,
   },
 ];
 
 function BenefitsHubShowcase() {
   return (
-    <div className="absolute top-1/2 left-1/2 z-20 w-[min(440px,42vw)] -translate-x-1/2 -translate-y-1/2 xl:w-[min(520px,38vw)]">
+    <div className="absolute top-1/2 left-1/2 z-20 w-[min(260px,30vw)] -translate-x-1/2 -translate-y-1/2 xl:w-[min(280px,18vw)]">
       <div
-        className="benefits-hub-glow pointer-events-none absolute -inset-8 -z-10 rounded-[3rem] opacity-90"
+        className="benefits-hub-glow pointer-events-none absolute -inset-5 -z-10 rounded-[2.5rem] opacity-90"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -inset-12 -z-20 rounded-full bg-gradient-to-br from-orange-400/25 via-rose-400/20 to-amber-300/25 blur-3xl"
+        className="pointer-events-none absolute -inset-8 -z-20 rounded-full bg-gradient-to-br from-orange-400/25 via-rose-400/20 to-amber-300/25 blur-2xl"
         aria-hidden
       />
 
-      <div className="benefits-hub-frame relative overflow-hidden rounded-[2.5rem] p-[3px] shadow-[0_32px_64px_-12px_rgba(249,115,22,0.35)]">
+      <div className="benefits-hub-frame relative overflow-hidden rounded-[2rem] p-[3px] shadow-[0_24px_48px_-12px_rgba(249,115,22,0.35)]">
         <img
           src="/pexels-rdne-6646861.jpg"
           alt="Helpers and families connecting on Tebnu"
-          className="aspect-[4/3] w-full rounded-[calc(2.5rem-3px)] object-cover object-center"
+          className="aspect-[4/3] w-full rounded-[calc(2rem-3px)] object-cover object-center"
           loading="lazy"
           decoding="async"
         />
@@ -82,18 +82,18 @@ export default function Benefits() {
         </h2>
 
         {/* Desktop: orbital cards + center image */}
-        <div className="relative mb-20 hidden h-[820px] w-full max-w-[1100px] xl:block xl:max-w-[1280px]">
+        <div className="relative mb-20 hidden h-[920px] w-full max-w-[1240px] xl:block xl:max-w-[1440px]">
           <BenefitsHubShowcase />
 
           {benefits.map((benefit, idx) => {
-            const radius = 340;
+            const radius = 470;
             const x = radius * Math.cos((benefit.angle * Math.PI) / 180);
             const y = radius * Math.sin((benefit.angle * Math.PI) / 180);
 
             return (
               <div
                 key={idx}
-                className="group absolute w-[300px] transition-all duration-700"
+                className="group absolute w-[272px] transition-all duration-700"
                 style={{
                   left: `calc(50% + ${x}px)`,
                   top: `calc(50% + ${y}px)`,

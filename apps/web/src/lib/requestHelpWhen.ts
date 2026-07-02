@@ -79,6 +79,11 @@ export function requestHelpWhenLabel(metadata: {
   return labels[metadata.timeframe] ?? metadata.timeframe.replace(/_/g, " ");
 }
 
+import {
+  requestPostComposeSelectedClass,
+  requestPostComposeUnselectedClass,
+} from "@/lib/requestPostTheme";
+
 /** Chip styling for create-request / compose when options. */
 export function requestHelpWhenOptionButtonClass(
   selected: boolean,
@@ -86,11 +91,11 @@ export function requestHelpWhenOptionButtonClass(
 ): string {
   if (selected) {
     return option === "now"
-      ? "bg-red-600 border-transparent text-white dark:bg-red-700 shadow-sm shadow-red-900/25"
+      ? requestPostComposeSelectedClass
       : "bg-emerald-600 border-transparent text-white dark:bg-emerald-700 shadow-sm";
   }
   if (option === "now") {
-    return "bg-red-50 border-red-200 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/45";
+    return requestPostComposeUnselectedClass;
   }
   return "bg-muted/40 border-input text-foreground hover:bg-muted/60 dark:bg-zinc-800/60";
 }

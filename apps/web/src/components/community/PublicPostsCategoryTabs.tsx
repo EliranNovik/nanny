@@ -42,9 +42,9 @@ const TAB_DEFS: TabDef[] = [
     label: "All help",
     Icon: ICONS[ALL_HELP_CATEGORY_ID],
     activeClass:
-      "border-transparent bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-md shadow-rose-900/20 dark:shadow-rose-950/40",
+      "border-transparent bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-900/20 dark:shadow-orange-950/40",
     idleRing:
-      "border-rose-200/60 bg-rose-50/40 text-rose-900/80 hover:bg-rose-50/80 dark:border-rose-500/25 dark:bg-rose-950/20 dark:text-rose-100",
+      "border-orange-200/60 bg-orange-50/40 text-orange-900/80 hover:bg-orange-50/80 dark:border-orange-500/25 dark:bg-orange-950/20 dark:text-orange-100",
   },
   ...SERVICE_CATEGORIES.map((c) => {
     const base = ((): Omit<TabDef, "id" | "label" | "Icon"> => {

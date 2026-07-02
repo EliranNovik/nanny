@@ -6,6 +6,7 @@ import {
   type TranslateContentResponse,
 } from "@/lib/api";
 import { normalizeAppLocale } from "@/i18n";
+import { isTextLikelyInAppLocale } from "@/lib/detectTextLocale";
 
 export type ContentTranslationMode = "original" | "translated";
 
@@ -34,6 +35,11 @@ export function useContentTranslation({
   const hasText = Boolean(title?.trim() || body?.trim());
   const canAttempt = enabled && hasText;
 
+  const likelyAlreadyInLanguage = useMemo(
+    () => isTextLikelyInAppLocale([title, body], targetLocale),
+    [body, targetLocale, title],
+  );
+
   const displayTitle = useMemo(() => {
     if (mode === "translated" && result?.fields.title) return result.fields.title;
     return title?.trim() || null;
@@ -44,7 +50,10 @@ export function useContentTranslation({
     return body?.trim() || null;
   }, [mode, result?.fields.body, body]);
 
-  const showControl = canAttempt && !result?.alreadyInTargetLanguage;
+  const showControl =
+    canAttempt &&
+    !likelyAlreadyInLanguage &&
+    !result?.alreadyInTargetLanguage;
 
   const fetchTranslation = useCallback(async () => {
     if (!canAttempt) return null;
