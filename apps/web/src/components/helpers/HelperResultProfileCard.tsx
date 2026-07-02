@@ -442,11 +442,11 @@ export function HelperResultProfileCard({
 
           {/* Readability scrim — bottom portion only so the photo stays vivid */}
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[75%] bg-gradient-to-t from-black/95 via-black/80 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[50%] bg-gradient-to-t from-black/95 via-black/80 to-transparent"
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[38%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[26%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
             aria-hidden
           />
         </div>

@@ -421,6 +421,7 @@
       "showPostsBy": "Показать посты {{name}}",
       "clearFilterFor": "Сбросить фильтр для {{name}}",
       "when": "Когда",
+      "category": "Категория",
       "whenAny": "Любое время",
       "whenNow": "Сейчас",
       "whenToday": "Сегодня",

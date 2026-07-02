@@ -421,6 +421,7 @@
       "showPostsBy": "Afficher les posts de {{name}}",
       "clearFilterFor": "Effacer le filtre pour {{name}}",
       "when": "Quand",
+      "category": "Catégorie",
       "whenAny": "À tout moment",
       "whenNow": "Maintenant",
       "whenToday": "Aujourd'hui",

@@ -19,6 +19,7 @@ import {
   communityFeedFilterIdleBadgeClass,
 } from "@/components/community/CommunityFeedFilterDialog";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
+import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
 import { cn } from "@/lib/utils";
 import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
 import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
@@ -113,6 +114,11 @@ type CommunityFeedHeaderProps = {
   className?: string;
   /** Global posts feed uses the same type tabs with compact styling. */
   variant?: "default" | "global";
+  showCategoryTabs?: boolean;
+  categoryFilter?: DiscoverHomeCategoryId;
+  onCategoryFilterChange?: (id: DiscoverHomeCategoryId) => void;
+  otherSubFilter?: string | null;
+  onOtherSubFilterChange?: (id: string | null) => void;
 };
 
 export function CommunityFeedHeader({
@@ -132,10 +138,20 @@ export function CommunityFeedHeader({
   reserveSidePanelSpace = false,
   className,
   variant = "default",
+  showCategoryTabs = false,
+  categoryFilter,
+  onCategoryFilterChange,
+  otherSubFilter = null,
+  onOtherSubFilterChange,
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const filterTabs = FILTER_TABS;
+  const showFilterControls = Boolean(
+    advancedFilters &&
+      onAdvancedFiltersChange &&
+      (viewerUserId || (variant === "global" && showCategoryTabs)),
+  );
 
   const { data: favoriteProfiles = [] } = useQuery({
     queryKey: queryKeys.discoverSavedProfiles(viewerUserId ?? null),
@@ -276,6 +292,36 @@ export function CommunityFeedHeader({
         role="tablist"
         aria-label={t("feed.filters.filterPostsByType")}
       >
+        {showFilterControls ? (
+          <>
+            <CommunityFeedFilterButton
+              filters={advancedFilters!}
+              commentedFilterActive={commentedFilterActive}
+              acceptedFilterActive={acceptedFilterActive}
+              categoryFilter={categoryFilter}
+              otherSubFilter={otherSubFilter}
+              onClick={() => setFilterDialogOpen(true)}
+            />
+            <CommunityFeedFilterDialog
+              open={filterDialogOpen}
+              onOpenChange={setFilterDialogOpen}
+              filters={advancedFilters!}
+              onApply={onAdvancedFiltersChange!}
+              viewerUserId={viewerUserId}
+              commentedFilterActive={commentedFilterActive}
+              onCommentedFilterChange={onCommentedFilterChange}
+              acceptedFilterActive={acceptedFilterActive}
+              onAcceptedFilterChange={onAcceptedFilterChange}
+              onAuthorFilterChange={onAuthorFilterChange}
+              showCategoryTabs={showCategoryTabs}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={onCategoryFilterChange}
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={onOtherSubFilterChange}
+            />
+          </>
+        ) : null}
+
         {filterTabs.map((tab) => {
           const selected = tab.id === activeFilter;
           const Icon = tab.Icon;
@@ -308,29 +354,6 @@ export function CommunityFeedHeader({
             </button>
           );
         })}
-
-        {viewerUserId && advancedFilters && onAdvancedFiltersChange ? (
-          <>
-            <CommunityFeedFilterButton
-              filters={advancedFilters}
-              commentedFilterActive={commentedFilterActive}
-              acceptedFilterActive={acceptedFilterActive}
-              onClick={() => setFilterDialogOpen(true)}
-            />
-            <CommunityFeedFilterDialog
-              open={filterDialogOpen}
-              onOpenChange={setFilterDialogOpen}
-              filters={advancedFilters}
-              onApply={onAdvancedFiltersChange}
-              viewerUserId={viewerUserId}
-              commentedFilterActive={commentedFilterActive}
-              onCommentedFilterChange={onCommentedFilterChange}
-              acceptedFilterActive={acceptedFilterActive}
-              onAcceptedFilterChange={onAcceptedFilterChange}
-              onAuthorFilterChange={onAuthorFilterChange}
-            />
-          </>
-        ) : null}
       </div>
     </div>
   );

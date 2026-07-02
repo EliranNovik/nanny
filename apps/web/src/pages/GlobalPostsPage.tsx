@@ -156,6 +156,11 @@ function FeedMainContent({
           onAuthorFilterChange={onFavoriteAuthorFilterChange}
           reserveSidePanelSpace={!guestDesktopLightLayout}
           variant="global"
+          showCategoryTabs={showCategoryTabs}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={onCategoryFilterChange}
+          otherSubFilter={otherSubFilter}
+          onOtherSubFilterChange={onOtherSubFilterChange}
           className={cn(
             "mb-4 px-2 md:mb-5 md:mt-4 md:px-0",
             expandDiscoverLayout ? "mt-0" : "mt-3",
@@ -165,7 +170,7 @@ function FeedMainContent({
         {showCategoryTabs && (
           <div
             className={cn(
-              "mb-4 px-2 md:px-0",
+              "mb-4 hidden px-2 md:block md:px-0",
               !guestDesktopLightLayout && FAVORITES_SIDE_PANEL_RESERVE_CLASS,
             )}
           >

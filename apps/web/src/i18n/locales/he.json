@@ -421,6 +421,7 @@
       "showPostsBy": "הצג פוסטים של {{name}}",
       "clearFilterFor": "נקה סינון עבור {{name}}",
       "when": "מתי",
+      "category": "קטגוריה",
       "whenAny": "כל זמן",
       "whenNow": "עכשיו",
       "whenToday": "היום",

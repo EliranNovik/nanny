@@ -34,6 +34,12 @@ import {
   type CommunityFeedAdvancedFilters,
   type CommunityFeedWhenFilter,
 } from "@/lib/communityFeedFilters";
+import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
+import {
+  ALL_HELP_CATEGORY_ID,
+  OTHER_HELP_SUBCATEGORIES,
+  type DiscoverHomeCategoryId,
+} from "@/lib/serviceCategories";
 
 /** Community feed filter row — neutral grey pills (light + dark). */
 export const communityFeedFilterIdleBadgeClass =
@@ -66,6 +72,11 @@ type CommunityFeedFilterDialogProps = {
   acceptedFilterActive?: boolean;
   onAcceptedFilterChange?: (active: boolean) => void;
   onAuthorFilterChange?: (authorId: string | null) => void;
+  showCategoryTabs?: boolean;
+  categoryFilter?: DiscoverHomeCategoryId;
+  onCategoryFilterChange?: (id: DiscoverHomeCategoryId) => void;
+  otherSubFilter?: string | null;
+  onOtherSubFilterChange?: (id: string | null) => void;
 };
 
 async function fetchCommentedOwnPostCount(viewerUserId: string): Promise<number> {
@@ -90,25 +101,101 @@ type FilterDialogDraft = {
   advanced: CommunityFeedAdvancedFilters;
   commentedOnly: boolean;
   acceptedOnly: boolean;
+  categoryFilter: DiscoverHomeCategoryId;
+  otherSubFilter: string | null;
 };
+
+const filterModalChipRowClass =
+  "flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1 snap-x snap-mandatory [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden";
+
+function CommunityFeedCategoryFilterSection({
+  categoryFilter,
+  otherSubFilter,
+  onCategoryChange,
+  onOtherSubChange,
+}: {
+  categoryFilter: DiscoverHomeCategoryId;
+  otherSubFilter: string | null;
+  onCategoryChange: (id: DiscoverHomeCategoryId) => void;
+  onOtherSubChange: (id: string | null) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[13px] font-bold text-foreground">{t("feed.filters.category")}</p>
+      <div className="-mx-5 px-5">
+        <PublicPostsCategoryTabs
+          activeId={categoryFilter}
+          onSelect={(id) => {
+            onCategoryChange(id);
+            if (id !== "other_help") {
+              onOtherSubChange(null);
+            }
+          }}
+          className={cn("mx-0", filterModalChipRowClass)}
+        />
+      </div>
+      {categoryFilter === "other_help" ? (
+        <div className="-mx-5 px-5">
+          <div className={filterModalChipRowClass}>
+          <button
+            type="button"
+            onClick={() => onOtherSubChange(null)}
+            className={cn(
+              "shrink-0 snap-start rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+              otherSubFilter === null
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+            )}
+          >
+            {t("discoverHome.filters.allOther")}
+          </button>
+          {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+            <button
+              key={sub.id}
+              type="button"
+              onClick={() => onOtherSubChange(sub.id)}
+              className={cn(
+                "shrink-0 snap-start rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                otherSubFilter === sub.id
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+              )}
+            >
+              {t(`otherHelpSubcategories.${sub.id}`)}
+            </button>
+          ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function CommunityFeedFilterButton({
   filters,
   onClick,
   commentedFilterActive = false,
   acceptedFilterActive = false,
+  categoryFilter,
+  otherSubFilter,
   className,
 }: {
   filters: CommunityFeedAdvancedFilters;
   onClick: () => void;
   commentedFilterActive?: boolean;
   acceptedFilterActive?: boolean;
+  categoryFilter?: DiscoverHomeCategoryId;
+  otherSubFilter?: string | null;
   className?: string;
 }) {
   const { t } = useTranslation();
   const activeCount = countActiveFeedModalFilters(filters, {
     commented: commentedFilterActive,
     accepted: acceptedFilterActive,
+    categoryFilter,
+    otherSubFilter,
   });
 
   return (
@@ -282,6 +369,7 @@ function CommunityFeedFilterFormBody({
   viewerUserId,
   commentedOwnCount,
   acceptedRequestCount,
+  showCategoryTabs = false,
 }: {
   draft: FilterDialogDraft;
   updateAdvanced: (patch: Partial<CommunityFeedAdvancedFilters>) => void;
@@ -289,14 +377,33 @@ function CommunityFeedFilterFormBody({
   viewerUserId?: string | null;
   commentedOwnCount: number;
   acceptedRequestCount: number;
+  showCategoryTabs?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+      {showCategoryTabs ? (
+        <CommunityFeedCategoryFilterSection
+          categoryFilter={draft.categoryFilter}
+          otherSubFilter={draft.otherSubFilter}
+          onCategoryChange={(id) =>
+            setDraft((prev) => ({
+              ...prev,
+              categoryFilter: id,
+              otherSubFilter: id === "other_help" ? prev.otherSubFilter : null,
+            }))
+          }
+          onOtherSubChange={(id) =>
+            setDraft((prev) => ({ ...prev, otherSubFilter: id }))
+          }
+        />
+      ) : null}
+
       <div className="space-y-2">
         <p className="text-[13px] font-bold text-foreground">{t("feed.filters.when")}</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-5 px-5">
+          <div className={filterModalChipRowClass}>
           {COMMUNITY_FEED_WHEN_OPTIONS.map((opt) => {
             const selected = draft.advanced.when === opt.id;
             return (
@@ -317,7 +424,7 @@ function CommunityFeedFilterFormBody({
                   })
                 }
                 className={cn(
-                  "h-9 rounded-full border px-3.5 text-xs font-semibold transition-all active:scale-95",
+                  "h-9 shrink-0 snap-start rounded-full border px-3.5 text-xs font-semibold transition-all active:scale-95",
                   selected
                     ? opt.id === "now"
                       ? requestPostComposeSelectedClass
@@ -331,6 +438,7 @@ function CommunityFeedFilterFormBody({
               </button>
             );
           })}
+          </div>
         </div>
         {draft.advanced.when === "custom" ? (
           <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
@@ -475,6 +583,11 @@ export function CommunityFeedFilterDialog({
   acceptedFilterActive = false,
   onAcceptedFilterChange,
   onAuthorFilterChange,
+  showCategoryTabs = false,
+  categoryFilter = ALL_HELP_CATEGORY_ID,
+  onCategoryFilterChange,
+  otherSubFilter = null,
+  onOtherSubFilterChange,
 }: CommunityFeedFilterDialogProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobileViewport();
@@ -484,6 +597,8 @@ export function CommunityFeedFilterDialog({
     advanced: filters,
     commentedOnly: false,
     acceptedOnly: false,
+    categoryFilter,
+    otherSubFilter,
   });
 
   const { data: commentedOwnCount = 0 } = useQuery({
@@ -507,9 +622,18 @@ export function CommunityFeedFilterDialog({
         advanced: filters,
         commentedOnly: commentedFilterActive,
         acceptedOnly: acceptedFilterActive,
+        categoryFilter,
+        otherSubFilter,
       });
     }
-  }, [open, filters, commentedFilterActive, acceptedFilterActive]);
+  }, [
+    open,
+    filters,
+    commentedFilterActive,
+    acceptedFilterActive,
+    categoryFilter,
+    otherSubFilter,
+  ]);
 
   function updateAdvanced(patch: Partial<CommunityFeedAdvancedFilters>) {
     setDraft((prev) => ({ ...prev, advanced: { ...prev.advanced, ...patch } }));
@@ -522,6 +646,10 @@ export function CommunityFeedFilterDialog({
     }
     onCommentedFilterChange?.(draft.commentedOnly);
     onAcceptedFilterChange?.(draft.acceptedOnly);
+    onCategoryFilterChange?.(draft.categoryFilter);
+    onOtherSubFilterChange?.(
+      draft.categoryFilter === "other_help" ? draft.otherSubFilter : null,
+    );
     onOpenChange(false);
   }
 
@@ -530,10 +658,14 @@ export function CommunityFeedFilterDialog({
       advanced: DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
       commentedOnly: false,
       acceptedOnly: false,
+      categoryFilter: ALL_HELP_CATEGORY_ID,
+      otherSubFilter: null,
     });
     onApply(DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS);
     onCommentedFilterChange?.(false);
     onAcceptedFilterChange?.(false);
+    onCategoryFilterChange?.(ALL_HELP_CATEGORY_ID);
+    onOtherSubFilterChange?.(null);
     onOpenChange(false);
   }
 
@@ -545,6 +677,7 @@ export function CommunityFeedFilterDialog({
       viewerUserId={viewerUserId}
       commentedOwnCount={commentedOwnCount}
       acceptedRequestCount={acceptedRequestCount}
+      showCategoryTabs={showCategoryTabs && isMobile}
     />
   );
 

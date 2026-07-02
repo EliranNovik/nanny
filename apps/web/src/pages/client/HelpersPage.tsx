@@ -1135,7 +1135,7 @@ export default function HelpersPage() {
                     <Navigation className="h-4 w-4 shrink-0" aria-hidden />
                   )}
                 </button>
-                <div className="pointer-events-auto absolute bottom-6 left-2.5 z-[12] w-[calc(50%-0.625rem)]">
+                <div className="pointer-events-auto absolute bottom-6 left-2.5 z-[12] hidden w-[calc(50%-0.625rem)] md:block">
                   <div className="relative">
                     <Search
                       className="pointer-events-none absolute left-3 top-1/2 z-[2] h-4 w-4 -translate-y-1/2 text-slate-600/90 dark:text-slate-800/80"
@@ -1163,7 +1163,7 @@ export default function HelpersPage() {
                     />
                   </div>
                 </div>
-                <div className={mapRadiusSliderGlassShellClass}>
+                <div className={cn(mapRadiusSliderGlassShellClass, "hidden md:block")}>
                   <BigRadiusSlider
                     id="helpers-radius"
                     value={radiusKm}
@@ -1172,6 +1172,14 @@ export default function HelpersPage() {
                     variant="glass"
                   />
                 </div>
+              </div>
+              <div className="mt-3 px-1 md:hidden">
+                <BigRadiusSlider
+                  id="helpers-radius-mobile"
+                  value={radiusKm}
+                  onChange={setRadiusKm}
+                  orientation="horizontal"
+                />
               </div>
             </div>
 

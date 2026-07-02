@@ -142,7 +142,7 @@ export function PublicPostsCategoryTabs({
             aria-selected={selected}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2.5 text-left text-xs font-black transition-all sm:px-3.5 sm:text-[13px] md:gap-2.5 md:py-3",
+              "inline-flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-2.5 text-left text-xs font-black transition-all sm:px-3.5 sm:text-[13px] md:gap-2.5 md:py-3",
               selected
                 ? tab.activeClass
                 : cn("border bg-transparent", tab.idleRing),

@@ -421,6 +421,7 @@
       "showPostsBy": "Show posts by {{name}}",
       "clearFilterFor": "Clear filter for {{name}}",
       "when": "When",
+      "category": "Category",
       "whenAny": "Any time",
       "whenNow": "Now",
       "whenToday": "Today",

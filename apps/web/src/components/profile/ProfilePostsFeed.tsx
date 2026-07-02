@@ -7181,7 +7181,7 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className={cn("space-y-7 md:space-y-8", globalFeedLayout && "space-y-4 max-md:pb-[110px] md:space-y-5")}>
+    <div className={cn("space-y-2 md:space-y-3", globalFeedLayout && "max-md:space-y-0 space-y-1.5 max-md:pb-[110px] md:space-y-1.5")}>
       {/* Compose button — own profile only */}
       {isOwnProfile && (
         <div>
@@ -7238,7 +7238,7 @@ export function ProfilePostsFeed({
         >
           <div
             className={cn(
-              "min-w-0 space-y-7 md:flex-1 md:space-y-8",
+              "min-w-0 space-y-2 md:flex-1 md:space-y-3",
               guestDesktopLightLayout &&
                 !externalFavoritesSidePanel &&
                 "md:rounded-[1.75rem] md:bg-slate-100 md:p-4 md:pb-6 dark:md:bg-transparent dark:md:p-0",

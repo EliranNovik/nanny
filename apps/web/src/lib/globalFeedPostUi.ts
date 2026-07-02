@@ -394,9 +394,9 @@ export function globalFeedPostTypeBadgeClass(typeId: string): string {
 export const globalFeedMobilePageClass =
   "max-md:bg-[#f5f5f5] dark:max-md:bg-[#101214]";
 
-/** Mobile global feed card shell — edge-to-edge, elevated surface, 12px vertical gap. */
+/** Mobile global feed card shell — edge-to-edge, elevated surface, tight vertical gap. */
 export const globalFeedMobileCardClass =
-  "max-md:rounded-none max-md:mb-3 max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
+  "max-md:rounded-none max-md:mb-0.5 max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
 
 /** Mobile card inner horizontal padding. */
 export const globalFeedMobileCardPadClass = "max-md:px-4";
@@ -432,7 +432,7 @@ export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
 
 /** Mobile engagement row — flush with card surface. */
 export const globalFeedMobileEngagementRowClass =
-  "max-md:rounded-none max-md:bg-white max-md:border-t max-md:border-zinc-100 dark:max-md:bg-[#181b1f] dark:max-md:border-zinc-800/80";
+  "max-md:rounded-none max-md:bg-white max-md:border-t max-md:border-zinc-100 dark:max-md:border-t-0 dark:max-md:bg-[#181b1f]";
 
 /** Mobile comments bottom sheet shell. */
 export const globalFeedMobileCommentsSheetClass =

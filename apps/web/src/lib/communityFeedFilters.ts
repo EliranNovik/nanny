@@ -1,3 +1,6 @@
+import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
+import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
+
 export type CommunityFeedWhenFilter =
   | "any"
   | "now"
@@ -57,12 +60,18 @@ export function countActiveAdvancedFilters(
 
 export function countActiveFeedModalFilters(
   filters: CommunityFeedAdvancedFilters,
-  opts?: { commented?: boolean; accepted?: boolean },
+  opts?: {
+    commented?: boolean;
+    accepted?: boolean;
+    categoryFilter?: DiscoverHomeCategoryId;
+    otherSubFilter?: string | null;
+  },
 ): number {
   return (
     countActiveAdvancedFilters(filters) +
     (opts?.commented ? 1 : 0) +
-    (opts?.accepted ? 1 : 0)
+    (opts?.accepted ? 1 : 0) +
+    (opts?.categoryFilter && opts.categoryFilter !== ALL_HELP_CATEGORY_ID ? 1 : 0)
   );
 }
 
