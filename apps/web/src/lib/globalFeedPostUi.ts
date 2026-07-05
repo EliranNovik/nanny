@@ -390,9 +390,12 @@ export function globalFeedPostTypeBadgeClass(typeId: string): string {
   );
 }
 
-/** Mobile global feed page background — mirrors native DiscoverPalette background. */
-export const globalFeedMobilePageClass =
+/** Mobile global feed scroll area — grey canvas behind edge-to-edge post cards. */
+export const globalFeedMobileFeedAreaClass =
   "max-md:bg-[#f5f5f5] dark:max-md:bg-[#101214]";
+
+/** Mobile global feed page background — mirrors native DiscoverPalette background. */
+export const globalFeedMobilePageClass = globalFeedMobileFeedAreaClass;
 
 /** Mobile global feed card shell — edge-to-edge, elevated surface, tight vertical gap. */
 export const globalFeedMobileCardClass =
@@ -416,10 +419,10 @@ export function globalFeedMobileTextOnlySurfaceClass(typeId: string | null): str
   }
 }
 
-/** Mobile feed header type badge — theme-aware pill (11px / 900), max-md only. */
+/** Mobile feed header type badge — theme-aware pill, max-md only. */
 export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
   return cn(
-    "max-md:gap-0 max-md:rounded-md max-md:border-0 max-md:px-2.5 max-md:py-0.5 max-md:text-[11px] max-md:font-black max-md:uppercase max-md:tracking-[0.06em] max-md:shadow-none",
+    "max-md:gap-0 max-md:rounded-md max-md:border-0 max-md:px-3 max-md:py-1 max-md:text-[12px] max-md:font-black max-md:uppercase max-md:tracking-[0.06em] max-md:shadow-none",
     typeId === "request_help" && requestPostBadgeMobileClass,
     typeId === "offer_service" &&
       "max-md:bg-emerald-100 max-md:text-emerald-700 dark:max-md:bg-emerald-500/25 dark:max-md:text-emerald-200",

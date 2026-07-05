@@ -51,6 +51,10 @@ export const queryKeys = {
   discoverSavedProfiles: (userId?: string | null) =>
     [...queryKeys.community, "discoverSavedProfiles", userId ?? "none"] as const,
 
+  /** Recent unique authors on the global community feed story strip. */
+  globalFeedRecentPosters: (excludeUserId?: string | null, limit = 15) =>
+    [...queryKeys.communityFeed, "recentPosters", excludeUserId ?? "all", limit] as const,
+
   /** Community / profile posts feed — scoped by all filter params so different feed contexts cache independently. */
   profilePostsFeed: (opts: {
     userId?: string | null;

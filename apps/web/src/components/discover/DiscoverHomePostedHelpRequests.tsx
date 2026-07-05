@@ -387,7 +387,7 @@ export function DiscoverHomePostedHelpRequests({
       </div>
 
       {sortedRequests.length === 0 ? (
-        <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/60">
           <p className="text-sm font-semibold text-foreground">
             {t("discover.noSortMatch", { sort: sortLabel })}
           </p>

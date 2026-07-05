@@ -24,7 +24,6 @@ import {
   HeartHandshake,
   HelpingHand,
   Home,
-  MessageCircle,
   Bell,
   ChevronDown,
   LogOut,
@@ -65,6 +64,8 @@ import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import {
   BottomNavHomeIcon,
+  BottomNavMessagesTabIcon,
+  BottomNavProfileIcon,
 } from "@/components/nav/BottomNavTabGlyphs";
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
@@ -82,37 +83,27 @@ import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
   signedInAppHeaderBgClass,
   signedInHeaderIconBtnClass,
-  signedInHeaderLocationBtnClass,
 } from "@/lib/discoverHomeHeaderChrome";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
-import { useActiveLocation } from "@/hooks/useActiveLocation";
-import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 
-/** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
-function bottomNavTabIconClass(isActive: boolean) {
+/** Tab icons: outline when inactive, filled when active. */
+function bottomNavTabGlyphClass(isActive: boolean) {
   return cn(
-    "bottom-nav-mobile-tab-glyph h-9 w-9 shrink-0 md:h-8 md:w-8",
-    isActive && "bottom-nav-mobile-tab-glyph-active",
+    "bottom-nav-mobile-tab-glyph relative z-[1] h-8 w-8 shrink-0 md:h-8 md:w-8",
     isActive
-      ? "fill-current stroke-none md:text-zinc-950 dark:md:text-white"
-      : "fill-none stroke-[2.75] md:text-zinc-950/85 dark:md:text-white md:group-hover:text-zinc-950 dark:md:group-hover:text-white",
+      ? "fill-current stroke-none text-zinc-950 dark:text-white"
+      : "fill-none stroke-[1.85] text-zinc-950/78 dark:text-white/75",
   );
 }
 
-/** Home + feed tabs: always use the filled active icon style. */
-const bottomNavHomeFeedIconClass = cn(
-  "bottom-nav-mobile-tab-glyph bottom-nav-mobile-tab-glyph-active relative z-[1] h-9 w-9 shrink-0",
-  "fill-current stroke-none text-zinc-950 dark:text-white md:text-zinc-950 dark:md:text-white",
-);
-
-/** Floating frosted pill — mobile only; desktop keeps full-width bar. */
+/** Fixed full-width bar flush to the viewport bottom; safe area pads inside the shell. */
 const mobileNavPortalClass =
-  "fixed bottom-[var(--app-nav-bottom-inset,max(0.5rem,env(safe-area-inset-bottom,0px)))] left-0 right-0 z-[125] pointer-events-none overflow-visible px-4 md:hidden";
+  "fixed bottom-0 left-0 right-0 z-[125] pointer-events-none overflow-visible md:hidden";
 
 const mobileNavShellClass = cn(
-  "bottom-nav-mobile-shell pointer-events-auto mx-auto",
-  "md:max-w-md md:rounded-2xl",
+  "bottom-nav-mobile-shell bottom-nav-mobile-shell--flat pointer-events-auto mx-auto w-full max-w-none",
+  "md:max-w-md md:rounded-2xl md:w-auto",
 );
 
 const mobileNavItemsRowClass = cn(
@@ -134,57 +125,45 @@ const mobileTabTouchClass =
 const mobileTabLinkClass =
   "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-colors duration-150";
 
-const mobileTabActiveGlassClass =
-  "bottom-nav-tab-active-glass pointer-events-none absolute md:hidden";
-
 const plusButtonClassName = cn(
-  mobileTabTouchClass,
-  "bottom-nav-plus-button text-zinc-950 transition-opacity hover:opacity-80 active:scale-95 dark:text-white",
+  "bottom-nav-plus-button relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+  "bg-slate-900/[0.12] text-zinc-950 transition-[opacity,transform] hover:opacity-90 active:scale-95",
+  "dark:bg-white/[0.18] dark:text-white",
   "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
 );
-
-function locationSlug(part: string): string | null {
-  const slug = part
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return slug || null;
-}
 
 function MobileTabItem({
   active,
   label,
   children,
   iconClassName,
-  showActiveBadge = true,
 }: {
   active: boolean;
   label: string;
   children: ReactNode;
   iconClassName?: string;
-  showActiveBadge?: boolean;
 }) {
   return (
-    <>
-      {active && showActiveBadge ? (
-        <span className={mobileTabActiveGlassClass} aria-hidden />
-      ) : null}
-      <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
-        <div
-          className={cn(
-            "bottom-nav-mobile-icon-slot relative flex h-11 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
-            iconClassName,
-          )}
-        >
-          {children}
-        </div>
-        <span className="sr-only">{label}</span>
+    <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
+      <div
+        className={cn(
+          "bottom-nav-mobile-icon-slot relative flex h-11 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
+          iconClassName,
+        )}
+      >
+        {children}
       </div>
-    </>
+      <span
+        className={cn(
+          "bottom-nav-mobile-tab-label max-w-[4.75rem] truncate text-center text-xs font-medium leading-[13px]",
+          active
+            ? "text-zinc-950 dark:text-white"
+            : "text-zinc-950/78 dark:text-white/75",
+        )}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -246,8 +225,6 @@ export function BottomNav() {
   const plusMenuPanelRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const { openReportModal } = useReportIssue();
-  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
-  const activeLocation = useActiveLocation();
   const previousPathnameRef = useRef(location.pathname);
   const viewerId = profile?.id ?? null;
   const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
@@ -268,15 +245,13 @@ export function BottomNav() {
   const viewedPublicProfileUserId = publicProfileRouteMatch?.[1] ?? null;
   const isOwnPublicProfilePage =
     !!viewerId && viewedPublicProfileUserId === viewerId;
-  /** Location chip shell — Discover home only. */
-  const showDiscoverShellHeader = isDiscoverHome;
-  /** Global community feed: back + location on the left. */
+  /** Discover home: header CTAs stay fixed — no scroll-hide chrome. */
+  const discoverHomeFixedChrome = isDiscoverHome;
+  /** Global community feed: compose on the left. */
   const showCommunityFeedHeaderLeft = isCommunityFeedPage && !!user;
   const [discoverHomeMode, setDiscoverHomeMode] = useState<
     "hire" | "work"
   >(() => readDiscoverHomeIntent("hire"));
-  /** Discover home: location + CTAs stay fixed — no scroll-hide chrome. */
-  const discoverHomeFixedChrome = isDiscoverHome;
 
   const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
     useState(true);
@@ -310,6 +285,8 @@ export function BottomNav() {
   const hideMobileAppHeaderChrome =
     pathnameNorm === "/client/create" ||
     pathnameNorm === "/availability/post-now" ||
+    pathnameNorm === "/messages" ||
+    pathnameNorm.startsWith("/messages/") ||
     (isMatchSearchRoute && !matchSearchChromeVisible);
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
@@ -410,9 +387,10 @@ export function BottomNav() {
   const hideMobileBottomNav =
     (isDiscoverHome &&
       (discoverHomeOverlayOpen ||
-        mobileSearchOpen ||
-        locationPickerOpen)) ||
-    (isCommunityFeedPage && communityFeedOverlayOpen);
+        mobileSearchOpen)) ||
+    (isCommunityFeedPage && communityFeedOverlayOpen) ||
+    /^\/messages\/[^/]+$/.test(pathnameNorm) ||
+    (pathnameNorm === "/messages" && !!jobsSearchParams.get("conversation"));
 
   useEffect(() => {
     if (!plusMenuOpen) return;
@@ -459,67 +437,6 @@ export function BottomNav() {
     profile?.role === "freelancer" &&
     isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveUntil });
 
-
-
-  function renderDiscoverHomeLocationChip(
-    variant: "mobile" | "desktop",
-    options?: { besideBack?: boolean },
-  ) {
-    const { displayCity, displayCountry, gpsLoading } = activeLocation;
-    const cityKey = displayCity ? (locationSlug(displayCity) ?? displayCity) : null;
-    const primary = displayCity
-      ? t(`feed.location.cities.${cityKey}`, { defaultValue: displayCity })
-      : gpsLoading
-        ? t("common.detectingLocation")
-        : t("common.addLocation");
-    const country =
-      displayCountry && /^israel$/i.test(displayCountry.trim())
-        ? t("feed.location.countryIsrael")
-        : displayCountry;
-    return (
-      <>
-        <button
-          type="button"
-          onClick={() => setLocationPickerOpen(true)}
-          className={cn(
-            signedInHeaderLocationBtnClass,
-            variant === "mobile"
-              ? cn(
-                  options?.besideBack
-                    ? "max-w-[min(10.5rem,calc(100vw-8.5rem))]"
-                    : "max-w-[min(10.5rem,calc(100vw-9.5rem))]",
-                )
-              : cn(
-                  options?.besideBack
-                    ? "max-w-[min(13rem,calc(100vw-14rem))]"
-                    : "max-w-[min(16rem,28vw)]",
-                ),
-          )}
-          aria-label={
-            displayCity
-              ? `${t("common.addLocation")}: ${primary}`
-              : t("common.addLocation")
-          }
-        >
-          <span className="min-w-0 flex-1 truncate text-[15px] font-bold leading-tight text-slate-900 dark:text-white sm:text-base">
-            {primary}
-            {country ? `, ${country}` : null}
-          </span>
-          <ChevronDown
-            className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
-            strokeWidth={2.25}
-            aria-hidden
-          />
-        </button>
-        <LocationPickerSheet
-          open={locationPickerOpen}
-          onOpenChange={setLocationPickerOpen}
-          location={activeLocation}
-        />
-      </>
-    );
-  }
-
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname) {
       if (mobileSearchOpen) setMobileSearchOpen(false);
@@ -528,7 +445,7 @@ export function BottomNav() {
     previousPathnameRef.current = location.pathname;
   }, [location.pathname, mobileSearchOpen]);
 
-  // Nothing on landing, marketing pages, chat, or messages
+  // Nothing on landing, marketing pages, or standalone legacy chat routes
   const path = location.pathname;
   if (
     path === "/" ||
@@ -537,8 +454,7 @@ export function BottomNav() {
     path === "/login" ||
     path === "/onboarding" ||
     path.startsWith("/onboarding/") ||
-    path.startsWith("/chat/") ||
-    path.startsWith("/messages")
+    path.startsWith("/chat/")
   ) {
     return null;
   }
@@ -909,22 +825,35 @@ export function BottomNav() {
       <div className="grid h-16 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
         <div aria-hidden="true" />
         <div className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
-          <div className="flex min-w-0 items-center gap-1 ps-3">
-            {showDiscoverShellHeader ? (
-              renderDiscoverHomeLocationChip("desktop")
-            ) : showCommunityFeedHeaderLeft ? (
+          <div className="flex min-w-0 items-center gap-2 ps-3">
+            {showCommunityFeedHeaderLeft ? (
+              <button
+                type="button"
+                onClick={handleCommunityFeedCompose}
+                className={signedInHeaderIconBtnClass}
+                aria-label={t("nav.sharePost")}
+              >
+                <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+              </button>
+            ) : isDiscoverHome && !desktopDiscoverSearchOpen ? (
               <>
+                <DiscoverHomeModeSegmentedControl
+                  mode={discoverHomeMode}
+                  onModeChange={(m) => {
+                    void writeDiscoverHomeIntent(m);
+                  }}
+                  variant="header"
+                />
                 <button
                   type="button"
-                  onClick={handleHeaderBack}
+                  onClick={() => setDesktopDiscoverSearchOpen(true)}
                   className={signedInHeaderIconBtnClass}
-                  aria-label={t("common.back")}
+                  aria-label={t("common.openSearch")}
                 >
-                  <HeaderBackChevron />
+                  <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
                 </button>
-                {renderDiscoverHomeLocationChip("desktop", { besideBack: true })}
               </>
-            ) : (
+            ) : !isDiscoverHome ? (
               <button
                 type="button"
                 onClick={handleHeaderBack}
@@ -933,7 +862,7 @@ export function BottomNav() {
               >
                 <HeaderBackChevron />
               </button>
-            )}
+            ) : null}
           </div>
 
           <div className="flex min-w-0 items-center justify-center px-2 md:px-4">
@@ -955,23 +884,7 @@ export function BottomNav() {
               </button>
             </div>
           ) : isDiscoverHome ? (
-            <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-2.5">
-              <DiscoverHomeModeSegmentedControl
-                mode={discoverHomeMode}
-                onModeChange={(m) => {
-                  void writeDiscoverHomeIntent(m);
-                }}
-                variant="header"
-              />
-              <button
-                type="button"
-                onClick={() => setDesktopDiscoverSearchOpen(true)}
-                className={signedInHeaderIconBtnClass}
-                aria-label={t("common.openSearch")}
-              >
-                <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-              </button>
-            </div>
+            <div className="min-w-0 flex-1" aria-hidden />
           ) : (
             <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
               {showCommunityHeaderCategoryDropdown && (
@@ -1034,13 +947,13 @@ export function BottomNav() {
       }}
     >
       <div className="flex h-16 min-h-16 items-center gap-1 px-2 sm:px-3">
-        <div className="flex min-w-0 shrink-0 items-center gap-0.5">
-          {showDiscoverShellHeader ? (
-            <>
-              {renderDiscoverHomeLocationChip("mobile")}
-            </>
-          ) : showCommunityFeedHeaderLeft ? (
-            <>
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-0.5",
+            isDiscoverHome && !mobileSearchOpen ? "min-w-0 flex-1 justify-start" : "shrink-0",
+          )}
+        >
+          {showCommunityFeedHeaderLeft ? (
               <button
                 type="button"
                 onClick={handleCommunityFeedCompose}
@@ -1049,9 +962,15 @@ export function BottomNav() {
               >
                 <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
-              {renderDiscoverHomeLocationChip("mobile", { besideBack: true })}
-            </>
-          ) : (
+            ) : isDiscoverHome && !mobileSearchOpen ? (
+            <DiscoverHomeModeSegmentedControl
+              mode={discoverHomeMode}
+              onModeChange={(m) => {
+                void writeDiscoverHomeIntent(m);
+              }}
+              variant="header"
+            />
+            ) : !isDiscoverHome ? (
             <button
               type="button"
               onClick={handleHeaderBack}
@@ -1060,21 +979,11 @@ export function BottomNav() {
             >
               <HeaderBackChevron />
             </button>
-          )}
+          ) : null}
         </div>
 
-        {isDiscoverHome && !mobileSearchOpen ? (
-          <div className="flex min-w-0 flex-1 justify-center px-0.5">
-            <DiscoverHomeModeSegmentedControl
-              mode={discoverHomeMode}
-              onModeChange={(m) => {
-                void writeDiscoverHomeIntent(m);
-              }}
-              variant="header"
-              className="w-full max-w-[200px] xs:max-w-[220px]"
-            />
-          </div>
-        ) : !discoverHomeFixedChrome &&
+        {!(isDiscoverHome && !mobileSearchOpen) &&
+        !discoverHomeFixedChrome &&
         showCommunityHeaderCategoryDropdown &&
         !mobileSearchOpen ? (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
@@ -1338,7 +1247,10 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.home")}>
-                      <BottomNavHomeIcon className={bottomNavHomeFeedIconClass} />
+                      <BottomNavHomeIcon
+                        active={isActive}
+                        className={bottomNavTabGlyphClass(isActive)}
+                      />
                     </MobileTabItem>
                   </Link>
                 );
@@ -1357,7 +1269,11 @@ export function BottomNav() {
                 aria-label="Explore live feed"
               >
                 <MobileTabItem active={isExploreActive} label={t("common.feed")}>
-                  <Rss className={bottomNavHomeFeedIconClass} strokeWidth={0} aria-hidden />
+                  <Rss
+                    className={bottomNavTabGlyphClass(isExploreActive)}
+                    strokeWidth={isExploreActive ? 0 : 1.85}
+                    aria-hidden
+                  />
                 </MobileTabItem>
               </Link>
 
@@ -1381,17 +1297,19 @@ export function BottomNav() {
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
                       <div className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
-                        <MessageCircle
-                          className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
-                          strokeWidth={2.75}
+                        <BottomNavMessagesTabIcon
+                          active={isActive}
+                          size={36}
+                          className={cn(
+                            isActive
+                              ? "text-zinc-950 dark:text-white"
+                              : "text-zinc-950/78 dark:text-white/75",
+                          )}
                         />
                         {showMessageBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none shadow-none ring-0 md:h-5.5 md:min-w-[22px] md:px-1 md:text-[11px]"
-                          >
+                          <span className="absolute -right-1.5 -top-[3px] z-10 flex h-[17px] min-w-[17px] items-center justify-center rounded-full border-[1.5px] border-white bg-red-600 px-1 text-[9px] font-extrabold leading-none text-white dark:border-zinc-950">
                             {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </MobileTabItem>
@@ -1416,17 +1334,10 @@ export function BottomNav() {
                       aria-label="View your public profile"
                     >
                       <MobileTabItem active={isActive} label={t("common.profile")}>
-                        <Avatar className="relative z-[1] h-10 w-10 border-0 ring-0 md:h-8 md:w-8">
-                          <AvatarImage
-                            src={profile?.photo_url ?? undefined}
-                            alt=""
-                          />
-                          <AvatarFallback className="text-[9px] font-bold bg-zinc-100 text-zinc-950 dark:bg-zinc-800 dark:text-white sm:text-[10px]">
-                            {(profile?.full_name ?? user?.email ?? "U")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <BottomNavProfileIcon
+                          active={isActive}
+                          className={bottomNavTabGlyphClass(isActive)}
+                        />
                       </MobileTabItem>
                     </Link>
 
@@ -1441,24 +1352,10 @@ export function BottomNav() {
                       aria-label="View your public profile"
                     >
                       <div className="relative flex h-[48px] w-[48px] shrink-0 items-center justify-center">
-                        <Avatar
-                          className={cn(
-                            "h-9 w-9 border transition-[box-shadow,ring-color] duration-300",
-                            isActive
-                              ? "border-transparent ring-2 ring-zinc-950 dark:ring-white"
-                              : "border-zinc-900/15 dark:border-white/20",
-                          )}
-                        >
-                          <AvatarImage
-                            src={profile?.photo_url ?? undefined}
-                            alt=""
-                          />
-                          <AvatarFallback className="text-[10px] font-bold bg-zinc-100 text-zinc-950 dark:bg-zinc-800 dark:text-white">
-                            {(profile?.full_name ?? user?.email ?? "U")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <BottomNavProfileIcon
+                          active={isActive}
+                          className={bottomNavTabGlyphClass(isActive)}
+                        />
                       </div>
                     </Link>
                   </>
@@ -1479,8 +1376,8 @@ export function BottomNav() {
                 aria-label="Open quick actions"
               >
                 <Plus
-                  className="bottom-nav-plus-glyph h-9 w-9 shrink-0"
-                  strokeWidth={2.75}
+                  className="bottom-nav-plus-glyph h-[22px] w-[22px] shrink-0"
+                  strokeWidth={2.5}
                   aria-hidden
                 />
                 <span className="sr-only">{t("common.create")}</span>

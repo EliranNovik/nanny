@@ -232,7 +232,7 @@ function DiscoverHomeLiveHelpSection({
           </h2>
           <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-100/80 px-4 py-5 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-100/80 px-4 py-5 text-left shadow-sm dark:border-zinc-700 dark:bg-zinc-800/70">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200/90 text-zinc-600 ring-1 ring-zinc-300/60 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/80">
             <Zap className="h-5 w-5" strokeWidth={2.25} aria-hidden />
           </span>

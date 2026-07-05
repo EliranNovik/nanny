@@ -69,9 +69,6 @@ export function useAppSafeAreaSync() {
         /** Safari toolbar gap — used for scroll/sheet clearance, not double-counted with lvh/svh. */
         const safariToolbarLift = appleTouch ? visualBottomInset : 0;
         const safeBottom = Math.max(envInsets.bottom, safariToolbarLift);
-        /** Nav sits just above Safari bottom chrome + home indicator. */
-        const navBottomInset = Math.max(8, envInsets.bottom, safariToolbarLift);
-
         root.style.setProperty(
           "--visual-viewport-top-inset",
           `${visualTopInset}px`,
@@ -82,19 +79,20 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty("--app-safe-top", `${safeTop}px`);
         root.style.setProperty("--app-safe-bottom", `${safeBottom}px`);
-        root.style.setProperty("--app-nav-bottom-inset", `${navBottomInset}px`);
-        root.style.setProperty("--app-bottom-nav-height", "5.25rem");
+        /** Nav is flush to the bottom; safe area pads inside the bar shell. */
+        root.style.setProperty("--app-nav-bottom-inset", "0px");
+        root.style.setProperty("--app-bottom-nav-height", "3.125rem");
         root.style.setProperty(
           "--app-bottom-nav-stack",
-          `calc(5.25rem + ${navBottomInset}px)`,
+          `calc(3.125rem + ${safeBottom}px)`,
         );
         root.style.setProperty(
           "--app-mobile-sheet-bottom",
-          `calc(5.25rem + ${navBottomInset}px)`,
+          `calc(3.125rem + ${safeBottom}px)`,
         );
         root.style.setProperty(
           "--app-plus-menu-bottom",
-          `calc(5.25rem + ${navBottomInset}px)`,
+          `calc(3.125rem + ${safeBottom}px)`,
         );
         root.style.setProperty(
           "--app-mobile-header-stack",
@@ -102,7 +100,7 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",
-          `${Math.max(8, navBottomInset)}px`,
+          `${Math.max(8, safeBottom)}px`,
         );
       });
     };

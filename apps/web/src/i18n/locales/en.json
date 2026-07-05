@@ -471,7 +471,14 @@
       "tebnuMenu": "Tebnu menu",
       "myPosts": "My posts",
       "myFavorites": "My favorites",
-      "noFavoriteProfiles": "No saved profiles yet"
+      "noFavoriteProfiles": "No saved profiles yet",
+      "recentPosters": "People who recently posted",
+      "saveProfile": "Save {{name}} to favorites",
+      "savedProfile": "Saved — view under Saved",
+      "alreadySavedProfile": "Already in Saved",
+      "couldNotSaveProfile": "Could not save profile",
+      "signInToSaveProfile": "Sign in to save profiles",
+      "viewProfile": "View {{name}}'s profile"
     },
     "sidePanel": {
       "ariaLabel": "Posts from your favorites and popular posts",
@@ -494,6 +501,9 @@
     }
   },
   "profile": {
+    "addAsFavorite": "Add as favorite",
+    "recentPostersCarousel": "People who recently posted",
+    "verifiedHelper": "Verified helper",
     "personalContact": "Personal & contact",
     "myActivity": "My activity",
     "myEvents": "My events",
@@ -501,6 +511,15 @@
     "publicGallery": "Public profile gallery",
     "servicesArea": "Services & area",
     "appearance": "Appearance",
+    "theme": {
+      "title": "Theme",
+      "description": "Choose light, dark, or match your device settings.",
+      "pageDescription": "Theme preferences",
+      "pageDescriptionFreelancer": "Customize how the app looks",
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "Auto"
+    },
     "availability": "Availability",
     "about": "About",
     "aboutYou": "About you",

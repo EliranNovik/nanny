@@ -459,7 +459,14 @@
       "tebnuMenu": "Menu Tebnu",
       "myPosts": "Mes posts",
       "myFavorites": "Mes favoris",
-      "noFavoriteProfiles": "Aucun profil enregistré pour l'instant"
+      "noFavoriteProfiles": "Aucun profil enregistré pour l'instant",
+      "recentPosters": "Personnes ayant publié récemment",
+      "saveProfile": "Enregistrer {{name}} en favori",
+      "savedProfile": "Enregistré — voir dans Enregistrés",
+      "alreadySavedProfile": "Déjà enregistré",
+      "couldNotSaveProfile": "Impossible d'enregistrer le profil",
+      "signInToSaveProfile": "Connectez-vous pour enregistrer des profils",
+      "viewProfile": "Voir le profil de {{name}}"
     },
     "sidePanel": {
       "ariaLabel": "Publications des favoris et publications populaires",
@@ -482,6 +489,9 @@
     }
   },
   "profile": {
+    "addAsFavorite": "Ajouter aux favoris",
+    "recentPostersCarousel": "Personnes ayant publié récemment",
+    "verifiedHelper": "Aidant vérifié",
     "personalContact": "Infos personnelles et contact",
     "myActivity": "Mon activité",
     "myEvents": "Mes événements",
@@ -489,6 +499,15 @@
     "publicGallery": "Galerie publique",
     "servicesArea": "Services et zone",
     "appearance": "Apparence",
+    "theme": {
+      "title": "Thème",
+      "description": "Choisissez clair, sombre ou selon les réglages de l'appareil.",
+      "pageDescription": "Préférences de thème",
+      "pageDescriptionFreelancer": "Personnalisez l'apparence de l'application",
+      "light": "Clair",
+      "dark": "Sombre",
+      "auto": "Auto"
+    },
     "availability": "Disponibilité",
     "about": "À propos",
     "aboutYou": "À propos de vous",

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
@@ -611,12 +612,14 @@ export function ReelDesktopCommentsPanel({
   currentUserId,
   onClose,
   onCountChange,
+  composerTrailing,
 }: {
   postId: string;
   initialCount: number;
   currentUserId: string | null;
   onClose: () => void;
   onCountChange?: (count: number) => void;
+  composerTrailing?: ReactNode;
 }) {
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -837,7 +840,7 @@ export function ReelDesktopCommentsPanel({
 
       <div className="shrink-0 px-5 py-3">
         {currentUserId ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1 rounded-full bg-zinc-800/95 px-4 py-2.5 dark:bg-zinc-700/90">
               <input
                 type="text"
@@ -859,6 +862,7 @@ export function ReelDesktopCommentsPanel({
                 aria-label="Write a comment…"
               />
             </div>
+            {composerTrailing}
             <button
               type="button"
               disabled={submitting || !draft.trim()}

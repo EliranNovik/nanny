@@ -459,7 +459,14 @@
       "tebnuMenu": "תפריט Tebnu",
       "myPosts": "הפוסטים שלי",
       "myFavorites": "המועדפים שלי",
-      "noFavoriteProfiles": "אין פרופילים שמורים עדיין"
+      "noFavoriteProfiles": "אין פרופילים שמורים עדיין",
+      "recentPosters": "אנשים שפרסמו לאחרונה",
+      "saveProfile": "שמור את {{name}} למועדפים",
+      "savedProfile": "נשמר — צפו תחת שמורים",
+      "alreadySavedProfile": "כבר בשמורים",
+      "couldNotSaveProfile": "לא ניתן לשמור פרופיל",
+      "signInToSaveProfile": "התחברו כדי לשמור פרופילים",
+      "viewProfile": "צפו בפרופיל של {{name}}"
     },
     "sidePanel": {
       "ariaLabel": "פוסטים מהמועדפים ופוסטים פופולריים",
@@ -482,6 +489,9 @@
     }
   },
   "profile": {
+    "addAsFavorite": "הוסף למועדפים",
+    "recentPostersCarousel": "אנשים שפרסמו לאחרונה",
+    "verifiedHelper": "עוזר מאומת",
     "personalContact": "פרטים אישיים ויצירת קשר",
     "myActivity": "הפעילות שלי",
     "myEvents": "האירועים שלי",
@@ -489,6 +499,15 @@
     "publicGallery": "גלריה ציבורית",
     "servicesArea": "שירותים ואזור",
     "appearance": "מראה",
+    "theme": {
+      "title": "ערכת נושא",
+      "description": "בחרו בהיר, כהה, או התאמה להגדרות המכשיר.",
+      "pageDescription": "העדפות ערכת נושא",
+      "pageDescriptionFreelancer": "התאימו את מראה האפליקציה",
+      "light": "בהיר",
+      "dark": "כהה",
+      "auto": "אוטומטי"
+    },
     "availability": "זמינות",
     "about": "אודות",
     "aboutYou": "אודותיך",

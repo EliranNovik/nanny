@@ -100,13 +100,13 @@ export function GlobalFeedMobileTebnuMenu({
           onClick={() => setMenuOpen((o) => !o)}
           className={cn(
             "inline-flex items-center gap-0.5 rounded-lg px-1 py-0.5",
-            "text-lg font-black tracking-tight text-foreground transition-opacity active:opacity-80",
+            "text-[1.625rem] font-black lowercase tracking-tight text-foreground transition-opacity active:opacity-80",
           )}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-label={t("feed.global.tebnuMenu")}
         >
-          Tebnu
+          tebnu
           <ChevronDown
             className={cn(
               "h-4 w-4 shrink-0 text-muted-foreground transition-transform",

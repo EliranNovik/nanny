@@ -62,11 +62,11 @@
     --visual-viewport-bottom-inset: 0px;
     --app-safe-top: env(safe-area-inset-top, 0px);
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* Bottom nav offset — JS refines on iOS Safari; keep close to bottom in mobile browsers */
-    --app-nav-bottom-inset: max(0.5rem, env(safe-area-inset-bottom, 0px));
-    --app-plus-menu-bottom: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
-    --app-bottom-nav-height: 5.25rem;
-    --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
+    /* Bottom nav sits flush on the viewport; safe area is padding inside the bar. */
+    --app-nav-bottom-inset: 0px;
+    --app-plus-menu-bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    --app-bottom-nav-height: 3.125rem;
+    --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     --app-mobile-sheet-bottom: var(--app-bottom-nav-stack);
     /* Mobile fixed header strip: safe-top + 4rem bar (BottomNav). */
     --app-mobile-header-stack: calc(var(--app-safe-top) + 4rem);
@@ -289,17 +289,17 @@
 
     [data-post-media-reels-viewer] {
       position: fixed !important;
-      top: 0 !important;
+      top: var(--reels-vv-top, 0px) !important;
       left: 0 !important;
       right: 0 !important;
       bottom: auto !important;
       width: 100% !important;
       height: calc(
-        var(--reels-vv-top, 0px) + var(--reels-vv-height, 100dvh) +
+        var(--reels-vv-height, 100dvh) +
           var(--visual-viewport-bottom-inset, 0px)
       ) !important;
       max-height: calc(
-        var(--reels-vv-top, 0px) + var(--reels-vv-height, 100dvh) +
+        var(--reels-vv-height, 100dvh) +
           var(--visual-viewport-bottom-inset, 0px)
       ) !important;
       min-height: 0 !important;
@@ -357,6 +357,88 @@
    */
   .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page]) {
     padding-top: 0 !important;
+  }
+
+  [data-messages-page] {
+    --messages-bg: #ffffff;
+    --messages-surface: #f5f5f5;
+    --messages-muted: #f8f8f8;
+    --messages-text: #0f172a;
+    --messages-text-muted: rgba(15, 23, 42, 0.55);
+    --messages-border: rgba(15, 23, 42, 0.08);
+    --messages-accent: #f97316;
+  }
+
+  .dark [data-messages-page] {
+    --messages-bg: hsl(var(--background));
+    --messages-surface: hsl(var(--muted));
+    --messages-muted: hsl(var(--muted));
+    --messages-text: hsl(var(--foreground));
+    --messages-text-muted: hsl(var(--muted-foreground));
+    --messages-border: hsl(var(--border));
+  }
+
+  [data-messages-page] .messages-inbox-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 48px;
+    margin: 10px 16px 12px;
+    padding: 0 12px;
+    border-radius: 14px;
+    background: var(--messages-muted);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+  }
+
+  @media (min-width: 768px) {
+    [data-messages-page] .messages-inbox-search {
+      height: 3.5rem;
+      margin: 0;
+      border-radius: 1rem;
+      border: none;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    [data-messages-page] .messages-inbox-section-title {
+      display: flex;
+      align-items: center;
+      min-height: 52px;
+      padding-right: 16px;
+      padding-left: 134px;
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--messages-text);
+    }
+
+    [data-messages-page] .messages-conversation-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    [data-messages-page] .messages-conversation-row:hover,
+    [data-messages-page] .messages-conversation-row:active {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-messages-page] .messages-conversation-row.is-unread {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    [data-messages-page] .messages-conversation-row + .messages-conversation-row::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 84px;
+      right: 16px;
+      height: 1px;
+      background: var(--messages-border);
+    }
   }
 
   /* Public posts mobile: fixed snap feed already clears BottomNav — drop duplicate scroll-pad */
@@ -419,6 +501,22 @@
   }
 
   @media (max-width: 767.98px) {
+    /**
+     * Global community feed (signed-in): hide fixed app header on scroll down, reveal on scroll up.
+     */
+    html:has([data-community-feed-page]) [data-mobile-header-strip] {
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+      transform: translateY(calc(var(--mobile-shell-collapse-progress, 0) * -100%));
+    }
+
+    html:has([data-community-feed-page]) .app-content-below-fixed-header {
+      transition: padding-top 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      padding-top: calc(
+        var(--app-safe-top) + 4rem * (1 - var(--mobile-shell-collapse-progress, 0))
+      );
+    }
+
     /**
      * Signed-in scroll column — shell already pads for fixed header; avoid double clearance.
      */
@@ -693,11 +791,19 @@
     }
 
     .bottom-nav-plus-glyph {
-      width: 2.25rem;
-      height: 2.25rem;
-      min-width: 2.25rem;
-      min-height: 2.25rem;
+      width: 1.375rem;
+      height: 1.375rem;
+      min-width: 1.375rem;
+      min-height: 1.375rem;
       filter: none;
+    }
+
+    .bottom-nav-mobile-shell--flat .bottom-nav-plus-button {
+      background: rgba(15, 23, 42, 0.12);
+    }
+
+    .dark .bottom-nav-mobile-shell--flat .bottom-nav-plus-button {
+      background: rgba(255, 255, 255, 0.18);
     }
 
     /* Plus quick-actions menu — frosted glass companion to the bottom nav pill */
@@ -802,7 +908,7 @@
       transition: none;
     }
 
-    .dark .bottom-nav-mobile-shell {
+    .dark .bottom-nav-mobile-shell:not(.bottom-nav-mobile-shell--flat) {
       background: hsl(0 0% 8% / 0.76);
       border: 1px solid hsl(0 0% 100% / 0.12);
       box-shadow: none;
@@ -864,6 +970,40 @@
     .dark .bottom-nav-tab-active-glass {
       background: hsl(0 0% 100% / 0.18);
       border: none;
+      box-shadow: none;
+    }
+
+    /** Full-width flat tab bar — flush bottom, slightly see-through */
+    .bottom-nav-mobile-shell--flat {
+      width: 100%;
+      max-width: none;
+      margin-inline: 0;
+      border-radius: 0;
+      padding: 2px 0 calc(2px + env(safe-area-inset-bottom, 0px));
+      background: rgba(255, 255, 255, 0.72);
+      -webkit-backdrop-filter: blur(20px) saturate(1.1);
+      backdrop-filter: blur(20px) saturate(1.1);
+      border: none;
+      box-shadow: none;
+    }
+
+    .bottom-nav-mobile-shell--flat .bottom-nav-mobile-glow,
+    .bottom-nav-mobile-shell--flat .bottom-nav-mobile-readable-layer {
+      display: none;
+    }
+
+    .bottom-nav-mobile-shell--flat .bottom-nav-mobile-items-row {
+      min-height: 50px;
+      padding-top: 2px;
+      padding-bottom: 2px;
+    }
+
+    .dark .bottom-nav-mobile-shell--flat {
+      background: rgba(8, 8, 8, 0.76);
+      -webkit-backdrop-filter: blur(20px) saturate(1.1);
+      backdrop-filter: blur(20px) saturate(1.1);
+      border: none;
+      outline: none;
       box-shadow: none;
     }
   }

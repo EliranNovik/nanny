@@ -3,43 +3,68 @@ import {
   useContext,
   useEffect,
   useState,
-  ReactNode,
+  type ReactNode,
 } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
+export type ThemePreference = "light" | "dark" | "auto";
+
+const THEME_PREFERENCE_STORAGE_KEY = "themePreference";
+const LEGACY_THEME_STORAGE_KEY = "theme";
 
 interface ThemeContextType {
+  /** Resolved theme applied to the document. */
   theme: Theme;
+  themePreference: ThemePreference;
+  setThemePreference: (preference: ThemePreference) => void;
   toggleTheme: () => void;
+  /** Sets an explicit light/dark preference (not auto). */
   setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const getAutoThemeByTime = (): Theme => {
-    const hour = new Date().getHours();
-    // Daytime is 6 AM to 6 PM (18:00)
-    return hour >= 6 && hour < 18 ? "light" : "dark";
-  };
+function readStoredThemePreference(): ThemePreference {
+  if (typeof window === "undefined") return "auto";
 
-  const [theme, setThemeState] = useState<Theme>(() => {
-    // We now prioritize the automatic time-based theme globally on startup
-    return getAutoThemeByTime();
+  const stored = localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY);
+  if (stored === "light" || stored === "dark" || stored === "auto") {
+    return stored;
+  }
+
+  const legacy = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+  if (legacy === "light" || legacy === "dark") return legacy;
+
+  return "auto";
+}
+
+function resolveTheme(
+  preference: ThemePreference,
+  systemPrefersDark: boolean,
+): Theme {
+  if (preference === "auto") return systemPrefersDark ? "dark" : "light";
+  return preference;
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [themePreference, setThemePreferenceState] =
+    useState<ThemePreference>(readStoredThemePreference);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
-  // Automatically update theme when time passes significant thresholds
-  useEffect(() => {
-    const checkTheme = () => {
-      // Always sync with the clock to fulfill the "automatic" requirement
-      setThemeState(getAutoThemeByTime());
-    };
+  const theme = resolveTheme(themePreference, systemPrefersDark);
 
-    const interval = setInterval(checkTheme, 60000); // Check every minute
-    return () => clearInterval(interval);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setSystemPrefersDark(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  // Update the DOM class whenever the theme state changes
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -49,21 +74,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setThemeState(next);
-    // Persist as a hard manual preference
-    localStorage.setItem("theme", next);
+  const persistThemePreference = (preference: ThemePreference) => {
+    setThemePreferenceState(preference);
+    localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, preference);
+    localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+  };
+
+  const setThemePreference = (preference: ThemePreference) => {
+    persistThemePreference(preference);
   };
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    // Persist as a hard manual preference
-    localStorage.setItem("theme", newTheme);
+    persistThemePreference(newTheme);
+  };
+
+  const toggleTheme = () => {
+    persistThemePreference(theme === "light" ? "dark" : "light");
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        themePreference,
+        setThemePreference,
+        toggleTheme,
+        setTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

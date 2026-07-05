@@ -10,8 +10,9 @@ import {
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
-import { ChevronLeft, Clock, Coins, Heart, Loader2, MapPin, MessageCircle, Send } from "lucide-react";
+import { Bookmark, ChevronLeft, Clock, Coins, Heart, Loader2, MapPin, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bidirectionalClass,
@@ -49,6 +50,9 @@ import {
 import { ReelDesktopCommentsPanel } from "@/components/profile/PostMediaDesktopViewer";
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { useJobRequestFavoriteIds } from "@/hooks/data/useJobRequestFavoriteIds";
+import { queryKeys } from "@/hooks/data/keys";
+import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
 import { useContentTranslation } from "@/hooks/useContentTranslation";
 import { TranslateLinkButton } from "@/components/translate/TranslateTextControl";
 import {
@@ -130,6 +134,7 @@ export function isReelsViewerPost(p: ReelFeedPost): boolean {
 
 type ReelSlideData = {
   postId: string;
+  postSource: ReelFeedPost["source"];
   authorId: string;
   mediaUrl: string | null;
   mediaType: "image" | "video" | null;
@@ -361,9 +366,11 @@ export function PostMediaReelsViewer({
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { user, profile: viewerProfile } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [likingId, setLikingId] = useState<string | null>(null);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [primaryActionPostId, setPrimaryActionPostId] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [eventJoinByPostId, setEventJoinByPostId] = useState<
@@ -494,6 +501,7 @@ export function PostMediaReelsViewer({
 
       return {
         postId: p.id,
+        postSource: p.source,
         authorId: p.author_id,
         mediaUrl: hasMedia
           ? publicProfileMediaPublicUrl(p.storage_path!)
@@ -557,6 +565,166 @@ export function PostMediaReelsViewer({
   const activeSlide = slides[safeIndex] ?? slides[0];
   const activeCommentCount =
     commentCounts[activeSlide.postId] ?? activeSlide.commentCount;
+
+  const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(
+    currentUserId,
+  );
+  const { data: profileFavoriteRows = [] } = useQuery({
+    queryKey: queryKeys.profileFavorites(currentUserId ?? undefined),
+    enabled: Boolean(currentUserId),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", currentUserId!);
+      if (error) throw error;
+      return (data ?? []) as { favorite_user_id: string }[];
+    },
+  });
+  const favoriteAuthorIds = useMemo(
+    () =>
+      new Set(
+        profileFavoriteRows
+          .map((row) => String(row.favorite_user_id ?? ""))
+          .filter(Boolean),
+      ),
+    [profileFavoriteRows],
+  );
+
+  const isJobRequestSlide = activeSlide.postSource === "job_request";
+  const canSaveJob =
+    isJobRequestSlide &&
+    Boolean(currentUserId) &&
+    activeSlide.authorId !== currentUserId;
+  const canSaveAuthor =
+    !isJobRequestSlide &&
+    Boolean(currentUserId) &&
+    activeSlide.authorId !== currentUserId;
+  const jobSaved = savedJobIds.has(activeSlide.postId);
+  const authorSaved = favoriteAuthorIds.has(activeSlide.authorId);
+  const isSaved = isJobRequestSlide ? jobSaved : authorSaved;
+
+  async function toggleSave() {
+    if (!currentUserId) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
+    if (!canSaveJob && !canSaveAuthor) return;
+
+    setSaveBusy(true);
+    try {
+      if (isJobRequestSlide) {
+        await toggleJobRequestFavorite(
+          currentUserId,
+          activeSlide.postId,
+          jobSaved,
+        );
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.jobRequestFavorites(currentUserId),
+        });
+        addToast({
+          title: jobSaved ? "Removed from saved" : "Request saved",
+          variant: "success",
+        });
+      } else {
+        if (authorSaved) {
+          const { error } = await supabase
+            .from("profile_favorites")
+            .delete()
+            .eq("user_id", currentUserId)
+            .eq("favorite_user_id", activeSlide.authorId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("profile_favorites").insert({
+            user_id: currentUserId,
+            favorite_user_id: activeSlide.authorId,
+          });
+          if (error) throw error;
+        }
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.profileFavorites(currentUserId),
+        });
+        addToast({
+          title: authorSaved ? "Removed from saved profiles" : t("feed.global.savedProfile"),
+          variant: "success",
+        });
+      }
+    } catch (e) {
+      console.error("[PostMediaReelsViewer] toggleSave", e);
+      addToast({
+        title: t("feed.global.couldNotSaveProfile"),
+        description: e instanceof Error ? e.message : undefined,
+        variant: "error",
+      });
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  function renderEngagementIconButtons(variant: "overlay" | "panel") {
+    const iconClass = variant === "overlay" ? "h-6 w-6" : "h-5 w-5";
+    const buttonClass =
+      variant === "overlay"
+        ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95 disabled:opacity-50"
+        : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50 dark:text-white/80 dark:hover:text-white";
+
+    return (
+      <>
+        {!hideLikeButton ? (
+          <button
+            type="button"
+            disabled={likingId === activeSlide.postId}
+            onClick={() =>
+              void toggleLike(activeSlide.postId, activeSlide.likedByMe)
+            }
+            className={buttonClass}
+            aria-label={activeSlide.likedByMe ? "Unlike" : "Like"}
+          >
+            <Heart
+              className={cn(
+                iconClass,
+                activeSlide.likedByMe && "fill-rose-500 text-rose-500",
+              )}
+              strokeWidth={2.5}
+            />
+          </button>
+        ) : null}
+        {canSaveJob || canSaveAuthor ? (
+          <button
+            type="button"
+            disabled={saveBusy}
+            onClick={() => void toggleSave()}
+            className={buttonClass}
+            aria-label={isSaved ? "Remove from saved" : "Save"}
+            aria-pressed={isSaved}
+          >
+            {saveBusy ? (
+              <Loader2 className={cn(iconClass, "animate-spin")} aria-hidden />
+            ) : (
+              <Bookmark
+                className={cn(
+                  iconClass,
+                  isSaved &&
+                    "fill-amber-500 text-amber-400 dark:fill-amber-400 dark:text-amber-200",
+                )}
+                strokeWidth={isSaved ? 0 : 2.25}
+                aria-hidden
+              />
+            )}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void handleShare(activeSlide.postId)}
+          className={buttonClass}
+          aria-label="Share"
+        >
+          <Send className={iconClass} strokeWidth={2.25} aria-hidden />
+        </button>
+      </>
+    );
+  }
 
   useEffect(() => {
     if (!open) {
@@ -956,81 +1124,20 @@ export function PostMediaReelsViewer({
           />
         </button>
 
-        {/* Right action rail — mobile + desktop media column */}
-        <div className="pointer-events-none absolute right-4 md:right-8 top-[42%] z-30 flex -translate-y-1/2 flex-col items-center gap-8">
-          <div className="pointer-events-auto flex flex-col items-center gap-8 pr-1">
-            {!hideLikeButton ? (
-            <button
-              type="button"
-              disabled={likingId === activeSlide.postId}
-              onClick={() =>
-                void toggleLike(activeSlide.postId, activeSlide.likedByMe)
-              }
-              className={cn(
-                "flex flex-col items-center gap-1 text-white transition-transform active:scale-95 disabled:opacity-50",
-              )}
-              aria-label={activeSlide.likedByMe ? "Unlike" : "Like"}
-            >
-              <Heart
-                className={cn(
-                  "h-8 w-8 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]",
-                  activeSlide.likedByMe && "scale-110 fill-rose-500 text-rose-500",
-                )}
-                strokeWidth={2.5}
-              />
-              {activeSlide.likeCount > 0 ? (
-                <span className="text-xs font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
-                  {activeSlide.likeCount}
-                </span>
-              ) : null}
-            </button>
-            ) : null}
+        <div
+          data-reels-comment-bar
+          className="absolute inset-x-0 bottom-0 z-50 bg-black px-3 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
+        >
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => onOpenComments(activeSlide.postId)}
-              className="flex flex-col items-center gap-1 text-white transition-transform active:scale-95 md:hidden"
-              aria-label="Comments"
+              className="min-w-0 flex-1 rounded-full bg-zinc-800 px-4 py-2.5 text-left text-[15px] text-white/45 transition active:scale-[0.99]"
             >
-              <MessageCircle
-                className="h-8 w-8 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
-                strokeWidth={2.5}
-              />
-              {activeCommentCount > 0 ? (
-                <span className="text-xs font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
-                  {activeCommentCount}
-                </span>
-              ) : null}
+              {t("feed.writeComment")}
             </button>
-            <button
-              type="button"
-              onClick={() => void handleShare(activeSlide.postId)}
-              className="flex flex-col items-center gap-1 text-white transition-transform active:scale-95"
-              aria-label="Share"
-            >
-              <Send
-                className="h-8 w-8 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
-                strokeWidth={2.5}
-              />
-              {activeSlide.shareClickCount > 0 ? (
-                <span className="text-xs font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
-                  {activeSlide.shareClickCount}
-                </span>
-              ) : null}
-            </button>
+            {renderEngagementIconButtons("overlay")}
           </div>
-        </div>
-
-        <div
-          data-reels-comment-bar
-          className="absolute inset-x-0 bottom-0 z-50 flex items-center bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
-        >
-          <button
-            type="button"
-            onClick={() => onOpenComments(activeSlide.postId)}
-            className="w-full rounded-full bg-zinc-800 px-4 py-2.5 text-left text-[15px] text-white/45 transition active:scale-[0.99]"
-          >
-            {t("feed.writeComment")}
-          </button>
         </div>
       </div>
 
@@ -1047,6 +1154,7 @@ export function PostMediaReelsViewer({
           initialCount={activeCommentCount}
           currentUserId={currentUserId}
           onClose={onClose}
+          composerTrailing={renderEngagementIconButtons("panel")}
           onCountChange={(count) =>
             setCommentCounts((prev) => ({ ...prev, [activeSlide.postId]: count }))
           }
@@ -1488,18 +1596,15 @@ function ReelSlide({
     };
   }, [activePostId, slide.mediaType, slide.postId, syncVideoClockFromEl]);
 
-  const isPortraitMobile =
-    isLandscapeMedia !== true;
+  const isPortraitMedia = isLandscapeMedia !== true;
 
   const mediaObjectClass = cn(
-    isPortraitMobile &&
-      "max-md:absolute max-md:inset-0 max-md:h-full max-md:w-full max-md:object-contain max-md:object-center",
-    isLandscapeMedia === true &&
-      "max-md:max-h-full max-md:max-w-full max-md:object-contain max-md:object-center",
-    "md:h-full md:w-full",
-    isLandscapeMedia === true && "md:object-contain md:object-center",
-    isLandscapeMedia === false && "md:object-contain md:object-center",
-    isLandscapeMedia === null && "md:object-contain md:object-center",
+    isPortraitMedia
+      ? "h-full w-full object-cover object-top"
+      : cn(
+          "max-h-full max-w-full object-contain object-center",
+          "md:h-full md:w-full md:object-contain md:object-center",
+        ),
   );
 
   const showVideoProgress =
@@ -1562,10 +1667,10 @@ function ReelSlide({
       ) : (
       <div
         className={cn(
-          "relative min-h-0 flex-1 bg-black",
-          isPortraitMobile
-            ? "max-md:overflow-hidden"
-            : "flex items-center justify-center px-2",
+          "bg-black",
+          isPortraitMedia
+            ? "absolute inset-0 z-0 overflow-hidden"
+            : "relative min-h-0 flex flex-1 items-center justify-center px-2",
         )}
       >
         {slide.mediaType === "image" && slide.mediaUrl ? (

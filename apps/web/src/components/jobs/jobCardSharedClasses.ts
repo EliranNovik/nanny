@@ -46,11 +46,11 @@ export const JOB_CARD_EMPTY_PANEL = cn(
 /** Open-help request tiles on Discover home (grid cards, my requests, live help). */
 export const DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE = cn(
   "border-0 bg-zinc-100 shadow-none",
-  "dark:bg-zinc-900",
+  "dark:bg-zinc-800",
 );
 
 export const DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER = cn(
-  "hover:bg-zinc-200 dark:hover:bg-zinc-800",
+  "hover:bg-zinc-200 dark:hover:bg-zinc-700",
 );
 
 /**

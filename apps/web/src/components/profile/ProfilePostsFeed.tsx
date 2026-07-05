@@ -1389,8 +1389,8 @@ function postTypeBadgeClassName(
   return cn(
     "inline-flex items-center font-black uppercase tracking-wider border-0 shadow-none",
     size === "lg"
-      ? "gap-2.5 rounded-lg px-4 py-2 text-[14px]"
-      : "gap-2 rounded-md px-3.5 py-1.5 text-[13px]",
+      ? "gap-2.5 rounded-lg px-4 py-2 text-[15px]"
+      : "gap-2 rounded-md px-4 py-1.5 text-[14px]",
     typeId === "request_help" && requestPostBadgeClass,
     typeId === "offer_service" &&
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
@@ -1425,7 +1425,7 @@ function PostTypeBadge({
       <span
         className={cn(
           postTypeBadgeClassName(typeId, "default"),
-          "px-3 py-1 text-[12px] tracking-wide",
+          "px-3.5 py-1 text-[13px] tracking-wide",
           mobileGlobalFeed && globalFeedMobilePostTypeBadgeClass(typeId),
           className,
         )}
@@ -1439,8 +1439,7 @@ function PostTypeBadge({
     <span className={cn(postTypeBadgeClassName(typeId, size), className)}>
       <Icon
         className={cn(
-          size === "lg" ? "h-5 w-5" : "h-[19px] w-[19px]",
-          "shrink-0",
+          "h-5 w-5 shrink-0",
           meta?.iconColor ?? "text-orange-500",
         )}
         strokeWidth={2.25}
@@ -3816,6 +3815,9 @@ function PostCard({
   const videoMuteMediaClass =
     "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl transition-colors hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45";
 
+  const videoHeaderOverlayGradientClass =
+    "absolute inset-x-0 top-0 h-[min(72%,18rem)] bg-gradient-to-b from-black/45 via-black/20 to-transparent";
+
   const isLandscape = mediaOrientation === "landscape";
   const isDiscover = appearance === "discover";
   const isProfile = appearance === "profile";
@@ -5046,7 +5048,7 @@ function PostCard({
           {isVideoHeaderOverlay ? (
             <div className="pointer-events-none absolute inset-x-0 top-0 z-[5]">
               <div
-                className="absolute inset-x-0 top-0 h-[min(48%,12.5rem)] bg-gradient-to-b from-black/65 via-black/35 to-transparent"
+                className={videoHeaderOverlayGradientClass}
                 aria-hidden
               />
               <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
@@ -5308,7 +5310,7 @@ function PostCard({
           {isVideoHeaderOverlay ? (
             <div className="pointer-events-none absolute inset-x-0 top-0 z-[5]">
               <div
-                className="absolute inset-x-0 top-0 h-[min(48%,12.5rem)] bg-gradient-to-b from-black/65 via-black/35 to-transparent"
+                className={videoHeaderOverlayGradientClass}
                 aria-hidden
               />
               <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">

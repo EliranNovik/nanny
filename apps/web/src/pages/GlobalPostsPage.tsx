@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useScrollToTopOnPathnameChange } from "@/hooks/useScrollToTopOnPathnameChange";
-import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
+import { useMobileScrollDirectionHeaderHide } from "@/hooks/useMobileScrollDirectionHeaderHide";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,7 +39,7 @@ import {
   type CommunityFeedLocationState,
   parseCommunityFeedTypeFilter,
 } from "@/lib/communityFeedNav";
-import { globalFeedMobilePageClass } from "@/lib/globalFeedPostUi";
+import { globalFeedMobileFeedAreaClass } from "@/lib/globalFeedPostUi";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { queryKeys } from "@/hooks/data/keys";
 import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
@@ -137,9 +137,10 @@ function FeedMainContent({
       <div
         className={cn(
           guestDesktopLightLayout &&
-            "md:min-w-0 md:flex-1 md:bg-slate-100 md:px-6 md:pb-8 md:pt-6 lg:px-10 xl:px-12 dark:md:bg-transparent",
+            "md:min-w-0 md:flex-1 md:px-6 md:pb-8 md:pt-6 lg:px-10 xl:px-12",
         )}
       >
+        <div className="bg-white dark:bg-background">
         <CommunityFeedHeader
           activeFilter={postTypeFilter}
           onFilterChange={onPostTypeFilterChange}
@@ -252,6 +253,14 @@ function FeedMainContent({
           </div>
         )}
 
+        </div>
+
+        <div
+          className={cn(
+            globalFeedMobileFeedAreaClass,
+            guestDesktopLightLayout && "md:bg-slate-100 dark:md:bg-transparent",
+          )}
+        >
         <ProfilePostsFeed
           appearance="discover"
           discoverSidePanel="favorites"
@@ -277,6 +286,7 @@ function FeedMainContent({
           onSidePanelPostOpen={onSidePanelPostOpen}
           guestDesktopLightLayout={guestDesktopLightLayout}
         />
+        </div>
       </div>
 
       {guestDesktopLightLayout ? (
@@ -302,7 +312,7 @@ function FeedMainContent({
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
   useScrollToTopOnPathnameChange();
-  useMobileShellScrollCollapse(!!user);
+  useMobileScrollDirectionHeaderHide(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
   const location = useLocation();
@@ -487,7 +497,7 @@ export default function GlobalPostsPage() {
   return (
     <PageFrame
       variant="fullBleed"
-      className={cn("bg-white dark:bg-background", globalFeedMobilePageClass)}
+      className="bg-white dark:bg-background"
       frameName="community-feed"
       data-community-feed-page={user ? "" : undefined}
       data-community-feed-guest={!user ? "" : undefined}

@@ -4,9 +4,8 @@ import {
   useState,
   useMemo,
   useCallback,
-  type ReactNode,
 } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -22,7 +21,6 @@ import {
 import {
   persistHiddenChatUserIds,
 } from "@/lib/inboxHiddenChats";
-import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,10 +29,6 @@ import {
   Bell,
   Briefcase,
   MessageSquare,
-  Home,
-  Rss,
-  User,
-  PlusSquare,
   Search,
   Trash2,
   X,
@@ -63,6 +57,9 @@ import {
 } from "@/hooks/data/useMessagesInbox";
 import { prefetchChatThread } from "@/hooks/data/useChatThread";
 import { ChatSimpleHeader } from "@/components/messages/ChatSimpleHeader";
+import {
+  MessagesInboxFloatingHeader,
+} from "@/components/messages/MessagesInboxFloatingHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 
 /** City for inbox row: job location first, else other user profile city */
@@ -90,55 +87,6 @@ function shouldOpenMobileChatPane(): boolean {
   const params = new URLSearchParams(window.location.search);
   if (params.get("conversation")) return true;
   return /\/messages\/[^/]+/.test(window.location.pathname);
-}
-
-function inboxNavIconClass(isActive: boolean) {
-  return cn(
-    "bottom-nav-mobile-tab-glyph h-7 w-7 transition-[width,height,transform]",
-    isActive
-      ? "bottom-nav-mobile-tab-glyph-active fill-current stroke-none text-zinc-950 dark:text-white"
-      : "fill-none stroke-[2] text-zinc-950/65 dark:text-white/65",
-  );
-}
-
-function MessagesInboxNavItem({
-  active,
-  label,
-  onClick,
-  ariaLabel,
-  children,
-  className,
-}: {
-  active?: boolean;
-  label: string;
-  onClick: () => void;
-  ariaLabel?: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel ?? label}
-      className={cn(
-        "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0",
-        className,
-      )}
-    >
-      {active ? (
-        <span
-          className="bottom-nav-tab-active-glass pointer-events-none absolute"
-          aria-hidden
-        />
-      ) : null}
-      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center px-0 py-0">
-        <div className="bottom-nav-mobile-icon-slot relative flex w-full items-center justify-center overflow-visible">
-          {children}
-        </div>
-      </div>
-    </button>
-  );
 }
 
 function InboxSecuredFooter() {
@@ -661,7 +609,7 @@ export default function MessagesPage() {
     return (
       <div
         data-messages-page=""
-        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
+        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
           <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
@@ -706,12 +654,12 @@ export default function MessagesPage() {
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
-          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-transparent md:w-80 lg:w-96",
+          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background md:w-80 lg:w-96",
           "md:flex",
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
       >
-        {/* Desktop: inbox section tabs in sidebar header. Mobile uses bottom nav bar. */}
+        {/* Desktop: inbox section tabs in sidebar header. Mobile uses floating header + global bottom nav. */}
         <div className="hidden md:contents">
           <div
             className={cn(
@@ -782,8 +730,18 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Messages list or activity / news list — scrolls under mobile chrome */}
+        {/* Messages list or activity / news list — scrolls under mobile floating header */}
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0">
+          {mobileView === "contacts" ? (
+            <MessagesInboxFloatingHeader
+              section={inboxTab}
+              onSectionChange={setInboxTab}
+              messagesUnread={inboxUnreadTotal}
+              notificationsCount={visibleActivityAlerts.length}
+              composeOpen={newChatOpen}
+              onToggleCompose={() => setNewChatOpen((open) => !open)}
+            />
+          ) : null}
           <ScrollArea
             className={cn(
               "min-h-0 flex-1 bg-transparent",
@@ -794,13 +752,16 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:max-md:[scrollbar-width:none]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:[-ms-overflow-style:none]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:[&::-webkit-scrollbar]:hidden",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.75rem+var(--app-nav-bottom-inset,max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))))]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(3.125rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
             )}
           >
             {inboxTab === "messages" ? (
               chatInboxRows.length === 0 ? (
               <>
+              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+                Messages
+              </h2>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <MessageCircle className="h-8 w-8 text-muted-foreground" />
@@ -852,8 +813,11 @@ export default function MessagesPage() {
               </>
             ) : (
               <>
-                <div className="shrink-0 px-4 pb-3 pt-2 md:pt-3">
-                  <div className="relative">
+                <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+                  Messages
+                </h2>
+                <div className="relative shrink-0 md:px-4 md:pb-3 md:pt-3">
+                  <div className="messages-inbox-search">
                       <Search
                         className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                         aria-hidden
@@ -864,7 +828,7 @@ export default function MessagesPage() {
                         autoComplete="off"
                         value={contactSearchQuery}
                         onChange={(e) => setContactSearchQuery(e.target.value)}
-                        className="h-[3.75rem] w-full rounded-2xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:h-14 md:text-sm"
+                        className="h-full w-full border-0 bg-transparent pl-8 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 md:text-sm"
                       />
                       {contactSearchQuery.trim() ? (
                         <button
@@ -902,6 +866,23 @@ export default function MessagesPage() {
                         <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         <span>Favorites</span>
                       </button>
+                      <button
+                        type="button"
+                        aria-pressed={isManageMode}
+                        onClick={() => setIsManageMode((v) => !v)}
+                        className={cn(
+                          contactFilterChipClass(isManageMode),
+                          isManageMode &&
+                            "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400",
+                        )}
+                      >
+                        {isManageMode ? (
+                          <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        )}
+                        <span>{isManageMode ? "Done" : "Remove"}</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -932,7 +913,7 @@ export default function MessagesPage() {
                   </div>
                 ) : (
               <div className="w-full min-w-0 max-w-full overflow-x-hidden">
-                {filteredChatInboxRows.map((row, index) => {
+                {filteredChatInboxRows.map((row) => {
                   const convo = row.conversation;
                   const initials =
                     convo.other_user_profile?.full_name
@@ -948,11 +929,9 @@ export default function MessagesPage() {
                     <div
                       key={row.key}
                       className={cn(
-                        "relative cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 border-l-2 border-transparent md:bg-transparent",
+                        "messages-conversation-row border-l-2 border-transparent md:bg-transparent",
                         isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
-                        convo.unread_count > 0 &&
-                          !isActive &&
-                          "bg-muted/20 dark:bg-muted/10",
+                        convo.unread_count > 0 && !isActive && "is-unread",
                       )}
                       onClick={() =>
                         handleConversationClick(
@@ -973,103 +952,86 @@ export default function MessagesPage() {
                         )
                       }
                     >
-                      {/*
-                        Row divider — indented so it starts after the avatar.
-                        Skipped on the first row so the inbox only shows the
-                        faint top/bottom edges of the box.
-                      */}
-                      {index > 0 ? (
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute left-[5.5rem] right-4 top-0 h-px bg-border/70 dark:bg-white/[0.08] md:left-[5.125rem]"
-                        />
-                      ) : null}
-                        <div className="flex min-w-0 items-start gap-3.5">
-                          <div className="relative shrink-0 pt-0.5">
-                            <Avatar className="h-[3.625rem] w-[3.625rem] flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]">
-                              <AvatarImage
-                                src={
-                                  convo.other_user_profile?.photo_url ||
-                                  undefined
-                                }
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
-                            {convo.unread_count > 0 && (
-                              <div className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1">
-                                <span className="text-[11px] font-semibold tabular-nums leading-none text-primary-foreground">
-                                  {convo.unread_count > 9
-                                    ? "9+"
-                                    : convo.unread_count}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative min-w-0 flex-1">
-                            {convo.last_message && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6.5rem] whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
-                                {formatTime(convo.last_message.created_at)}
-                              </span>
-                            )}
-                            <div className="min-w-0 max-w-full pr-[5.5rem]">
-                              <p
-                                className={cn(
-                                  "flex min-w-0 items-baseline gap-x-1.5 text-[17px] font-semibold leading-snug text-foreground md:text-base",
-                                  convo.unread_count > 0 && "text-foreground",
-                                )}
-                              >
-                                <span className="min-w-0 truncate">
-                                  {convo.other_user_profile?.full_name ||
-                                    "User"}
-                                </span>
-                                {locationLabel ? (
-                                  <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-[15px]">
-                                    · {locationLabel}
-                                  </span>
-                                ) : null}
-                              </p>
-                              {convo.last_message && (
-                                <p
-                                  className={cn(
-                                    "mt-1 truncate text-[18px] leading-snug text-muted-foreground md:text-base",
-                                    convo.unread_count > 0 &&
-                                      "font-medium text-foreground/90",
-                                  )}
-                                >
-                                  {convo.last_message.sender_id === user?.id
-                                    ? "You · "
-                                    : ""}
-                                  {convo.last_message.attachment_type
-                                    ? convo.last_message.attachment_type ===
-                                      "image"
-                                      ? "Photo"
-                                      : convo.last_message.attachment_name ||
-                                        "File"
-                                    : trimPreviewNoise(
-                                        convo.last_message.body,
-                                      )}
-                                </p>
-                              )}
-                            </div>
-                            {isManageMode && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (convo.other_user_id) {
-                                    hideChatForUser(convo.other_user_id);
-                                  }
-                                }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 shadow-md transition-colors"
-                                aria-label="Remove conversation"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                      <div className="relative shrink-0">
+                        <Avatar className="h-14 w-14 flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]">
+                          <AvatarImage
+                            src={
+                              convo.other_user_profile?.photo_url ||
+                              undefined
+                            }
+                          />
+                          <AvatarFallback className="bg-orange-500/15 text-lg font-bold text-orange-600 dark:text-orange-400">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
                       </div>
+                      <div className="relative min-w-0 flex-1">
+                        {convo.last_message && (
+                          <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6.5rem] whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
+                            {formatTime(convo.last_message.created_at)}
+                          </span>
+                        )}
+                        <div className="min-w-0 max-w-full pr-[5.5rem]">
+                          <p
+                            className={cn(
+                              "flex min-w-0 items-baseline gap-x-1.5 text-[17px] font-semibold leading-snug text-foreground md:text-base",
+                              convo.unread_count > 0 && "text-foreground",
+                            )}
+                          >
+                            <span className="min-w-0 truncate">
+                              {convo.other_user_profile?.full_name ||
+                                "User"}
+                            </span>
+                            {locationLabel ? (
+                              <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-[15px]">
+                                · {locationLabel}
+                              </span>
+                            ) : null}
+                          </p>
+                          {convo.last_message && (
+                            <p
+                              className={cn(
+                                "mt-1 truncate text-[15px] leading-snug text-[var(--messages-text-muted,rgba(15,23,42,0.55))] md:text-base",
+                                convo.unread_count > 0 &&
+                                  "font-semibold text-[var(--messages-text,#0f172a)]",
+                              )}
+                            >
+                              {convo.last_message.sender_id === user?.id
+                                ? "You · "
+                                : ""}
+                              {convo.last_message.attachment_type
+                                ? convo.last_message.attachment_type ===
+                                  "image"
+                                  ? "Photo"
+                                  : convo.last_message.attachment_name ||
+                                    "File"
+                                : trimPreviewNoise(
+                                    convo.last_message.body,
+                                  )}
+                            </p>
+                          )}
+                        </div>
+                        {isManageMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (convo.other_user_id) {
+                                hideChatForUser(convo.other_user_id);
+                              }
+                            }}
+                            className="absolute right-0 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-colors hover:bg-red-600"
+                            aria-label="Remove conversation"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      {convo.unread_count > 0 ? (
+                        <span className="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center self-center rounded-full bg-orange-600 px-1.5 text-[11px] font-bold leading-none text-white">
+                          {convo.unread_count > 9 ? "9+" : convo.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
                     );
                   })}
               </div>
@@ -1079,6 +1041,9 @@ export default function MessagesPage() {
             )
           ) : activityInboxRows.length === 0 ? (
               <>
+              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+                Notifications
+              </h2>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <Bell className="h-8 w-8 text-muted-foreground" />
@@ -1095,6 +1060,9 @@ export default function MessagesPage() {
               </>
             ) : (
               <>
+              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+                Notifications
+              </h2>
               <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
                 {activityInboxRows.map((row) => {
                   const a = row.alert;
@@ -1176,163 +1144,6 @@ export default function MessagesPage() {
             )}
           </ScrollArea>
 
-        </div>
-
-        {/* Mobile: unified inbox chrome — back, tabs, and actions in one bottom nav pill */}
-        {mobileView === "contacts" ? (
-          <nav
-            className={cn(
-              "pointer-events-none fixed inset-x-0 bottom-[var(--app-nav-bottom-inset,max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] z-40 flex justify-center px-2 md:hidden",
-            )}
-            role="tablist"
-            aria-label="Messages inbox"
-          >
-            <div className="bottom-nav-mobile-shell pointer-events-auto w-full max-w-none">
-              <div className="bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-0 py-0">
-                <MessagesInboxNavItem
-                  label="Back"
-                  onClick={() =>
-                    navigate(
-                      profile?.role === "client"
-                        ? "/client/home"
-                        : "/freelancer/home",
-                    )
-                  }
-                >
-                  <HeaderBackChevron className="h-5 w-5 text-zinc-950 dark:text-white" />
-                </MessagesInboxNavItem>
-
-                <MessagesInboxNavItem
-                  active={inboxTab === "messages"}
-                  label="Messages"
-                  ariaLabel={
-                    inboxUnreadTotal > 0
-                      ? `Messages, ${inboxUnreadTotal} unread`
-                      : "Messages"
-                  }
-                  onClick={() => setInboxTab("messages")}
-                >
-                  <div className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center">
-                    <MessageCircle
-                      className={inboxNavIconClass(inboxTab === "messages")}
-                      aria-hidden
-                    />
-                    {inboxUnreadTotal > 0 ? (
-                      <span className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none text-white">
-                        {inboxUnreadTotal > 9 ? "9+" : inboxUnreadTotal}
-                      </span>
-                    ) : null}
-                  </div>
-                </MessagesInboxNavItem>
-
-                <MessagesInboxNavItem
-                  active={inboxTab === "news"}
-                  label="News"
-                  ariaLabel={
-                    visibleActivityAlerts.length > 0
-                      ? `News, ${visibleActivityAlerts.length} items`
-                      : "News"
-                  }
-                  onClick={() => setInboxTab("news")}
-                >
-                  <Bell
-                    className={inboxNavIconClass(inboxTab === "news")}
-                    aria-hidden
-                  />
-                  {visibleActivityAlerts.length > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/25 px-0.5 text-[10px] font-black leading-none text-foreground dark:bg-white/20">
-                      {visibleActivityAlerts.length > 9
-                        ? "9+"
-                        : visibleActivityAlerts.length}
-                    </span>
-                  ) : null}
-                </MessagesInboxNavItem>
-
-                {inboxTab === "messages" ? (
-                  <>
-                    <MessagesInboxNavItem
-                      label="New"
-                      ariaLabel="New message"
-                      onClick={() => setNewChatOpen(true)}
-                    >
-                      <PlusSquare
-                        className="bottom-nav-mobile-tab-glyph h-7 w-7 fill-none stroke-[2] text-zinc-950/65 dark:text-white/65"
-                        aria-hidden
-                      />
-                    </MessagesInboxNavItem>
-
-                    <MessagesInboxNavItem
-                      label={isManageMode ? "Done" : "Remove"}
-                      ariaLabel={
-                        isManageMode ? "Done removing" : "Remove conversations"
-                      }
-                      onClick={() => setIsManageMode(!isManageMode)}
-                      className={
-                        isManageMode
-                          ? "text-red-600 dark:text-red-400"
-                          : undefined
-                      }
-                    >
-                      {isManageMode ? (
-                        <Check
-                          className="bottom-nav-mobile-tab-glyph h-7 w-7 stroke-[2] text-red-600 dark:text-red-400"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Trash2
-                          className="bottom-nav-mobile-tab-glyph h-7 w-7 fill-none stroke-[2] text-zinc-950/65 dark:text-white/65"
-                          aria-hidden
-                        />
-                      )}
-                    </MessagesInboxNavItem>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </nav>
-        ) : null}
-
-        {/* Desktop Tab Bar */}
-        <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">
-          <Link
-            to={profile?.role === "freelancer" ? "/freelancer/home" : "/client/home"}
-            className={cn(
-              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
-              (location.pathname.startsWith("/freelancer/home") || location.pathname.startsWith("/client/home")) && "text-primary hover:text-primary"
-            )}
-          >
-            <Home className="h-6 w-6" />
-          </Link>
-
-          <Link
-            to={profile?.role === "freelancer" ? "/freelancer/explore" : "/client/explore"}
-            className={cn(
-              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
-              (location.pathname.startsWith("/freelancer/explore") || location.pathname.startsWith("/client/explore")) && "text-primary hover:text-primary"
-            )}
-          >
-            <Rss className="h-6 w-6" />
-          </Link>
-
-          <Link
-            to="/messages"
-            className={cn(
-              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
-              location.pathname.startsWith("/messages") && "text-primary hover:text-primary"
-            )}
-          >
-            <MessageCircle className="h-6 w-6" />
-          </Link>
-
-          <Link
-            to={profile?.role === "freelancer" ? "/freelancer/profile" : "/client/profile"}
-            className={cn(
-              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
-              (location.pathname.startsWith("/freelancer/profile") || location.pathname.startsWith("/client/profile")) && "text-primary hover:text-primary"
-            )}
-          >
-            <User className="h-6 w-6" />
-          </Link>
         </div>
       </div>
 

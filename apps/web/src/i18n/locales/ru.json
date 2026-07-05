@@ -459,7 +459,14 @@
       "tebnuMenu": "Меню Tebnu",
       "myPosts": "Мои посты",
       "myFavorites": "Избранное",
-      "noFavoriteProfiles": "Пока нет сохранённых профилей"
+      "noFavoriteProfiles": "Пока нет сохранённых профилей",
+      "recentPosters": "Недавно публиковавшие",
+      "saveProfile": "Сохранить {{name}} в избранное",
+      "savedProfile": "Сохранено — смотрите в «Сохранённое»",
+      "alreadySavedProfile": "Уже в сохранённых",
+      "couldNotSaveProfile": "Не удалось сохранить профиль",
+      "signInToSaveProfile": "Войдите, чтобы сохранять профили",
+      "viewProfile": "Открыть профиль {{name}}"
     },
     "sidePanel": {
       "ariaLabel": "Посты из избранного и популярные посты",
@@ -482,6 +489,9 @@
     }
   },
   "profile": {
+    "addAsFavorite": "Добавить в избранное",
+    "recentPostersCarousel": "Недавно публиковавшие",
+    "verifiedHelper": "Проверенный помощник",
     "personalContact": "Личные данные и контакты",
     "myActivity": "Моя активность",
     "myEvents": "Мои события",
@@ -489,6 +499,15 @@
     "publicGallery": "Публичная галерея",
     "servicesArea": "Услуги и район",
     "appearance": "Оформление",
+    "theme": {
+      "title": "Тема",
+      "description": "Светлая, тёмная или по настройкам устройства.",
+      "pageDescription": "Настройки темы",
+      "pageDescriptionFreelancer": "Настройте внешний вид приложения",
+      "light": "Светлая",
+      "dark": "Тёмная",
+      "auto": "Авто"
+    },
     "availability": "Доступность",
     "about": "О себе",
     "aboutYou": "О вас",

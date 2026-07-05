@@ -70,6 +70,7 @@ import {
   playFavoriteRemovedFromLikedTabFlight,
 } from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
+import { OwnProfileRecentPostersCarousel } from "@/components/profile/OwnProfileRecentPostersCarousel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -236,6 +237,52 @@ const profileCategoryBadgeClass =
 const profileCategoryScrollRowClass =
   "flex gap-2.5 overflow-x-auto scroll-smooth pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
+function OwnProfileBioActions({
+  onEditBio,
+  profileEditPath,
+  editBioLabel,
+  showAddBioIcon = false,
+  className,
+}: {
+  onEditBio: () => void;
+  profileEditPath: string;
+  editBioLabel: string;
+  showAddBioIcon?: boolean;
+  className?: string;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        onClick={onEditBio}
+      >
+        {showAddBioIcon ? (
+          <>
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+            {editBioLabel}
+          </>
+        ) : (
+          editBioLabel
+        )}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        onClick={() => navigate(profileEditPath)}
+      >
+        Edit profile
+      </Button>
+    </div>
+  );
+}
+
 function ProfileBioHeader({
   profile,
   isOwnProfile,
@@ -246,6 +293,7 @@ function ProfileBioHeader({
   savingBio,
   onSave,
   variant,
+  profileEditPath,
 }: {
   profile: PublicProfile;
   isOwnProfile: boolean;
@@ -256,6 +304,7 @@ function ProfileBioHeader({
   savingBio: boolean;
   onSave: (nextBio: string) => void;
   variant: "desktop" | "mobile" | "panel";
+  profileEditPath?: string | null;
 }) {
   const isDesktop = variant === "desktop";
   const isPanel = variant === "panel";
@@ -338,16 +387,13 @@ function ProfileBioHeader({
       return (
         <div className="w-full space-y-3" dir={bioTextProps.dir}>
           <p {...bioTextProps}>{profile.bio}</p>
-          {isOwnProfile ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-fit rounded-full"
-              onClick={() => setEditingBio(true)}
-            >
-              Edit bio
-            </Button>
+          {isOwnProfile && profileEditPath ? (
+            <OwnProfileBioActions
+              onEditBio={() => setEditingBio(true)}
+              profileEditPath={profileEditPath}
+              editBioLabel="Edit bio"
+              className="mt-1"
+            />
           ) : null}
         </div>
       );
@@ -363,16 +409,13 @@ function ProfileBioHeader({
         dir={bioTextProps.dir}
       >
         <p {...bioTextProps}>{profile.bio}</p>
-        {isOwnProfile ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-1.5 shrink-0 rounded-full"
-            onClick={() => setEditingBio(true)}
-          >
-            Edit bio
-          </Button>
+        {isOwnProfile && profileEditPath ? (
+          <OwnProfileBioActions
+            onEditBio={() => setEditingBio(true)}
+            profileEditPath={profileEditPath}
+            editBioLabel="Edit bio"
+            className="mt-1.5"
+          />
         ) : null}
       </div>
     );
@@ -397,33 +440,52 @@ function ProfileBioHeader({
         <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
           No bio added yet.
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          className="rounded-full"
-          onClick={() => setEditingBio(true)}
-        >
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-          Add bio
-        </Button>
+        {profileEditPath ? (
+          <OwnProfileBioActions
+            onEditBio={() => setEditingBio(true)}
+            profileEditPath={profileEditPath}
+            editBioLabel="Add bio"
+            showAddBioIcon
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => setEditingBio(true)}
+          >
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+            Add bio
+          </Button>
+        )}
       </div>
     );
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className={cn(
-        "rounded-full border-orange-200 bg-orange-50/80 text-orange-700 hover:bg-orange-100 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-300 dark:hover:bg-orange-950/50",
-        isDesktop ? "mt-2.5" : "mt-3 w-full",
-      )}
-      onClick={() => setEditingBio(true)}
-    >
-      <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-      Add bio
-    </Button>
+    profileEditPath ? (
+      <OwnProfileBioActions
+        onEditBio={() => setEditingBio(true)}
+        profileEditPath={profileEditPath}
+        editBioLabel="Add bio"
+        showAddBioIcon
+        className={cn(isDesktop ? "mt-2.5" : "mt-3")}
+      />
+    ) : (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className={cn(
+          "rounded-full border-orange-200 bg-orange-50/80 text-orange-700 hover:bg-orange-100 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-300 dark:hover:bg-orange-950/50",
+          isDesktop ? "mt-2.5" : "mt-3 w-full",
+        )}
+        onClick={() => setEditingBio(true)}
+      >
+        <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+        Add bio
+      </Button>
+    )
   );
 }
 
@@ -1084,6 +1146,12 @@ export default function PublicProfilePage() {
 
   const isOwnProfile = currentUser?.id === userId;
 
+  const ownProfileEditPath = useMemo(() => {
+    if (currentProfile?.role === "freelancer") return "/freelancer/profile";
+    if (currentProfile?.role === "client") return "/client/profile";
+    return "/dashboard";
+  }, [currentProfile?.role]);
+
   const viewerLocation = useMemo<ViewerLocation | null>(() => {
     if (!currentProfile) return null;
     return {
@@ -1473,6 +1541,7 @@ export default function PublicProfilePage() {
                     savingBio={savingBio}
                     onSave={(next) => void saveBio(next)}
                     variant="desktop"
+                    profileEditPath={isOwnProfile ? ownProfileEditPath : null}
                   />
                   {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
@@ -1626,6 +1695,13 @@ export default function PublicProfilePage() {
               </button>
             )}
           </div>
+
+          {isOwnProfile && currentUser ? (
+            <OwnProfileRecentPostersCarousel
+              viewerUserId={currentUser.id}
+              className="mt-1 border-x-0 border-t-0 px-0"
+            />
+          ) : null}
         </div>
       </div>
 
@@ -1729,6 +1805,7 @@ export default function PublicProfilePage() {
             savingBio={savingBio}
             onSave={(next) => void saveBio(next)}
             variant="mobile"
+            profileEditPath={isOwnProfile ? ownProfileEditPath : null}
           />
 
           {profile.categories && profile.categories.length > 0 ? (
@@ -1830,6 +1907,10 @@ export default function PublicProfilePage() {
             </div>
           </div>
 
+          {isOwnProfile && currentUser ? (
+            <OwnProfileRecentPostersCarousel viewerUserId={currentUser.id} />
+          ) : null}
+
           <TabsContent value="images" className="m-0 focus-visible:outline-none">
             {imageRows.length === 0 ? (
               <div className="py-20 flex flex-col items-center justify-center text-slate-300">
@@ -1906,6 +1987,7 @@ export default function PublicProfilePage() {
                 savingBio={savingBio}
                 onSave={(next) => void saveBio(next)}
                 variant="panel"
+                profileEditPath={isOwnProfile ? ownProfileEditPath : null}
               />
             </section>
 
@@ -2052,6 +2134,7 @@ export default function PublicProfilePage() {
                     savingBio={savingBio}
                     onSave={(next) => void saveBio(next)}
                     variant="panel"
+                    profileEditPath={isOwnProfile ? ownProfileEditPath : null}
                   />
                 </div>
               </div>

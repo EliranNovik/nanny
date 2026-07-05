@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase,
   CalendarDays,
   LayoutGrid,
   LifeBuoy,
+  Loader2,
   Plus,
   Users,
   type LucideIcon,
@@ -20,7 +22,9 @@ import {
 } from "@/components/community/CommunityFeedFilterDialog";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
+import { fetchGlobalFeedRecentPosters } from "@/lib/globalFeedRecentPosters";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
 import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -145,23 +149,111 @@ export function CommunityFeedHeader({
   onOtherSubFilterChange,
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [savingFavoriteId, setSavingFavoriteId] = useState<string | null>(null);
   const filterTabs = FILTER_TABS;
+  const isGlobalVariant = variant === "global";
   const showFilterControls = Boolean(
     advancedFilters &&
       onAdvancedFiltersChange &&
-      (viewerUserId || (variant === "global" && showCategoryTabs)),
+      (viewerUserId || (isGlobalVariant && showCategoryTabs)),
   );
 
   const { data: favoriteProfiles = [] } = useQuery({
     queryKey: queryKeys.discoverSavedProfiles(viewerUserId ?? null),
     queryFn: () => fetchFavoriteProfiles(viewerUserId!),
-    enabled: Boolean(viewerUserId),
+    enabled: Boolean(viewerUserId) && !isGlobalVariant,
     staleTime: 60_000,
   });
 
+  const { data: recentPosters = [] } = useQuery({
+    queryKey: queryKeys.globalFeedRecentPosters(viewerUserId ?? null),
+    queryFn: () => fetchGlobalFeedRecentPosters(viewerUserId),
+    enabled: isGlobalVariant,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: profileFavoriteRows = [] } = useQuery({
+    queryKey: queryKeys.profileFavorites(viewerUserId ?? null),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", viewerUserId!);
+      if (error) throw error;
+      return (data ?? []) as { favorite_user_id: string }[];
+    },
+    enabled: Boolean(viewerUserId) && isGlobalVariant,
+    staleTime: 60_000,
+  });
+
+  const favoriteAuthorIds = useMemo(
+    () =>
+      new Set(
+        profileFavoriteRows
+          .map((row) => String(row.favorite_user_id ?? ""))
+          .filter(Boolean),
+      ),
+    [profileFavoriteRows],
+  );
+
+  const stripAuthors = isGlobalVariant ? recentPosters : favoriteProfiles;
+
+  async function saveAuthorToFavorites(authorId: string) {
+    if (!viewerUserId) {
+      addToast({ title: t("feed.global.signInToSaveProfile"), variant: "warning" });
+      return;
+    }
+    if (authorId === viewerUserId || favoriteAuthorIds.has(authorId)) return;
+
+    setSavingFavoriteId(authorId);
+    try {
+      const { error } = await supabase.from("profile_favorites").insert({
+        user_id: viewerUserId,
+        favorite_user_id: authorId,
+      });
+      if (error) {
+        const code = (error as { code?: string }).code;
+        if (code === "23505") {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.profileFavorites(viewerUserId),
+          });
+          addToast({ title: t("feed.global.alreadySavedProfile"), variant: "success" });
+          return;
+        }
+        throw error;
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.profileFavorites(viewerUserId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.discoverSavedProfiles(viewerUserId),
+      });
+      addToast({ title: t("feed.global.savedProfile"), variant: "success" });
+    } catch (err) {
+      console.error("[CommunityFeedHeader] save favorite", err);
+      addToast({ title: t("feed.global.couldNotSaveProfile"), variant: "error" });
+    } finally {
+      setSavingFavoriteId(null);
+    }
+  }
+
   const viewerInitial =
     (viewer?.full_name?.charAt(0) || "Y").toUpperCase();
+
+  const storyCircleSizeClass = isGlobalVariant
+    ? "h-[6.25rem] w-[6.25rem]"
+    : "h-[5.5rem] w-[5.5rem]";
+  const storyItemWidthClass = isGlobalVariant ? "w-[6.25rem]" : "w-[5.5rem]";
+  const storyAvatarFallbackClass = isGlobalVariant
+    ? "bg-zinc-200 text-xl font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+    : "bg-gradient-to-br from-emerald-100 to-teal-100 text-xl font-bold text-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200";
+  const storyNameClass = isGlobalVariant
+    ? "max-w-full truncate px-0.5 text-xs font-medium lowercase leading-tight text-muted-foreground"
+    : "max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground";
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -173,20 +265,25 @@ export function CommunityFeedHeader({
           "max-md:-mx-0 px-1 md:mx-0 md:px-0",
         )}
         role="list"
-        aria-label={t("feed.filters.savedProfiles")}
+        aria-label={
+          isGlobalVariant
+            ? t("feed.global.recentPosters")
+            : t("feed.filters.savedProfiles")
+        }
       >
         <button
           type="button"
           role="listitem"
           onClick={onAddStory}
           className={cn(
-            "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
+            "group flex shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
+            storyItemWidthClass,
             "transition-transform active:scale-[0.97]",
             "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
           aria-label={t("discoverHome.actions.sharePost")}
         >
-          <div className="relative h-[5.5rem] w-[5.5rem] shrink-0">
+          <div className={cn("relative shrink-0", storyCircleSizeClass)}>
             {variant === "global" ? (
               <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20 text-muted-foreground">
                 <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
@@ -217,65 +314,118 @@ export function CommunityFeedHeader({
               </>
             )}
           </div>
-          <span className="max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground">
+          <span
+            className={cn(
+              storyNameClass,
+              !isGlobalVariant && "text-foreground",
+            )}
+          >
             {t("discoverHome.actions.sharePost")}
           </span>
         </button>
 
-        {favoriteProfiles.map((author) => {
+        {stripAuthors.map((author) => {
           const label = author.full_name?.trim()?.split(" ")[0] || "Member";
           const isSelected = selectedAuthorFilterId === author.id;
+          const isSelf = viewerUserId === author.id;
+          const isSaved = favoriteAuthorIds.has(author.id);
+          const showSaveBadge = isGlobalVariant && !isSelf && !isSaved;
+          const savingFavorite = savingFavoriteId === author.id;
           return (
-            <button
+            <div
               key={author.id}
-              type="button"
               role="listitem"
-              onClick={() => {
-                onCommentedFilterChange?.(false);
-                onAcceptedFilterChange?.(false);
-                onAuthorFilterChange?.(isSelected ? null : author.id);
-              }}
               className={cn(
-                "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
-                "transition-transform active:scale-[0.97]",
-                "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "flex shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center",
+                storyItemWidthClass,
               )}
-              title={author.full_name ?? label}
-              aria-label={
-                isSelected
-                  ? t("feed.filters.clearFilterFor", { name: author.full_name ?? label })
-                  : t("feed.filters.showPostsBy", { name: author.full_name ?? label })
-              }
-              aria-pressed={isSelected}
             >
-              <AvatarWithLiveDot
-                liveUntil={author.live_until}
-                className={cn(
-                  "h-[5.5rem] w-[5.5rem] transition-transform duration-300 group-hover:scale-[1.03]",
-                  isSelected &&
-                    "rounded-full ring-2 ring-orange-500 ring-offset-2 ring-offset-background",
-                )}
-              >
-                <Avatar className="h-full w-full border-0 shadow-none ring-0">
-                  <AvatarImage
-                    src={author.photo_url ?? undefined}
-                    alt=""
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-xl font-bold text-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200">
-                    {label.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </AvatarWithLiveDot>
+              <div className={cn("relative shrink-0", storyCircleSizeClass)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isGlobalVariant) {
+                      navigate(`/profile/${author.id}`);
+                      return;
+                    }
+                    onCommentedFilterChange?.(false);
+                    onAcceptedFilterChange?.(false);
+                    onAuthorFilterChange?.(isSelected ? null : author.id);
+                  }}
+                  className={cn(
+                    "group h-full w-full outline-none transition-transform active:scale-[0.97]",
+                    "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  )}
+                  title={author.full_name ?? label}
+                  aria-label={
+                    isGlobalVariant
+                      ? t("feed.global.viewProfile", {
+                          name: author.full_name ?? label,
+                        })
+                      : isSelected
+                        ? t("feed.filters.clearFilterFor", {
+                            name: author.full_name ?? label,
+                          })
+                        : t("feed.filters.showPostsBy", {
+                            name: author.full_name ?? label,
+                          })
+                  }
+                  aria-pressed={isGlobalVariant ? undefined : isSelected}
+                >
+                  <AvatarWithLiveDot
+                    liveUntil={author.live_until}
+                    className={cn(
+                      "h-full w-full transition-transform duration-300 group-hover:scale-[1.03]",
+                      !isGlobalVariant &&
+                        isSelected &&
+                        "rounded-full ring-2 ring-orange-500 ring-offset-2 ring-offset-background",
+                    )}
+                  >
+                    <Avatar className="h-full w-full border-0 shadow-none ring-0">
+                      <AvatarImage
+                        src={author.photo_url ?? undefined}
+                        alt=""
+                        className="object-cover"
+                      />
+                      <AvatarFallback className={storyAvatarFallbackClass}>
+                        {label.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </AvatarWithLiveDot>
+                </button>
+                {showSaveBadge ? (
+                  <button
+                    type="button"
+                    onClick={() => void saveAuthorToFavorites(author.id)}
+                    disabled={savingFavorite}
+                    className={cn(
+                      "absolute bottom-0 right-0 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
+                      "border-2 border-background bg-orange-600 text-white shadow-sm",
+                      "transition-transform hover:scale-105 active:scale-95 disabled:opacity-80",
+                    )}
+                    aria-label={t("feed.global.saveProfile", {
+                      name: author.full_name ?? label,
+                    })}
+                  >
+                    {savingFavorite ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                    )}
+                  </button>
+                ) : null}
+              </div>
               <span
                 className={cn(
-                  "max-w-full truncate px-0.5 text-xs font-semibold leading-tight",
-                  isSelected ? "text-orange-600 dark:text-orange-400" : "text-foreground",
+                  storyNameClass,
+                  isSelected && !isGlobalVariant
+                    ? "text-orange-600 dark:text-orange-400"
+                    : !isGlobalVariant && "text-foreground",
                 )}
               >
                 {label}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
