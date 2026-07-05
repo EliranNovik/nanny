@@ -140,10 +140,8 @@ import {
   globalFeedMobileCommentsSheetClass,
   globalFeedMobileEngagementRowClass,
   globalFeedMobilePostTypeBadgeClass,
-  globalFeedMobileTextOnlySurfaceClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
-  globalFeedTextOnlySurfaceClass,
   feedWhenDisplayLabel,
   type ViewerLocation,
 } from "@/lib/globalFeedPostUi";
@@ -185,7 +183,6 @@ import { PostMediaGalleryModal } from "@/components/profile/PostMediaGalleryModa
 import {
   MAX_PROFILE_POST_MEDIA,
   allProfilePostStoragePaths,
-  extraProfilePostMediaItems,
   getProfilePostMediaItems,
   type ProfilePostMediaItem,
 } from "@/lib/profilePostMedia";
@@ -3164,16 +3161,13 @@ function PostAuthorAvatar({
   return (
     <AvatarWithLiveDot liveUntil={liveUntil}>
       <Avatar
-        className={cn(
-          "shrink-0",
-          variant === "overlay" ? "h-11 w-11" : "h-14 w-14",
-        )}
+        className="h-11 w-11 shrink-0"
       >
         <AvatarImage src={photoUrl} className="object-cover" alt="" />
         <AvatarFallback
           className={cn(
             fallbackClass,
-            variant === "card" && "text-base",
+            variant === "card" && "text-sm",
           )}
         >
           {authorName.charAt(0).toUpperCase()}
@@ -3267,58 +3261,184 @@ const mediaTaggedMoreBadgeClass =
 
 const mediaTaggedAvatarClass = "h-7 w-7 shrink-0";
 
-function PostMediaExtraStack({
+function PostMediaCarousel({
   items,
-  onOpenGallery,
+  portraitMediaObjectClass,
+  landscapeMediaObjectClass,
+  onFirstSlideAspectRatio,
+  onActiveVideoRef,
+  onActiveIndexChange,
+  onOpenReels,
+  videoUnmuted = false,
 }: {
   items: ProfilePostMediaItem[];
-  onOpenGallery: (indexInGallery: number) => void;
+  portraitMediaObjectClass: string;
+  landscapeMediaObjectClass: string;
+  onFirstSlideAspectRatio?: (ratio: number, orientation: "portrait" | "landscape") => void;
+  onActiveVideoRef?: (el: HTMLVideoElement | null) => void;
+  onActiveIndexChange?: (index: number) => void;
+  onOpenReels: () => void;
+  videoUnmuted?: boolean;
 }) {
-  if (items.length === 0) return null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [slideOrientations, setSlideOrientations] = useState<
+    Record<number, "portrait" | "landscape">
+  >({});
+  const firstAspectReportedRef = useRef(false);
 
-  const visible = items.slice(0, 3);
-  const overflow = items.length - visible.length;
+  const mediaObjectClass = (index: number) =>
+    slideOrientations[index] === "landscape"
+      ? landscapeMediaObjectClass
+      : portraitMediaObjectClass;
+
+  const syncActiveIndex = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const width = el.clientWidth;
+    if (width <= 0) return;
+    const next = Math.min(
+      Math.max(0, Math.round(el.scrollLeft / width)),
+      items.length - 1,
+    );
+    setActiveIndex((prev) => {
+      if (prev !== next) onActiveIndexChange?.(next);
+      return next;
+    });
+  }, [items.length, onActiveIndexChange]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", syncActiveIndex, { passive: true });
+    return () => el.removeEventListener("scroll", syncActiveIndex);
+  }, [syncActiveIndex]);
+
+  useEffect(() => {
+    firstAspectReportedRef.current = false;
+    setActiveIndex(0);
+    setSlideOrientations({});
+    onActiveIndexChange?.(0);
+    scrollRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [items, onActiveIndexChange]);
+
+  useEffect(() => {
+    const activeItem = items[activeIndex];
+    if (!activeItem || activeItem.media_type !== "video") {
+      onActiveVideoRef?.(null);
+    }
+  }, [activeIndex, items, onActiveVideoRef]);
 
   return (
-    <div className="absolute bottom-3 right-3 z-[5] flex items-end">
-      {visible.map((item, i) => {
-        const thumbUrl = publicProfileMediaPublicUrl(item.storage_path);
-        const galleryIndex = i + 1;
-        const showOverflow = i === visible.length - 1 && overflow > 0;
-
-        return (
-          <button
+    <>
+      <div
+        className="pointer-events-none absolute left-1/2 top-3 z-[7] flex -translate-x-1/2 items-center gap-1.5"
+        aria-label={`Media ${activeIndex + 1} of ${items.length}`}
+      >
+        {items.map((item, index) => (
+          <span
             key={item.storage_path}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenGallery(galleryIndex);
-            }}
             className={cn(
-              "relative h-11 w-11 overflow-hidden rounded-lg border-2 border-white bg-black shadow-lg ring-1 ring-black/25 transition-transform active:scale-95",
-              i > 0 && "-ml-3",
+              "h-1.5 w-1.5 rounded-full transition-colors",
+              index === activeIndex ? "bg-white" : "bg-white/35",
             )}
-            style={{ zIndex: 10 + i }}
-            aria-label={
-              showOverflow
-                ? `View all ${items.length + 1} media items`
-                : `View media ${galleryIndex + 1}`
-            }
-          >
-            {item.media_type === "image" ? (
-              <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <video src={thumbUrl} className="h-full w-full object-cover" muted playsInline />
-            )}
-            {showOverflow ? (
-              <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[11px] font-black text-white">
-                +{overflow}
-              </span>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
+            aria-hidden
+          />
+        ))}
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] scrollbar-hide"
+        aria-label="Post media carousel"
+      >
+        {items.map((item, index) => {
+          const url = publicProfileMediaPublicUrl(item.storage_path);
+          const isActive = index === activeIndex;
+
+          return (
+            <div
+              key={item.storage_path}
+              className="relative h-full w-full shrink-0 snap-start snap-always"
+            >
+              {item.media_type === "image" ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenReels();
+                  }}
+                  className="block h-full w-full overflow-hidden focus-visible:outline-none"
+                  aria-label={`View image ${index + 1} of ${items.length}`}
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    className={cn("h-full w-full", mediaObjectClass(index))}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                    onLoad={(e) => {
+                      const el = e.currentTarget;
+                      const w = el.naturalWidth || 0;
+                      const h = el.naturalHeight || 0;
+                      if (w && h) {
+                        const ratio = w / h;
+                        const orientation =
+                          ratio >= 1.05 ? "landscape" : "portrait";
+                        setSlideOrientations((prev) =>
+                          prev[index] === orientation
+                            ? prev
+                            : { ...prev, [index]: orientation },
+                        );
+                        if (index === 0 && !firstAspectReportedRef.current) {
+                          firstAspectReportedRef.current = true;
+                          onFirstSlideAspectRatio?.(ratio, orientation);
+                        }
+                      }
+                    }}
+                  />
+                </button>
+              ) : (
+                <video
+                  ref={(el) => {
+                    if (isActive) onActiveVideoRef?.(el);
+                  }}
+                  src={url}
+                  playsInline
+                  loop
+                  muted={!videoUnmuted}
+                  preload={index <= activeIndex + 1 ? "metadata" : "none"}
+                  className={cn("h-full w-full cursor-pointer", mediaObjectClass(index))}
+                  onLoadedMetadata={(e) => {
+                    const el = e.currentTarget;
+                    const w = el.videoWidth || 0;
+                    const h = el.videoHeight || 0;
+                    if (w && h) {
+                      const ratio = w / h;
+                      const orientation =
+                        ratio >= 1.05 ? "landscape" : "portrait";
+                      setSlideOrientations((prev) =>
+                        prev[index] === orientation
+                          ? prev
+                          : { ...prev, [index]: orientation },
+                      );
+                      if (index === 0 && !firstAspectReportedRef.current) {
+                        firstAspectReportedRef.current = true;
+                        onFirstSlideAspectRatio?.(ratio, orientation);
+                      }
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenReels();
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -3561,7 +3681,8 @@ function PostCard({
     }
   };
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [galleryIndex, setGalleryIndex] = useState(0);
+  const galleryIndex = 0;
+  const [mediaCarouselIndex, setMediaCarouselIndex] = useState(0);
   const [showAllTagged, setShowAllTagged] = useState(false);
   const videoUnmutedByUser = globalVideoUnmuted;
   const [mediaOrientation, setMediaOrientation] = useState<
@@ -3580,15 +3701,18 @@ function PostCard({
     () => (post.source === "post" ? getProfilePostMediaItems(post) : []),
     [post],
   );
-  const extraMediaItems = useMemo(
-    () => extraProfilePostMediaItems(postMediaItems),
-    [postMediaItems],
-  );
+  const hasMultipleMedia = postMediaItems.length > 1;
+  const activeCarouselItem = hasMultipleMedia ? postMediaItems[mediaCarouselIndex] : null;
 
-  function openMediaGallery(indexInGallery: number) {
-    setGalleryIndex(indexInGallery);
-    setGalleryOpen(true);
-  }
+  useEffect(() => {
+    setMediaCarouselIndex(0);
+  }, [post.id]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = !videoUnmutedByUser;
+  }, [mediaCarouselIndex, videoUnmutedByUser, activeCarouselItem?.storage_path]);
 
   const canSaveAuthor =
     Boolean(currentUserId) && post.author_id !== currentUserId && !isJobRequest;
@@ -3697,6 +3821,7 @@ function PostCard({
   const isProfile = appearance === "profile";
   const isPlainCard = Boolean(plainCard);
   const isGlobalFeed = Boolean(globalFeedLayout);
+  const isVideoHeaderOverlay = hasMedia && post.media_type === "video";
   const cardPadX =
     isGlobalFeed
       ? cn("px-3 md:px-3.5", globalFeedMobileCardPadClass)
@@ -3706,8 +3831,8 @@ function PostCard({
   const cardMarginX =
     isGlobalFeed ? "mx-0" : isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
   const mobileMediaInsetClass = isGlobalFeed
-    ? "max-md:mx-2 max-md:w-[calc(100%-16px)] max-md:rounded-xl md:mx-3.5 md:w-[calc(100%-1.75rem)] md:rounded-xl"
-    : "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]";
+    ? "max-md:mx-0 max-md:w-full max-md:rounded-none md:mx-3.5 md:w-[calc(100%-1.75rem)] md:rounded-xl"
+    : "max-md:mx-0 max-md:w-full max-md:rounded-none";
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
@@ -4110,6 +4235,10 @@ function PostCard({
   }, [post, t]);
 
   const postTypeId = feedPostTypeId(post);
+  const feedPostTypeName =
+    post.source === "post" || post.source === "job_request"
+      ? post.post_types?.name
+      : undefined;
   const listingStatusType =
     post.source === "post" ? listingStatusForPostType(postTypeId) : null;
   const activeListingStatus =
@@ -4392,9 +4521,7 @@ function PostCard({
           isGlobalFeed
             ? cn(
                 cardPadX,
-                "mt-1",
-                "bg-zinc-50/70 dark:bg-transparent",
-                "rounded-b-2xl pb-3.5 pt-2",
+                "mt-1 pb-3.5 pt-2",
                 globalFeedMobileEngagementRowClass,
               )
             : cn("mt-1.5 bg-transparent", cardMarginX, isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0"),
@@ -4580,7 +4707,7 @@ function PostCard({
       post.post_types.id !== "request_help");
 
   const feedActionButtonClass = cn(
-    "inline-flex h-9 w-[10.75rem] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
+    "inline-flex h-9 w-full md:w-[10.75rem] md:self-end shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
     (post.source === "post" && post.post_types?.id === "request_help") || isJobRequest
       ? jobAcceptedAt
         ? requestPostCtaPendingClass
@@ -4599,6 +4726,40 @@ function PostCard({
             ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-300/80 dark:bg-violet-950/30 dark:text-violet-200 dark:ring-violet-800/80"
             : "bg-violet-600 hover:bg-violet-700 text-white dark:bg-violet-700 dark:hover:bg-violet-600"),
   );
+
+  const postTypeHeaderBadge = postTypeId ? (
+    <PostTypeBadgeWithExpired
+      typeId={postTypeId}
+      typeName={feedPostTypeName}
+      compact={isGlobalFeed}
+      size={!isGlobalFeed && isDiscover ? "lg" : "default"}
+      mobileGlobalFeed={isGlobalFeed}
+      showExpired={whenExpired && postTypeId === "request_help"}
+    />
+  ) : null;
+
+  const postStatusBadgesRow =
+    activeListingStatus ||
+    (isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0)) ? (
+      <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+        {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+            <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {eventHelpersNeeded != null
+              ? t("feed.event.helpersBadge", {
+                  accepted: eventAcceptedHelpers,
+                  needed: eventHelpersNeeded,
+                })
+              : t("feed.event.helpersAcceptedOnly", {
+                  count: eventAcceptedHelpers,
+                })}
+          </span>
+        ) : null}
+        {activeListingStatus ? (
+          <ProfilePostListingStatusBadge status={activeListingStatus} size="compact" />
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <div
@@ -4628,7 +4789,7 @@ function PostCard({
     >
       {/* Header — always rendered outside the media block */}
       {isGlobalFeed ? (
-        <div className={cn("flex items-start gap-3.5", cardPadX, "pt-3.5 pb-2")}>
+        <div className={cn("flex items-start gap-3.5", cardPadX, "pt-3.5 pb-2", isVideoHeaderOverlay && "hidden")}>
           <GuestAwareProfileLink
             userId={post.author_id}
             className="shrink-0 self-start"
@@ -4661,7 +4822,7 @@ function PostCard({
                     />
                   ) : null}
                 </div>
-                <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
+                <p className="mt-0.5 text-[15px] font-medium leading-tight text-muted-foreground">
                   <time className="tabular-nums">{postedLabel}</time>
                   {postLocationLine ? (
                     <>
@@ -4671,27 +4832,9 @@ function PostCard({
                   ) : null}
                 </p>
               </div>
-              {activeListingStatus || postTypeId ? (
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                  {activeListingStatus ? (
-                    <ProfilePostListingStatusBadge
-                      status={activeListingStatus}
-                      size="compact"
-                    />
-                  ) : null}
-                  {postTypeId ? (
-                    <PostTypeBadgeWithExpired
-                      typeId={postTypeId}
-                      typeName={
-                        post.source === "post" || post.source === "job_request"
-                          ? post.post_types?.name
-                          : undefined
-                      }
-                      compact
-                      mobileGlobalFeed
-                      showExpired={whenExpired && postTypeId === "request_help"}
-                    />
-                  ) : null}
+              {postTypeHeaderBadge ? (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 self-start">
+                  {postTypeHeaderBadge}
                 </div>
               ) : null}
             </div>
@@ -4706,7 +4849,7 @@ function PostCard({
                   t,
                   postTypeId,
                   post.source === "post" || post.source === "job_request"
-                    ? post.post_types?.name
+                    ? feedPostTypeName
                     : undefined,
                 )}
                 <span aria-hidden> · </span>
@@ -4770,6 +4913,7 @@ function PostCard({
           "flex items-start gap-3.5",
           cardPadX,
           isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
+          isVideoHeaderOverlay && "hidden",
         )}
       >
         <GuestAwareProfileLink
@@ -4784,7 +4928,7 @@ function PostCard({
             variant="card"
           />
         </GuestAwareProfileLink>
-        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0.5">
+        <div className="min-w-0 flex-1 flex flex-col gap-0 pt-0.5">
           <div className="flex min-w-0 items-center gap-2">
             <GuestAwareProfileLink
               userId={post.author_id}
@@ -4802,8 +4946,7 @@ function PostCard({
               />
             ) : null}
           </div>
-          <p className="text-[14px] font-medium leading-snug text-muted-foreground">
-
+          <p className="text-[14px] font-medium leading-tight text-muted-foreground">
             <time className="tabular-nums">{postedLabel}</time>
             {postLocationLine ? (
               <>
@@ -4823,44 +4966,7 @@ function PostCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-start pt-0.5">
-          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {eventHelpersNeeded != null
-                ? t("feed.event.helpersBadge", {
-                    accepted: eventAcceptedHelpers,
-                    needed: eventHelpersNeeded,
-                  })
-                : t("feed.event.helpersAcceptedOnly", {
-                    count: eventAcceptedHelpers,
-                  })}
-            </span>
-          ) : null}
-          {activeListingStatus ? (
-            <ProfilePostListingStatusBadge
-              status={activeListingStatus}
-              size={isDiscover ? "default" : "compact"}
-            />
-          ) : null}
-          {post.source === "post" &&
-          (post.post_types?.id ?? post.post_type_id) ? (
-            <PostTypeBadgeWithExpired
-              typeId={post.post_types?.id ?? post.post_type_id!}
-              typeName={post.post_types?.name}
-              size={isDiscover ? "lg" : "default"}
-              showExpired={
-                whenExpired &&
-                (post.post_types?.id ?? post.post_type_id) === "request_help"
-              }
-            />
-          ) : isJobRequest && post.post_types ? (
-            <PostTypeBadgeWithExpired
-              typeId={post.post_types.id}
-              typeName={post.post_types.name}
-              size={isDiscover ? "lg" : "default"}
-              showExpired={whenExpired}
-            />
-          ) : null}
+          {postTypeHeaderBadge}
           {isOwnFeed && post.source === "post" ? (
             <>
               {isProfile && listingStatusType ? (
@@ -4910,7 +5016,163 @@ function PostCard({
       </div>
       )}
       {/* Media */}
-      {mediaUrl && post.media_type === "image" && (
+      {hasMedia && hasMultipleMedia ? (
+        <div
+          className={cn(
+            "relative mt-0 overflow-hidden",
+            mediaBoxBgClass,
+            mobileMediaBoxClass,
+            desktopMediaBoxClass,
+            desktopDiscoverMediaColumnClass,
+          )}
+          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
+        >
+          <PostMediaCarousel
+            items={postMediaItems}
+            portraitMediaObjectClass={portraitMediaObjectClass}
+            landscapeMediaObjectClass={landscapeMediaObjectClass}
+            videoUnmuted={videoUnmutedByUser}
+            onFirstSlideAspectRatio={(ratio, orientation) => {
+              setMediaAspectRatio(ratio);
+              setMediaOrientation(orientation);
+            }}
+            onActiveVideoRef={(el) => {
+              videoRef.current = el;
+            }}
+            onActiveIndexChange={setMediaCarouselIndex}
+            onOpenReels={() => onOpenMediaReels(post.id)}
+          />
+
+          {isVideoHeaderOverlay ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[5]">
+              <div
+                className="absolute inset-x-0 top-0 h-[min(48%,12.5rem)] bg-gradient-to-b from-black/65 via-black/35 to-transparent"
+                aria-hidden
+              />
+              <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
+                <div className="flex items-start gap-3 pr-12 md:gap-3.5 md:pr-14">
+                  <GuestAwareProfileLink
+                    userId={post.author_id}
+                    className="pointer-events-auto shrink-0 self-start"
+                    aria-label={`View ${authorName} profile`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PostAuthorAvatar
+                      authorName={authorName}
+                      photoUrl={post.author?.photo_url ?? undefined}
+                      liveUntil={post.author?.live_until}
+                      variant="card"
+                    />
+                  </GuestAwareProfileLink>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <GuestAwareProfileLink
+                        userId={post.author_id}
+                        className="pointer-events-auto truncate text-[17px] font-bold leading-tight text-white hover:underline underline-offset-2 md:text-[19px]"
+                        aria-label={`View ${authorName} profile`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {authorName}
+                      </GuestAwareProfileLink>
+                      {post.author?.is_verified ? (
+                        <BadgeCheck
+                          className="h-4 w-4 shrink-0 md:h-5 md:w-5"
+                          fill="#0ea5e9"
+                          color="#ffffff"
+                          aria-label="Verified"
+                        />
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
+                      <time className="tabular-nums">{postedLabel}</time>
+                      {postLocationLine ? (
+                        <>
+                          <span aria-hidden> · </span>
+                          <span>{postLocationLine}</span>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  {postTypeHeaderBadge ? (
+                    <div className="pointer-events-auto shrink-0 self-start">
+                      {postTypeHeaderBadge}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeCarouselItem?.media_type === "video" ? (
+            <div className="absolute top-3 right-3 z-[8]">
+              <button
+                type="button"
+                onClick={toggleInlineVideoMute}
+                className={videoMuteMediaClass}
+                aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
+                title={videoUnmutedByUser ? "Mute" : "Unmute"}
+              >
+                {videoUnmutedByUser ? (
+                  <Volume2 className="h-6 w-6" aria-hidden />
+                ) : (
+                  <VolumeX className="h-6 w-6" aria-hidden />
+                )}
+              </button>
+            </div>
+          ) : null}
+
+          <div className={cn(isVideoHeaderOverlay && "hidden")}>
+            <MediaTopBadges
+              serviceCategoryId={serviceCategoryMeta?.id}
+              serviceCategoryLabelText={serviceCategoryMeta?.label}
+              whenLabel={whenLabel}
+              whenTimeframe={requestWhenTimeframe}
+              whenExpired={whenExpired}
+              hideWhenLabel={isGlobalFeed || whenExpired}
+            />
+          </div>
+
+          {post.tagged_profiles.length > 0 ? (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+              <span className={mediaTaggedAtBadgeClass}>
+                <AtSign className="h-5 w-5" aria-hidden />
+              </span>
+              {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
+                <GuestAwareProfileLink
+                  key={t.id}
+                  userId={t.id}
+                  onClick={(e) => e.stopPropagation()}
+                  className={mediaTaggedUserBadgeClass}
+                  aria-label={`View tagged user ${t.full_name ?? "member"}`}
+                >
+                  <Avatar className={mediaTaggedAvatarClass}>
+                    <AvatarImage src={t.photo_url ?? undefined} />
+                    <AvatarFallback className="bg-white/10 text-[10px] font-black text-white">
+                      {(t.full_name ?? "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{t.full_name ?? "Member"}</span>
+                </GuestAwareProfileLink>
+              ))}
+              {!showAllTagged && post.tagged_profiles.length > 3 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllTagged(true);
+                  }}
+                  className={mediaTaggedMoreBadgeClass}
+                  aria-label="Show all tagged users"
+                >
+                  <Plus className="h-5 w-5" strokeWidth={3} aria-hidden />
+                  {post.tagged_profiles.length - 3}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "image" && (
         <div
           className={cn(
             "relative mt-0 overflow-hidden",
@@ -4948,16 +5210,16 @@ function PostCard({
             />
           </button>
 
-          <MediaTopBadges
-            serviceCategoryId={serviceCategoryMeta?.id}
-            serviceCategoryLabelText={serviceCategoryMeta?.label}
-            whenLabel={whenLabel}
-            whenTimeframe={requestWhenTimeframe}
-            whenExpired={whenExpired}
-            hideWhenLabel={isGlobalFeed || whenExpired}
-          />
-
-          <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
+          <div className={cn(isVideoHeaderOverlay && "hidden")}>
+            <MediaTopBadges
+              serviceCategoryId={serviceCategoryMeta?.id}
+              serviceCategoryLabelText={serviceCategoryMeta?.label}
+              whenLabel={whenLabel}
+              whenTimeframe={requestWhenTimeframe}
+              whenExpired={whenExpired}
+              hideWhenLabel={isGlobalFeed || whenExpired}
+            />
+          </div>
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
@@ -5000,7 +5262,7 @@ function PostCard({
           ) : null}
         </div>
       )}
-      {mediaUrl && post.media_type === "video" && (
+      {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "video" && (
         <div
           className={cn(
             "relative mt-0 overflow-hidden",
@@ -5043,6 +5305,75 @@ function PostCard({
             }}
           />
 
+          {isVideoHeaderOverlay ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[5]">
+              <div
+                className="absolute inset-x-0 top-0 h-[min(48%,12.5rem)] bg-gradient-to-b from-black/65 via-black/35 to-transparent"
+                aria-hidden
+              />
+              <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
+                <div className="flex items-start gap-3 pr-12 md:gap-3.5 md:pr-14">
+                  <GuestAwareProfileLink
+                    userId={post.author_id}
+                    className="pointer-events-auto shrink-0 self-start"
+                    aria-label={`View ${authorName} profile`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PostAuthorAvatar
+                      authorName={authorName}
+                      photoUrl={post.author?.photo_url ?? undefined}
+                      liveUntil={post.author?.live_until}
+                      variant="card"
+                    />
+                  </GuestAwareProfileLink>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <GuestAwareProfileLink
+                        userId={post.author_id}
+                        className="pointer-events-auto truncate text-[17px] font-bold leading-tight text-white hover:underline underline-offset-2 md:text-[19px]"
+                        aria-label={`View ${authorName} profile`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {authorName}
+                      </GuestAwareProfileLink>
+                      {post.author?.is_verified ? (
+                        <BadgeCheck
+                          className="h-4 w-4 shrink-0 md:h-5 md:w-5"
+                          fill="#0ea5e9"
+                          color="#ffffff"
+                          aria-label="Verified"
+                        />
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
+                      <time className="tabular-nums">{postedLabel}</time>
+                      {postLocationLine ? (
+                        <>
+                          <span aria-hidden> · </span>
+                          <span>{postLocationLine}</span>
+                        </>
+                      ) : null}
+                      {isSource ? (
+                        <>
+                          <span aria-hidden> · </span>
+                          <span className="inline-flex items-center gap-1 font-bold uppercase tracking-wide text-orange-300">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {feedCategoryLabel(t, (post as AvailabilityPost).category)}
+                          </span>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  {postTypeHeaderBadge ? (
+                    <div className="pointer-events-auto shrink-0 self-start">
+                      {postTypeHeaderBadge}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="absolute top-3 right-3 z-[6]">
             <button
               type="button"
@@ -5059,16 +5390,16 @@ function PostCard({
             </button>
           </div>
 
-          <MediaTopBadges
-            serviceCategoryId={serviceCategoryMeta?.id}
-            serviceCategoryLabelText={serviceCategoryMeta?.label}
-            whenLabel={whenLabel}
-            whenTimeframe={requestWhenTimeframe}
-            whenExpired={whenExpired}
-            hideWhenLabel={isGlobalFeed || whenExpired}
-          />
-
-          <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
+          <div className={cn(isVideoHeaderOverlay && "hidden")}>
+            <MediaTopBadges
+              serviceCategoryId={serviceCategoryMeta?.id}
+              serviceCategoryLabelText={serviceCategoryMeta?.label}
+              whenLabel={whenLabel}
+              whenTimeframe={requestWhenTimeframe}
+              whenExpired={whenExpired}
+              hideWhenLabel={isGlobalFeed || whenExpired}
+            />
+          </div>
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
@@ -5126,8 +5457,6 @@ function PostCard({
                   "w-full p-4",
                   isGlobalFeed ? "max-md:rounded-none md:rounded-xl" : "rounded-xl",
                   globalFeedContentLayout?.className,
-                  globalFeedTextOnlySurfaceClass(postTypeId),
-                  globalFeedMobileTextOnlySurfaceClass(postTypeId),
                 )}
                 dir={globalFeedContentLayout?.dir}
               >
@@ -5158,7 +5487,7 @@ function PostCard({
                     <p
                       {...bidirectionalTextProps(
                         displayTextOnlyBody,
-                        "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
+                        "mt-2 text-[17px] leading-relaxed text-foreground/90 break-words",
                       )}
                     >
                       {renderCaptionWithMentions(displayTextOnlyBody)}
@@ -5309,7 +5638,7 @@ function PostCard({
                         {...bidirectionalTextProps(
                           displayPostDescription,
                           cn(
-                            "text-[17px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
+                            "text-[17px] leading-relaxed text-muted-foreground break-words",
                             displayPostTitle && "mt-1",
                           ),
                         )}
@@ -5410,8 +5739,10 @@ function PostCard({
             </>
           )}
 
-          {showFeedActionButton ? (
-            <div className={cn(cardPadX, "mt-3 pb-1")}>
+          {(showFeedActionButton || postStatusBadgesRow) ? (
+            <div className={cn(cardPadX, "mt-3 flex flex-col items-stretch gap-2 pb-1 md:items-end")}>
+              {postStatusBadgesRow}
+              {showFeedActionButton ? (
               <button
                 type="button"
                 onClick={handlePrimaryFeedAction}
@@ -5424,7 +5755,7 @@ function PostCard({
                       eventJoinStatus === "declined"
                 }
                 className={cn(
-                  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0",
+                  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:max-w-[10.75rem] md:self-end",
                   globalFeedPrimaryCtaClass(
                     postTypeId,
                     isJobRequest && jobAcceptedAt
@@ -5446,6 +5777,7 @@ function PostCard({
                 ) : null}
                 <span>{globalFeedCtaText}</span>
               </button>
+              ) : null}
             </div>
           ) : null}
         </>
@@ -5474,7 +5806,7 @@ function PostCard({
                 {...bidirectionalTextProps(
                   effectiveCaption,
                   cn(
-                    "text-[18px] leading-relaxed text-foreground whitespace-pre-wrap",
+                    "text-[18px] leading-relaxed text-foreground break-words",
                     !captionExpanded &&
                       (hasMedia ? "line-clamp-2" : "line-clamp-[10]"),
                   ),
@@ -5561,8 +5893,8 @@ function PostCard({
       ) : null}
 
       {/* Post metadata + compact action button (community posts show title above caption) */}
-      {(showFeedMetadataBox || showFeedActionButton) && (
-        <div className={cn("mt-2 rounded-2xl bg-zinc-100/90 p-3.5 dark:bg-zinc-800/55", cardMarginX)}>
+      {(showFeedMetadataBox || showFeedActionButton || postStatusBadgesRow) && (
+        <div className={cn("mt-2 rounded-2xl bg-zinc-100/90 p-3.5 dark:bg-zinc-800/55", cardMarginX, !showFeedMetadataBox && "bg-transparent p-0")}>
           {showFeedMetadataBox ? (
           <div className="space-y-2">
           {post.post_type_id === "request_help" && (
@@ -5701,8 +6033,10 @@ function PostCard({
           </div>
           ) : null}
 
-          {showFeedActionButton ? (
-            <div className={cn("flex justify-end", showFeedMetadataBox && "mt-3")}>
+          {showFeedActionButton || postStatusBadgesRow ? (
+            <div className={cn("flex flex-col items-stretch gap-2 md:items-end", showFeedMetadataBox && "mt-3")}>
+              {postStatusBadgesRow}
+              {showFeedActionButton ? (
               <button
                 type="button"
                 onClick={handlePrimaryFeedAction}
@@ -5745,6 +6079,7 @@ function PostCard({
                   ) : null}
                 </span>
               </button>
+              ) : null}
             </div>
           ) : null}
         </div>

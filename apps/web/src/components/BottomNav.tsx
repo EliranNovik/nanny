@@ -69,6 +69,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { DiscoverHomeMobileHeaderRight } from "@/components/discover/DiscoverHomeMobileHeaderRight";
+import { GlobalFeedMobileTebnuMenu } from "@/components/community/GlobalFeedMobileTebnuMenu";
 import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import {
   readDiscoverHomeIntent,
@@ -1084,6 +1085,10 @@ export function BottomNav() {
                 categoryParam={communityCategoryParam}
               />
             </div>
+          </div>
+        ) : isCommunityFeedPage && user && !mobileSearchOpen ? (
+          <div className="flex min-w-0 flex-1 justify-center px-0.5">
+            <GlobalFeedMobileTebnuMenu viewerUserId={viewerId!} />
           </div>
         ) : (
           <div className="min-w-0 flex-1" aria-hidden />

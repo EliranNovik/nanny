@@ -22,7 +22,9 @@
     "saved": "Saved",
     "reportIssue": "Report an issue",
     "detectingLocation": "Detecting…",
-    "addLocation": "Add location"
+    "addLocation": "Add location",
+    "close": "Close",
+    "loading": "Loading…"
   },
   "language": {
     "label": "Language",
@@ -465,7 +467,11 @@
       "save": "Save",
       "share": "Share",
       "comment": "Comment",
-      "viewRequest": "View request"
+      "viewRequest": "View request",
+      "tebnuMenu": "Tebnu menu",
+      "myPosts": "My posts",
+      "myFavorites": "My favorites",
+      "noFavoriteProfiles": "No saved profiles yet"
     },
     "sidePanel": {
       "ariaLabel": "Posts from your favorites and popular posts",

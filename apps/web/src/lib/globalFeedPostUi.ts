@@ -432,7 +432,7 @@ export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
 
 /** Mobile engagement row — flush with card surface. */
 export const globalFeedMobileEngagementRowClass =
-  "max-md:rounded-none max-md:bg-white max-md:border-t max-md:border-zinc-100 dark:max-md:border-t-0 dark:max-md:bg-[#181b1f]";
+  "max-md:rounded-none max-md:bg-white dark:max-md:bg-[#181b1f]";
 
 /** Mobile comments bottom sheet shell. */
 export const globalFeedMobileCommentsSheetClass =

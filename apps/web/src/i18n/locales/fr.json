@@ -22,7 +22,9 @@
     "saved": "Enregistrés",
     "reportIssue": "Signaler un problème",
     "detectingLocation": "Détection…",
-    "addLocation": "Ajouter un lieu"
+    "addLocation": "Ajouter un lieu",
+    "close": "Fermer",
+    "loading": "Chargement…"
   },
   "language": {
     "label": "Langue",
@@ -452,6 +454,12 @@
       "helpersBadge": "{{accepted}}/{{needed}} aides",
       "helpersAcceptedOnly": "{{count}} aides",
       "helpersNeededLabel": "{{count}} aides nécessaires"
+    },
+    "global": {
+      "tebnuMenu": "Menu Tebnu",
+      "myPosts": "Mes posts",
+      "myFavorites": "Mes favoris",
+      "noFavoriteProfiles": "Aucun profil enregistré pour l'instant"
     },
     "sidePanel": {
       "ariaLabel": "Publications des favoris et publications populaires",

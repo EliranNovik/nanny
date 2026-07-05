@@ -24,7 +24,6 @@ import {
   Trophy,
   Crown,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
@@ -53,8 +52,15 @@ import {
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import {
+  ProfileReviewPreviewCard,
+  ProfileReviewsSheet,
+} from "@/components/profile/ProfileReviewsSheet";
 import { scrollToProfilePostWhenReady } from "@/lib/profilePostShare";
-import type { ViewerLocation } from "@/lib/globalFeedPostUi";
+import {
+  globalFeedMobilePageClass,
+  type ViewerLocation,
+} from "@/lib/globalFeedPostUi";
 import {
   readPublicProfileCache,
   writePublicProfileCache,
@@ -110,6 +116,23 @@ function jobServiceLabel(serviceType: string | undefined): string {
   return isServiceCategoryId(serviceType)
     ? serviceCategoryLabel(serviceType)
     : serviceType.replace(/_/g, " ");
+}
+
+function formatProfileLocationLabel(city: string | null | undefined): string | null {
+  const trimmed = city?.trim();
+  if (!trimmed) return null;
+
+  const parts = trimmed
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const cityPart = parts[0];
+  if (!cityPart) return null;
+
+  const countryPart =
+    parts.length > 1 ? parts.slice(1).join(", ") : "Israel";
+
+  return `${cityPart.toUpperCase()}, ${countryPart.toUpperCase()}`;
 }
 
 type ProfilePostedHelpRequest = {
@@ -252,7 +275,7 @@ function ProfileBioHeader({
       <div
         className={cn(
           "w-full",
-          isPanel ? "space-y-3" : isDesktop ? "mt-2.5 max-w-2xl" : "mt-2",
+          isPanel ? "space-y-3" : isDesktop ? "mt-2.5 max-w-2xl" : "mt-3 w-full",
         )}
         dir={draftDirection}
       >
@@ -307,7 +330,7 @@ function ProfileBioHeader({
           ? "text-lg font-bold leading-[1.6] text-slate-800 dark:text-slate-100"
           : isDesktop
             ? "text-[15px]"
-            : "line-clamp-4 text-sm",
+            : "text-sm",
       ),
     );
 
@@ -334,7 +357,7 @@ function ProfileBioHeader({
       <div
         className={cn(
           "w-full",
-          isDesktop ? "mt-2.5 max-w-2xl" : "mt-2",
+          isDesktop ? "mt-2.5 max-w-2xl" : "mt-3 w-full",
           bioTextProps.className,
         )}
         dir={bioTextProps.dir}
@@ -394,7 +417,7 @@ function ProfileBioHeader({
       size="sm"
       className={cn(
         "rounded-full border-orange-200 bg-orange-50/80 text-orange-700 hover:bg-orange-100 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-300 dark:hover:bg-orange-950/50",
-        isDesktop ? "mt-2.5" : "mt-2",
+        isDesktop ? "mt-2.5" : "mt-3 w-full",
       )}
       onClick={() => setEditingBio(true)}
     >
@@ -454,6 +477,7 @@ export default function PublicProfilePage() {
   const [postsTabScrollToId, setPostsTabScrollToId] = useState<string | null>(
     null,
   );
+  const [reviewsSheetOpen, setReviewsSheetOpen] = useState(false);
   /** Completed live-help bookings in the last 7 days (helpers only). */
   const [liveHelpWeekCount, setLiveHelpWeekCount] = useState<number | null>(
     null,
@@ -1125,6 +1149,8 @@ export default function PublicProfilePage() {
     .join("")
     .slice(0, 2);
 
+  const profileLocationLabel = formatProfileLocationLabel(profile?.city);
+
   const showHelperBadges = canActAsHelperOnPublicProfile(profile);
   const isLiveNow = showHelperBadges
     ? isFreelancerLiveWindowActive(freelancerMeta)
@@ -1349,7 +1375,10 @@ export default function PublicProfilePage() {
 
   return (
     <div
-      className="min-h-screen bg-background pb-24 md:pb-8"
+      className={cn(
+        "min-h-screen bg-background pb-24 md:pb-8",
+        globalFeedMobilePageClass,
+      )}
       data-public-profile-guest={!currentUser ? "" : undefined}
     >
       {!currentUser ? (
@@ -1378,7 +1407,7 @@ export default function PublicProfilePage() {
       {/* Desktop Hero section — hidden on mobile */}
       <div
         className={cn(
-          "hidden md:block bg-white/50 dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
+          "hidden md:block bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
           currentUser ? "pt-20 md:pt-24" : "pt-6 md:pt-8",
         )}
       >
@@ -1425,15 +1454,15 @@ export default function PublicProfilePage() {
                         />
                       ) : null}
                     </div>
-                    {profile.city?.trim() ? (
-                      <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {profile.city.trim()}
-                      </span>
-                    ) : null}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-4">
                     <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="md" className="justify-start" />
                   </div>
+                  {profileLocationLabel ? (
+                    <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {profileLocationLabel}
+                    </p>
+                  ) : null}
                   <ProfileBioHeader
                     profile={profile}
                     isOwnProfile={isOwnProfile}
@@ -1608,10 +1637,12 @@ export default function PublicProfilePage() {
           MOBILE CONTENT FLOW
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
+        {/* Profile hero + tab bar — solid white in light mode until the posts feed */}
+        <div className="bg-white dark:bg-background">
         {/* Profile Hero Header Info (Below header bar) */}
-        <div className="px-5 pb-4 pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))] bg-background">
-          <div className="flex gap-4 items-start mb-4">
-            <div className="h-36 w-36 shrink-0">
+        <div className="px-5 pb-4 pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))]">
+          <div className="mb-3 flex items-start gap-3.5">
+            <div className="h-28 w-28 shrink-0">
               <button
                 type="button"
                 onClick={() =>
@@ -1624,7 +1655,7 @@ export default function PublicProfilePage() {
                 aria-label="View profile photo full screen"
               >
                 {/* Initials as fallback/underlay */}
-                <div className="absolute inset-0 flex items-center justify-center text-4xl font-black text-slate-300 dark:text-white/20">
+                <div className="absolute inset-0 flex items-center justify-center text-3xl font-black text-slate-300 dark:text-white/20">
                   {photoInitials}
                 </div>
 
@@ -1641,7 +1672,7 @@ export default function PublicProfilePage() {
                 {profileLiveNowDot}
               </button>
             </div>
-            <div className="flex flex-1 min-w-0 flex-col pt-1">
+            <div className="flex min-w-0 flex-1 flex-col pt-1">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <h1 className="min-w-0 truncate text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white">
@@ -1655,29 +1686,50 @@ export default function PublicProfilePage() {
                     />
                   ) : null}
                 </div>
-                {profile.city?.trim() ? (
-                  <span className="shrink-0 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
-                    {profile.city.trim()}
-                  </span>
-                ) : null}
               </div>
               <div className="mt-2 flex items-center gap-1">
-                <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="origin-left scale-110" />
+                {reviews.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setReviewsSheetOpen(true)}
+                    className="inline-flex origin-left scale-110 items-center rounded-lg outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-orange-500/50"
+                    aria-label={`View all ${reviews.length} reviews`}
+                  >
+                    <StarRating
+                      rating={profile.average_rating || 0}
+                      totalRatings={profile.total_ratings || 0}
+                      size="sm"
+                    />
+                  </button>
+                ) : (
+                  <StarRating
+                    rating={profile.average_rating || 0}
+                    totalRatings={profile.total_ratings || 0}
+                    size="sm"
+                    className="origin-left scale-110"
+                  />
+                )}
               </div>
-              <ProfileBioHeader
-                profile={profile}
-                isOwnProfile={isOwnProfile}
-                editingBio={editingBio}
-                setEditingBio={setEditingBio}
-                bioDraft={bioDraft}
-                setBioDraft={setBioDraft}
-                savingBio={savingBio}
-                onSave={(next) => void saveBio(next)}
-                variant="mobile"
-              />
+              {profileLocationLabel ? (
+                <p className="mt-2 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
+                  {profileLocationLabel}
+                </p>
+              ) : null}
               {helperBadgesRow}
             </div>
           </div>
+
+          <ProfileBioHeader
+            profile={profile}
+            isOwnProfile={isOwnProfile}
+            editingBio={editingBio}
+            setEditingBio={setEditingBio}
+            bioDraft={bioDraft}
+            setBioDraft={setBioDraft}
+            savingBio={savingBio}
+            onSave={(next) => void saveBio(next)}
+            variant="mobile"
+          />
 
           {profile.categories && profile.categories.length > 0 ? (
             <div className={cn("-mx-5 mt-2 px-5", profileCategoryScrollRowClass)}>
@@ -1759,11 +1811,10 @@ export default function PublicProfilePage() {
             </div>
           )}
         </div>
+        </div>
 
-        {/* New Mobile Sections using TabsContent Logic */}
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
-          {/* Tab selection pill */}
-          <div className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur-xl dark:border-white/5 dark:bg-background/80 py-1">
+          <div className="sticky top-0 z-30 border-b border-slate-100 bg-white dark:border-white/5 dark:bg-background py-1">
             <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
               <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
               {[
@@ -1836,7 +1887,7 @@ export default function PublicProfilePage() {
           <TabsContent value="posts" className="m-0 focus-visible:outline-none">
             <div
               id="profile-social-feed-mobile"
-              className="bg-background pt-1 scroll-mt-24"
+              className={cn(globalFeedMobilePageClass, "pt-1 scroll-mt-24")}
             >
               <ProfilePostsFeed {...profilePostsFeedProps} />
             </div>
@@ -1887,68 +1938,46 @@ export default function PublicProfilePage() {
 
               {/* User Reviews — Full Restored Design with gradients and floating avatars */}
               <div className="pt-4">
-                <div className="flex items-center gap-3 mb-6 px-2"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center"><Star className="w-5 h-5 text-amber-500 fill-amber-500" /></div><h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2></div>
+                <button
+                  type="button"
+                  onClick={() => reviews.length > 0 && setReviewsSheetOpen(true)}
+                  disabled={reviews.length === 0}
+                  className={cn(
+                    "mb-6 flex w-full items-center gap-3 px-2 text-left outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-orange-500/50",
+                    reviews.length > 0 && "cursor-pointer hover:opacity-80 active:opacity-70",
+                  )}
+                  aria-label={
+                    reviews.length > 0
+                      ? `View all ${reviews.length} reviews`
+                      : "User reviews"
+                  }
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10">
+                    <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+                  </div>
+                  <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                    User Reviews
+                  </h2>
+                  {reviews.length > 0 ? (
+                    <span className="ml-auto text-xs font-bold uppercase tracking-widest text-slate-400">
+                      View all
+                    </span>
+                  ) : null}
+                </button>
                 {reviews.length > 0 ? (
                   <div
                     className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-5 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
                     role="list"
                     aria-label="User reviews"
                   >
-                    {reviews.map((review, idx) => {
-                      const gradients = [
-                        "from-blue-400 to-orange-500",
-                        "from-green-400 to-teal-500",
-                        "from-orange-400 to-pink-500",
-                        "from-red-400 to-indigo-500",
-                        "from-orange-400 to-blue-500",
-                      ];
-                      const gradient = gradients[idx % gradients.length];
-                      return (
-                        <div
-                          key={review.id}
-                          role="listitem"
-                          className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
-                        >
-                          <div
-                            className={cn(
-                              "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
-                              gradient,
-                            )}
-                          >
-                            <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
-                              <AvatarImage
-                                src={avatarUrl.xs(review.reviewer.photo_url)}
-                                className="object-cover"
-                              />
-                              <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
-                                {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-                          <div className="flex min-h-0 flex-1 flex-col">
-                            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                              <div className="min-w-0 pr-2">
-                                <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
-                                  {review.reviewer.full_name}
-                                </h4>
-                                <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                                  {new Date(review.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
-                                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                                <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
-                                  {review.rating}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
-                              {`"${review.review_text || "No comments provided."}"`}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {reviews.map((review, idx) => (
+                      <ProfileReviewPreviewCard
+                        key={review.id}
+                        review={review}
+                        index={idx}
+                        onClick={() => setReviewsSheetOpen(true)}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
@@ -2041,74 +2070,33 @@ export default function PublicProfilePage() {
 
             {reviews.length > 0 ? (
               <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
-                <div className="flex items-center gap-2.5 mb-5">
-                  <Star className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => setReviewsSheetOpen(true)}
+                  className="mb-5 flex w-full items-center gap-2.5 text-left outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-orange-500/50"
+                  aria-label={`View all ${reviews.length} reviews`}
+                >
+                  <Star className="h-4 w-4 shrink-0 fill-amber-500 text-amber-500" />
                   <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                     User Reviews
                   </h3>
-                </div>
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    View all
+                  </span>
+                </button>
                 <div
                   className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
                   role="list"
                   aria-label="User reviews"
                 >
-                  {reviews.map((review, idx) => {
-                    const gradients = [
-                      "from-blue-400 to-orange-500",
-                      "from-green-400 to-teal-500",
-                      "from-orange-400 to-pink-500",
-                      "from-red-400 to-indigo-500",
-                      "from-orange-400 to-blue-500",
-                    ];
-                    const gradient = gradients[idx % gradients.length];
-                    return (
-                      <div
-                        key={review.id}
-                        role="listitem"
-                        className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
-                      >
-                        <div
-                          className={cn(
-                            "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
-                            gradient,
-                          )}
-                        >
-                          <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
-                            <AvatarImage
-                              src={avatarUrl.xs(review.reviewer.photo_url)}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
-                              {review.reviewer.full_name
-                                ?.slice(0, 2)
-                                .toUpperCase() || "??"}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-                        <div className="flex min-h-0 flex-1 flex-col">
-                          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                            <div className="min-w-0 pr-2">
-                              <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
-                                {review.reviewer.full_name}
-                              </h4>
-                              <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                                {new Date(review.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
-                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                              <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
-                                {review.rating}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
-                            {`"${review.review_text || "No comments provided."}"`}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {reviews.map((review, idx) => (
+                    <ProfileReviewPreviewCard
+                      key={review.id}
+                      review={review}
+                      index={idx}
+                      onClick={() => setReviewsSheetOpen(true)}
+                    />
+                  ))}
                 </div>
               </div>
             ) : null}
@@ -2142,6 +2130,14 @@ export default function PublicProfilePage() {
         src={profileVideoLightboxUrl}
         isOpen={profileVideoLightboxUrl != null}
         onClose={() => setProfileVideoLightboxUrl(null)}
+      />
+
+      <ProfileReviewsSheet
+        open={reviewsSheetOpen}
+        onOpenChange={setReviewsSheetOpen}
+        reviews={reviews}
+        averageRating={profile.average_rating || 0}
+        totalRatings={profile.total_ratings || 0}
       />
     </div>
   );

@@ -22,7 +22,9 @@
     "saved": "Сохранённое",
     "reportIssue": "Сообщить о проблеме",
     "detectingLocation": "Определяем…",
-    "addLocation": "Добавить место"
+    "addLocation": "Добавить место",
+    "close": "Закрыть",
+    "loading": "Загрузка…"
   },
   "language": {
     "label": "Язык",
@@ -452,6 +454,12 @@
       "helpersBadge": "{{accepted}}/{{needed}} помощников",
       "helpersAcceptedOnly": "{{count}} помощников",
       "helpersNeededLabel": "Нужно {{count}} помощников"
+    },
+    "global": {
+      "tebnuMenu": "Меню Tebnu",
+      "myPosts": "Мои посты",
+      "myFavorites": "Избранное",
+      "noFavoriteProfiles": "Пока нет сохранённых профилей"
     },
     "sidePanel": {
       "ariaLabel": "Посты из избранного и популярные посты",

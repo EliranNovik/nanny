@@ -22,7 +22,9 @@
     "saved": "שמורים",
     "reportIssue": "דווח על בעיה",
     "detectingLocation": "מזהים מיקום…",
-    "addLocation": "הוסיפו מיקום"
+    "addLocation": "הוסיפו מיקום",
+    "close": "סגור",
+    "loading": "טוען…"
   },
   "language": {
     "label": "שפה",
@@ -452,6 +454,12 @@
       "helpersBadge": "{{accepted}}/{{needed}} עוזרים",
       "helpersAcceptedOnly": "{{count}} עוזרים",
       "helpersNeededLabel": "נדרשים {{count}} עוזרים"
+    },
+    "global": {
+      "tebnuMenu": "תפריט Tebnu",
+      "myPosts": "הפוסטים שלי",
+      "myFavorites": "המועדפים שלי",
+      "noFavoriteProfiles": "אין פרופילים שמורים עדיין"
     },
     "sidePanel": {
       "ariaLabel": "פוסטים מהמועדפים ופוסטים פופולריים",
