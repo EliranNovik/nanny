@@ -1454,30 +1454,6 @@ function PostTypeBadge({
   );
 }
 
-function RequestHelpExpiredBadge({
-  size = "default",
-  className,
-}: {
-  size?: "default" | "compact";
-  className?: string;
-}) {
-  const { t } = useTranslation();
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 font-black uppercase tracking-wide",
-        size === "compact"
-          ? "rounded-md bg-neutral-600/90 px-2.5 py-1 text-[11px] text-white dark:bg-neutral-700/90"
-          : "rounded-lg bg-neutral-600/90 px-3 py-1.5 text-[12px] text-white dark:bg-neutral-700/90",
-        className,
-      )}
-    >
-      <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white/90" aria-hidden />
-      {t("feed.whenExpired")}
-    </span>
-  );
-}
-
 function ProfilePostListingStatusIcon({
   status,
   className,
@@ -1522,39 +1498,6 @@ function ProfilePostListingStatusBadge({
       />
       {profilePostListingStatusLabel(t, status)}
     </span>
-  );
-}
-
-function PostTypeBadgeWithExpired({
-  typeId,
-  typeName,
-  size = "default",
-  compact = false,
-  showExpired = false,
-  className,
-  mobileGlobalFeed = false,
-}: {
-  typeId: string;
-  typeName?: string;
-  size?: "default" | "lg";
-  compact?: boolean;
-  showExpired?: boolean;
-  className?: string;
-  mobileGlobalFeed?: boolean;
-}) {
-  return (
-    <div className={cn("flex shrink-0 items-center gap-1.5", className)}>
-      {showExpired ? (
-        <RequestHelpExpiredBadge size={compact ? "compact" : "default"} />
-      ) : null}
-      <PostTypeBadge
-        typeId={typeId}
-        typeName={typeName}
-        size={size}
-        compact={compact}
-        mobileGlobalFeed={mobileGlobalFeed}
-      />
-    </div>
   );
 }
 
@@ -4856,11 +4799,7 @@ function PostCard({
                 </p>
                 <PostTypeCategorySubtitle
                   postTypeId={postTypeId}
-                  typeName={
-                    post.source === "post" || post.source === "job_request"
-                      ? feedPostTypeName
-                      : undefined
-                  }
+                  typeName={feedPostTypeName}
                   categoryLabel={serviceCategoryMeta?.label}
                   whenExpired={whenExpired}
                 />
@@ -4976,11 +4915,7 @@ function PostCard({
           </p>
           <PostTypeCategorySubtitle
             postTypeId={postTypeId}
-            typeName={
-              post.source === "post" || post.source === "job_request"
-                ? feedPostTypeName
-                : undefined
-            }
+            typeName={feedPostTypeName}
             categoryLabel={serviceCategoryMeta?.label}
             whenExpired={whenExpired}
           />
@@ -5113,11 +5048,7 @@ function PostCard({
                     </p>
                     <PostTypeCategorySubtitle
                       postTypeId={postTypeId}
-                      typeName={
-                        post.source === "post" || post.source === "job_request"
-                          ? feedPostTypeName
-                          : undefined
-                      }
+                      typeName={feedPostTypeName}
                       categoryLabel={serviceCategoryMeta?.label}
                       whenExpired={whenExpired}
                       variant="overlay"
@@ -5386,11 +5317,7 @@ function PostCard({
                     </p>
                     <PostTypeCategorySubtitle
                       postTypeId={postTypeId}
-                      typeName={
-                        post.source === "post" || post.source === "job_request"
-                          ? feedPostTypeName
-                          : undefined
-                      }
+                      typeName={feedPostTypeName}
                       categoryLabel={serviceCategoryMeta?.label}
                       whenExpired={whenExpired}
                       variant="overlay"
