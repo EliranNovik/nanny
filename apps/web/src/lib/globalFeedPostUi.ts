@@ -6,6 +6,10 @@ import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
 import { isRequestHelpWhenExpired } from "@/lib/requestHelpWhen";
 import { cn } from "@/lib/utils";
 import {
+  isServiceCategoryId,
+  otherHelpSubcategoryLabel,
+} from "@/lib/serviceCategories";
+import {
   requestPostAccentTextClass,
   requestPostBadgeMobileClass,
   requestPostBadgeOnDarkClass,
@@ -40,7 +44,75 @@ type GlobalFeedPostLike = {
   post_type_id?: string | null;
   post_types?: { id: string; name?: string } | null;
   post_metadata?: Record<string, unknown> | null;
+  custom_category?: string | null;
 };
+
+export function feedCategoryLabel(
+  t: TFunction,
+  categoryId?: string | null,
+  customCategory?: string | null,
+): string {
+  if (categoryId === "other_help" && customCategory?.trim()) {
+    const trimmed = customCategory.trim();
+    const subLabel = otherHelpSubcategoryLabel(trimmed);
+    if (subLabel) {
+      return t(`otherHelpSubcategories.${trimmed}`, { defaultValue: subLabel });
+    }
+    return trimmed;
+  }
+  if (categoryId && isServiceCategoryId(categoryId)) {
+    return t(`feed.categories.${categoryId}`);
+  }
+  if (!categoryId) return t("feed.categories.help_request");
+  return categoryId.replace(/_/g, " ");
+}
+
+export function feedPostServiceCategoryMeta(
+  t: TFunction,
+  post: GlobalFeedPostLike,
+): { id: string; label: string } | null {
+  if (post.source === "job_request" && post.post_metadata?.category) {
+    const id = String(post.post_metadata.category);
+    return { id, label: feedCategoryLabel(t, id) };
+  }
+  if (post.source !== "post" || !post.post_metadata) return null;
+  const typeId = feedPostTypeId(post);
+  const categoryId =
+    typeId === "request_help"
+      ? post.post_metadata.category
+      : typeId === "offer_service"
+        ? post.post_metadata.service
+        : null;
+  if (!categoryId) return null;
+  const id = String(categoryId);
+  const customCategory =
+    typeof post.post_metadata.custom_category === "string"
+      ? post.post_metadata.custom_category
+      : post.custom_category;
+  return {
+    id,
+    label: feedCategoryLabel(t, id, customCategory),
+  };
+}
+
+export function shouldShowPostTypeCategorySubtitle(
+  postTypeId: string | null,
+  _categoryLabel?: string | null | undefined,
+): boolean {
+  return Boolean(postTypeId);
+}
+
+export function feedPostTypeCategorySubtitleText(
+  t: TFunction,
+  postTypeId: string,
+  typeName: string | undefined,
+  categoryLabel: string | null | undefined,
+): string {
+  const typeLabel = globalFeedPostTypeBadgeLabel(t, postTypeId, typeName);
+  const category = categoryLabel?.trim();
+  if (category) return `${typeLabel} · ${category}`;
+  return typeLabel;
+}
 
 export function feedPostTypeId(post: GlobalFeedPostLike): string | null {
   if (post.source === "job_request") return "request_help";
@@ -134,10 +206,11 @@ export function feedPostDescription(
   caption: string,
   title: string | null,
 ): string {
-  const text = (generatedCopy?.short_text ?? caption).trim();
+  const userCaption = caption.trim();
+  const text = (userCaption || generatedCopy?.short_text || "").trim();
   if (!text) return "";
   if (title && text.toLowerCase() === title.toLowerCase()) return "";
-  return text;
+  return userCaption || text;
 }
 
 /** Global feed post card shell — darker on desktop dark mode for contrast with page bg. */
@@ -156,6 +229,24 @@ export function globalFeedPostTypeAccentClass(typeId: string | null): string {
       return "text-blue-600 dark:text-blue-400";
     default:
       return "text-muted-foreground";
+  }
+}
+
+/** Post-type accent colors for text on dark media overlays (reels, video headers). */
+export function globalFeedPostTypeAccentOnDarkClass(
+  typeId: string | null,
+): string {
+  switch (typeId) {
+    case "request_help":
+      return "text-orange-300";
+    case "offer_service":
+      return "text-emerald-300";
+    case "event":
+      return "text-violet-300";
+    case "community":
+      return "text-blue-300";
+    default:
+      return "text-white/80";
   }
 }
 

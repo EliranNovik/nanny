@@ -35,12 +35,14 @@ import {
   feedPostBudgetLine,
   feedPostDescription,
   feedPostReelLocationLine,
+  feedPostServiceCategoryMeta,
   feedPostTitle,
+  feedPostTypeCategorySubtitleText,
   feedPostWhenLabel,
   globalFeedCtaLabel,
-  globalFeedPostTypeBadgeClass,
-  globalFeedPostTypeBadgeLabel,
+  globalFeedPostTypeAccentOnDarkClass,
   globalFeedPrimaryCtaClass,
+  shouldShowPostTypeCategorySubtitle,
 } from "@/lib/globalFeedPostUi";
 import {
   getEventJoinInterestStatus,
@@ -149,6 +151,7 @@ type ReelSlideData = {
   authorRole: string | null;
   postTypeId: string | null;
   postTypeName: string | null;
+  categoryLabel: string | null;
   locationLine: string | null;
   whenLabel: string | null;
   whenExpired: boolean;
@@ -470,6 +473,7 @@ export function PostMediaReelsViewer({
               post_metadata: p.post_metadata,
             };
       const locationLine = feedPostReelLocationLine(t, postLike);
+      const serviceCategoryMeta = feedPostServiceCategoryMeta(t, p);
       const whenTimeframe =
         postTypeId === "request_help"
           ? ((p.post_metadata?.timeframe as string | null | undefined) ?? null)
@@ -518,6 +522,7 @@ export function PostMediaReelsViewer({
         authorRole: p.author?.role ?? null,
         postTypeId,
         postTypeName: p.post_types?.name ?? null,
+        categoryLabel: serviceCategoryMeta?.label ?? null,
         locationLine,
         whenLabel,
         whenExpired,
@@ -1165,34 +1170,41 @@ export function PostMediaReelsViewer({
   );
 }
 
-function ReelExpiredBadge() {
-  const { t } = useTranslation();
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-600/90 px-3 py-1 text-[12px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
-      <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" aria-hidden />
-      {t("feed.whenExpired")}
-    </span>
-  );
-}
-
-function ReelPostTypeBadge({
-  postTypeId,
-  postTypeName,
+function ReelPostTypeCategorySubtitle({
+  slide,
 }: {
-  postTypeId: string | null;
-  postTypeName: string | null;
+  slide: Pick<
+    ReelSlideData,
+    "postTypeId" | "postTypeName" | "categoryLabel" | "whenExpired"
+  >;
 }) {
   const { t } = useTranslation();
-  if (!postTypeId) return null;
+  if (
+    !shouldShowPostTypeCategorySubtitle(slide.postTypeId, slide.categoryLabel)
+  ) {
+    return null;
+  }
+
   return (
-    <span
+    <p
       className={cn(
-        globalFeedPostTypeBadgeClass(postTypeId),
-        "rounded-lg px-3.5 py-1 text-[13px] tracking-wide",
+        "mt-1 text-[12px] font-bold uppercase tracking-wide leading-tight drop-shadow-md",
+        globalFeedPostTypeAccentOnDarkClass(slide.postTypeId),
       )}
     >
-      {globalFeedPostTypeBadgeLabel(t, postTypeId, postTypeName ?? undefined)}
-    </span>
+      {slide.whenExpired && slide.postTypeId === "request_help" ? (
+        <>
+          <span className="text-white/65">{t("feed.whenExpired")}</span>
+          <span aria-hidden> · </span>
+        </>
+      ) : null}
+      {feedPostTypeCategorySubtitleText(
+        t,
+        slide.postTypeId!,
+        slide.postTypeName ?? undefined,
+        slide.categoryLabel,
+      )}
+    </p>
   );
 }
 
@@ -1431,6 +1443,7 @@ function ReelSlideBottomPanel({
             <span className="text-lg font-black lowercase leading-tight text-white drop-shadow-md">
               {slide.authorName}
             </span>
+            <ReelPostTypeCategorySubtitle slide={slide} />
           </GuestAwareProfileLink>
         </div>
 
@@ -1596,16 +1609,15 @@ function ReelSlide({
     };
   }, [activePostId, slide.mediaType, slide.postId, syncVideoClockFromEl]);
 
-  const isPortraitMedia = isLandscapeMedia !== true;
+  const isLandscape = isLandscapeMedia === true;
 
-  const mediaObjectClass = cn(
-    isPortraitMedia
-      ? "h-full w-full object-cover object-top"
-      : cn(
-          "max-h-full max-w-full object-contain object-center",
-          "md:h-full md:w-full md:object-contain md:object-center",
-        ),
-  );
+  const mediaObjectClass = isLandscape
+    ? "max-h-full max-w-full object-contain object-center"
+    : "h-full w-full object-cover object-top";
+
+  const mediaContainerClass = isLandscape
+    ? "relative min-h-0 flex flex-1 items-center justify-center bg-black max-md:absolute max-md:inset-0 max-md:z-0"
+    : "absolute inset-0 z-0 overflow-hidden bg-black";
 
   const showVideoProgress =
     slide.mediaType === "video" &&
@@ -1625,18 +1637,6 @@ function ReelSlide({
       data-reels-slide
       className="relative flex h-full min-h-full w-full shrink-0 snap-start snap-always flex-col bg-black"
     >
-      {slide.postTypeId ? (
-        <div className="pointer-events-none absolute right-[max(0.75rem,env(safe-area-inset-right,0px))] top-[calc(env(safe-area-inset-top,0px)+0.625rem)] z-[25] flex items-center gap-1.5">
-          {slide.whenExpired && slide.postTypeId === "request_help" ? (
-            <ReelExpiredBadge />
-          ) : null}
-          <ReelPostTypeBadge
-            postTypeId={slide.postTypeId}
-            postTypeName={slide.postTypeName}
-          />
-        </div>
-      ) : null}
-
       {showVideoProgress ? (
         <div
           className="pointer-events-none absolute inset-x-0 top-0 z-[35] flex flex-col items-stretch px-3 pt-[calc(env(safe-area-inset-top,0px)+3.25rem)]"
@@ -1665,14 +1665,7 @@ function ReelSlide({
       {slide.isTextOnly ? (
         <ReelTextOnlyCenter slide={slide} />
       ) : (
-      <div
-        className={cn(
-          "bg-black",
-          isPortraitMedia
-            ? "absolute inset-0 z-0 overflow-hidden"
-            : "relative min-h-0 flex flex-1 items-center justify-center px-2",
-        )}
-      >
+      <div className={mediaContainerClass}>
         {slide.mediaType === "image" && slide.mediaUrl ? (
           <img
             src={slide.mediaUrl}

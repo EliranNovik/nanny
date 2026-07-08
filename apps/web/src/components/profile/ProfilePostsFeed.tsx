@@ -127,7 +127,9 @@ import {
   feedPostDescription,
   feedPostLocationAddress,
   feedPostLocationLine,
+  feedPostServiceCategoryMeta,
   feedPostTitle,
+  feedPostTypeCategorySubtitleText,
   feedPostTypeId,
   globalFeedCtaLabel,
   globalFeedCardSurfaceClass,
@@ -141,8 +143,10 @@ import {
   globalFeedMobileEngagementRowClass,
   globalFeedMobilePostTypeBadgeClass,
   globalFeedPostTypeAccentClass,
+  globalFeedPostTypeAccentOnDarkClass,
   globalFeedPrimaryCtaClass,
   feedWhenDisplayLabel,
+  shouldShowPostTypeCategorySubtitle,
   type ViewerLocation,
 } from "@/lib/globalFeedPostUi";
 import {
@@ -1551,6 +1555,63 @@ function PostTypeBadgeWithExpired({
         mobileGlobalFeed={mobileGlobalFeed}
       />
     </div>
+  );
+}
+
+function PostTypeCategorySubtitle({
+  postTypeId,
+  typeName,
+  categoryLabel,
+  whenExpired = false,
+  variant = "default",
+  className,
+}: {
+  postTypeId: string | null;
+  typeName?: string;
+  categoryLabel?: string | null;
+  whenExpired?: boolean;
+  variant?: "default" | "overlay";
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  if (!shouldShowPostTypeCategorySubtitle(postTypeId, categoryLabel)) {
+    return null;
+  }
+
+  const accentClass =
+    variant === "overlay"
+      ? globalFeedPostTypeAccentOnDarkClass(postTypeId)
+      : globalFeedPostTypeAccentClass(postTypeId);
+
+  return (
+    <p
+      className={cn(
+        "text-[12px] font-bold uppercase tracking-wide leading-tight",
+        accentClass,
+        className,
+      )}
+    >
+      {whenExpired && postTypeId === "request_help" ? (
+        <>
+          <span
+            className={
+              variant === "overlay"
+                ? "text-white/65"
+                : "text-muted-foreground"
+            }
+          >
+            {t("feed.whenExpired")}
+          </span>
+          <span aria-hidden> · </span>
+        </>
+      ) : null}
+      {feedPostTypeCategorySubtitleText(
+        t,
+        postTypeId!,
+        typeName,
+        categoryLabel,
+      )}
+    </p>
   );
 }
 
@@ -3140,6 +3201,10 @@ export function ComposeModal({
 }
 
 
+/** User-written caption/body — grey, preserve saved line breaks. */
+const postFreeTextClassName =
+  "whitespace-pre-wrap break-words text-muted-foreground leading-relaxed";
+
 /** Author avatar — green dot when in active 24h go-live (`live_until` in the future). */
 function PostAuthorAvatar({
   authorName,
@@ -3160,7 +3225,10 @@ function PostAuthorAvatar({
   return (
     <AvatarWithLiveDot liveUntil={liveUntil}>
       <Avatar
-        className="h-11 w-11 shrink-0"
+        className={cn(
+          "shrink-0",
+          variant === "card" ? "h-[3.75rem] w-[3.75rem]" : "h-[3.25rem] w-[3.25rem]",
+        )}
       >
         <AvatarImage src={photoUrl} className="object-cover" alt="" />
         <AvatarFallback
@@ -3214,40 +3282,24 @@ function whenBadgeIconClassForTimeframe(
 }
 
 function MediaTopBadges({
-  serviceCategoryId,
-  serviceCategoryLabelText,
   whenLabel,
   whenTimeframe,
   whenExpired = false,
   hideWhenLabel = false,
 }: {
-  serviceCategoryId?: string | null;
-  serviceCategoryLabelText?: string | null;
   whenLabel?: string | null;
   whenTimeframe?: string | null;
   whenExpired?: boolean;
   hideWhenLabel?: boolean;
 }) {
-  if (!serviceCategoryId && (!whenLabel || hideWhenLabel)) return null;
+  if (!whenLabel || hideWhenLabel) return null;
 
   return (
     <div className="absolute top-3 left-3 z-[4] pointer-events-none flex max-w-[calc(100%-4rem)] flex-wrap items-center gap-2">
-      {serviceCategoryId && serviceCategoryLabelText ? (
-        <span className={mediaWhenBadgeClass}>
-          <CategoryIcon
-            categoryId={serviceCategoryId}
-            variant="badge"
-            className="h-4 w-4 shrink-0"
-          />
-          {serviceCategoryLabelText}
-        </span>
-      ) : null}
-      {!hideWhenLabel && whenLabel ? (
-        <span className={whenBadgeClassForTimeframe(whenTimeframe, whenExpired)}>
-          <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe, whenExpired)} />
-          {whenLabel}
-        </span>
-      ) : null}
+      <span className={whenBadgeClassForTimeframe(whenTimeframe, whenExpired)}>
+        <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe, whenExpired)} />
+        {whenLabel}
+      </span>
     </div>
   );
 }
@@ -3454,13 +3506,6 @@ function revokeComposeMediaUrls(items: ComposeMediaDraft[]) {
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
-function isPostCaptionExpandable(caption: string, hasMedia: boolean): boolean {
-  const trimmed = caption.trim();
-  return hasMedia
-    ? trimmed.length > 120 || trimmed.includes("\n")
-    : trimmed.length > 600 || (trimmed.match(/\n/g) || []).length > 9;
-}
-
 type PostCardProps = {
   post: FeedPost;
   currentUserId: string | null;
@@ -3550,7 +3595,6 @@ function PostCard({
   const isJobRequest = post.source === "job_request";
   const [chatOpening, setChatOpening] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [captionExpanded, setCaptionExpanded] = useState(false);
   const [authorSaved, setAuthorSaved] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [jobSaveBusy, setJobSaveBusy] = useState(false);
@@ -3780,10 +3824,6 @@ function PostCard({
       cancelled = true;
     };
   }, [canSaveAuthor, currentUserId, post.author_id]);
-
-  useEffect(() => {
-    setCaptionExpanded(false);
-  }, [post.id]);
 
   const savedProfilesHref =
     viewerProfile?.role === "freelancer"
@@ -4176,7 +4216,13 @@ function PostCard({
     post.source === "post" || post.source === "job_request"
       ? post.ai_generated_copy ?? null
       : null;
-  const effectiveCaption = post.caption?.trim() || generatedCopy?.short_text || "";
+  const captionSource =
+    post.caption != null && post.caption.trim().length > 0
+      ? post.caption
+      : generatedCopy?.short_text?.trim()
+        ? generatedCopy.short_text
+        : "";
+  const effectiveCaption = captionSource;
   const captionLayout = effectiveCaption
     ? bidirectionalTextProps(effectiveCaption)
     : null;
@@ -4215,26 +4261,10 @@ function PostCard({
     [requestWhenTimeframe, post.created_at],
   );
 
-  const serviceCategoryMeta = useMemo(() => {
-    if (post.source === "job_request" && post.post_metadata?.category) {
-      return {
-        id: post.post_metadata.category,
-        label: feedCategoryLabel(t, post.post_metadata.category),
-      };
-    }
-    if (post.source !== "post" || !post.post_metadata) return null;
-    const categoryId =
-      post.post_type_id === "request_help"
-        ? post.post_metadata.category
-        : post.post_type_id === "offer_service"
-          ? post.post_metadata.service
-          : null;
-    if (!categoryId) return null;
-    return {
-      id: categoryId,
-      label: feedCategoryLabel(t, categoryId, post.post_metadata.custom_category),
-    };
-  }, [post, t]);
+  const serviceCategoryMeta = useMemo(
+    () => feedPostServiceCategoryMeta(t, post),
+    [post, t],
+  );
 
   const postTypeId = feedPostTypeId(post);
   const feedPostTypeName =
@@ -4370,9 +4400,11 @@ function PostCard({
   });
   const displayPostTitle = postTranslation.displayTitle ?? postTitle;
   const displayTextOnlyBody =
-    postTranslation.displayBody ?? (globalTextOnlyBody || effectiveCaption);
+    postTranslation.displayBody ??
+    (globalTextOnlyBody || effectiveCaption || postDescription);
   const displayPostDescription =
-    postTranslation.displayBody ?? (postDescription || effectiveCaption);
+    postTranslation.displayBody ??
+    (effectiveCaption.trim() ? effectiveCaption : postDescription);
   const displayPostTitleLayout = useMemo(
     () => (displayPostTitle ? bidirectionalTextProps(displayPostTitle) : null),
     [displayPostTitle],
@@ -4729,17 +4761,6 @@ function PostCard({
             : "bg-violet-600 hover:bg-violet-700 text-white dark:bg-violet-700 dark:hover:bg-violet-600"),
   );
 
-  const postTypeHeaderBadge = postTypeId ? (
-    <PostTypeBadgeWithExpired
-      typeId={postTypeId}
-      typeName={feedPostTypeName}
-      compact={isGlobalFeed}
-      size={!isGlobalFeed && isDiscover ? "lg" : "default"}
-      mobileGlobalFeed={isGlobalFeed}
-      showExpired={whenExpired && postTypeId === "request_help"}
-    />
-  ) : null;
-
   const postStatusBadgesRow =
     activeListingStatus ||
     (isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0)) ? (
@@ -4806,7 +4827,7 @@ function PostCard({
           </GuestAwareProfileLink>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start justify-between gap-2">
-              <div className="min-w-0">
+              <div className="min-w-0 flex flex-col gap-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <GuestAwareProfileLink
                     userId={post.author_id}
@@ -4824,7 +4845,7 @@ function PostCard({
                     />
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-[15px] font-medium leading-tight text-muted-foreground">
+                <p className="text-[15px] font-medium leading-snug text-muted-foreground">
                   <time className="tabular-nums">{postedLabel}</time>
                   {postLocationLine ? (
                     <>
@@ -4833,31 +4854,18 @@ function PostCard({
                     </>
                   ) : null}
                 </p>
+                <PostTypeCategorySubtitle
+                  postTypeId={postTypeId}
+                  typeName={
+                    post.source === "post" || post.source === "job_request"
+                      ? feedPostTypeName
+                      : undefined
+                  }
+                  categoryLabel={serviceCategoryMeta?.label}
+                  whenExpired={whenExpired}
+                />
               </div>
-              {postTypeHeaderBadge ? (
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 self-start">
-                  {postTypeHeaderBadge}
-                </div>
-              ) : null}
             </div>
-            {serviceCategoryMeta?.label && postTypeId ? (
-              <p
-                className={cn(
-                  "mt-1.5 text-[12px] font-bold uppercase tracking-wide",
-                  globalFeedPostTypeAccentClass(postTypeId),
-                )}
-              >
-                {feedPostTypeBadgeLabel(
-                  t,
-                  postTypeId,
-                  post.source === "post" || post.source === "job_request"
-                    ? feedPostTypeName
-                    : undefined,
-                )}
-                <span aria-hidden> · </span>
-                {serviceCategoryMeta.label}
-              </p>
-            ) : null}
           </div>
           {isOwnFeed && post.source === "post" ? (
             <div className="flex shrink-0 items-center gap-1">
@@ -4930,7 +4938,7 @@ function PostCard({
             variant="card"
           />
         </GuestAwareProfileLink>
-        <div className="min-w-0 flex-1 flex flex-col gap-0 pt-0.5">
+        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0">
           <div className="flex min-w-0 items-center gap-2">
             <GuestAwareProfileLink
               userId={post.author_id}
@@ -4948,7 +4956,7 @@ function PostCard({
               />
             ) : null}
           </div>
-          <p className="text-[14px] font-medium leading-tight text-muted-foreground">
+          <p className="text-[14px] font-medium leading-snug text-muted-foreground">
             <time className="tabular-nums">{postedLabel}</time>
             {postLocationLine ? (
               <>
@@ -4966,9 +4974,18 @@ function PostCard({
               </>
             ) : null}
           </p>
+          <PostTypeCategorySubtitle
+            postTypeId={postTypeId}
+            typeName={
+              post.source === "post" || post.source === "job_request"
+                ? feedPostTypeName
+                : undefined
+            }
+            categoryLabel={serviceCategoryMeta?.label}
+            whenExpired={whenExpired}
+          />
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-start pt-0.5">
-          {postTypeHeaderBadge}
           {isOwnFeed && post.source === "post" ? (
             <>
               {isProfile && listingStatusType ? (
@@ -5066,7 +5083,7 @@ function PostCard({
                       variant="card"
                     />
                   </GuestAwareProfileLink>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <GuestAwareProfileLink
                         userId={post.author_id}
@@ -5085,7 +5102,7 @@ function PostCard({
                         />
                       ) : null}
                     </div>
-                    <p className="mt-0.5 text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
+                    <p className="text-[14px] font-medium leading-snug text-white/80 md:text-[15px]">
                       <time className="tabular-nums">{postedLabel}</time>
                       {postLocationLine ? (
                         <>
@@ -5094,12 +5111,18 @@ function PostCard({
                         </>
                       ) : null}
                     </p>
+                    <PostTypeCategorySubtitle
+                      postTypeId={postTypeId}
+                      typeName={
+                        post.source === "post" || post.source === "job_request"
+                          ? feedPostTypeName
+                          : undefined
+                      }
+                      categoryLabel={serviceCategoryMeta?.label}
+                      whenExpired={whenExpired}
+                      variant="overlay"
+                    />
                   </div>
-                  {postTypeHeaderBadge ? (
-                    <div className="pointer-events-auto shrink-0 self-start">
-                      {postTypeHeaderBadge}
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -5125,8 +5148,6 @@ function PostCard({
 
           <div className={cn(isVideoHeaderOverlay && "hidden")}>
             <MediaTopBadges
-              serviceCategoryId={serviceCategoryMeta?.id}
-              serviceCategoryLabelText={serviceCategoryMeta?.label}
               whenLabel={whenLabel}
               whenTimeframe={requestWhenTimeframe}
               whenExpired={whenExpired}
@@ -5214,8 +5235,6 @@ function PostCard({
 
           <div className={cn(isVideoHeaderOverlay && "hidden")}>
             <MediaTopBadges
-              serviceCategoryId={serviceCategoryMeta?.id}
-              serviceCategoryLabelText={serviceCategoryMeta?.label}
               whenLabel={whenLabel}
               whenTimeframe={requestWhenTimeframe}
               whenExpired={whenExpired}
@@ -5328,7 +5347,7 @@ function PostCard({
                       variant="card"
                     />
                   </GuestAwareProfileLink>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <GuestAwareProfileLink
                         userId={post.author_id}
@@ -5347,7 +5366,7 @@ function PostCard({
                         />
                       ) : null}
                     </div>
-                    <p className="mt-0.5 text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
+                    <p className="text-[14px] font-medium leading-snug text-white/80 md:text-[15px]">
                       <time className="tabular-nums">{postedLabel}</time>
                       {postLocationLine ? (
                         <>
@@ -5365,12 +5384,18 @@ function PostCard({
                         </>
                       ) : null}
                     </p>
+                    <PostTypeCategorySubtitle
+                      postTypeId={postTypeId}
+                      typeName={
+                        post.source === "post" || post.source === "job_request"
+                          ? feedPostTypeName
+                          : undefined
+                      }
+                      categoryLabel={serviceCategoryMeta?.label}
+                      whenExpired={whenExpired}
+                      variant="overlay"
+                    />
                   </div>
-                  {postTypeHeaderBadge ? (
-                    <div className="pointer-events-auto shrink-0 self-start">
-                      {postTypeHeaderBadge}
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -5394,8 +5419,6 @@ function PostCard({
 
           <div className={cn(isVideoHeaderOverlay && "hidden")}>
             <MediaTopBadges
-              serviceCategoryId={serviceCategoryMeta?.id}
-              serviceCategoryLabelText={serviceCategoryMeta?.label}
               whenLabel={whenLabel}
               whenTimeframe={requestWhenTimeframe}
               whenExpired={whenExpired}
@@ -5489,7 +5512,7 @@ function PostCard({
                     <p
                       {...bidirectionalTextProps(
                         displayTextOnlyBody,
-                        "mt-2 text-[17px] leading-relaxed text-foreground/90 break-words",
+                        cn("mt-2 text-[17px]", postFreeTextClassName),
                       )}
                     >
                       {renderCaptionWithMentions(displayTextOnlyBody)}
@@ -5640,7 +5663,8 @@ function PostCard({
                         {...bidirectionalTextProps(
                           displayPostDescription,
                           cn(
-                            "text-[17px] leading-relaxed text-muted-foreground break-words",
+                            "text-[17px]",
+                            postFreeTextClassName,
                             displayPostTitle && "mt-1",
                           ),
                         )}
@@ -5799,80 +5823,49 @@ function PostCard({
         </div>
       )}
 
-      {effectiveCaption && (() => {
-        const captionExpandable = isPostCaptionExpandable(effectiveCaption, hasMedia);
-        const captionBody = (
-          <div className="flex items-end justify-between gap-3">
-            <div className={cn("flex-1", captionLayout?.className)} dir={captionLayout?.dir}>
-              <p
-                {...bidirectionalTextProps(
-                  effectiveCaption,
-                  cn(
-                    "text-[18px] leading-relaxed text-foreground break-words",
-                    !captionExpanded &&
-                      (hasMedia ? "line-clamp-2" : "line-clamp-[10]"),
-                  ),
-                )}
-              >
-                <span className="text-[19px] font-black lowercase">{authorName}</span>{" "}
-                <span className="mx-1 inline-block align-middle text-[13px] text-muted-foreground">•</span>{" "}
-                {renderCaptionWithMentions(effectiveCaption)}
-              </p>
-            </div>
-            {captionExpandable ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCaptionExpanded((prev) => !prev);
-                }}
-                className="shrink-0 text-base font-black text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
-                aria-label={captionExpanded ? "Show less text" : "Show full text"}
-                aria-expanded={captionExpanded}
-              >
-                {captionExpanded ? "Less" : "More"}
-              </button>
-            ) : null}
-          </div>
-        );
-
-        if (!hasMedia) {
-          return (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={tryOpenReelsViewer}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  tryOpenReelsViewer();
-                }
-              }}
-              className={cn(
-                cardPadX,
-                "w-full cursor-pointer pb-0 pt-2 active:opacity-90 md:pt-3 md:pb-1",
-                captionLayout?.className,
-              )}
-              dir={captionLayout?.dir}
-              aria-label="View post full screen"
-            >
-              {captionBody}
-            </div>
-          );
-        }
-
-        return (
+      {effectiveCaption && (
         <div
           className={cn(
             cardPadX,
-            "pb-0",
-            "pt-0 md:pt-0.5 md:pb-1",
+            !hasMedia ? "w-full cursor-pointer pb-0 pt-2 active:opacity-90 md:pt-3 md:pb-1" : "pb-0 pt-0 md:pt-0.5 md:pb-1",
+            captionLayout?.className,
           )}
+          dir={captionLayout?.dir}
+          role={!hasMedia ? "button" : undefined}
+          tabIndex={!hasMedia ? 0 : undefined}
+          onClick={!hasMedia ? tryOpenReelsViewer : undefined}
+          onKeyDown={
+            !hasMedia
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    tryOpenReelsViewer();
+                  }
+                }
+              : undefined
+          }
+          aria-label={!hasMedia ? "View post full screen" : undefined}
         >
-          {captionBody}
+          <div className={cn("flex-1", captionLayout?.className)} dir={captionLayout?.dir}>
+            <p
+              {...bidirectionalTextProps(
+                effectiveCaption,
+                "text-[18px] break-words",
+              )}
+            >
+              <span className="text-[19px] font-black lowercase text-foreground">
+                {authorName}
+              </span>{" "}
+              <span className="mx-1 inline-block align-middle text-[13px] text-muted-foreground">
+                •
+              </span>{" "}
+              <span className={cn("text-[18px]", postFreeTextClassName)}>
+                {renderCaptionWithMentions(effectiveCaption)}
+              </span>
+            </p>
+          </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Tagged users (only when there is no media overlay) */}
       {!hasMedia && post.tagged_profiles.length > 0 ? (

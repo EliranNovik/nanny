@@ -90,7 +90,7 @@ import { useTranslation } from "react-i18next";
 /** Tab icons: outline when inactive, filled when active. */
 function bottomNavTabGlyphClass(isActive: boolean) {
   return cn(
-    "bottom-nav-mobile-tab-glyph relative z-[1] h-8 w-8 shrink-0 md:h-8 md:w-8",
+    "bottom-nav-mobile-tab-glyph relative z-[1] h-7 w-7 shrink-0 md:h-7 md:w-7",
     isActive
       ? "fill-current stroke-none text-zinc-950 dark:text-white"
       : "fill-none stroke-[1.85] text-zinc-950/78 dark:text-white/75",
@@ -126,7 +126,7 @@ const mobileTabLinkClass =
   "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-colors duration-150";
 
 const plusButtonClassName = cn(
-  "bottom-nav-plus-button relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+  "bottom-nav-plus-button relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
   "bg-slate-900/[0.12] text-zinc-950 transition-[opacity,transform] hover:opacity-90 active:scale-95",
   "dark:bg-white/[0.18] dark:text-white",
   "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
@@ -147,7 +147,7 @@ function MobileTabItem({
     <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
       <div
         className={cn(
-          "bottom-nav-mobile-icon-slot relative flex h-11 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
+          "bottom-nav-mobile-icon-slot relative flex h-9 w-full shrink-0 items-center justify-center overflow-visible md:h-7",
           iconClassName,
         )}
       >
@@ -155,7 +155,7 @@ function MobileTabItem({
       </div>
       <span
         className={cn(
-          "bottom-nav-mobile-tab-label max-w-[4.75rem] truncate text-center text-xs font-medium leading-[13px]",
+          "bottom-nav-mobile-tab-label max-w-[4.75rem] truncate text-center text-[10px] font-medium leading-[11px]",
           active
             ? "text-zinc-950 dark:text-white"
             : "text-zinc-950/78 dark:text-white/75",
@@ -1277,7 +1277,7 @@ export function BottomNav() {
                 </MobileTabItem>
               </Link>
 
-              <div className="bottom-nav-plus-spacer w-11 shrink-0 md:hidden" aria-hidden />
+              <div className="bottom-nav-plus-spacer w-10 shrink-0 md:hidden" aria-hidden />
 
               {/* Messages */}
               {(() => {
@@ -1296,10 +1296,10 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
-                      <div className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
+                      <div className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center">
                         <BottomNavMessagesTabIcon
                           active={isActive}
-                          size={36}
+                          size={30}
                           className={cn(
                             isActive
                               ? "text-zinc-950 dark:text-white"
@@ -1376,7 +1376,7 @@ export function BottomNav() {
                 aria-label="Open quick actions"
               >
                 <Plus
-                  className="bottom-nav-plus-glyph h-[22px] w-[22px] shrink-0"
+                  className="bottom-nav-plus-glyph h-5 w-5 shrink-0"
                   strokeWidth={2.5}
                   aria-hidden
                 />

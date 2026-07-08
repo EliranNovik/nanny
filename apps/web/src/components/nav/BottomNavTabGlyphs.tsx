@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const frame = "h-7 w-7 shrink-0 sm:h-8 sm:w-8";
+const frame = "h-6 w-6 shrink-0 sm:h-7 sm:w-7";
 
 /**
  * Home: filled when active, outline stroke when inactive.
@@ -120,11 +120,11 @@ export function BottomNavProfileIcon({
   );
 }
 
-/** Messages tab — outline inactive, filled active; use 36px in bottom nav. */
+/** Messages tab — outline inactive, filled active; use 30px in bottom nav. */
 export function BottomNavMessagesTabIcon({
   active,
   className,
-  size = 36,
+  size = 30,
 }: {
   active: boolean;
   className?: string;
