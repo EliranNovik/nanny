@@ -89,12 +89,16 @@ import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
 import {
+  ChatBubbleMeta,
+  getChatReadReceiptStatus,
+} from "@/components/chat/ChatBubbleMeta";
+import {
   chatAreaBgClass,
   chatBubbleBodyTextCn,
+  chatBubbleInnerMetaWrapCn,
   chatBubbleLinkCn,
   chatMessageColumnCn,
   chatMediaMessageColumnCn,
-  chatMessageTimestampCn,
   chatReceivedBubbleCn,
   chatReceivedMessageTextCn,
   chatSentBubbleCn,
@@ -1389,6 +1393,44 @@ export default function ChatPage({
     });
   }
 
+  function bubbleMeta(
+    msg: Message,
+    isOwn: boolean,
+    variant: "bubble" | "media" = "bubble",
+  ) {
+    return (
+      <ChatBubbleMeta
+        timeLabel={formatTime(msg.created_at)}
+        isOwn={isOwn}
+        receiptStatus={isOwn ? getChatReadReceiptStatus(msg) : null}
+        variant={variant}
+        className={variant === "bubble" ? chatBubbleInnerMetaWrapCn : undefined}
+      />
+    );
+  }
+
+  function renderBubbleBodyText(
+    text: string,
+    msg: Message,
+    isOwn: boolean,
+    omitHrefs?: Set<string>,
+  ) {
+    return (
+      <p
+        {...bidirectionalTextProps(
+          text,
+          cn(
+            chatBubbleBodyTextCn,
+            isOwn ? "text-white" : chatReceivedMessageTextCn,
+          ),
+        )}
+      >
+        {linkifyMessageBody(text, chatBubbleLinkCn, omitHrefs)}
+        {bubbleMeta(msg, isOwn)}
+      </p>
+    );
+  }
+
   function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     const today = new Date();
@@ -2519,6 +2561,7 @@ export default function ChatPage({
                                 alt={msg.attachment_name || "Attachment"}
                                 type="image"
                                 isOwn={isOwn}
+                                footer={bubbleMeta(msg, isOwn, "media")}
                                 onImageClick={() => {
                                   setSelectedImage(msg);
                                   setIsImageModalOpen(true);
@@ -2529,19 +2572,10 @@ export default function ChatPage({
                                 src={msg.attachment_url}
                                 type="video"
                                 isOwn={isOwn}
+                                footer={bubbleMeta(msg, isOwn, "media")}
                               />
                             )}
                           </div>
-
-                          {/* Timestamp under media */}
-                          <p
-                            className={cn(
-                              chatMessageTimestampCn,
-                              isOwn ? "pr-1" : "pl-1",
-                            )}
-                          >
-                            {formatTime(msg.created_at)}
-                          </p>
 
                           {(linkPreviewUrls.length > 0 || msg.body) && (
                           <div
@@ -2576,25 +2610,14 @@ export default function ChatPage({
                                         enabled={!isOwn}
                                         variant={isOwn ? "onDark" : "default"}
                                         className="mt-1"
-                                        renderBody={(text) => (
-                                          <p
-                                            {...bidirectionalTextProps(
-                                              text,
-                                              cn(
-                                                chatBubbleBodyTextCn,
-                                                isOwn
-                                                  ? "text-white"
-                                                  : chatReceivedMessageTextCn,
-                                              ),
-                                            )}
-                                          >
-                                            {linkifyMessageBody(
-                                              text,
-                                              chatBubbleLinkCn,
-                                              previewHrefOmitSet(linkPreviewUrls),
-                                            )}
-                                          </p>
-                                        )}
+                                        renderBody={(text) =>
+                                          renderBubbleBodyText(
+                                            text,
+                                            msg,
+                                            isOwn,
+                                            previewHrefOmitSet(linkPreviewUrls),
+                                          )
+                                        }
                                       />
                                     </div>
                                   )}
@@ -2621,25 +2644,14 @@ export default function ChatPage({
                                   enabled={!isOwn}
                                   variant={isOwn ? "onDark" : "default"}
                                   className="mt-1"
-                                  renderBody={(text) => (
-                                    <p
-                                      {...bidirectionalTextProps(
-                                        text,
-                                        cn(
-                                          chatBubbleBodyTextCn,
-                                          isOwn
-                                            ? "text-white"
-                                            : chatReceivedMessageTextCn,
-                                        ),
-                                      )}
-                                    >
-                                      {linkifyMessageBody(
-                                        text,
-                                        chatBubbleLinkCn,
-                                        previewHrefOmitSet(linkPreviewUrls),
-                                      )}
-                                    </p>
-                                  )}
+                                  renderBody={(text) =>
+                                    renderBubbleBodyText(
+                                      text,
+                                      msg,
+                                      isOwn,
+                                      previewHrefOmitSet(linkPreviewUrls),
+                                    )
+                                  }
                                 />
                               </div>
                             ) : null}
@@ -2764,6 +2776,7 @@ export default function ChatPage({
                                   <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
                                     {matchIntro.location} · {matchIntro.time}
                                   </p>
+                                  {bubbleMeta(msg, isOwn)}
                                 </div>
                               </div>
                             ) : bodyHasNonPreviewText(
@@ -2785,25 +2798,14 @@ export default function ChatPage({
                                   enabled={!isOwn}
                                   variant={isOwn ? "onDark" : "default"}
                                   className="mt-1"
-                                  renderBody={(text) => (
-                                    <p
-                                      {...bidirectionalTextProps(
-                                        text,
-                                        cn(
-                                          chatBubbleBodyTextCn,
-                                          isOwn
-                                            ? "text-white"
-                                            : chatReceivedMessageTextCn,
-                                        ),
-                                      )}
-                                    >
-                                      {linkifyMessageBody(
-                                        text,
-                                        chatBubbleLinkCn,
-                                        previewHrefOmitSet(linkPreviewUrls),
-                                      )}
-                                    </p>
-                                  )}
+                                  renderBody={(text) =>
+                                    renderBubbleBodyText(
+                                      text,
+                                      msg,
+                                      isOwn,
+                                      previewHrefOmitSet(linkPreviewUrls),
+                                    )
+                                  }
                                 />
                               </div>
                             ) : null}
@@ -2860,6 +2862,7 @@ export default function ChatPage({
                                 <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
                                   {matchIntro.location} · {matchIntro.time}
                                 </p>
+                                {bubbleMeta(msg, isOwn)}
                               </div>
                             ) : msg.body ? (
                               <TranslatableChatMessage
@@ -2868,39 +2871,21 @@ export default function ChatPage({
                                 enabled={!isOwn}
                                 variant={isOwn ? "onDark" : "default"}
                                 className="mt-1"
-                                renderBody={(text) => (
-                                  <p
-                                    {...bidirectionalTextProps(
-                                      text,
-                                      cn(
-                                        chatBubbleBodyTextCn,
-                                        isOwn
-                                          ? "text-white"
-                                          : chatReceivedMessageTextCn,
-                                      ),
-                                    )}
-                                  >
-                                    {linkifyMessageBody(
-                                      text,
-                                      chatBubbleLinkCn,
-                                      previewHrefOmitSet(linkPreviewUrls),
-                                    )}
-                                  </p>
-                                )}
+                                renderBody={(text) =>
+                                  renderBubbleBodyText(
+                                    text,
+                                    msg,
+                                    isOwn,
+                                    previewHrefOmitSet(linkPreviewUrls),
+                                  )
+                                }
                               />
-                            ) : null}
+                            ) : (
+                              bubbleMeta(msg, isOwn)
+                            )}
                           </div>
                         )}
                         </div>
-                        {/* Timestamp under bubble */}
-                        <p
-                          className={cn(
-                            chatMessageTimestampCn,
-                            isOwn ? "pr-1" : "pl-1",
-                          )}
-                        >
-                          {formatTime(msg.created_at)}
-                        </p>
                       </div>
                     </div>
                   </div>

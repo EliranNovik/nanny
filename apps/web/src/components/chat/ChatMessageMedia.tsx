@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,8 @@ type ChatMessageMediaProps = {
   type: "image" | "video";
   isOwn: boolean;
   onImageClick?: () => void;
+  /** Optional footer overlay (WhatsApp-style time + ticks). */
+  footer?: ReactNode;
 };
 
 type MediaDimensions = { width: number; height: number };
@@ -53,6 +55,7 @@ export function ChatMessageMedia({
   type,
   isOwn: _isOwn,
   onImageClick,
+  footer,
 }: ChatMessageMediaProps) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -127,6 +130,11 @@ export function ChatMessageMedia({
           onCanPlay={() => setLoaded(true)}
           onError={() => setFailed(true)}
         />
+        {footer ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-1.5 pt-6">
+            <div className="flex justify-end">{footer}</div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -191,6 +199,12 @@ export function ChatMessageMedia({
       {loaded && onImageClick ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity group-hover/image:opacity-100">
           <ImageIcon className="h-8 w-8 text-white drop-shadow-md" aria-hidden />
+        </div>
+      ) : null}
+
+      {footer ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-1.5 pt-6">
+          <div className="flex justify-end">{footer}</div>
         </div>
       ) : null}
     </div>

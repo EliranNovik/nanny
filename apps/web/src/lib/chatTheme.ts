@@ -49,6 +49,10 @@ export const chatBubbleBodyTextCn =
 export const chatMessageTimestampCn =
   "mt-0.5 text-[12px] font-medium leading-none tabular-nums text-slate-500/85 dark:text-slate-400/90 md:mt-px md:text-[11px]";
 
+/** WhatsApp-style meta row inside the bubble (time + ticks), bottom-right. */
+export const chatBubbleInnerMetaWrapCn =
+  "float-end ms-2 mt-1 inline-flex items-end";
+
 export const chatMessageColumnCn = (isOwn: boolean) =>
   cn(
     "flex w-full min-w-0 shrink flex-col space-y-0.5",

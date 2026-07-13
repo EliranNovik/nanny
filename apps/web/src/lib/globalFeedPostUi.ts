@@ -493,7 +493,7 @@ export const globalFeedMobileCardClass =
   "max-md:rounded-none max-md:mb-0.5 max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
 
 /** Mobile card inner horizontal padding. */
-export const globalFeedMobileCardPadClass = "max-md:px-4";
+export const globalFeedMobileCardPadClass = "max-md:px-1";
 
 export function globalFeedMobileTextOnlySurfaceClass(typeId: string | null): string {
   switch (typeId) {

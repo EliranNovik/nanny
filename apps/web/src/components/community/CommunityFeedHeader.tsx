@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase,
+  BadgeCheck,
   CalendarDays,
   LayoutGrid,
   LifeBuoy,
@@ -23,6 +24,9 @@ import {
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
 import { fetchGlobalFeedRecentPosters } from "@/lib/globalFeedRecentPosters";
+import type { GlobalFeedRecentPoster } from "@/lib/globalFeedRecentPosters";
+import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
+import { StarRating } from "@/components/StarRating";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
@@ -254,15 +258,21 @@ export function CommunityFeedHeader({
   const storyNameClass = isGlobalVariant
     ? "max-w-full truncate px-0.5 text-xs font-medium lowercase leading-tight text-muted-foreground"
     : "max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground";
+  const globalPosterCardClass = cn(
+    "flex shrink-0 snap-start flex-col items-center gap-1.5 px-0 py-0 text-center",
+    "w-[7.25rem] border-0 bg-transparent shadow-none",
+    "dark:w-[8.5rem] dark:gap-2 dark:rounded-2xl dark:bg-zinc-800 dark:px-2.5 dark:py-3 dark:shadow-none",
+  );
+  const globalPosterAvatarClass = "h-[5.25rem] w-[5.25rem]";
 
   return (
     <div className={cn("space-y-3", className)}>
       <div
         className={cn(
-          "flex gap-3 overflow-x-auto pb-1 pt-0.5",
+          "flex gap-1.5 overflow-x-auto pb-1 pt-0.5 dark:gap-3",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain",
-          "max-md:-mx-0 px-1 md:mx-0 md:px-0",
+          isGlobalVariant ? "px-0.5" : "max-md:-mx-0 px-1 md:mx-0 md:px-0",
         )}
         role="list"
         aria-label={
@@ -276,14 +286,27 @@ export function CommunityFeedHeader({
           role="listitem"
           onClick={onAddStory}
           className={cn(
-            "group flex shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
-            storyItemWidthClass,
-            "transition-transform active:scale-[0.97]",
-            "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            isGlobalVariant
+              ? cn(
+                  globalPosterCardClass,
+                  "outline-none transition-transform active:scale-[0.97]",
+                  "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                )
+              : cn(
+                  "group flex shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
+                  storyItemWidthClass,
+                  "transition-transform active:scale-[0.97]",
+                  "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                ),
           )}
           aria-label={t("discoverHome.actions.sharePost")}
         >
-          <div className={cn("relative shrink-0", storyCircleSizeClass)}>
+          <div
+            className={cn(
+              "relative shrink-0",
+              isGlobalVariant ? globalPosterAvatarClass : storyCircleSizeClass,
+            )}
+          >
             {variant === "global" ? (
               <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20 text-muted-foreground">
                 <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
@@ -316,7 +339,9 @@ export function CommunityFeedHeader({
           </div>
           <span
             className={cn(
-              storyNameClass,
+              isGlobalVariant
+                ? "max-w-full truncate px-0.5 text-sm font-semibold lowercase leading-tight text-foreground"
+                : storyNameClass,
               !isGlobalVariant && "text-foreground",
             )}
           >
@@ -326,11 +351,101 @@ export function CommunityFeedHeader({
 
         {stripAuthors.map((author) => {
           const label = author.full_name?.trim()?.split(" ")[0] || "Member";
+          const displayName = author.full_name?.trim() || label;
           const isSelected = selectedAuthorFilterId === author.id;
           const isSelf = viewerUserId === author.id;
           const isSaved = favoriteAuthorIds.has(author.id);
           const showSaveBadge = isGlobalVariant && !isSelf && !isSaved;
           const savingFavorite = savingFavoriteId === author.id;
+
+          if (isGlobalVariant) {
+            const poster = author as GlobalFeedRecentPoster;
+            const locationLabel = feedLocationDisplayLabel(t, poster.city);
+
+            return (
+              <div key={author.id} role="listitem" className={globalPosterCardClass}>
+                <div className={cn("relative shrink-0", globalPosterAvatarClass)}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/profile/${author.id}`)}
+                    className={cn(
+                      "group h-full w-full outline-none transition-transform active:scale-[0.97]",
+                      "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    )}
+                    title={displayName}
+                    aria-label={t("feed.global.viewProfile", { name: displayName })}
+                  >
+                    <AvatarWithLiveDot
+                      liveUntil={author.live_until}
+                      className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
+                    >
+                      <Avatar className="h-full w-full border-0 shadow-none ring-0">
+                        <AvatarImage
+                          src={author.photo_url ?? undefined}
+                          alt=""
+                          className="object-cover"
+                        />
+                        <AvatarFallback className={storyAvatarFallbackClass}>
+                          {label.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </AvatarWithLiveDot>
+                  </button>
+                  {showSaveBadge ? (
+                    <button
+                      type="button"
+                      onClick={() => void saveAuthorToFavorites(author.id)}
+                      disabled={savingFavorite}
+                      className={cn(
+                        "absolute bottom-0 right-0 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
+                        "border-2 border-background bg-orange-600 text-white shadow-sm",
+                        "transition-transform hover:scale-105 active:scale-95 disabled:opacity-80",
+                      )}
+                      aria-label={t("feed.global.saveProfile", {
+                        name: displayName,
+                      })}
+                    >
+                      {savingFavorite ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="flex w-full min-w-0 flex-col items-center gap-1">
+                  <span className="flex min-w-0 max-w-full items-center justify-center gap-1 px-0.5">
+                    <span className="truncate text-sm font-semibold lowercase leading-tight text-foreground">
+                      {displayName}
+                    </span>
+                    {poster.is_verified ? (
+                      <BadgeCheck
+                        className="h-3.5 w-3.5 shrink-0 fill-emerald-500 text-white"
+                        strokeWidth={2.35}
+                        aria-label={t("profile.verifiedHelper")}
+                      />
+                    ) : null}
+                  </span>
+                  <StarRating
+                    rating={poster.average_rating ?? 0}
+                    totalRatings={poster.total_ratings ?? 0}
+                    size="sm"
+                    showCount
+                    className="justify-center gap-0.5"
+                    numberClassName="text-[11px] font-bold text-foreground/80"
+                    countClassName="text-[10px] text-muted-foreground"
+                  />
+                  {locationLabel ? (
+                    <span className="max-w-full truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
+                      {locationLabel}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={author.id}
@@ -344,10 +459,6 @@ export function CommunityFeedHeader({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isGlobalVariant) {
-                      navigate(`/profile/${author.id}`);
-                      return;
-                    }
                     onCommentedFilterChange?.(false);
                     onAcceptedFilterChange?.(false);
                     onAuthorFilterChange?.(isSelected ? null : author.id);
@@ -358,26 +469,21 @@ export function CommunityFeedHeader({
                   )}
                   title={author.full_name ?? label}
                   aria-label={
-                    isGlobalVariant
-                      ? t("feed.global.viewProfile", {
+                    isSelected
+                      ? t("feed.filters.clearFilterFor", {
                           name: author.full_name ?? label,
                         })
-                      : isSelected
-                        ? t("feed.filters.clearFilterFor", {
-                            name: author.full_name ?? label,
-                          })
-                        : t("feed.filters.showPostsBy", {
-                            name: author.full_name ?? label,
-                          })
+                      : t("feed.filters.showPostsBy", {
+                          name: author.full_name ?? label,
+                        })
                   }
-                  aria-pressed={isGlobalVariant ? undefined : isSelected}
+                  aria-pressed={isSelected}
                 >
                   <AvatarWithLiveDot
                     liveUntil={author.live_until}
                     className={cn(
                       "h-full w-full transition-transform duration-300 group-hover:scale-[1.03]",
-                      !isGlobalVariant &&
-                        isSelected &&
+                      isSelected &&
                         "rounded-full ring-2 ring-orange-500 ring-offset-2 ring-offset-background",
                     )}
                   >
@@ -393,34 +499,13 @@ export function CommunityFeedHeader({
                     </Avatar>
                   </AvatarWithLiveDot>
                 </button>
-                {showSaveBadge ? (
-                  <button
-                    type="button"
-                    onClick={() => void saveAuthorToFavorites(author.id)}
-                    disabled={savingFavorite}
-                    className={cn(
-                      "absolute bottom-0 right-0 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
-                      "border-2 border-background bg-orange-600 text-white shadow-sm",
-                      "transition-transform hover:scale-105 active:scale-95 disabled:opacity-80",
-                    )}
-                    aria-label={t("feed.global.saveProfile", {
-                      name: author.full_name ?? label,
-                    })}
-                  >
-                    {savingFavorite ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    ) : (
-                      <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
-                    )}
-                  </button>
-                ) : null}
               </div>
               <span
                 className={cn(
                   storyNameClass,
-                  isSelected && !isGlobalVariant
+                  isSelected
                     ? "text-orange-600 dark:text-orange-400"
-                    : !isGlobalVariant && "text-foreground",
+                    : "text-foreground",
                 )}
               >
                 {label}

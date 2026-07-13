@@ -12,7 +12,7 @@ import {
   useDiscoverRequestCarouselScroll,
 } from "@/components/discover/DiscoverRequestCarouselControls";
 import {
-  discoverRequestCardCarouselItemClass,
+  discoverLeanPersonalCardCarouselItemClass,
   discoverRequestCardsCarouselContainerClass,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 
@@ -113,8 +113,8 @@ export function DiscoverHomeMyOpenRequests({
             <div
               key={i}
               className={cn(
-                discoverRequestCardCarouselItemClass,
-                "h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70",
+                discoverLeanPersonalCardCarouselItemClass,
+                "h-28 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70",
               )}
             />
           ))}
@@ -152,7 +152,7 @@ export function DiscoverHomeMyOpenRequests({
             acceptedCount={acceptedCount}
             acceptedHelpers={acceptedHelpers}
             layout="carousel"
-            className={discoverRequestCardCarouselItemClass}
+            className={discoverLeanPersonalCardCarouselItemClass}
             onOpen={() => {
               trackEvent("discover_my_open_request_open", { job_id: row.id });
               navigate(`/client/jobs/${encodeURIComponent(row.id)}/live`);

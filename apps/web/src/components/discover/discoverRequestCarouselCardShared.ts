@@ -17,6 +17,12 @@ export const discoverRequestCardCarouselItemClass = cn(
   "md:min-h-[13rem] md:w-[26rem] lg:w-[28rem]",
 );
 
+/** Compact snap item for My requests / My help live. */
+export const discoverLeanPersonalCardCarouselItemClass = cn(
+  "flex h-auto min-h-[7.75rem] w-[min(calc(100vw-2rem),21rem)] shrink-0 snap-start self-stretch",
+  "md:min-h-[8.25rem] md:w-[24rem] lg:w-[26rem]",
+);
+
 export const discoverRequestCardCarouselBodyClass = "flex min-h-0 flex-1 flex-col";
 
 export const discoverRequestCardCarouselTitleClass =

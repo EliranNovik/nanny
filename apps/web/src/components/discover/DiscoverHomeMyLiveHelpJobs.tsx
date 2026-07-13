@@ -16,7 +16,7 @@ import {
   useDiscoverRequestCarouselScroll,
 } from "@/components/discover/DiscoverRequestCarouselControls";
 import {
-  discoverRequestCardCarouselItemClass,
+  discoverLeanPersonalCardCarouselItemClass,
   discoverRequestCardsCarouselContainerClass,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 
@@ -212,8 +212,8 @@ function DiscoverHomeLiveHelpSection({
             <div
               key={i}
               className={cn(
-                discoverRequestCardCarouselItemClass,
-                "h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70",
+                discoverLeanPersonalCardCarouselItemClass,
+                "h-28 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70",
               )}
             />
           ))}
@@ -296,10 +296,7 @@ function DiscoverHomeLiveHelpSection({
               key={job.id}
               row={toLiveHelpCardRow(job)}
               layout="carousel"
-              className={cn(
-                discoverRequestCardCarouselItemClass,
-                "min-h-[14.5rem] md:min-h-[15rem]",
-              )}
+              className={discoverLeanPersonalCardCarouselItemClass}
               categoryIconTone={otherPartyLabel === "Helper" ? "orange" : "green"}
               otherPartyLabel={otherPartyLabel}
               otherPartyName={otherPartyName}

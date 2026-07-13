@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Baby,
@@ -19,8 +19,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ImageLightboxModal } from "@/components/ImageLightboxModal";
-import { jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import { cn } from "@/lib/utils";
 import { avatarUrl } from "@/lib/imageTransform";
 import { supabase } from "@/lib/supabase";
@@ -34,13 +32,11 @@ import {
   discoverRequestCardCarouselFooterActionClass,
   discoverRequestCardCarouselFooterBudgetClass,
   discoverRequestCardCarouselFooterClass,
-  discoverRequestCardCarouselMetaRowClass,
   discoverRequestCardCarouselPosterRowClass,
   discoverRequestCardCarouselShellClass,
   discoverRequestCardCarouselTitleClass,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 import {
-  categoryAccentClass,
   categoryIconCircleClass,
   formatOpenHelpRequestBudget,
   isOpenHelpRequestWhenExpired,
@@ -84,13 +80,13 @@ function timeAgo(dateStr: string | null | undefined): string {
   return `Posted ${days}d ago`;
 }
 
-const myRequestUploadedImageThumbClass =
-  "h-[5.5rem] w-[5.5rem] md:h-24 md:w-24";
-
-const discoverMyRequestMetaRowClass =
-  "mt-2 flex min-h-[1.5rem] w-full flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-muted-foreground md:text-base";
-
 const discoverMyRequestMetaIconClass = "h-[1.125rem] w-[1.125rem] shrink-0 md:h-5 md:w-5";
+
+const discoverCategoryLabelMutedClass =
+  "truncate text-sm font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 sm:text-[15px]";
+
+const discoverLiveHelpCategoryLabelClass =
+  "min-w-0 truncate text-[13px] font-bold uppercase leading-tight tracking-[0.12em] text-zinc-500 dark:text-zinc-400 sm:text-sm";
 
 const myRequestPostedBadgeClass = cn(
   "inline-flex text-sm font-semibold text-muted-foreground",
@@ -121,15 +117,20 @@ function MyRequestAcceptedCountBadge({
 }: {
   acceptedCount: number;
   acceptedHelpers?: AcceptedHelperProfile[];
-  size?: "carousel" | "default";
+  size?: "carousel" | "default" | "lean";
 }) {
   const visibleHelpers = acceptedHelpers.slice(0, 3);
   const showOverflow = acceptedCount > 3;
   const showAvatars = acceptedCount > 0 && visibleHelpers.length > 0;
+  const lean = size === "lean";
 
   const countBadgeClass = cn(
     "inline-flex shrink-0 items-center gap-1.5 rounded-full font-black tabular-nums",
-    size === "carousel" ? "h-10 px-3 text-sm" : "h-9 px-2.5 text-xs sm:h-10 sm:text-sm",
+    lean
+      ? "h-7 px-2 text-xs"
+      : size === "carousel"
+        ? "h-10 px-3 text-sm"
+        : "h-9 px-2.5 text-xs sm:h-10 sm:text-sm",
     acceptedCount > 0
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
       : "bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
@@ -138,11 +139,11 @@ function MyRequestAcceptedCountBadge({
   return (
     <div className="flex shrink-0 items-center">
       {showAvatars ? (
-        <div className="mr-1.5 flex items-center" aria-hidden>
+        <div className={cn("flex items-center", lean ? "mr-1" : "mr-1.5")} aria-hidden>
           {visibleHelpers.map((helper, index) => (
             <Avatar
               key={helper.id}
-              className={cn("h-8 w-8", index > 0 && "-ml-2.5")}
+              className={cn(lean ? "h-6 w-6" : "h-8 w-8", index > 0 && (lean ? "-ml-2" : "-ml-2.5"))}
               title={helper.full_name || undefined}
             >
               <AvatarImage
@@ -180,40 +181,6 @@ function MyRequestAcceptedCountBadge({
   );
 }
 
-function MyRequestUploadedImageButton({
-  imageUrl,
-  className,
-  onOpen,
-}: {
-  imageUrl: string;
-  className?: string;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "pointer-events-auto shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 dark:ring-white/10",
-        myRequestUploadedImageThumbClass,
-        className,
-      )}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen();
-      }}
-      aria-label="View photo full screen"
-    >
-      <img
-        src={imageUrl}
-        alt=""
-        className="h-full w-full object-cover"
-        loading="lazy"
-        decoding="async"
-      />
-    </button>
-  );
-}
-
 function resolveClientPhotoUrl(raw: string | null | undefined): string {
   if (!raw?.trim()) return "";
   const trimmed = raw.trim();
@@ -228,9 +195,11 @@ function resolveClientPhotoUrl(raw: string | null | undefined): string {
 function ClientPoster({
   row,
   clientName,
+  postedLabel,
 }: {
   row: DiscoverOpenHelpRequestRow;
   clientName: string;
+  postedLabel?: string | null;
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [useRawUrl, setUseRawUrl] = useState(false);
@@ -272,14 +241,19 @@ function ClientPoster({
           </span>
         )}
       </span>
-      <span className="flex min-w-0 items-center gap-1">
-        <span className="truncate text-base font-semibold text-foreground">{clientName}</span>
-        {row.is_verified === true ? (
-          <BadgeCheck
-            className="h-4 w-4 shrink-0 fill-emerald-500 text-white"
-            strokeWidth={2.25}
-            aria-label="Verified"
-          />
+      <span className="flex min-w-0 flex-col items-start gap-0.5">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="truncate text-base font-semibold text-foreground">{clientName}</span>
+          {row.is_verified === true ? (
+            <BadgeCheck
+              className="h-4 w-4 shrink-0 fill-emerald-500 text-white"
+              strokeWidth={2.25}
+              aria-label="Verified"
+            />
+          ) : null}
+        </span>
+        {postedLabel ? (
+          <span className="truncate text-xs font-semibold text-muted-foreground">{postedLabel}</span>
         ) : null}
       </span>
     </>
@@ -447,14 +421,7 @@ export function DiscoverOpenHelpRequestCard({
             >
               <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
             </div>
-            <span
-              className={cn(
-                "truncate text-sm font-black uppercase tracking-[0.12em]",
-                categoryAccentClass(row.service_type),
-              )}
-            >
-              {categoryLabel}
-            </span>
+            <span className={discoverCategoryLabelMutedClass}>{categoryLabel}</span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
@@ -488,32 +455,8 @@ export function DiscoverOpenHelpRequestCard({
             <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
           </div>
 
-          <div className={discoverRequestCardCarouselMetaRowClass}>
-            {detailLine ? (
-              <span className="inline-flex items-center gap-1.5">
-                {row.service_type === "cleaning" ? (
-                  <Home className="h-4 w-4 shrink-0" aria-hidden />
-                ) : (
-                  <Users className="h-4 w-4 shrink-0" aria-hidden />
-                )}
-                {detailLine}
-              </span>
-            ) : null}
-            {scheduleLine ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-4 w-4 shrink-0" aria-hidden />
-                {scheduleLine}
-              </span>
-            ) : null}
-          </div>
-
           <div className={discoverRequestCardCarouselPosterRowClass}>
-            <ClientPoster row={row} clientName={clientName} />
-            {postedLabel ? (
-              <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                {postedLabel}
-              </span>
-            ) : null}
+            <ClientPoster row={row} clientName={clientName} postedLabel={postedLabel} />
           </div>
         </div>
 
@@ -589,12 +532,7 @@ export function DiscoverOpenHelpRequestCard({
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-start justify-between gap-1.5">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span
-                  className={cn(
-                    "text-sm font-black uppercase tracking-[0.12em] sm:text-base",
-                    categoryAccentClass(row.service_type),
-                  )}
-                >
+                <span className={cn(discoverCategoryLabelMutedClass, "sm:text-base")}>
                   {categoryLabel}
                 </span>
               </div>
@@ -658,12 +596,7 @@ export function DiscoverOpenHelpRequestCard({
             ) : null}
 
             <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pt-2">
-              <ClientPoster row={row} clientName={clientName} />
-              {postedLabel ? (
-                <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                  {postedLabel}
-                </span>
-              ) : null}
+              <ClientPoster row={row} clientName={clientName} postedLabel={postedLabel} />
             </div>
           </div>
 
@@ -749,17 +682,6 @@ const viewRequestBtnClass = cn(
   "text-xs font-black uppercase tracking-[0.14em] sm:w-full sm:px-4 sm:py-2",
 );
 
-const viewRequestBtnCarouselClass = cn(
-  "inline-flex h-10 min-w-[9.5rem] shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5",
-  "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20",
-  "hover:bg-emerald-600 active:bg-emerald-700 active:scale-[0.99]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-  "text-[11px] font-black uppercase tracking-[0.12em]",
-);
-
-const viewRequestBtnOrangeCarouselClass =
-  "bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 shadow-orange-950/20 hover:from-orange-600 hover:via-orange-700 hover:to-orange-800 focus-visible:ring-orange-300/80";
-
 export function DiscoverMyOpenRequestCard({
   row,
   acceptedCount = 0,
@@ -776,34 +698,18 @@ export function DiscoverMyOpenRequestCard({
   layout?: "default" | "carousel";
 }) {
   const { t } = useTranslation();
-  const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
-  const uploadedImageUrls = useMemo(
-    () => jobAttachmentImageUrls({ service_details: row.service_details ?? undefined }),
-    [row.service_details],
-  );
-  const uploadedImageUrl = uploadedImageUrls[0] ?? null;
-  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
-
-  const imageLightbox =
-    uploadedImageUrls.length > 0 ? (
-      <ImageLightboxModal
-        images={uploadedImageUrls}
-        initialIndex={0}
-        isOpen={imageLightboxOpen}
-        onClose={() => setImageLightboxOpen(false)}
-      />
-    ) : null;
+  const showAccepted = acceptedCount > 0 || acceptedHelpers.length > 0;
 
   const shellClass = cn(
     layout === "carousel" ? discoverRequestCardCarouselShellClass : "flex flex-col",
-    "rounded-[18px]",
-    layout === "carousel" ? "p-3.5" : "p-3",
+    "rounded-2xl",
+    layout === "carousel" ? "px-3.5 py-3.5" : "px-3 py-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
     "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
@@ -825,185 +731,111 @@ export function DiscoverMyOpenRequestCard({
 
   if (layout === "carousel") {
     return (
-      <>
       <article {...articleProps}>
-        <div className="flex w-full items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div
-              className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                categoryIconCircleClass(row.service_type, "orange"),
-              )}
-            >
-              <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
-            </div>
-            <span
-              className={cn(
-                "truncate text-sm font-black uppercase tracking-[0.12em]",
-                categoryAccentClass(row.service_type),
-              )}
-            >
-              {categoryLabel}
-            </span>
+        <div className="flex h-full w-full items-center gap-3">
+          <div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+              categoryIconCircleClass(row.service_type, "orange"),
+            )}
+          >
+            <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            <MyRequestAcceptedCountBadge
-              acceptedCount={acceptedCount}
-              acceptedHelpers={acceptedHelpers}
-              size="carousel"
-            />
-            <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} className="shrink-0" />
-          </div>
-        </div>
 
-        <div className={discoverRequestCardCarouselBodyClass}>
-          <div className="mt-1.5 flex w-full items-start gap-3">
-            {uploadedImageUrl ? (
-              <MyRequestUploadedImageButton
-                imageUrl={uploadedImageUrl}
-                onOpen={() => setImageLightboxOpen(true)}
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 text-left">
-              <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
-              <div className={discoverMyRequestMetaRowClass}>
-                {row.location_city ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className={discoverMyRequestMetaIconClass} aria-hidden />
-                    {row.location_city}
-                  </span>
-                ) : null}
-                {detailLine ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    {row.service_type === "cleaning" ? (
-                      <Home className={discoverMyRequestMetaIconClass} aria-hidden />
-                    ) : (
-                      <Users className={discoverMyRequestMetaIconClass} aria-hidden />
-                    )}
-                    {detailLine}
-                  </span>
-                ) : null}
-                {scheduleLine ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className={discoverMyRequestMetaIconClass} aria-hidden />
-                    {scheduleLine}
-                  </span>
-                ) : null}
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={discoverLiveHelpCategoryLabelClass}>{categoryLabel}</span>
+              {showAccepted ? (
+                <MyRequestAcceptedCountBadge
+                  acceptedCount={acceptedCount}
+                  acceptedHelpers={acceptedHelpers}
+                  size="lean"
+                />
+              ) : null}
+            </div>
+
+            {row.when_timeframe ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <WhenBadge
+                  whenTimeframe={row.when_timeframe}
+                  createdAt={row.created_at}
+                  className="shrink-0"
+                />
               </div>
+            ) : null}
+
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+              {row.location_city ? (
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{row.location_city}</span>
+                </span>
+              ) : null}
+              {detailLine ? (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  {row.service_type === "cleaning" ? (
+                    <Home className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  ) : (
+                    <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  )}
+                  <span className="truncate">{detailLine}</span>
+                </span>
+              ) : null}
+              {scheduleLine ? (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{scheduleLine}</span>
+                </span>
+              ) : null}
             </div>
           </div>
-        </div>
 
-        <div className={discoverRequestCardCarouselFooterClass}>
-          <div className={cn(discoverRequestCardCarouselFooterBudgetClass, "justify-end gap-0.5")}>
-            {budget ? (
-              <>
-                <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-                  {budget}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {row.budget_rate_type === "fixed" ? "Fixed budget" : "Total budget"}
-                </p>
-              </>
-            ) : null}
-            {postedLabel ? (
-              <span className={myRequestPostedBadgeClass}>{postedLabel}</span>
-            ) : null}
-          </div>
-          <div className={discoverRequestCardCarouselFooterActionClass}>
-            <button
-              type="button"
-              className={cn(
-                viewRequestBtnCarouselClass,
-                viewRequestBtnOrangeCarouselClass,
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
-              aria-label="View your request"
-            >
-              <ChevronRight className="h-4 w-4 rtl-flip-icon" strokeWidth={3} aria-hidden />
-              {t("discover.viewRequest")}
-            </button>
-          </div>
+          <span
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-full text-zinc-400"
+            aria-hidden
+          >
+            <ChevronRight className="h-5 w-5 rtl-flip-icon" strokeWidth={2.25} />
+          </span>
         </div>
       </article>
-      {imageLightbox}
-      </>
     );
   }
 
-  const hasWhenBadge =
-    Boolean(openHelpRequestWhenBadgeLabel(row.when_timeframe)) ||
-    isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at);
-
   return (
-    <>
     <article {...articleProps}>
       <div className="flex gap-2.5">
         <div
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
             categoryIconCircleClass(row.service_type, "orange"),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
+          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
-          <div
-            className={cn(
-              "relative flex min-w-0 flex-1 flex-col",
-              uploadedImageUrl
-                ? hasWhenBadge
-                  ? "pr-[5.5rem] sm:pr-36"
-                  : "pr-[4.75rem] sm:pr-24"
-                : hasWhenBadge
-                  ? "pr-24 sm:pr-28"
-                  : "pr-11",
-            )}
-          >
-            <div className="pointer-events-none absolute right-0 top-0 z-[1] flex flex-col items-end gap-1.5">
-              <div className="pointer-events-auto flex items-center gap-1.5">
-                <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <span className={cn(discoverCategoryLabelMutedClass, "sm:text-base")}>
+                {categoryLabel}
+              </span>
+              <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
+              {showAccepted ? (
                 <MyRequestAcceptedCountBadge
                   acceptedCount={acceptedCount}
                   acceptedHelpers={acceptedHelpers}
-                  size="default"
-                />
-              </div>
-              {uploadedImageUrl ? (
-                <MyRequestUploadedImageButton
-                  imageUrl={uploadedImageUrl}
-                  onOpen={() => setImageLightboxOpen(true)}
+                  size="lean"
                 />
               ) : null}
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "text-sm font-black uppercase tracking-[0.12em] sm:text-base",
-                  categoryAccentClass(row.service_type),
-                )}
-              >
-                {categoryLabel}
-              </span>
-            </div>
+            {description ? (
+              <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
+                {description}
+              </p>
+            ) : null}
 
-            <div className="mt-1">
-              <h3 className="text-lg font-bold leading-snug text-foreground sm:text-xl">
-                {title}
-              </h3>
-              {description ? (
-                <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
-                  {description}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[15px] text-muted-foreground sm:text-base">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground sm:text-[15px]">
               {row.location_city ? (
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin className={discoverMyRequestMetaIconClass} aria-hidden />
@@ -1029,11 +861,11 @@ export function DiscoverMyOpenRequestCard({
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
+          <div className="flex items-end justify-between gap-2 pt-1 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
             <div className="text-right">
               {budget ? (
                 <>
-                  <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                  <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
                     {budget}
                   </p>
                   <p className="text-xs font-semibold text-muted-foreground">
@@ -1059,11 +891,9 @@ export function DiscoverMyOpenRequestCard({
         </div>
       </div>
       {postedLabel ? (
-        <span className={cn("mt-2.5", myRequestPostedBadgeClass)}>{postedLabel}</span>
+        <span className={cn("mt-2", myRequestPostedBadgeClass)}>{postedLabel}</span>
       ) : null}
     </article>
-    {imageLightbox}
-    </>
   );
 }
 
@@ -1097,36 +927,19 @@ export function DiscoverMyLiveHelpCard({
   categoryIconTone?: "green" | "orange";
 }) {
   const { t } = useTranslation();
-  const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const budget = formatOpenHelpRequestBudget(row);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
-  const uploadedImageUrls = useMemo(
-    () => jobAttachmentImageUrls({ service_details: row.service_details ?? undefined }),
-    [row.service_details],
-  );
-  const uploadedImageUrl = uploadedImageUrls[0] ?? null;
-  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
-
-  const imageLightbox =
-    uploadedImageUrls.length > 0 ? (
-      <ImageLightboxModal
-        images={uploadedImageUrls}
-        initialIndex={0}
-        isOpen={imageLightboxOpen}
-        onClose={() => setImageLightboxOpen(false)}
-      />
-    ) : null;
 
   const liveBadge = (
     <span
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+      className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300"
       aria-label={t("discover.liveHelp")}
     >
-      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+      <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
         <span className="absolute inset-0 rounded-full bg-emerald-500/70 motion-safe:animate-ping motion-reduce:hidden" />
-        <span className="relative h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+        <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
       </span>
       Live
     </span>
@@ -1134,8 +947,8 @@ export function DiscoverMyLiveHelpCard({
 
   const shellClass = cn(
     layout === "carousel" ? discoverRequestCardCarouselShellClass : "flex flex-col",
-    "rounded-[18px]",
-    layout === "carousel" ? "p-3.5" : "p-3",
+    "rounded-2xl",
+    layout === "carousel" ? "px-3.5 py-3.5" : "px-3 py-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
     "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
@@ -1157,159 +970,76 @@ export function DiscoverMyLiveHelpCard({
 
   if (layout === "carousel") {
     return (
-      <>
       <article {...articleProps}>
-        <div className="flex w-full items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div
-              className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                categoryIconCircleClass(row.service_type, categoryIconTone),
-              )}
-            >
-              <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
-            </div>
-            <span
-              className={cn(
-                "truncate text-sm font-black uppercase tracking-[0.12em]",
-                categoryAccentClass(row.service_type),
-              )}
-            >
-              {categoryLabel}
-            </span>
+        <div className="flex h-full w-full items-center gap-3">
+          <div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+              categoryIconCircleClass(row.service_type, categoryIconTone),
+            )}
+          >
+            <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
           </div>
-          {liveBadge}
-        </div>
 
-        <div className={discoverRequestCardCarouselBodyClass}>
-          <div className="mt-1.5 flex w-full items-start gap-3">
-            {uploadedImageUrl ? (
-              <MyRequestUploadedImageButton
-                imageUrl={uploadedImageUrl}
-                onOpen={() => setImageLightboxOpen(true)}
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 text-left">
-              <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
-              <div className={discoverRequestCardCarouselMetaRowClass}>
-                {row.location_city ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                    {row.location_city}
-                  </span>
-                ) : null}
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <Users className="h-4 w-4 shrink-0" aria-hidden />
-                  <span className="truncate">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
-                    {otherPartyName}
-                  </span>
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={discoverLiveHelpCategoryLabelClass}>{categoryLabel}</span>
+              {liveBadge}
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+              {row.location_city ? (
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{row.location_city}</span>
                 </span>
-              </div>
+              ) : null}
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="truncate">
+                  <span className="font-medium text-zinc-600 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
+                  {otherPartyName}
+                </span>
+              </span>
             </div>
           </div>
-        </div>
 
-        <div className={discoverRequestCardCarouselFooterClass}>
-          <div className={cn(discoverRequestCardCarouselFooterBudgetClass, "justify-end gap-0.5")}>
-            {budget ? (
-              <>
-                <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-                  {budget}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {row.budget_rate_type === "fixed" ? "Fixed budget" : "Total budget"}
-                </p>
-              </>
-            ) : null}
-            {postedLabel ? (
-              <span className={myRequestPostedBadgeClass}>{postedLabel}</span>
-            ) : null}
-          </div>
-          <div className={discoverRequestCardCarouselFooterActionClass}>
-            <button
-              type="button"
-              className={cn(
-                viewRequestBtnCarouselClass,
-                categoryIconTone === "orange" && viewRequestBtnOrangeCarouselClass,
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
-              aria-label={t("discover.viewLive")}
-            >
-              <ChevronRight className="h-4 w-4 rtl-flip-icon" strokeWidth={3} aria-hidden />
-              {t("discover.viewLive")}
-            </button>
-          </div>
+          <span
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-full text-zinc-400"
+            aria-hidden
+          >
+            <ChevronRight className="h-5 w-5 rtl-flip-icon" strokeWidth={2.25} />
+          </span>
         </div>
       </article>
-      {imageLightbox}
-      </>
     );
   }
 
   return (
-    <>
     <article {...articleProps}>
       <div className="flex gap-2.5">
         <div
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
             categoryIconCircleClass(row.service_type, categoryIconTone),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
+          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
-          <div
-            className={cn(
-              "relative flex min-w-0 flex-1 flex-col",
-              uploadedImageUrl ? "pe-[4.75rem] sm:pe-24" : "pe-16 sm:pe-[4.5rem]",
-            )}
-          >
-            <div className="pointer-events-none absolute end-0 top-0 z-[1] flex flex-col items-end gap-1.5">
-              <span
-                className="pointer-events-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300 sm:h-10"
-                aria-label={t("discover.liveHelp")}
-              >
-                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  <span className="absolute inset-0 rounded-full bg-emerald-500/70 motion-safe:animate-ping motion-reduce:hidden" />
-                  <span className="relative h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                </span>
-                Live
-              </span>
-              {uploadedImageUrl ? (
-                <MyRequestUploadedImageButton
-                  imageUrl={uploadedImageUrl}
-                  onOpen={() => setImageLightboxOpen(true)}
-                />
-              ) : null}
-            </div>
-
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "text-sm font-black uppercase tracking-[0.12em] sm:text-base",
-                  categoryAccentClass(row.service_type),
-                )}
-              >
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={cn(discoverLiveHelpCategoryLabelClass, "sm:text-[15px]")}>
                 {categoryLabel}
               </span>
+              {liveBadge}
             </div>
 
-            <div className="mt-1">
-              <h3 className="text-lg font-bold leading-snug text-foreground sm:text-xl">
-                {title}
-              </h3>
-              {description ? (
-                <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
-                  {description}
-                </p>
-              ) : null}
-            </div>
+            {description ? (
+              <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
+                {description}
+              </p>
+            ) : null}
 
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground sm:text-[15px]">
               {row.location_city ? (
@@ -1328,11 +1058,11 @@ export function DiscoverMyLiveHelpCard({
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
+          <div className="flex items-end justify-between gap-2 pt-1 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
             <div className="text-right">
               {budget ? (
                 <>
-                  <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                  <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
                     {budget}
                   </p>
                   <p className="text-xs font-semibold text-muted-foreground">
@@ -1358,11 +1088,9 @@ export function DiscoverMyLiveHelpCard({
         </div>
       </div>
       {postedLabel ? (
-        <span className={cn("mt-2.5", myRequestPostedBadgeClass)}>{postedLabel}</span>
+        <span className={cn("mt-2", myRequestPostedBadgeClass)}>{postedLabel}</span>
       ) : null}
     </article>
-    {imageLightbox}
-    </>
   );
 }
 

@@ -143,7 +143,6 @@ import {
   globalFeedMobileEngagementRowClass,
   globalFeedMobilePostTypeBadgeClass,
   globalFeedPostTypeAccentClass,
-  globalFeedPostTypeAccentOnDarkClass,
   globalFeedPrimaryCtaClass,
   feedWhenDisplayLabel,
   shouldShowPostTypeCategorySubtitle,
@@ -1521,15 +1520,18 @@ function PostTypeCategorySubtitle({
     return null;
   }
 
-  const accentClass =
-    variant === "overlay"
-      ? globalFeedPostTypeAccentOnDarkClass(postTypeId)
-      : globalFeedPostTypeAccentClass(postTypeId);
+  const useGlassBadge = variant === "overlay";
+
+  const accentClass = useGlassBadge
+    ? "text-white"
+    : globalFeedPostTypeAccentClass(postTypeId);
 
   return (
-    <p
+    <span
       className={cn(
-        "text-[12px] font-bold uppercase tracking-wide leading-tight",
+        "min-w-0 truncate text-[14px] font-bold uppercase tracking-wide leading-tight",
+        useGlassBadge &&
+          "rounded-full bg-black/45 px-2.5 py-1 text-white shadow-sm backdrop-blur-md ring-1 ring-white/10",
         accentClass,
         className,
       )}
@@ -1554,7 +1556,7 @@ function PostTypeCategorySubtitle({
         typeName,
         categoryLabel,
       )}
-    </p>
+    </span>
   );
 }
 
@@ -3170,7 +3172,7 @@ function PostAuthorAvatar({
       <Avatar
         className={cn(
           "shrink-0",
-          variant === "card" ? "h-[3.75rem] w-[3.75rem]" : "h-[3.25rem] w-[3.25rem]",
+          variant === "card" ? "h-[2.75rem] w-[2.75rem]" : "h-[2.5rem] w-[2.5rem]",
         )}
       >
         <AvatarImage src={photoUrl} className="object-cover" alt="" />
@@ -3812,7 +3814,9 @@ function PostCard({
       ? cn("px-3 md:px-3.5", globalFeedMobileCardPadClass)
       : isDiscover || isPlainCard
         ? "px-2 md:px-4"
-        : "px-4";
+        : "max-md:px-1 px-4";
+  const headerPadX = cn(cardPadX, "max-md:ps-1 max-md:pe-2");
+  const headerRowClass = "flex items-start gap-2.5 max-md:gap-2 md:gap-3";
   const cardMarginX =
     isGlobalFeed ? "mx-0" : isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
   const mobileMediaInsetClass = isGlobalFeed
@@ -4755,7 +4759,7 @@ function PostCard({
     >
       {/* Header — always rendered outside the media block */}
       {isGlobalFeed ? (
-        <div className={cn("flex items-start gap-3.5", cardPadX, "pt-3.5 pb-2", isVideoHeaderOverlay && "hidden")}>
+        <div className={cn(headerRowClass, headerPadX, "pt-3.5 pb-2", isVideoHeaderOverlay && "hidden")}>
           <GuestAwareProfileLink
             userId={post.author_id}
             className="shrink-0 self-start"
@@ -4770,8 +4774,8 @@ function PostCard({
           </GuestAwareProfileLink>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start justify-between gap-2">
-              <div className="min-w-0 flex flex-col gap-1">
-                <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0 flex flex-col gap-0">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <GuestAwareProfileLink
                     userId={post.author_id}
                     className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
@@ -4787,8 +4791,14 @@ function PostCard({
                       aria-label="Verified"
                     />
                   ) : null}
+                  <PostTypeCategorySubtitle
+                    postTypeId={postTypeId}
+                    typeName={feedPostTypeName}
+                    categoryLabel={serviceCategoryMeta?.label}
+                    whenExpired={whenExpired}
+                  />
                 </div>
-                <p className="text-[15px] font-medium leading-snug text-muted-foreground">
+                <p className="text-[15px] font-medium leading-tight text-muted-foreground">
                   <time className="tabular-nums">{postedLabel}</time>
                   {postLocationLine ? (
                     <>
@@ -4797,12 +4807,6 @@ function PostCard({
                     </>
                   ) : null}
                 </p>
-                <PostTypeCategorySubtitle
-                  postTypeId={postTypeId}
-                  typeName={feedPostTypeName}
-                  categoryLabel={serviceCategoryMeta?.label}
-                  whenExpired={whenExpired}
-                />
               </div>
             </div>
           </div>
@@ -4859,8 +4863,8 @@ function PostCard({
       ) : (
       <div
         className={cn(
-          "flex items-start gap-3.5",
-          cardPadX,
+          headerRowClass,
+          headerPadX,
           isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
           isVideoHeaderOverlay && "hidden",
         )}
@@ -4877,8 +4881,8 @@ function PostCard({
             variant="card"
           />
         </GuestAwareProfileLink>
-        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1 flex flex-col gap-0 pt-0">
+          <div className="flex min-w-0 items-center gap-2.5">
             <GuestAwareProfileLink
               userId={post.author_id}
               className="truncate text-[21px] font-black leading-tight text-foreground hover:underline underline-offset-2"
@@ -4894,8 +4898,14 @@ function PostCard({
                 aria-label="Verified"
               />
             ) : null}
+            <PostTypeCategorySubtitle
+              postTypeId={postTypeId}
+              typeName={feedPostTypeName}
+              categoryLabel={serviceCategoryMeta?.label}
+              whenExpired={whenExpired}
+            />
           </div>
-          <p className="text-[14px] font-medium leading-snug text-muted-foreground">
+          <p className="text-[14px] font-medium leading-tight text-muted-foreground">
             <time className="tabular-nums">{postedLabel}</time>
             {postLocationLine ? (
               <>
@@ -4913,12 +4923,6 @@ function PostCard({
               </>
             ) : null}
           </p>
-          <PostTypeCategorySubtitle
-            postTypeId={postTypeId}
-            typeName={feedPostTypeName}
-            categoryLabel={serviceCategoryMeta?.label}
-            whenExpired={whenExpired}
-          />
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-start pt-0.5">
           {isOwnFeed && post.source === "post" ? (
@@ -5003,8 +5007,8 @@ function PostCard({
                 className={videoHeaderOverlayGradientClass}
                 aria-hidden
               />
-              <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
-                <div className="flex items-start gap-3 pr-12 md:gap-3.5 md:pr-14">
+              <div className="relative max-md:px-1 max-md:pe-2 px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
+                <div className={cn(headerRowClass, "pr-12 md:pr-14")}>
                   <GuestAwareProfileLink
                     userId={post.author_id}
                     className="pointer-events-auto shrink-0 self-start"
@@ -5018,8 +5022,8 @@ function PostCard({
                       variant="card"
                     />
                   </GuestAwareProfileLink>
-                  <div className="min-w-0 flex-1 flex flex-col gap-1">
-                    <div className="flex min-w-0 items-center gap-2">
+                  <div className="min-w-0 flex-1 flex flex-col gap-0">
+                    <div className="flex min-w-0 items-center gap-2.5">
                       <GuestAwareProfileLink
                         userId={post.author_id}
                         className="pointer-events-auto truncate text-[17px] font-bold leading-tight text-white hover:underline underline-offset-2 md:text-[19px]"
@@ -5036,8 +5040,15 @@ function PostCard({
                           aria-label="Verified"
                         />
                       ) : null}
+                      <PostTypeCategorySubtitle
+                        postTypeId={postTypeId}
+                        typeName={feedPostTypeName}
+                        categoryLabel={serviceCategoryMeta?.label}
+                        whenExpired={whenExpired}
+                        variant="overlay"
+                      />
                     </div>
-                    <p className="text-[14px] font-medium leading-snug text-white/80 md:text-[15px]">
+                    <p className="text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
                       <time className="tabular-nums">{postedLabel}</time>
                       {postLocationLine ? (
                         <>
@@ -5046,13 +5057,6 @@ function PostCard({
                         </>
                       ) : null}
                     </p>
-                    <PostTypeCategorySubtitle
-                      postTypeId={postTypeId}
-                      typeName={feedPostTypeName}
-                      categoryLabel={serviceCategoryMeta?.label}
-                      whenExpired={whenExpired}
-                      variant="overlay"
-                    />
                   </div>
                 </div>
               </div>
@@ -5263,8 +5267,8 @@ function PostCard({
                 className={videoHeaderOverlayGradientClass}
                 aria-hidden
               />
-              <div className="relative px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
-                <div className="flex items-start gap-3 pr-12 md:gap-3.5 md:pr-14">
+              <div className="relative max-md:px-1 max-md:pe-2 px-4 pb-4 pt-3.5 md:px-5 md:pt-4">
+                <div className={cn(headerRowClass, "pr-12 md:pr-14")}>
                   <GuestAwareProfileLink
                     userId={post.author_id}
                     className="pointer-events-auto shrink-0 self-start"
@@ -5278,8 +5282,8 @@ function PostCard({
                       variant="card"
                     />
                   </GuestAwareProfileLink>
-                  <div className="min-w-0 flex-1 flex flex-col gap-1">
-                    <div className="flex min-w-0 items-center gap-2">
+                  <div className="min-w-0 flex-1 flex flex-col gap-0">
+                    <div className="flex min-w-0 items-center gap-2.5">
                       <GuestAwareProfileLink
                         userId={post.author_id}
                         className="pointer-events-auto truncate text-[17px] font-bold leading-tight text-white hover:underline underline-offset-2 md:text-[19px]"
@@ -5296,8 +5300,15 @@ function PostCard({
                           aria-label="Verified"
                         />
                       ) : null}
+                      <PostTypeCategorySubtitle
+                        postTypeId={postTypeId}
+                        typeName={feedPostTypeName}
+                        categoryLabel={serviceCategoryMeta?.label}
+                        whenExpired={whenExpired}
+                        variant="overlay"
+                      />
                     </div>
-                    <p className="text-[14px] font-medium leading-snug text-white/80 md:text-[15px]">
+                    <p className="text-[14px] font-medium leading-tight text-white/80 md:text-[15px]">
                       <time className="tabular-nums">{postedLabel}</time>
                       {postLocationLine ? (
                         <>
@@ -5315,13 +5326,6 @@ function PostCard({
                         </>
                       ) : null}
                     </p>
-                    <PostTypeCategorySubtitle
-                      postTypeId={postTypeId}
-                      typeName={feedPostTypeName}
-                      categoryLabel={serviceCategoryMeta?.label}
-                      whenExpired={whenExpired}
-                      variant="overlay"
-                    />
                   </div>
                 </div>
               </div>
@@ -6918,11 +6922,13 @@ export function ProfilePostsFeed({
             return post.post_metadata?.category === target;
           }
           if (post.source === "post") {
-            if (post.post_type_id === "request_help") {
+            const typeId = post.post_type_id ?? post.post_types?.id ?? null;
+            if (typeId === "request_help") {
               return post.post_metadata?.category === target;
             }
-            if (post.post_type_id === "offer_service") {
-              return (post.post_metadata as any)?.service === target;
+            if (typeId === "offer_service") {
+              const meta = post.post_metadata as Record<string, unknown> | null | undefined;
+              return meta?.service === target || meta?.category === target;
             }
             return false;
           }

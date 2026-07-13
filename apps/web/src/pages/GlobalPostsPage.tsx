@@ -37,13 +37,16 @@ import {
 } from "@/lib/communityFeedFilters";
 import {
   type CommunityFeedLocationState,
+  parseCommunityFeedCategory,
   parseCommunityFeedTypeFilter,
+  parseCommunityFeedTypeIds,
 } from "@/lib/communityFeedNav";
 import { globalFeedMobileFeedAreaClass } from "@/lib/globalFeedPostUi";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { queryKeys } from "@/hooks/data/keys";
 import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
 import {
+  ALL_HELP_CATEGORY_ID,
   type DiscoverHomeCategoryId,
   OTHER_HELP_SUBCATEGORIES,
 } from "@/lib/serviceCategories";
@@ -68,6 +71,8 @@ type FeedMainContentProps = {
   expandDiscoverLayout?: boolean;
   postTypeFilter: CommunityFeedPostTypeFilter;
   onPostTypeFilterChange: (filter: CommunityFeedPostTypeFilter) => void;
+  /** When set (e.g. request + offer), overrides single post-type filter for the main feed. */
+  feedPostTypeIds?: string[] | null;
   commentedFilterActive: boolean;
   onCommentedFilterChange: (active: boolean) => void;
   acceptedFilterActive: boolean;
@@ -96,6 +101,7 @@ function FeedMainContent({
   expandDiscoverLayout = false,
   postTypeFilter,
   onPostTypeFilterChange,
+  feedPostTypeIds = null,
   commentedFilterActive,
   onCommentedFilterChange,
   acceptedFilterActive,
@@ -118,14 +124,20 @@ function FeedMainContent({
   const { t } = useTranslation();
   const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
   const sidePanelPostTypeIds = useMemo(
-    () => (postTypeFilter === "all" ? null : [postTypeFilter]),
-    [postTypeFilter],
+    () =>
+      feedPostTypeIds?.length
+        ? feedPostTypeIds
+        : postTypeFilter === "all"
+          ? null
+          : [postTypeFilter],
+    [feedPostTypeIds, postTypeFilter],
   );
 
   const showCategoryTabs =
     postTypeFilter === "all" ||
     postTypeFilter === "request_help" ||
-    postTypeFilter === "offer_service";
+    postTypeFilter === "offer_service" ||
+    Boolean(feedPostTypeIds?.length);
 
   return (
     <div
@@ -267,7 +279,10 @@ function FeedMainContent({
           focusPostId={focusPostId}
           focusRequestId={focusRequestId}
           expandDiscoverLayout={expandDiscoverLayout}
-          filterPostTypeId={postTypeFilter === "all" ? null : postTypeFilter}
+          filterPostTypeId={
+            feedPostTypeIds?.length || postTypeFilter === "all" ? null : postTypeFilter
+          }
+          filterPostTypeIds={feedPostTypeIds}
           sidePanelPostTypeIds={sidePanelPostTypeIds}
           filterCommentedOwnPosts={commentedFilterActive}
           filterAcceptedRequests={acceptedFilterActive}
@@ -339,7 +354,9 @@ export default function GlobalPostsPage() {
     DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
   );
   const [favoriteAuthorFilterId, setFavoriteAuthorFilterId] = useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<DiscoverHomeCategoryId>("all_help");
+  const [categoryFilter, setCategoryFilter] = useState<DiscoverHomeCategoryId>(
+    () => parseCommunityFeedCategory(searchParams.get("category")) ?? ALL_HELP_CATEGORY_ID,
+  );
   const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
 
   const viewerLocation = useMemo<ViewerLocation | null>(() => {
@@ -356,6 +373,12 @@ export default function GlobalPostsPage() {
   const focusPostId = parseProfilePostShareId(rawPostParam) ?? scrollToPostId;
   const focusRequestId = parseJobRequestShareId(rawRequestParam) ?? scrollToRequestId;
   const typeParam = searchParams.get("type");
+  const typesParam = searchParams.get("types");
+  const categoryParam = searchParams.get("category");
+  const feedPostTypeIds = useMemo(
+    () => parseCommunityFeedTypeIds(typesParam),
+    [typesParam],
+  );
 
   useEffect(() => {
     if (focusPostId || focusRequestId) return;
@@ -380,11 +403,17 @@ export default function GlobalPostsPage() {
     setPostTypeFilter(parseCommunityFeedTypeFilter(typeParam) ?? "all");
   }, [typeParam]);
 
+  useEffect(() => {
+    setCategoryFilter(parseCommunityFeedCategory(categoryParam) ?? ALL_HELP_CATEGORY_ID);
+    if (!categoryParam) setOtherSubFilter(null);
+  }, [categoryParam]);
+
   const handlePostTypeFilterChange = useCallback(
     (filter: CommunityFeedPostTypeFilter) => {
       setPostTypeFilter(filter);
       setAcceptedFilterActive(false);
       const next = new URLSearchParams(searchParams);
+      next.delete("types");
       if (filter === "all") {
         next.delete("type");
       } else {
@@ -395,6 +424,21 @@ export default function GlobalPostsPage() {
       }
       if (filter === "request_help") {
         next.delete("post");
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleCategoryFilterChange = useCallback(
+    (id: DiscoverHomeCategoryId) => {
+      setCategoryFilter(id);
+      if (id !== "other_help") setOtherSubFilter(null);
+      const next = new URLSearchParams(searchParams);
+      if (id === ALL_HELP_CATEGORY_ID) {
+        next.delete("category");
+      } else {
+        next.set("category", id);
       }
       setSearchParams(next, { replace: true });
     },
@@ -419,8 +463,10 @@ export default function GlobalPostsPage() {
 
       const next = new URLSearchParams(searchParams);
       next.delete("type");
-      next.delete("post");
+      next.delete("types");
       next.delete("request");
+      next.delete("category");
+      next.set("post", cleanPostId);
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
@@ -530,6 +576,7 @@ export default function GlobalPostsPage() {
             openCompose={openCompose}
             postTypeFilter={postTypeFilter}
             onPostTypeFilterChange={handlePostTypeFilterChange}
+            feedPostTypeIds={feedPostTypeIds}
             commentedFilterActive={commentedFilterActive}
             onCommentedFilterChange={setCommentedFilterActive}
             acceptedFilterActive={acceptedFilterActive}
@@ -542,7 +589,7 @@ export default function GlobalPostsPage() {
             onScrollToPostDone={() => setScrollToPostId(null)}
             viewerLocation={viewerLocation}
             categoryFilter={categoryFilter}
-            onCategoryFilterChange={setCategoryFilter}
+            onCategoryFilterChange={handleCategoryFilterChange}
             otherSubFilter={otherSubFilter}
             onOtherSubFilterChange={setOtherSubFilter}
             onSidePanelPostOpen={handleSidePanelPostOpen}

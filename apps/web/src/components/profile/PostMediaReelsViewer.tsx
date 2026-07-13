@@ -40,7 +40,6 @@ import {
   feedPostTypeCategorySubtitleText,
   feedPostWhenLabel,
   globalFeedCtaLabel,
-  globalFeedPostTypeAccentOnDarkClass,
   globalFeedPrimaryCtaClass,
   shouldShowPostTypeCategorySubtitle,
 } from "@/lib/globalFeedPostUi";
@@ -1186,10 +1185,9 @@ function ReelPostTypeCategorySubtitle({
   }
 
   return (
-    <p
+    <span
       className={cn(
-        "mt-1 text-[12px] font-bold uppercase tracking-wide leading-tight drop-shadow-md",
-        globalFeedPostTypeAccentOnDarkClass(slide.postTypeId),
+        "min-w-0 truncate rounded-full bg-black/45 px-2.5 py-1 text-[14px] font-bold uppercase tracking-wide leading-tight text-white shadow-sm backdrop-blur-md ring-1 ring-white/10",
       )}
     >
       {slide.whenExpired && slide.postTypeId === "request_help" ? (
@@ -1204,7 +1202,7 @@ function ReelPostTypeCategorySubtitle({
         slide.postTypeName ?? undefined,
         slide.categoryLabel,
       )}
-    </p>
+    </span>
   );
 }
 
@@ -1435,16 +1433,16 @@ function ReelSlideBottomPanel({
               </Avatar>
             )}
           </GuestAwareProfileLink>
-          <GuestAwareProfileLink
-            userId={slide.authorId}
-            className="min-w-0 text-left"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-lg font-black lowercase leading-tight text-white drop-shadow-md">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <GuestAwareProfileLink
+              userId={slide.authorId}
+              className="min-w-0 truncate text-left text-lg font-black lowercase leading-tight text-white drop-shadow-md"
+              onClick={(e) => e.stopPropagation()}
+            >
               {slide.authorName}
-            </span>
+            </GuestAwareProfileLink>
             <ReelPostTypeCategorySubtitle slide={slide} />
-          </GuestAwareProfileLink>
+          </div>
         </div>
 
         {showTitle && displayTitle ? (

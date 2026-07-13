@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Bookmark, ChevronDown, LayoutGrid } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
@@ -56,14 +55,13 @@ type GlobalFeedMobileTebnuMenuProps = {
   className?: string;
 };
 
-/** Mobile global feed header: Tebnu brand opens My posts / My favorites. */
+/** Mobile global feed header: centred tebnu brand opens My favorites. */
 export function GlobalFeedMobileTebnuMenu({
   viewerUserId,
   className,
 }: GlobalFeedMobileTebnuMenuProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
 
@@ -76,17 +74,6 @@ export function GlobalFeedMobileTebnuMenu({
     staleTime: 60_000,
   });
 
-  function openMyPosts() {
-    setMenuOpen(false);
-    navigate(`/profile/${viewerUserId}`);
-  }
-
-  function openFavorites() {
-    setMenuOpen(false);
-    setFavoritesExpanded(true);
-    setFavoritesOpen(true);
-  }
-
   function openFavoriteProfile(profileId: string) {
     setFavoritesOpen(false);
     navigate(`/profile/${profileId}`);
@@ -94,62 +81,21 @@ export function GlobalFeedMobileTebnuMenu({
 
   return (
     <>
-      <div className={cn("relative", className)}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((o) => !o)}
-          className={cn(
-            "inline-flex items-center gap-0.5 rounded-lg px-1 py-0.5",
-            "text-[1.625rem] font-black lowercase tracking-tight text-foreground transition-opacity active:opacity-80",
-          )}
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label={t("feed.global.tebnuMenu")}
-        >
-          tebnu
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-              menuOpen && "rotate-180",
-            )}
-            aria-hidden
-          />
-        </button>
-
-        {menuOpen ? (
-          <>
-            <button
-              type="button"
-              className="fixed inset-0 z-[61]"
-              aria-label={t("common.close")}
-              onClick={() => setMenuOpen(false)}
-            />
-            <div
-              role="menu"
-              className="absolute left-1/2 top-full z-[62] mt-1.5 min-w-[11.5rem] -translate-x-1/2 overflow-hidden rounded-xl border border-border/60 bg-background py-1 shadow-lg"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={openMyPosts}
-                className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
-              >
-                <LayoutGrid className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
-                {t("feed.global.myPosts")}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={openFavorites}
-                className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
-              >
-                <Bookmark className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
-                {t("feed.global.myFavorites")}
-              </button>
-            </div>
-          </>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          setFavoritesExpanded(true);
+          setFavoritesOpen(true);
+        }}
+        className={cn(
+          "inline-flex items-center rounded-lg px-1 py-0.5",
+          "text-[1.625rem] font-black lowercase tracking-tight text-foreground transition-opacity active:opacity-80",
+          className,
+        )}
+        aria-label={t("feed.global.myFavorites")}
+      >
+        tebnu
+      </button>
 
       {favoritesOpen
         ? createPortal(

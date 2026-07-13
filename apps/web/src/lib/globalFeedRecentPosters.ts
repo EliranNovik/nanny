@@ -7,6 +7,9 @@ export type GlobalFeedRecentPoster = {
   photo_url: string | null;
   live_until: string | null;
   is_verified?: boolean | null;
+  city?: string | null;
+  average_rating?: number | null;
+  total_ratings?: number | null;
 };
 
 const DEFAULT_MAX_POSTERS = 15;
@@ -82,7 +85,7 @@ export async function fetchGlobalFeedRecentPosters(
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, full_name, photo_url, is_verified")
+        .select("id, full_name, photo_url, is_verified, city, average_rating, total_ratings")
         .in("id", pickedIds),
       supabase
         .from("freelancer_profiles")
@@ -107,6 +110,9 @@ export async function fetchGlobalFeedRecentPosters(
         photo_url: (p.photo_url as string | null) ?? null,
         live_until: liveUntilByUser.get(p.id as string) ?? null,
         is_verified: (p.is_verified as boolean | null) ?? null,
+        city: (p.city as string | null) ?? null,
+        average_rating: (p.average_rating as number | null) ?? null,
+        total_ratings: (p.total_ratings as number | null) ?? null,
       } satisfies GlobalFeedRecentPoster,
     ]),
   );

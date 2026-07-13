@@ -1,9 +1,28 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+function servePublicServiceWorker() {
+    return {
+        name: 'serve-public-service-worker',
+        configureServer: function (server) {
+            server.middlewares.use(function (req, res, next) {
+                var _a;
+                var url = (_a = req.url) === null || _a === void 0 ? void 0 : _a.split('?')[0];
+                if (url !== '/sw.js') {
+                    next();
+                    return;
+                }
+                var filePath = path.resolve(__dirname, 'public/sw.js');
+                res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                fs.createReadStream(filePath).pipe(res);
+            });
+        },
+    };
+}
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), servePublicServiceWorker()],
     server: {
         port: 5175,
         host: '0.0.0.0', // Allow external connections for ngrok
