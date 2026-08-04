@@ -2,8 +2,8 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { supabaseAdmin } from "../supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { isApnsConfigured } from "../lib/push/apns";
-import { isFcmConfigured } from "../lib/push/fcm";
+import { getApnsConfigError, isApnsConfigured } from "../lib/push/apns";
+import { getFcmInitError, isFcmConfigured } from "../lib/push/fcm";
 
 export const pushRouter = Router();
 
@@ -158,12 +158,16 @@ pushRouter.patch("/preferences", async (req: Request, res: Response): Promise<vo
 
 // GET /api/push/status — health for mobile app bootstrap
 pushRouter.get("/status", async (_req: Request, res: Response): Promise<void> => {
+  const fcmOk = isFcmConfigured();
+  const apnsOk = isApnsConfigured();
   res.json({
     ok: true,
-    fcm_configured: isFcmConfigured(),
-    apns_configured: isApnsConfigured(),
+    fcm_configured: fcmOk,
+    apns_configured: apnsOk,
     apns_production:
       process.env.APNS_PRODUCTION?.trim().toLowerCase() === "true" ||
       process.env.APNS_PRODUCTION?.trim() === "1",
+    fcm_error: fcmOk ? null : getFcmInitError(),
+    apns_error: apnsOk ? null : getApnsConfigError(),
   });
 });

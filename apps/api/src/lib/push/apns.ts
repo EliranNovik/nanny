@@ -1,5 +1,6 @@
 import http2 from "http2";
 import { createPrivateKey, sign } from "crypto";
+import { normalizePrivateKey } from "./normalizePrivateKey";
 
 const APNS_HOST_SANDBOX = "https://api.sandbox.push.apple.com";
 const APNS_HOST_PRODUCTION = "https://api.push.apple.com";
@@ -22,17 +23,24 @@ export type ApnsSendResult = {
 };
 
 let cachedJwt: { token: string; expiresAtMs: number } | null = null;
+let apnsConfigError: string | null = null;
 
 function readApnsConfig(): ApnsConfig | null {
   const keyId = process.env.APNS_KEY_ID?.trim();
   const teamId = process.env.APNS_TEAM_ID?.trim();
   const bundleId = process.env.APNS_BUNDLE_ID?.trim() || "com.tebnu.app";
-  const privateKeyPem = process.env.APNS_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
+  const privateKeyPem = normalizePrivateKey(process.env.APNS_PRIVATE_KEY);
   const production =
     process.env.APNS_PRODUCTION?.trim().toLowerCase() === "true" ||
     process.env.APNS_PRODUCTION?.trim() === "1";
 
   if (!keyId || !teamId || !privateKeyPem) {
+    return null;
+  }
+
+  if (!privateKeyPem.includes("BEGIN") || !privateKeyPem.includes("PRIVATE KEY")) {
+    apnsConfigError =
+      "APNS_PRIVATE_KEY does not look like a PEM .p8 key (expected -----BEGIN PRIVATE KEY-----)";
     return null;
   }
 
@@ -53,7 +61,13 @@ function createApnsJwt(config: ApnsConfig): string {
   const header = base64url(JSON.stringify({ alg: "ES256", kid: config.keyId }));
   const payload = base64url(JSON.stringify({ iss: config.teamId, iat: now }));
   const signingInput = `${header}.${payload}`;
-  const key = createPrivateKey(config.privateKeyPem);
+  let key;
+  try {
+    key = createPrivateKey(config.privateKeyPem);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse APNS_PRIVATE_KEY: ${message}`);
+  }
   // JWT ES256 requires IEEE P-1363 signature encoding (not DER).
   const signature = sign("sha256", Buffer.from(signingInput), {
     key,
@@ -66,6 +80,15 @@ function createApnsJwt(config: ApnsConfig): string {
 
 export function isApnsConfigured(): boolean {
   return readApnsConfig() !== null;
+}
+
+export function getApnsConfigError(): string | null {
+  if (readApnsConfig()) return null;
+  if (apnsConfigError) return apnsConfigError;
+  if (!process.env.APNS_KEY_ID?.trim() || !process.env.APNS_TEAM_ID?.trim() || !process.env.APNS_PRIVATE_KEY?.trim()) {
+    return "Missing APNS_KEY_ID, APNS_TEAM_ID, or APNS_PRIVATE_KEY";
+  }
+  return "APNs is not configured";
 }
 
 function isInvalidTokenReason(status: number, reason: string | undefined): boolean {

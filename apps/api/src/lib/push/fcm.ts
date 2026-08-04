@@ -1,13 +1,16 @@
 import admin from "firebase-admin";
+import { normalizePrivateKey } from "./normalizePrivateKey";
 
 let initialized = false;
+let initError: string | null = null;
 
 function initFirebaseAdmin(): boolean {
   if (initialized) return true;
+  if (initError) return false;
 
   const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
   if (!projectId || !clientEmail || !privateKey) {
     console.warn(
@@ -16,13 +19,27 @@ function initFirebaseAdmin(): boolean {
     return false;
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
-  });
+  if (!privateKey.includes("BEGIN") || !privateKey.includes("PRIVATE KEY")) {
+    initError =
+      "FIREBASE_PRIVATE_KEY does not look like a PEM private key (expected -----BEGIN PRIVATE KEY-----). Do not paste the full service-account JSON into this var — only the private_key string.";
+    console.warn(`[FCM] ${initError}`);
+    return false;
+  }
+
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    initError = `Failed to parse FIREBASE_PRIVATE_KEY: ${message}`;
+    console.warn(`[FCM] ${initError}`);
+    return false;
+  }
 
   initialized = true;
   return true;
@@ -30,6 +47,11 @@ function initFirebaseAdmin(): boolean {
 
 export function isFcmConfigured(): boolean {
   return initFirebaseAdmin();
+}
+
+export function getFcmInitError(): string | null {
+  initFirebaseAdmin();
+  return initError;
 }
 
 export type FcmSendResult = {
@@ -51,7 +73,7 @@ export async function sendFcmToTokens(
   }
 
   if (!initFirebaseAdmin()) {
-    throw new Error("FCM is not configured on the server");
+    throw new Error(initError ?? "FCM is not configured on the server");
   }
 
   const data: Record<string, string> = {};

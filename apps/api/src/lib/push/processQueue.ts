@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "../../supabase";
 import { sendFcmToTokens } from "./fcm";
-import { isApnsConfigured, sendApnsToTokens } from "./apns";
+import { getApnsConfigError, isApnsConfigured, sendApnsToTokens } from "./apns";
 
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 100;
@@ -98,20 +98,26 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     let successCount = 0;
     const errorParts: string[] = [];
 
-    try {
-      if (fcmTokens.length) {
+    // FCM and APNs are independent — one provider failing must not block the other.
+    if (fcmTokens.length) {
+      try {
         const fcmResult = await sendFcmToTokens(fcmTokens, payload);
         successCount += fcmResult.successCount;
         invalidTokens.push(...fcmResult.invalidTokens);
         if (fcmResult.failureCount > 0 && fcmResult.successCount === 0) {
           errorParts.push(`FCM: ${fcmResult.failureCount} failed`);
         }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "FCM send error";
+        errorParts.push(`FCM: ${message}`);
       }
+    }
 
-      if (iosTokens.length) {
+    if (iosTokens.length) {
+      try {
         if (!isApnsConfigured()) {
           errorParts.push(
-            `APNs: ${iosTokens.length} iOS token(s) but APNs is not configured`,
+            `APNs: ${iosTokens.length} iOS token(s) but ${getApnsConfigError() ?? "APNs is not configured"}`,
           );
         } else {
           const apnsResult = await sendApnsToTokens(iosTokens, payload);
@@ -123,31 +129,28 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
             );
           }
         }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "APNs send error";
+        errorParts.push(`APNs: ${message}`);
       }
+    }
 
-      if (invalidTokens.length) {
-        await supabaseAdmin.from("push_device_tokens").delete().in("token", invalidTokens);
-      }
+    if (invalidTokens.length) {
+      await supabaseAdmin.from("push_device_tokens").delete().in("token", invalidTokens);
+    }
 
-      if (successCount > 0) {
-        await markQueueRow(row.id, "sent", row.attempts + 1, null);
-        sent += 1;
-      } else {
-        const nextAttempts = row.attempts + 1;
-        const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
-        await markQueueRow(
-          row.id,
-          status,
-          nextAttempts,
-          errorParts.join(" | ") || "All push deliveries failed",
-        );
-        failed += 1;
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Push send error";
+    if (successCount > 0) {
+      await markQueueRow(row.id, "sent", row.attempts + 1, null);
+      sent += 1;
+    } else {
       const nextAttempts = row.attempts + 1;
       const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
-      await markQueueRow(row.id, status, nextAttempts, message);
+      await markQueueRow(
+        row.id,
+        status,
+        nextAttempts,
+        errorParts.join(" | ") || "All push deliveries failed",
+      );
       failed += 1;
     }
   }
