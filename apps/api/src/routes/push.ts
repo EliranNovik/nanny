@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { supabaseAdmin } from "../supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { isApnsConfigured } from "../lib/push/apns";
 import { isFcmConfigured } from "../lib/push/fcm";
 
 export const pushRouter = Router();
@@ -37,7 +38,7 @@ async function ensurePreferences(userId: string): Promise<void> {
     .upsert({ user_id: userId }, { onConflict: "user_id", ignoreDuplicates: true });
 }
 
-// POST /api/push/devices — register or refresh FCM token
+// POST /api/push/devices — register or refresh push token (FCM for Android, APNs for iOS)
 pushRouter.post("/devices", async (req: Request, res: Response): Promise<void> => {
   const userId = (req as AuthenticatedRequest).user.id;
   const parsed = registerDeviceSchema.safeParse(req.body);
@@ -160,5 +161,9 @@ pushRouter.get("/status", async (_req: Request, res: Response): Promise<void> =>
   res.json({
     ok: true,
     fcm_configured: isFcmConfigured(),
+    apns_configured: isApnsConfigured(),
+    apns_production:
+      process.env.APNS_PRODUCTION?.trim().toLowerCase() === "true" ||
+      process.env.APNS_PRODUCTION?.trim() === "1",
   });
 });

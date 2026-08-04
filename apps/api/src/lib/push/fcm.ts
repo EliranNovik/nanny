@@ -66,22 +66,12 @@ export async function sendFcmToTokens(
       body: payload.body,
     },
     data,
+    // Android / web FCM only — native iOS APNs tokens are sent via apns.ts, not FCM.
     android: {
       priority: "high",
       notification: {
         channelId: "tebnu_default",
         sound: "default",
-      },
-    },
-    apns: {
-      headers: {
-        "apns-priority": "10",
-      },
-      payload: {
-        aps: {
-          sound: "default",
-          badge: 1,
-        },
       },
     },
   };

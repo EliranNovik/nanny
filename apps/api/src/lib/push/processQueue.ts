@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../../supabase";
 import { sendFcmToTokens } from "./fcm";
+import { isApnsConfigured, sendApnsToTokens } from "./apns";
 
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 100;
@@ -13,6 +14,11 @@ type QueueRow = {
   attempts: number;
 };
 
+type DeviceTokenRow = {
+  token: string;
+  platform: "ios" | "android" | "web" | string;
+};
+
 function stringifyData(data: Record<string, unknown> | null): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(data ?? {})) {
@@ -20,6 +26,11 @@ function stringifyData(data: Record<string, unknown> | null): Record<string, str
     out[key] = typeof value === "string" ? value : JSON.stringify(value);
   }
   return out;
+}
+
+/** FCM registration tokens (Android / web). Never use raw APNs hex here. */
+function isLikelyFcmToken(token: string): boolean {
+  return token.includes(":") || token.includes("APA91");
 }
 
 export async function processPushQueue(limit = BATCH_SIZE): Promise<{
@@ -50,7 +61,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
   for (const row of queueRows) {
     const { data: tokens, error: tokenError } = await supabaseAdmin
       .from("push_device_tokens")
-      .select("token")
+      .select("token, platform")
       .eq("user_id", row.user_id);
 
     if (tokenError) {
@@ -59,39 +70,81 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       continue;
     }
 
-    const fcmTokens = (tokens ?? []).map((t) => t.token as string).filter(Boolean);
+    const deviceRows = (tokens ?? []) as DeviceTokenRow[];
+    const iosTokens = deviceRows
+      .filter((t) => t.platform === "ios" && t.token)
+      .map((t) => t.token);
+    const fcmTokens = deviceRows
+      .filter((t) => t.platform !== "ios" && t.token && isLikelyFcmToken(t.token))
+      .map((t) => t.token);
+    // Defense: never pass APNs hex into FCM even if platform was mis-tagged.
+    const skippedMisrouted = deviceRows.filter(
+      (t) => t.platform !== "ios" && t.token && !isLikelyFcmToken(t.token),
+    ).length;
 
-    if (!fcmTokens.length) {
-      await markQueueRow(row.id, "skipped", row.attempts, "No device tokens registered");
+    if (!iosTokens.length && !fcmTokens.length) {
+      const reason =
+        skippedMisrouted > 0
+          ? "No valid device tokens (non-FCM tokens on non-ios platform)"
+          : "No device tokens registered";
+      await markQueueRow(row.id, "skipped", row.attempts, reason);
       skipped += 1;
       continue;
     }
 
-    try {
-      const result = await sendFcmToTokens(fcmTokens, {
-        title: row.title,
-        body: row.body,
-        data: stringifyData(row.data),
-      });
+    const data = stringifyData(row.data);
+    const payload = { title: row.title, body: row.body, data };
+    const invalidTokens: string[] = [];
+    let successCount = 0;
+    const errorParts: string[] = [];
 
-      if (result.invalidTokens.length) {
-        await supabaseAdmin
-          .from("push_device_tokens")
-          .delete()
-          .in("token", result.invalidTokens);
+    try {
+      if (fcmTokens.length) {
+        const fcmResult = await sendFcmToTokens(fcmTokens, payload);
+        successCount += fcmResult.successCount;
+        invalidTokens.push(...fcmResult.invalidTokens);
+        if (fcmResult.failureCount > 0 && fcmResult.successCount === 0) {
+          errorParts.push(`FCM: ${fcmResult.failureCount} failed`);
+        }
       }
 
-      if (result.successCount > 0) {
+      if (iosTokens.length) {
+        if (!isApnsConfigured()) {
+          errorParts.push(
+            `APNs: ${iosTokens.length} iOS token(s) but APNs is not configured`,
+          );
+        } else {
+          const apnsResult = await sendApnsToTokens(iosTokens, payload);
+          successCount += apnsResult.successCount;
+          invalidTokens.push(...apnsResult.invalidTokens);
+          if (apnsResult.failureCount > 0 && apnsResult.successCount === 0) {
+            errorParts.push(
+              `APNs: ${apnsResult.errors.slice(0, 3).join("; ") || `${apnsResult.failureCount} failed`}`,
+            );
+          }
+        }
+      }
+
+      if (invalidTokens.length) {
+        await supabaseAdmin.from("push_device_tokens").delete().in("token", invalidTokens);
+      }
+
+      if (successCount > 0) {
         await markQueueRow(row.id, "sent", row.attempts + 1, null);
         sent += 1;
       } else {
         const nextAttempts = row.attempts + 1;
         const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
-        await markQueueRow(row.id, status, nextAttempts, "All FCM deliveries failed");
+        await markQueueRow(
+          row.id,
+          status,
+          nextAttempts,
+          errorParts.join(" | ") || "All push deliveries failed",
+        );
         failed += 1;
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "FCM send error";
+      const message = err instanceof Error ? err.message : "Push send error";
       const nextAttempts = row.attempts + 1;
       const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
       await markQueueRow(row.id, status, nextAttempts, message);

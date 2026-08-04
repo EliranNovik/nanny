@@ -1,12 +1,19 @@
 # Push notifications (iOS + Android)
 
-Tebnu uses **Firebase Cloud Messaging (FCM)** for both Android and iOS. FCM delivers to Android directly and to iOS via **APNs** (configured inside the Firebase console).
+Tebnu sends pushes from `apps/api` by **platform**:
+
+| Platform | Transport | Token stored in `push_device_tokens` |
+|----------|-----------|--------------------------------------|
+| **Android** | Firebase Cloud Messaging (FCM) | FCM registration token (`…:APA91…`) |
+| **iOS** | Apple APNs HTTP/2 (direct) | Native APNs device token (hex) |
+
+Do **not** pass raw iOS APNs hex tokens into `firebase-admin` as FCM tokens — that fails with `All FCM deliveries failed` / invalid registration token.
 
 Architecture:
 
 1. **Postgres triggers** enqueue rows in `push_notification_queue` when events happen (message, match, like, etc.).
-2. **`apps/api`** cron worker reads the queue and sends via **FCM HTTP v1** (`firebase-admin`).
-3. **Mobile app** registers FCM tokens via `POST /api/push/devices`.
+2. **`apps/api`** cron worker reads the queue, loads `push_device_tokens` for the user, and sends **Android → FCM**, **iOS → APNs**.
+3. **Mobile app** registers tokens via `POST /api/push/devices` with `platform: "ios" | "android"`.
 4. **Web app** lets users edit preferences on **Profile → My account**; tokens are registered from native apps only.
 
 ---
@@ -23,7 +30,7 @@ This creates:
 
 | Table | Purpose |
 |-------|---------|
-| `push_device_tokens` | FCM tokens per user/device (`ios` \| `android` \| `web`) |
+| `push_device_tokens` | Device tokens per user (`ios` → APNs hex, `android` → FCM) |
 | `push_notification_preferences` | Per-user toggles + expiry reminder timing |
 | `push_notification_queue` | Outbox processed by API worker |
 | `push_post_expiry_schedules` | Scheduled expiry reminders |
@@ -42,16 +49,26 @@ Applies to **community posts** (`expires_at`) and **open help requests** (`when_
 
 ---
 
-## 2. Firebase setup (required for delivery)
+## 2. Firebase + APNs setup (required for delivery)
+
+### Android (FCM)
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com/).
 2. Add **Android app** with package name **`com.tebnu.app`**.
 3. Download `google-services.json` → already in repo at `apps/mobile/android/app/google-services.json`.
 4. Configure Gradle (see **Android Gradle setup** below).
-5. Add **iOS app** (bundle ID `com.tebnu.app`).
-6. Download `GoogleService-Info.plist` → already in repo at `apps/mobile/ios/GoogleService-Info.plist`.
-7. **iOS**: Upload **APNs Authentication Key** (.p8) in Firebase → Project settings → Cloud Messaging.
-8. Download **Service account JSON** (Project settings → Service accounts → Generate new private key).
+5. Download **Service account JSON** (Project settings → Service accounts → Generate new private key). Use only the PEM `private_key` field for `FIREBASE_PRIVATE_KEY` (not the whole JSON).
+
+### iOS (direct APNs)
+
+iOS uses **native APNs device tokens** from Expo `Notifications.getDevicePushTokenAsync()` (not Expo push tokens, not FCM).
+
+1. Create an **Apple Push Notifications** Auth Key (`.p8`) in Apple Developer → Keys.
+2. Note **Key ID**, **Team ID**, and keep the `.p8` file.
+3. Bundle ID: **`com.tebnu.app`**.
+4. Set API env vars below. For **Xcode device installs** use sandbox (`APNS_PRODUCTION=false`). For **TestFlight / App Store** use `APNS_PRODUCTION=true`.
+
+(Optional) You may still upload the APNs key in Firebase Console for other tooling; the API worker talks to Apple directly and does not need Firebase for iOS delivery.
 
 ### Android Gradle setup
 
@@ -116,9 +133,19 @@ After adding the plugin and SDKs, sync Gradle. Full notes: `apps/mobile/android/
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
+# Android (FCM) — PEM private_key only, not the full service-account JSON
 FIREBASE_PROJECT_ID=tebnu-3d438
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# iOS (APNs HTTP/2) — .p8 auth key from Apple Developer
+APNS_KEY_ID=XXXXXXXXXX
+APNS_TEAM_ID=XXXXXXXXXX
+APNS_BUNDLE_ID=com.tebnu.app
+APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# false = Xcode / development installs (api.sandbox.push.apple.com)
+# true  = TestFlight / App Store (api.push.apple.com)
+APNS_PRODUCTION=false
 
 PUSH_CRON_SECRET=your-long-random-secret
 PUSH_CRON_ENABLED=true
@@ -154,7 +181,7 @@ All user routes: `Authorization: Bearer <supabase_access_token>`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/push/devices` | Register FCM token |
+| `POST` | `/api/push/devices` | Register device token (FCM or APNs) |
 | `DELETE` | `/api/push/devices` | Unregister token |
 | `GET` | `/api/push/preferences` | Get preferences |
 | `PATCH` | `/api/push/preferences` | Update preferences |
@@ -179,14 +206,14 @@ Use the same Supabase JWT as web for `/api/push/*`.
 
 ### Libraries
 
-- **Bare RN**: `@react-native-firebase/app`, `@react-native-firebase/messaging`
-- **Expo**: `expo-notifications` + FCM via EAS; register **FCM token** with this backend
+- **Bare RN**: `@react-native-firebase/app`, `@react-native-firebase/messaging` (Android FCM)
+- **Expo**: `expo-notifications` — Android: FCM token; iOS: **native APNs** via `getDevicePushTokenAsync()`
 
 ### iOS
 
-- `GoogleService-Info.plist` → copy from `apps/mobile/ios/GoogleService-Info.plist` into Xcode app target
 - Push Notifications + Background Modes → Remote notifications in Xcode
-- APNs key in Firebase
+- Register the **native APNs device token** (hex) with `platform: "ios"` — not an Expo push token
+- API delivers via APNs sandbox/production (see `APNS_*` env vars)
 - See `apps/mobile/ios/README.md`
 
 ### Android
@@ -196,6 +223,8 @@ Use the same Supabase JWT as web for `/api/push/*`.
 - Request `POST_NOTIFICATIONS` on Android 13+
 
 ### Register token after login
+
+**Android** (FCM):
 
 ```typescript
 const token = await messaging().getToken();
@@ -207,12 +236,29 @@ await fetch(`${API_BASE}/api/push/devices`, {
   },
   body: JSON.stringify({
     token,
-    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    platform: 'android',
   }),
 });
 ```
 
-Re-register on `onTokenRefresh` and each cold start.
+**iOS** (native APNs — Expo example):
+
+```typescript
+const device = await Notifications.getDevicePushTokenAsync();
+await fetch(`${API_BASE}/api/push/devices`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({
+    token: device.data, // hex APNs token
+    platform: 'ios',
+  }),
+});
+```
+
+Re-register on token refresh and each cold start.
 
 ### Unregister on logout
 
@@ -270,8 +316,9 @@ select * from push_device_tokens where user_id = 'YOUR_USER_UUID';
 |------|------|
 | `db/sql/101_push_notifications.sql` | Schema, triggers, RLS |
 | `apps/api/src/routes/push.ts` | API routes |
-| `apps/api/src/lib/push/fcm.ts` | FCM sender |
-| `apps/api/src/lib/push/processQueue.ts` | Queue worker |
+| `apps/api/src/lib/push/fcm.ts` | Android / web FCM sender |
+| `apps/api/src/lib/push/apns.ts` | iOS APNs HTTP/2 sender |
+| `apps/api/src/lib/push/processQueue.ts` | Queue worker (branches by platform) |
 | `apps/mobile/android/app/google-services.json` | Firebase Android config |
-| `apps/mobile/ios/GoogleService-Info.plist` | Firebase iOS config |
+| `apps/mobile/ios/GoogleService-Info.plist` | Firebase iOS config (optional for direct APNs) |
 | `apps/web/src/components/profile/ProfilePushPreferences.tsx` | Web UI |

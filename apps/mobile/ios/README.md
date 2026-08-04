@@ -1,13 +1,19 @@
-# Tebnu iOS — Firebase config
+# Tebnu iOS — push + Firebase config
 
 Bundle ID: **`com.tebnu.app`**  
-Firebase project: **`tebnu-3d438`**
+Firebase project: **`tebnu-3d438`** (optional for direct APNs)
+
+## Push delivery
+
+The API sends iOS notifications via **APNs HTTP/2** using the **native device token** (hex from Expo `getDevicePushTokenAsync()`), not FCM registration tokens.
+
+Register with `POST /api/push/devices` and `platform: "ios"`.
 
 ## File
 
 | Path | Purpose |
 |------|---------|
-| `GoogleService-Info.plist` | Firebase iOS config (from Firebase Console) |
+| `GoogleService-Info.plist` | Firebase iOS config (optional if API talks to APNs directly) |
 
 When you create the React Native app under `apps/mobile`, copy this file into the Xcode project:
 
@@ -19,21 +25,18 @@ ios/Tebnu/GoogleService-Info.plist
 
 ## Xcode setup
 
-1. Drag `GoogleService-Info.plist` into the app target in Xcode (**Copy items if needed**).
-2. **Signing & Capabilities** → add **Push Notifications**.
-3. **Signing & Capabilities** → **Background Modes** → enable **Remote notifications**.
-4. In Firebase Console → **Cloud Messaging** → upload your **APNs Authentication Key** (.p8) for iOS delivery.
-
-## React Native Firebase
-
-If using `@react-native-firebase/app`, the plist is picked up automatically when placed in the iOS app directory and linked to the target.
+1. **Signing & Capabilities** → add **Push Notifications**.
+2. **Signing & Capabilities** → **Background Modes** → enable **Remote notifications**.
+3. (Optional) Drag `GoogleService-Info.plist` into the app target if you still use Firebase on device.
 
 ## Backend (server only)
 
-Push sending uses the Firebase **service account** on `apps/api`, not this plist:
-
 ```env
-FIREBASE_PROJECT_ID=tebnu-3d438
+APNS_KEY_ID=...
+APNS_TEAM_ID=...
+APNS_BUNDLE_ID=com.tebnu.app
+APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+APNS_PRODUCTION=false   # Xcode installs → sandbox
 ```
 
 See [docs/PUSH_NOTIFICATIONS.md](../../docs/PUSH_NOTIFICATIONS.md).

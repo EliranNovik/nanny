@@ -26,10 +26,15 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 CORS_ORIGIN=http://localhost:5173
 
-# Push notifications (FCM) — see docs/PUSH_NOTIFICATIONS.md
+# Push notifications (FCM Android + APNs iOS) — see docs/PUSH_NOTIFICATIONS.md
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
+APNS_KEY_ID=
+APNS_TEAM_ID=
+APNS_BUNDLE_ID=com.tebnu.app
+APNS_PRIVATE_KEY=
+APNS_PRODUCTION=false
 PUSH_CRON_SECRET=your-long-random-secret
 
 # In-process scheduler (default on when PUSH_CRON_SECRET is set). Set false if using external cron only.
