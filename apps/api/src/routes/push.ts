@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { getApnsConfigError, isApnsConfigured } from "../lib/push/apns";
 import { getFcmInitError, isFcmConfigured } from "../lib/push/fcm";
+import { PUSH_WORKER_VERSION } from "../lib/push/log";
 
 export const pushRouter = Router();
 
@@ -162,6 +163,7 @@ pushRouter.get("/status", async (_req: Request, res: Response): Promise<void> =>
   const apnsOk = isApnsConfigured();
   res.json({
     ok: true,
+    worker_version: PUSH_WORKER_VERSION,
     fcm_configured: fcmOk,
     apns_configured: apnsOk,
     apns_production:

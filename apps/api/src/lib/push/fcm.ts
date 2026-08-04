@@ -1,8 +1,25 @@
 import admin from "firebase-admin";
 import { normalizePrivateKey } from "./normalizePrivateKey";
+import { pushError, pushLog, pushWarn, tokenPreview } from "./log";
 
 let initialized = false;
 let initError: string | null = null;
+
+function describePrivateKeyEnv(): Record<string, unknown> {
+  const raw = process.env.FIREBASE_PRIVATE_KEY ?? "";
+  const normalized = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+  return {
+    raw_length: raw.length,
+    raw_starts_with_quote: raw.trimStart().startsWith('"') || raw.trimStart().startsWith("'"),
+    raw_starts_with_brace: raw.trimStart().startsWith("{"),
+    raw_has_literal_backslash_n: raw.includes("\\n"),
+    raw_has_real_newline: raw.includes("\n"),
+    normalized_length: normalized?.length ?? 0,
+    normalized_has_begin: Boolean(normalized?.includes("BEGIN")),
+    normalized_has_end: Boolean(normalized?.includes("END")),
+    normalized_line_count: normalized ? normalized.split("\n").length : 0,
+  };
+}
 
 function initFirebaseAdmin(): boolean {
   if (initialized) return true;
@@ -12,17 +29,25 @@ function initFirebaseAdmin(): boolean {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
+  pushLog("FCM init starting", {
+    has_project_id: Boolean(projectId),
+    project_id: projectId || null,
+    has_client_email: Boolean(clientEmail),
+    client_email: clientEmail || null,
+    private_key_env: describePrivateKeyEnv(),
+  });
+
   if (!projectId || !clientEmail || !privateKey) {
-    console.warn(
-      "[FCM] Missing FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY — push sending disabled",
-    );
+    initError =
+      "Missing FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY";
+    pushWarn(initError);
     return false;
   }
 
   if (!privateKey.includes("BEGIN") || !privateKey.includes("PRIVATE KEY")) {
     initError =
       "FIREBASE_PRIVATE_KEY does not look like a PEM private key (expected -----BEGIN PRIVATE KEY-----). Do not paste the full service-account JSON into this var — only the private_key string.";
-    console.warn(`[FCM] ${initError}`);
+    pushWarn(initError, { private_key_env: describePrivateKeyEnv() });
     return false;
   }
 
@@ -37,11 +62,12 @@ function initFirebaseAdmin(): boolean {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     initError = `Failed to parse FIREBASE_PRIVATE_KEY: ${message}`;
-    console.warn(`[FCM] ${initError}`);
+    pushError(initError, { private_key_env: describePrivateKeyEnv() });
     return false;
   }
 
   initialized = true;
+  pushLog("FCM init OK");
   return true;
 }
 
@@ -58,6 +84,8 @@ export type FcmSendResult = {
   successCount: number;
   failureCount: number;
   invalidTokens: string[];
+  /** First few per-token failure details for queue last_error / logs */
+  errors: string[];
 };
 
 export async function sendFcmToTokens(
@@ -69,8 +97,15 @@ export async function sendFcmToTokens(
   },
 ): Promise<FcmSendResult> {
   if (!tokens.length) {
-    return { successCount: 0, failureCount: 0, invalidTokens: [] };
+    return { successCount: 0, failureCount: 0, invalidTokens: [], errors: [] };
   }
+
+  pushLog("FCM send start", {
+    token_count: tokens.length,
+    token_previews: tokens.slice(0, 5).map(tokenPreview),
+    title: payload.title,
+    data_keys: Object.keys(payload.data ?? {}),
+  });
 
   if (!initFirebaseAdmin()) {
     throw new Error(initError ?? "FCM is not configured on the server");
@@ -100,21 +135,41 @@ export async function sendFcmToTokens(
 
   const response = await admin.messaging().sendEachForMulticast(message);
   const invalidTokens: string[] = [];
+  const errors: string[] = [];
 
   response.responses.forEach((res, index) => {
-    if (res.success) return;
-    const code = res.error?.code ?? "";
+    const tok = tokens[index]!;
+    if (res.success) {
+      pushLog("FCM token OK", { token: tokenPreview(tok), message_id: res.messageId });
+      return;
+    }
+    const code = res.error?.code ?? "unknown";
+    const msg = res.error?.message ?? "no message";
+    errors.push(`${tokenPreview(tok)}: ${code} — ${msg}`);
+    pushError("FCM token FAIL", {
+      token: tokenPreview(tok),
+      code,
+      message: msg,
+    });
     if (
       code === "messaging/invalid-registration-token" ||
       code === "messaging/registration-token-not-registered"
     ) {
-      invalidTokens.push(tokens[index]!);
+      invalidTokens.push(tok);
     }
+  });
+
+  pushLog("FCM send done", {
+    successCount: response.successCount,
+    failureCount: response.failureCount,
+    invalidTokenCount: invalidTokens.length,
+    sample_errors: errors.slice(0, 5),
   });
 
   return {
     successCount: response.successCount,
     failureCount: response.failureCount,
     invalidTokens,
+    errors,
   };
 }

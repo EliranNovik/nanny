@@ -1,4 +1,5 @@
 import { runPushWorker } from "./processQueue";
+import { PUSH_WORKER_VERSION, pushLog } from "./log";
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let tickInFlight = false;
@@ -53,9 +54,10 @@ export function startPushScheduler(): void {
     Number(process.env.PUSH_CRON_INTERVAL_MS || 120_000) || 120_000,
   );
 
-  console.log(
-    `[PushScheduler] Starting in-process worker every ${Math.round(intervalMs / 1000)}s`,
-  );
+  pushLog("Scheduler starting", {
+    worker_version: PUSH_WORKER_VERSION,
+    interval_sec: Math.round(intervalMs / 1000),
+  });
 
   void tick();
   timer = setInterval(() => {
