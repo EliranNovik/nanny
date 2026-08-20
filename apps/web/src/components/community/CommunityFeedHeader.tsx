@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,11 +6,13 @@ import {
   Briefcase,
   BadgeCheck,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   LifeBuoy,
   Loader2,
+  Newspaper,
   Plus,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -23,6 +25,8 @@ import {
 } from "@/components/community/CommunityFeedFilterDialog";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
+import { OTHER_HELP_SUBCATEGORIES } from "@/lib/serviceCategories";
+import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
 import { fetchGlobalFeedRecentPosters } from "@/lib/globalFeedRecentPosters";
 import type { GlobalFeedRecentPoster } from "@/lib/globalFeedRecentPosters";
 import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
@@ -40,7 +44,7 @@ export type CommunityFeedPostTypeFilter =
   | "community"
   | "event";
 
-const FILTER_TABS: {
+export const COMMUNITY_FEED_POST_TYPE_TABS: {
   id: CommunityFeedPostTypeFilter;
   labelKey: string;
   Icon: LucideIcon;
@@ -48,7 +52,7 @@ const FILTER_TABS: {
   { id: "all", labelKey: "feed.filters.all", Icon: LayoutGrid },
   { id: "request_help", labelKey: "feed.filters.requests", Icon: LifeBuoy },
   { id: "offer_service", labelKey: "feed.filters.offers", Icon: Briefcase },
-  { id: "community", labelKey: "feed.filters.community", Icon: Users },
+  { id: "community", labelKey: "feed.filters.community", Icon: Newspaper },
   { id: "event", labelKey: "feed.filters.events", Icon: CalendarDays },
 ];
 
@@ -127,6 +131,8 @@ type CommunityFeedHeaderProps = {
   onCategoryFilterChange?: (id: DiscoverHomeCategoryId) => void;
   otherSubFilter?: string | null;
   onOtherSubFilterChange?: (id: string | null) => void;
+  /** Hide type chips on md+ (they live in the guest left sidebar). */
+  hidePostTypeTabsOnDesktop?: boolean;
 };
 
 export function CommunityFeedHeader({
@@ -151,6 +157,7 @@ export function CommunityFeedHeader({
   onCategoryFilterChange,
   otherSubFilter = null,
   onOtherSubFilterChange,
+  hidePostTypeTabsOnDesktop = false,
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -158,12 +165,12 @@ export function CommunityFeedHeader({
   const queryClient = useQueryClient();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [savingFavoriteId, setSavingFavoriteId] = useState<string | null>(null);
-  const filterTabs = FILTER_TABS;
+  const filterTabs = COMMUNITY_FEED_POST_TYPE_TABS;
   const isGlobalVariant = variant === "global";
   const showFilterControls = Boolean(
     advancedFilters &&
       onAdvancedFiltersChange &&
-      (viewerUserId || (isGlobalVariant && showCategoryTabs)),
+      (viewerUserId || (isGlobalVariant && showCategoryTabs && !hidePostTypeTabsOnDesktop)),
   );
 
   const { data: favoriteProfiles = [] } = useQuery({
@@ -205,6 +212,56 @@ export function CommunityFeedHeader({
   );
 
   const stripAuthors = isGlobalVariant ? recentPosters : favoriteProfiles;
+
+  const posterStripRef = useRef<HTMLDivElement>(null);
+  const [posterStripOverflow, setPosterStripOverflow] = useState({
+    left: false,
+    right: false,
+  });
+
+  const updatePosterStripOverflow = useCallback(() => {
+    const el = posterStripRef.current;
+    if (!el) {
+      setPosterStripOverflow({ left: false, right: false });
+      return;
+    }
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (maxScroll <= 4) {
+      setPosterStripOverflow({ left: false, right: false });
+      return;
+    }
+    const sl = el.scrollLeft;
+    setPosterStripOverflow({
+      left: sl > 4,
+      right: sl < maxScroll - 4,
+    });
+  }, []);
+
+  const scrollPosterStrip = useCallback((dir: -1 | 1) => {
+    const el = posterStripRef.current;
+    if (!el) return;
+    const amount = Math.max(240, Math.floor(el.clientWidth * 0.7));
+    el.scrollBy({ left: amount * dir, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (!isGlobalVariant) return;
+    const el = posterStripRef.current;
+    if (!el) return;
+    updatePosterStripOverflow();
+    el.addEventListener("scroll", updatePosterStripOverflow, { passive: true });
+    const ro = new ResizeObserver(updatePosterStripOverflow);
+    ro.observe(el);
+    for (const child of el.children) {
+      if (child instanceof Element) ro.observe(child);
+    }
+    const timeoutId = window.setTimeout(updatePosterStripOverflow, 250);
+    return () => {
+      el.removeEventListener("scroll", updatePosterStripOverflow);
+      ro.disconnect();
+      window.clearTimeout(timeoutId);
+    };
+  }, [isGlobalVariant, stripAuthors.length, updatePosterStripOverflow]);
 
   async function saveAuthorToFavorites(authorId: string) {
     if (!viewerUserId) {
@@ -259,20 +316,32 @@ export function CommunityFeedHeader({
     ? "max-w-full truncate px-0.5 text-xs font-medium lowercase leading-tight text-muted-foreground"
     : "max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground";
   const globalPosterCardClass = cn(
-    "flex shrink-0 snap-start flex-col items-center gap-1.5 px-0 py-0 text-center",
-    "w-[7.25rem] border-0 bg-transparent shadow-none",
-    "dark:w-[8.5rem] dark:gap-2 dark:rounded-2xl dark:bg-zinc-800 dark:px-2.5 dark:py-3 dark:shadow-none",
+    "flex shrink-0 snap-start flex-col overflow-hidden rounded-2xl text-center",
+    "w-[7.25rem] bg-zinc-100 dark:w-[8.5rem] dark:bg-zinc-800",
   );
-  const globalPosterAvatarClass = "h-[5.25rem] w-[5.25rem]";
+  const globalPosterPhotoClass = "relative aspect-square w-full overflow-hidden";
+  const posterStripArrowClass = cn(
+    "absolute top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full",
+    "border border-white/45 bg-white/50 text-zinc-800 shadow-md",
+    "backdrop-blur-xl backdrop-saturate-150",
+    "transition-opacity hover:bg-white/70 active:scale-95",
+    "dark:border-white/15 dark:bg-zinc-900/50 dark:text-zinc-100 dark:hover:bg-zinc-900/70",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70",
+    "md:flex",
+  );
 
   return (
     <div className={cn("space-y-3", className)}>
+      <div className="relative">
       <div
+        ref={isGlobalVariant ? posterStripRef : undefined}
         className={cn(
           "flex gap-1.5 overflow-x-auto pb-1 pt-0.5 dark:gap-3",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain",
-          isGlobalVariant ? "px-0.5" : "max-md:-mx-0 px-1 md:mx-0 md:px-0",
+          "snap-x snap-proximity [touch-action:pan-x_pan-y] overscroll-x-contain",
+          isGlobalVariant
+            ? "px-2 pe-4 scroll-ps-2 scroll-pe-4 md:px-0 md:pe-2 md:scroll-ps-0 md:scroll-pe-2"
+            : "max-md:-mx-0 px-1 md:mx-0 md:px-0",
         )}
         role="list"
         aria-label={
@@ -301,18 +370,20 @@ export function CommunityFeedHeader({
           )}
           aria-label={t("discoverHome.actions.sharePost")}
         >
-          <div
-            className={cn(
-              "relative shrink-0",
-              isGlobalVariant ? globalPosterAvatarClass : storyCircleSizeClass,
-            )}
-          >
-            {variant === "global" ? (
-              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20 text-muted-foreground">
-                <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+          {isGlobalVariant ? (
+            <>
+              <div className={cn(globalPosterPhotoClass, "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400")}>
+                <div className="flex h-full w-full items-center justify-center">
+                  <Plus className="h-8 w-8" strokeWidth={2.25} aria-hidden />
+                </div>
               </div>
-            ) : (
-              <>
+              <span className="max-w-full truncate px-2 pb-2.5 pt-2 text-sm font-semibold lowercase leading-tight text-foreground">
+                {t("discoverHome.actions.sharePost")}
+              </span>
+            </>
+          ) : (
+            <>
+              <div className={cn("relative shrink-0", storyCircleSizeClass)}>
                 <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20">
                   {viewer?.photo_url ? (
                     <Avatar className="h-full w-full border-0">
@@ -331,22 +402,15 @@ export function CommunityFeedHeader({
                     </div>
                   )}
                 </div>
-                <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-emerald-600 text-white shadow-sm">
+                <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
                   <Plus className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
                 </span>
-              </>
-            )}
-          </div>
-          <span
-            className={cn(
-              isGlobalVariant
-                ? "max-w-full truncate px-0.5 text-sm font-semibold lowercase leading-tight text-foreground"
-                : storyNameClass,
-              !isGlobalVariant && "text-foreground",
-            )}
-          >
-            {t("discoverHome.actions.sharePost")}
-          </span>
+              </div>
+              <span className={cn(storyNameClass, "text-foreground")}>
+                {t("discoverHome.actions.sharePost")}
+              </span>
+            </>
+          )}
         </button>
 
         {stripAuthors.map((author) => {
@@ -364,7 +428,7 @@ export function CommunityFeedHeader({
 
             return (
               <div key={author.id} role="listitem" className={globalPosterCardClass}>
-                <div className={cn("relative shrink-0", globalPosterAvatarClass)}>
+                <div className={globalPosterPhotoClass}>
                   <button
                     type="button"
                     onClick={() => navigate(`/profile/${author.id}`)}
@@ -377,15 +441,16 @@ export function CommunityFeedHeader({
                   >
                     <AvatarWithLiveDot
                       liveUntil={author.live_until}
-                      className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
+                      className="block h-full w-full"
+                      dotClassName="bottom-auto right-auto top-1.5 left-1.5 border-0"
                     >
-                      <Avatar className="h-full w-full border-0 shadow-none ring-0">
+                      <Avatar className="h-full w-full rounded-none border-0 shadow-none ring-0 !rounded-none">
                         <AvatarImage
                           src={author.photo_url ?? undefined}
                           alt=""
-                          className="object-cover"
+                          className="h-full w-full object-cover"
                         />
-                        <AvatarFallback className={storyAvatarFallbackClass}>
+                        <AvatarFallback className={cn(storyAvatarFallbackClass, "rounded-none")}>
                           {label.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -397,8 +462,9 @@ export function CommunityFeedHeader({
                       onClick={() => void saveAuthorToFavorites(author.id)}
                       disabled={savingFavorite}
                       className={cn(
-                        "absolute bottom-0 right-0 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
-                        "border-2 border-background bg-orange-600 text-white shadow-sm",
+                        "absolute bottom-1.5 right-1.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
+                        "border-0 bg-zinc-500 text-white shadow-sm outline-none ring-0",
+                        "hover:bg-zinc-600 dark:bg-zinc-500 dark:text-white dark:hover:bg-zinc-400",
                         "transition-transform hover:scale-105 active:scale-95 disabled:opacity-80",
                       )}
                       aria-label={t("feed.global.saveProfile", {
@@ -414,7 +480,7 @@ export function CommunityFeedHeader({
                   ) : null}
                 </div>
 
-                <div className="flex w-full min-w-0 flex-col items-center gap-1">
+                <div className="flex w-full min-w-0 flex-col items-center gap-1 px-2 pb-2.5 pt-2">
                   <span className="flex min-w-0 max-w-full items-center justify-center gap-1 px-0.5">
                     <span className="truncate text-sm font-semibold lowercase leading-tight text-foreground">
                       {displayName}
@@ -513,16 +579,55 @@ export function CommunityFeedHeader({
             </div>
           );
         })}
+        {isGlobalVariant ? (
+          <div className="w-4 shrink-0 md:w-6" aria-hidden />
+        ) : null}
+      </div>
+      {isGlobalVariant ? (
+        <>
+          <button
+            type="button"
+            onClick={() => scrollPosterStrip(-1)}
+            disabled={!posterStripOverflow.left}
+            aria-label={t("feed.global.scrollPostersLeft", {
+              defaultValue: "Scroll profiles left",
+            })}
+            className={cn(
+              posterStripArrowClass,
+              "left-1",
+              !posterStripOverflow.left && "pointer-events-none opacity-0",
+            )}
+          >
+            <ChevronLeft className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollPosterStrip(1)}
+            disabled={!posterStripOverflow.right}
+            aria-label={t("feed.global.scrollPostersRight", {
+              defaultValue: "Scroll profiles right",
+            })}
+            className={cn(
+              posterStripArrowClass,
+              "right-1",
+              !posterStripOverflow.right && "pointer-events-none opacity-0",
+            )}
+          >
+            <ChevronRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+          </button>
+        </>
+      ) : null}
       </div>
 
       <div
         className={cn(
-          "flex gap-2 overflow-x-auto pb-1",
-          variant === "global" && "gap-2.5",
+          "flex items-center gap-2 overflow-x-auto pb-1",
+          variant === "global" && "gap-1.5",
           "max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
-          "md:[scrollbar-width:thin] md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-border/80",
+          "md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden",
           "px-1 md:px-0",
           reserveSidePanelSpace && FAVORITES_SIDE_PANEL_RESERVE_CLASS,
+          hidePostTypeTabsOnDesktop && "md:hidden",
         )}
         role="tablist"
         aria-label={t("feed.filters.filterPostsByType")}
@@ -548,7 +653,7 @@ export function CommunityFeedHeader({
               acceptedFilterActive={acceptedFilterActive}
               onAcceptedFilterChange={onAcceptedFilterChange}
               onAuthorFilterChange={onAuthorFilterChange}
-              showCategoryTabs={showCategoryTabs}
+              showCategoryTabs={showCategoryTabs && !hidePostTypeTabsOnDesktop}
               categoryFilter={categoryFilter}
               onCategoryFilterChange={onCategoryFilterChange}
               otherSubFilter={otherSubFilter}
@@ -573,23 +678,75 @@ export function CommunityFeedHeader({
                 onFilterChange(tab.id);
               }}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2.5 rounded-full px-[1.125rem] py-2.5 font-black transition-all sm:px-5",
+                "inline-flex shrink-0 items-center rounded-full border-0 font-semibold transition-all",
                 variant === "global"
-                  ? "text-[14px] normal-case tracking-normal"
-                  : "text-[13px] uppercase tracking-wide sm:text-[14px]",
-                selected
-                  ? communityFeedFilterActiveBadgeClass
-                  : communityFeedFilterIdleBadgeClass,
+                  ? "gap-1.5 px-2.5 py-1.5 text-[11px] sm:px-3 sm:text-xs"
+                  : "gap-2.5 px-[1.125rem] py-2.5 text-[13px] font-black uppercase tracking-wide sm:px-5 sm:text-[14px]",
+                variant === "global"
+                  ? selected
+                    ? "bg-zinc-600 text-white dark:bg-zinc-700 dark:text-white"
+                    : "bg-zinc-500/90 text-white hover:bg-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  : selected
+                    ? communityFeedFilterActiveBadgeClass
+                    : communityFeedFilterIdleBadgeClass,
               )}
             >
-              {variant === "global" ? null : (
-                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-              )}
+              <Icon
+                className={cn(
+                  "shrink-0",
+                  variant === "global" ? "h-4 w-4 sm:h-5 sm:w-5" : "h-[18px] w-[18px]",
+                )}
+                strokeWidth={2.25}
+                aria-hidden
+              />
               {t(tab.labelKey)}
             </button>
           );
         })}
       </div>
+
+      {showCategoryTabs && onCategoryFilterChange && categoryFilter ? (
+        <div className="-mx-2 md:hidden">
+          <div
+            className={cn(
+              "flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1 pt-0.5",
+              "[-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              "px-3 pe-6 scroll-ps-3 scroll-pe-6",
+            )}
+          >
+            <PublicPostsCategoryTabs
+              dense
+              startAligned
+              activeId={categoryFilter}
+              onSelect={(id) => {
+                onCategoryFilterChange(id);
+                if (id !== "other_help") {
+                  onOtherSubFilterChange?.(null);
+                }
+              }}
+            />
+            {categoryFilter === "other_help" ? (
+              <select
+                value={otherSubFilter ?? ""}
+                onChange={(e) => onOtherSubFilterChange?.(e.target.value || null)}
+                className={cn(
+                  "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-500/90 px-2.5 text-[11px] font-semibold text-white outline-none",
+                  "dark:bg-zinc-800 dark:text-zinc-200",
+                )}
+                aria-label={t("discoverHome.filters.pickSubcategory")}
+              >
+                <option value="">{t("discoverHome.filters.allOther")}</option>
+                {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {t(`otherHelpSubcategories.${sub.id}`)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <span className="w-2 shrink-0" aria-hidden />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,82 +1,127 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
+import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Home, MessageCircle, Scale, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
-import { HelpCircle } from "lucide-react";
-import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
+import {
+  COMMUNITY_FEED_POST_TYPE_TABS,
+  type CommunityFeedPostTypeFilter,
+} from "@/components/community/CommunityFeedHeader";
 
-/** Desktop left column for unsigned users on `/community/feed` — fills the nav sidebar slot. */
-export function GuestCommunityFeedAside({ className }: { className?: string }) {
-  const navigate = useNavigate();
-  const [aboutOpen, setAboutOpen] = useState(false);
+const LEGAL_PATHS = ["/terms", "/disclaimer", "/privacy", "/cookies"];
+
+const GUEST_NAV = [
+  { to: "/about", label: "About Us", icon: Users, match: (path: string) => path === "/about" },
+  { to: "/contact", label: "Contact", icon: MessageCircle, match: (path: string) => path === "/contact" },
+  { to: "/", label: "Home", icon: Home, match: (path: string) => path === "/" },
+  {
+    to: "/terms",
+    label: "Legal Hub",
+    icon: Scale,
+    match: (path: string) => LEGAL_PATHS.includes(path),
+  },
+] as const;
+
+export const GUEST_ASIDE_COLLAPSED_WIDTH_CLASS = "w-[6.5rem] lg:w-[7rem]";
+export const GUEST_ASIDE_EXPANDED_WIDTH_CLASS = "w-[15.5rem]";
+
+const itemClass = (active: boolean, expanded: boolean) =>
+  cn(
+    "group rounded-2xl transition-colors",
+    expanded
+      ? "flex w-full flex-row items-center gap-3 px-3 py-2.5 text-left"
+      : "flex flex-col items-center gap-2 px-1.5 py-2.5 text-center",
+    "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950",
+    "dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white",
+    active && "bg-zinc-100 text-zinc-950 dark:bg-zinc-800 dark:text-white",
+  );
+
+/** Desktop left column for unsigned users on `/community/feed`. */
+export function GuestCommunityFeedAside({
+  className,
+  expanded = false,
+  postTypeFilter,
+  onPostTypeFilterChange,
+}: {
+  className?: string;
+  expanded?: boolean;
+  postTypeFilter?: CommunityFeedPostTypeFilter;
+  onPostTypeFilterChange?: (filter: CommunityFeedPostTypeFilter) => void;
+}) {
+  const { pathname } = useLocation();
+  const { t } = useTranslation();
+  const widthClass = expanded
+    ? GUEST_ASIDE_EXPANDED_WIDTH_CLASS
+    : GUEST_ASIDE_COLLAPSED_WIDTH_CLASS;
 
   return (
-    <aside
-      className={cn(
-        "hidden md:flex w-[220px] shrink-0 flex-col self-start sticky top-32 max-h-[calc(100dvh-8rem)] overflow-y-auto",
-        "border-r border-border/40 bg-background/60 px-4 pt-6 pb-8",
-        className,
-      )}
-    >
-      <Link to="/" className="mb-6 flex flex-col items-center gap-2 text-center">
-        <img
-          src={BRAND_LOGO_SRC}
-          alt="Tebnu"
-          className="h-20 w-auto"
-          loading="eager"
-          decoding="async"
-        />
-        <span className="text-base font-black tracking-tight">Tebnu</span>
-      </Link>
+    <>
+      <div className={cn("hidden shrink-0 md:block", widthClass)} aria-hidden />
+      <aside
+        className={cn(
+          "hidden md:fixed md:left-0 md:top-[4.75rem] md:z-40 md:flex",
+          widthClass,
+          "flex-col px-2 pb-8 pt-3 transition-[width] duration-200",
+          className,
+        )}
+      >
+        <nav className="flex flex-col items-stretch gap-1" aria-label="Site">
+          {GUEST_NAV.map(({ to, label, icon: Icon, match }) => {
+            const active = match(pathname);
+            return (
+              <Link
+                key={to}
+                to={to}
+                title={label}
+                className={itemClass(active, expanded)}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon className="h-6 w-6 shrink-0" strokeWidth={2.2} aria-hidden />
+                <span
+                  className={cn(
+                    "leading-tight tracking-tight",
+                    expanded ? "text-sm font-bold" : "text-[10px] font-semibold",
+                  )}
+                >
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <p className="text-sm font-bold leading-snug text-foreground">
-        Join the community
-      </p>
-      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Create a free account to find help for any need, offer yours to others,
-        and connect with people nearby.
-      </p>
-
-      <div className="mt-5 flex flex-col gap-2">
-        <Button
-          type="button"
-          onClick={() => navigate("/onboarding")}
-          className={cn(
-            "rounded-xl font-bold",
-            TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
-          )}
-        >
-          Register
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate("/login")}
-          className="rounded-xl font-bold"
-        >
-          Sign in
-        </Button>
-      </div>
-
-      <div className="mt-auto pt-6">
-        <button
-          type="button"
-          onClick={() => setAboutOpen(true)}
-          className={cn(
-            "w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 px-3 py-2.5",
-            "text-xs font-black text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-          aria-label="What is Tebnu?"
-        >
-          <HelpCircle className="h-4 w-4" aria-hidden />
-          What is tebnu?
-        </button>
-      </div>
-
-      <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
-    </aside>
+        {postTypeFilter && onPostTypeFilterChange ? (
+          <nav
+            className="mt-4 flex flex-col items-stretch gap-1 border-t border-zinc-200/70 pt-4 dark:border-white/10"
+            aria-label={t("feed.filters.filterPostsByType")}
+          >
+            {COMMUNITY_FEED_POST_TYPE_TABS.map(({ id, labelKey, Icon }) => {
+              const active = id === postTypeFilter;
+              const label = t(labelKey);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  title={label}
+                  aria-selected={active}
+                  onClick={() => onPostTypeFilterChange(id)}
+                  className={itemClass(active, expanded)}
+                >
+                  <Icon className="h-6 w-6 shrink-0" strokeWidth={2.2} aria-hidden />
+                  <span
+                    className={cn(
+                      "leading-tight tracking-tight",
+                      expanded ? "text-sm font-bold" : "text-[10px] font-semibold",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        ) : null}
+      </aside>
+    </>
   );
 }

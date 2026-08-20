@@ -1,8 +1,12 @@
 import { cn } from "@/lib/utils";
 
-/** Signed-in app header — desktop dark matches page background. */
+/** Signed-in app header — solid on mobile; desktop is frosted so content can show through. */
 export const signedInAppHeaderBgClass =
-  "bg-white dark:bg-zinc-800 md:dark:bg-background";
+  "bg-white dark:bg-zinc-800 md:bg-transparent md:dark:bg-transparent";
+
+/** Frosted fill for the desktop header’s content column (sidebar slot stays clear). */
+export const signedInDesktopHeaderGlassClass =
+  "bg-white/70 shadow-none backdrop-blur-xl backdrop-saturate-150 dark:bg-zinc-950/55";
 
 /** Plain icon control — signed-in fixed header (no glass pill). */
 export const signedInHeaderIconBtnClass = cn(

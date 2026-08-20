@@ -110,7 +110,7 @@ export default function LegalPage() {
 
       <main className="flex-1 pt-[4.25rem] md:pt-32 px-4 md:px-6 pb-20 max-w-7xl mx-auto w-full">
         {/* Page Header */}
-        <div className="mb-10 text-center md:text-left relative overflow-hidden p-8 md:p-12 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white shadow-lg border border-slate-800">
+        <div className="mb-10 text-center md:text-left relative overflow-hidden p-8 md:p-12 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white shadow-lg">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4 bg-gradient-to-r from-emerald-400 via-emerald-300 to-lime-300 bg-clip-text text-transparent">
             {uiTexts.title}
@@ -124,7 +124,7 @@ export default function LegalPage() {
           {/* Sidebar Navigation */}
           <div className="lg:col-span-1 space-y-4">
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex flex-col gap-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-zinc-200/60 dark:border-slate-800 shadow-sm">
+            <nav className="hidden lg:flex flex-col gap-2 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm">
               {DOCS_CONFIG.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -156,9 +156,9 @@ export default function LegalPage() {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-full font-bold whitespace-nowrap text-sm transition-all border ${isActive
-                        ? "bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white shadow-sm"
-                        : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800"
+                    className={`flex items-center gap-2 px-5 py-3 rounded-full font-bold whitespace-nowrap text-sm transition-all ${isActive
+                        ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+                        : "bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-slate-900 dark:text-slate-400"
                       }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -169,7 +169,7 @@ export default function LegalPage() {
             </div>
 
             {/* Document Language Override Selector */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-zinc-200/60 dark:border-slate-800 shadow-sm space-y-3">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm space-y-3">
               <div className="flex items-center gap-2 text-zinc-800 dark:text-slate-200 font-bold text-sm">
                 <Globe className="w-4 h-4 text-primary" />
                 <span>{uiTexts.langSelectorLabel}</span>
@@ -181,9 +181,9 @@ export default function LegalPage() {
                     <button
                       key={langCode}
                       onClick={() => setDocLang(langCode)}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${isCurrent
-                          ? "bg-primary text-white border-primary shadow-sm"
-                          : "bg-zinc-50 hover:bg-zinc-100 border-zinc-200 text-zinc-700 dark:bg-slate-800/30 dark:hover:bg-slate-800/80 dark:border-slate-800 dark:text-slate-300"
+                      className={`py-2 px-3 text-xs font-bold rounded-lg transition-all ${isCurrent
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-zinc-50 hover:bg-zinc-100 text-zinc-700 dark:bg-slate-800/30 dark:hover:bg-slate-800/80 dark:text-slate-300"
                         }`}
                     >
                       {LANG_LABELS[langCode]}
@@ -198,11 +198,11 @@ export default function LegalPage() {
           <div className="lg:col-span-3">
             <div
               dir={isRtl ? "rtl" : "ltr"}
-              className={`bg-white dark:bg-slate-900 shadow-sm rounded-3xl p-6 md:p-12 border border-zinc-200/60 dark:border-slate-800 relative transition-all ${isRtl ? "text-right" : "text-left"
+              className={`bg-white dark:bg-slate-900 shadow-sm rounded-3xl p-6 md:p-12 relative transition-all ${isRtl ? "text-right" : "text-left"
                 }`}
             >
               {/* Header inside Card */}
-              <div className="border-b border-zinc-100 dark:border-slate-800 pb-6 mb-8">
+              <div className="pb-6 mb-8">
                 <h2 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white mb-2">
                   {doc.title}
                 </h2>
@@ -223,7 +223,7 @@ export default function LegalPage() {
               <div className="space-y-10">
                 {doc.sections.map((section, idx) => (
                   <div key={idx} className="group">
-                    <h3 className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 bg-zinc-50 dark:bg-slate-800/40 p-3 rounded-lg border-l-4 border-primary dark:border-emerald-500">
+                    <h3 className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 bg-zinc-50 dark:bg-slate-800/40 p-3 rounded-lg">
                       {section.title}
                     </h3>
                     <ul className="space-y-4">

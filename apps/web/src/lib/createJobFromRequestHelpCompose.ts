@@ -19,6 +19,14 @@ export type RequestHelpComposeJobInput = {
   caption?: string | null;
   profilePostId: string;
   mediaItems?: ProfilePostMediaItem[];
+  pickup?: {
+    from_address: string;
+    from_lat?: number;
+    from_lng?: number;
+    to_address: string;
+    to_lat?: number;
+    to_lng?: number;
+  } | null;
 };
 
 export async function createJobRequestFromRequestHelpCompose(
@@ -58,6 +66,16 @@ export async function createJobRequestFromRequestHelpCompose(
       profile_post_id: input.profilePostId,
       ...(input.customCategory ? { custom_category: input.customCategory } : {}),
       ...(imageUrls.length > 0 ? { images: imageUrls } : {}),
+      ...(input.pickup
+        ? {
+            from_address: input.pickup.from_address,
+            from_lat: input.pickup.from_lat,
+            from_lng: input.pickup.from_lng,
+            to_address: input.pickup.to_address,
+            to_lat: input.pickup.to_lat,
+            to_lng: input.pickup.to_lng,
+          }
+        : {}),
     },
   };
 

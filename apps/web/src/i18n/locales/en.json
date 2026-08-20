@@ -479,7 +479,8 @@
       "alreadySavedProfile": "Already in Saved",
       "couldNotSaveProfile": "Could not save profile",
       "signInToSaveProfile": "Sign in to save profiles",
-      "viewProfile": "View {{name}}'s profile"
+      "viewProfile": "View {{name}}'s profile",
+      "showFullRoute": "Show full route"
     },
     "sidePanel": {
       "ariaLabel": "Posts from your favorites and popular posts",

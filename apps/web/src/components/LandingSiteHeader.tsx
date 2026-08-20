@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,8 +9,12 @@ import {
   Home,
   MessageCircle,
   GalleryHorizontal,
+  Scale,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
@@ -35,6 +39,12 @@ export type LandingSiteHeaderProps = {
   homeLinkRight?: boolean;
   /** Hide Post Feed nav item (e.g. already on `/community/feed`). */
   hidePostFeedLink?: boolean;
+  /** Hide About / Contact / Home in the desktop header (moved to a guest sidebar). */
+  hideDesktopNavLinks?: boolean;
+  /** Hide the in-header “Tebnu” wordmark. */
+  hideBrand?: boolean;
+  /** Replaces the desktop center nav (e.g. category filters on the guest feed). */
+  centerContent?: ReactNode;
   /** In document flow — scrolls with the page instead of fixed overlay. */
   scrollWithPage?: boolean;
   /** Full-bleed bar (e.g. community feed guest header). */
@@ -46,10 +56,18 @@ export type LandingSiteHeaderProps = {
   mobileMatchLanding?: boolean;
   /** Keep the pill fixed at the top on mobile (e.g. guest community feed). */
   fixedOnMobile?: boolean;
+  /**
+   * Edge-to-edge bar pinned at the top (community feed). Solid zinc matching profile
+   * cards, then frosted glass once the page is scrolled over content.
+   */
+  fullBleedTop?: boolean;
   /** Landing hero: plain white “Register” text — no logo or filled pill. */
   simpleRegisterCta?: boolean;
   /** Landing: open “What is tebnu?” instead of navigating home when brand is clicked. */
   onBrandClick?: () => void;
+  /** Guest feed: desktop hamburger that expands/collapses the left sidebar. */
+  desktopSidebarOpen?: boolean;
+  onDesktopSidebarToggle?: () => void;
 };
 
 const brandHeaderBgClass =
@@ -66,6 +84,9 @@ export function LandingSiteHeader({
   hideLoginCta = false,
   homeLinkRight = false,
   hidePostFeedLink = false,
+  hideDesktopNavLinks = false,
+  hideBrand = false,
+  centerContent,
   scrollWithPage = false,
   fullWidth = false,
   className,
@@ -73,21 +94,38 @@ export function LandingSiteHeader({
   hideBackButtonMobile = false,
   mobileMatchLanding = false,
   fixedOnMobile = false,
+  fullBleedTop = false,
   simpleRegisterCta = false,
   onBrandClick,
+  desktopSidebarOpen = false,
+  onDesktopSidebarToggle,
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const isDarkTheme = theme === "dark";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!fullBleedTop) return;
+    const onScroll = () => setHeaderScrolled(window.scrollY > 16);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [fullBleedTop]);
 
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
   const isLandingGlass = variant === "landingGlass";
+  const isFeedChrome = fullBleedTop;
+  const isMutedChrome = variant === "glassy" || isFeedChrome;
 
-  const linkColorClass =
-    variant === "glassy"
+  const linkColorClass = isFeedChrome
+    ? "text-zinc-800 hover:text-zinc-950 dark:text-zinc-100 dark:hover:text-white"
+    : variant === "glassy"
       ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
       : "text-white/90 hover:text-white";
 
@@ -96,47 +134,59 @@ export function LandingSiteHeader({
     linkColorClass
   );
 
-  const headerBgClass = cn(
-    isLandingGlass
-      ? "max-md:border-0 max-md:bg-white/95 max-md:shadow-none max-md:backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
-      : variant === "glassy"
-        ? glassyHeaderBgClass
-        : brandHeaderBgClass,
-    mobileMatchLanding &&
-      variant !== "landingGlass" &&
-      "max-md:border max-md:border-white/20 max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:shadow-2xl",
-  );
+  const headerBgClass = isFeedChrome
+    ? cn(
+        "border-0 shadow-none ring-0",
+        headerScrolled
+          ? "bg-zinc-100/65 backdrop-blur-xl backdrop-saturate-150 dark:bg-background/65"
+          : "bg-zinc-100 dark:bg-background",
+      )
+    : cn(
+        isLandingGlass
+          ? "max-md:border-0 max-md:bg-white/95 max-md:shadow-none max-md:backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
+          : variant === "glassy"
+            ? glassyHeaderBgClass
+            : brandHeaderBgClass,
+        mobileMatchLanding &&
+          variant !== "landingGlass" &&
+          "max-md:border max-md:border-white/20 max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:shadow-2xl",
+      );
 
-  const backBtnClass = variant === "glassy"
-    ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
+  const backBtnClass = isMutedChrome
+    ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
     : "border-white/25 bg-white/10 text-white hover:bg-white/15";
 
   const menuIconClass = cn(
-    variant === "glassy"
+    isFeedChrome
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-      : isLandingGlass
-        ? "max-md:text-slate-900 max-md:hover:text-slate-700 md:text-white md:hover:text-white/80"
-        : "text-white hover:text-white/80",
-    mobileMatchLanding &&
+      : variant === "glassy"
+        ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
+        : isLandingGlass
+          ? "max-md:text-slate-900 max-md:hover:text-slate-700 md:text-white md:hover:text-white/80"
+          : "text-white hover:text-white/80",
+    !isFeedChrome &&
+      mobileMatchLanding &&
       variant !== "landingGlass" &&
       "max-md:text-white max-md:hover:text-white/80",
   );
 
   const signInBtnClass = cn(
-    variant === "glassy"
-      ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
-      : isLandingGlass
-        ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10"
-        : "text-white hover:bg-white/10",
-    mobileMatchLanding &&
+    isFeedChrome
+      ? "text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-700/50"
+      : variant === "glassy"
+        ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+        : isLandingGlass
+          ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10"
+          : "text-white hover:bg-white/10",
+    !isFeedChrome &&
+      mobileMatchLanding &&
       variant !== "landingGlass" &&
       "max-md:text-white max-md:hover:bg-white/10",
   );
 
-  const navContainerTextClass =
-    variant === "glassy"
-      ? "text-zinc-800 dark:text-zinc-200"
-      : "text-white";
+  const navContainerTextClass = isMutedChrome
+    ? "text-zinc-800 dark:text-zinc-200"
+    : "text-white";
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -163,7 +213,7 @@ export function LandingSiteHeader({
     <button
       type="button"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
-      className={cn("md:hidden p-2 transition-colors shrink-0", menuIconClass)}
+      className={cn("md:hidden shrink-0 p-2 pe-0.5 transition-colors", menuIconClass)}
       aria-label="Toggle menu"
     >
       {isMenuOpen ? (
@@ -176,8 +226,25 @@ export function LandingSiteHeader({
 
   const landingBrandTextClass = cn(
     "hidden text-lg font-black tracking-tight md:inline md:text-xl lg:text-2xl",
-    "text-white",
+    isFeedChrome ? "text-zinc-900 dark:text-white" : "text-white",
     leftLogoTextClassName,
+  );
+
+  const headerBrandMark = isFeedChrome ? (
+    <span className="flex items-center gap-0.5 md:gap-1">
+      <img
+        src={BRAND_LOGO_SRC}
+        alt=""
+        className="h-12 w-auto md:h-14 lg:h-16"
+        loading="eager"
+        decoding="async"
+      />
+      <span className="hidden text-lg font-black tracking-tight text-zinc-900 md:inline md:text-xl lg:text-2xl dark:text-white">
+        tebnu
+      </span>
+    </span>
+  ) : (
+    <span className={landingBrandTextClass}>Tebnu</span>
   );
 
   return (
@@ -222,14 +289,17 @@ export function LandingSiteHeader({
 
       <header
         className={cn(
-          "flex items-center px-4 transition-all duration-500 md:px-8 lg:px-12",
-          isLandingGlass
-            ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:fixed md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[92%] md:max-w-5xl md:rounded-full md:min-h-[60px] md:py-3"
-            : cn(
-                "relative min-h-[52px] py-3.5 backdrop-blur-md md:min-h-[60px] md:px-8 md:py-4",
-              ),
+          "flex items-center px-4 transition-all duration-300 md:px-8 lg:px-12",
+          isFeedChrome
+            ? "relative sticky top-0 z-50 min-h-[52px] w-full max-w-none rounded-none px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
+            : isLandingGlass
+              ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:fixed md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[92%] md:max-w-5xl md:rounded-full md:min-h-[60px] md:py-3"
+              : cn(
+                  "relative min-h-[52px] py-3.5 backdrop-blur-md md:min-h-[60px] md:px-8 md:py-4",
+                ),
           headerBgClass,
-          !isLandingGlass &&
+          !isFeedChrome &&
+            !isLandingGlass &&
             (scrollWithPage && (fullWidth || isLandingGlass)
               ? mobileMatchLanding
                 ? "relative z-auto mb-4 max-md:mx-auto max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:community-feed-guest-header md:w-full md:max-w-none md:rounded-none md:border-x-0 md:shadow-md"
@@ -243,9 +313,28 @@ export function LandingSiteHeader({
         )}
       >
         <div className="flex w-full items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
-            {isLandingGlass ? mobileMenuButton : null}
-            {!isLandingGlass ? (
+          <div className="flex min-w-0 items-center gap-0 sm:gap-3 md:gap-3">
+            {onDesktopSidebarToggle ? (
+              <button
+                type="button"
+                onClick={onDesktopSidebarToggle}
+                className={cn(
+                  "hidden h-10 w-16 shrink-0 items-center justify-center rounded-2xl transition-colors md:inline-flex",
+                  menuIconClass,
+                  desktopSidebarOpen && "bg-zinc-200/70 dark:bg-zinc-800",
+                )}
+                aria-label={desktopSidebarOpen ? "Collapse menu" : "Open menu"}
+                aria-expanded={desktopSidebarOpen}
+              >
+                {desktopSidebarOpen ? (
+                  <X className="h-7 w-7" strokeWidth={2.2} />
+                ) : (
+                  <Menu className="h-7 w-7" strokeWidth={2.2} />
+                )}
+              </button>
+            ) : null}
+            {mobileMenuButton}
+            {!isLandingGlass && !hideBrand ? (
               onBrandClick ? (
                 <button
                   type="button"
@@ -253,7 +342,7 @@ export function LandingSiteHeader({
                   className="flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99]"
                   aria-label="What is Tebnu?"
                 >
-                  <span className={landingBrandTextClass}>Tebnu</span>
+                  {headerBrandMark}
                 </button>
               ) : (
                 <Link
@@ -261,7 +350,7 @@ export function LandingSiteHeader({
                   className="flex shrink-0 items-center"
                   aria-label="Tebnu home"
                 >
-                  <span className={landingBrandTextClass}>Tebnu</span>
+                  {headerBrandMark}
                 </Link>
               )
             ) : null}
@@ -288,17 +377,22 @@ export function LandingSiteHeader({
                 ) : null}
               </>
             ) : null}
-            {!isLandingGlass ? mobileMenuButton : null}
           </div>
 
           <div
             className={cn(
               "flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-8",
-              !isLandingGlass && "md:justify-start md:pl-2",
-              homeLinkRight && !user && "md:justify-center md:pl-0",
+              !isLandingGlass && !centerContent && "md:justify-start md:pl-2",
+              (homeLinkRight && !user) && "md:justify-center md:pl-0",
             )}
           >
-            {user ? (
+            {centerContent ? (
+              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden -translate-y-1/2 justify-center px-20 sm:px-24 md:flex md:px-36">
+                <div className="pointer-events-auto min-w-0 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {centerContent}
+                </div>
+              </div>
+            ) : user ? (
               <div className="flex items-center gap-4 md:gap-8 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className={cn(
@@ -339,7 +433,7 @@ export function LandingSiteHeader({
                   {postFeedLinkDesktop}
                 </div>
               </div>
-            ) : (
+            ) : hideDesktopNavLinks ? null : (
               <div className={cn("hidden md:flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
                 <Link to="/about" className={dynamicNavLinkClass}>
                   About Us
@@ -368,7 +462,7 @@ export function LandingSiteHeader({
                 </Link>
                 <Link
                   to="/"
-                  className={cn("md:hidden inline-flex px-2 py-2 text-sm font-bold", variant === "glassy" ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white" : "text-white hover:text-white/90")}
+                  className={cn("md:hidden inline-flex px-2 py-2 text-sm font-bold", isMutedChrome ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white" : "text-white hover:text-white/90")}
                 >
                   Home
                 </Link>
@@ -376,6 +470,26 @@ export function LandingSiteHeader({
             ) : null}
             {!hideLoginCta && !user ? (
               <div className="flex items-center gap-1.5 md:gap-2">
+                {isLandingGlass ? null : (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDarkTheme}
+                  onClick={toggleTheme}
+                  className={cn(
+                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+                    signInBtnClass,
+                  )}
+                  aria-label={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
+                  title={isDarkTheme ? "Dark mode" : "Light mode"}
+                >
+                  {isDarkTheme ? (
+                    <Sun className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                  ) : (
+                    <Moon className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                  )}
+                </button>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
@@ -398,10 +512,11 @@ export function LandingSiteHeader({
                         ? "max-md:bg-orange-600 max-md:text-white max-md:hover:bg-orange-700 md:bg-white md:text-orange-600 md:hover:bg-white/90 shadow-sm"
                         : cn(
                             "shadow-sm",
-                            variant === "glassy"
+                            isMutedChrome
                               ? "bg-orange-600 text-white hover:bg-orange-700"
                               : "bg-white text-orange-600 hover:bg-white/90",
-                            mobileMatchLanding &&
+                            !isFeedChrome &&
+                              mobileMatchLanding &&
                               "max-md:bg-white max-md:text-orange-600 max-md:hover:bg-white/90",
                           ),
                   )}
@@ -410,10 +525,18 @@ export function LandingSiteHeader({
                 </Button>
               </div>
             ) : user ? (
-              <div className="hidden md:flex items-center gap-6 text-white border-l border-white/20 pl-6">
+              <div className={cn(
+                "hidden md:flex items-center gap-6 border-l pl-6",
+                isFeedChrome
+                  ? "border-zinc-300/70 text-zinc-800 dark:border-white/20 dark:text-white"
+                  : "border-white/20 text-white",
+              )}>
                 <Link
                   to={dashboardPath}
-                  className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors"
+                  className={cn(
+                    "flex items-center gap-1.5 text-sm font-bold transition-colors",
+                    isFeedChrome ? "hover:text-zinc-950 dark:hover:text-white/80" : "hover:text-white/80",
+                  )}
                 >
                   <Home className="w-4 h-4" /> Dashboard
                 </Link>
@@ -425,7 +548,11 @@ export function LandingSiteHeader({
                 onClick={() => navigate(dashboardPath)}
                 className={cn(
                   "md:hidden p-2 transition-colors",
-                  isLandingGlass ? "text-slate-900 md:text-white" : "text-white",
+                  isFeedChrome
+                    ? "text-zinc-800 dark:text-white"
+                    : isLandingGlass
+                      ? "text-slate-900 md:text-white"
+                      : "text-white",
                 )}
               >
                 <Home className="w-6 h-6" />
@@ -460,6 +587,13 @@ export function LandingSiteHeader({
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Home className="w-6 h-6 text-primary" /> Home
+              </Link>
+              <Link
+                to="/terms"
+                className="text-xl font-black text-slate-900 flex items-center gap-4"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Scale className="w-6 h-6 text-primary" /> Legal Hub
               </Link>
               {(user || !hideLoginCta) && (
                 <>

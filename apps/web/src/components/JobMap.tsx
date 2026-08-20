@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import {
   GoogleMap,
   useJsApiLoader,
@@ -86,7 +86,13 @@ interface JobMapProps {
   fitBoundsPadding?: number | google.maps.Padding;
   /** Client/request pin while a route is shown (e.g. pickup & delivery). */
   clientPin?: { lat: number; lng: number } | null;
+  /** Allow pan, pinch, and scroll-wheel zoom (feed pickup maps). */
+  interactive?: boolean;
 }
+
+export type JobMapHandle = {
+  fitRoute: () => void;
+};
 
 /**
  * Serialized pin sets for effect deps — avoids tearing down markers/fitBounds when the parent
@@ -376,17 +382,21 @@ function livePresenceIcon(p: LivePresenceMapPin): google.maps.Icon {
   );
 }
 
-export default function JobMap({
-  job,
-  onRouteInfo,
-  onClose,
-  darkMode,
-  companionPins = [],
-  livePresencePins = [],
-  companionMicroMotion = false,
-  fitBoundsPadding = 52,
-  clientPin = null,
-}: JobMapProps) {
+const JobMap = forwardRef<JobMapHandle, JobMapProps>(function JobMap(
+  {
+    job,
+    onRouteInfo,
+    onClose,
+    darkMode,
+    companionPins = [],
+    livePresencePins = [],
+    companionMicroMotion = false,
+    fitBoundsPadding = 52,
+    clientPin = null,
+    interactive = false,
+  },
+  ref,
+) {
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: mapsApiKey,
@@ -418,6 +428,44 @@ export default function JobMap({
   const directionsBoundsKeyStable = directionsRouteBoundsKey(directions);
 
   void companionMicroMotion;
+
+  const fitRouteOnMap = useCallback(() => {
+    const map = mapInstRef.current;
+    if (!map || typeof google === "undefined") return;
+
+    const bounds = new google.maps.LatLngBounds();
+    let hasPoint = false;
+    const extend = (lat: number, lng: number) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      bounds.extend({ lat, lng });
+      hasPoint = true;
+    };
+
+    if (directions?.routes?.[0]?.bounds) {
+      bounds.union(directions.routes[0].bounds);
+      hasPoint = true;
+    }
+
+    const details = job?.service_details as
+      | {
+          from_lat?: unknown;
+          from_lng?: unknown;
+          to_lat?: unknown;
+          to_lng?: unknown;
+        }
+      | undefined;
+    if (details) {
+      extend(Number(details.from_lat), Number(details.from_lng));
+      extend(Number(details.to_lat), Number(details.to_lng));
+    }
+    if (markerPosition) extend(markerPosition.lat, markerPosition.lng);
+    if (clientPin) extend(clientPin.lat, clientPin.lng);
+
+    if (!hasPoint) return;
+    map.fitBounds(bounds, fitBoundsPadding);
+  }, [clientPin, directions, fitBoundsPadding, job?.service_details, markerPosition]);
+
+  useImperativeHandle(ref, () => ({ fitRoute: fitRouteOnMap }), [fitRouteOnMap]);
 
   /** Imperative helpers / live-presence dots — avoids react-google-maps Marker edge cases beside routes. */
   useEffect(() => {
@@ -565,6 +613,19 @@ export default function JobMap({
     markerPosKeyStable,
     // intentional: keyed props only — avoids fitBounds jitter when polls merge identical job rows
     // companionPins / directions / markerPosition come from closure at key-change time.
+  ]);
+
+  useEffect(() => {
+    if (!interactive || !mapReady || !isLoaded) return;
+    fitRouteOnMap();
+    // fitRouteOnMap omitted: parent rerenders must not reset a user pan/zoom.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    interactive,
+    mapReady,
+    isLoaded,
+    directionsBoundsKeyStable,
+    markerPosKeyStable,
   ]);
 
   // Detect Google Maps auth/runtime errors and show actionable guidance.
@@ -785,8 +846,9 @@ export default function JobMap({
       )}
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        zoom={10}
-        center={center}
+        {...(interactive
+          ? { defaultZoom: 10, defaultCenter: center }
+          : { zoom: 10, center })}
         onLoad={(m) => {
           mapInstRef.current = m;
           setMapReady(true);
@@ -800,10 +862,15 @@ export default function JobMap({
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false,
-          draggable: false,
-          zoomControl: false,
-          scrollwheel: false,
-          disableDoubleClickZoom: true,
+          zoomControl: interactive,
+          zoomControlOptions: interactive
+            ? { position: google.maps.ControlPosition.LEFT_BOTTOM }
+            : undefined,
+          gestureHandling: interactive ? "greedy" : "none",
+          draggable: interactive,
+          scrollwheel: interactive,
+          disableDoubleClickZoom: !interactive,
+          keyboardShortcuts: interactive,
           styles: darkMode ? darkMapStyles : undefined,
         }}
       >
@@ -851,4 +918,8 @@ export default function JobMap({
       </GoogleMap>
     </div>
   );
-}
+});
+
+JobMap.displayName = "JobMap";
+
+export default JobMap;

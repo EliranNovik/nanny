@@ -467,7 +467,8 @@
       "alreadySavedProfile": "Déjà enregistré",
       "couldNotSaveProfile": "Impossible d'enregistrer le profil",
       "signInToSaveProfile": "Connectez-vous pour enregistrer des profils",
-      "viewProfile": "Voir le profil de {{name}}"
+      "viewProfile": "Voir le profil de {{name}}",
+      "showFullRoute": "Afficher l'itinéraire complet"
     },
     "sidePanel": {
       "ariaLabel": "Publications des favoris et publications populaires",

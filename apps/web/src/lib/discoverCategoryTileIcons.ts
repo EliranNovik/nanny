@@ -1,7 +1,17 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Baby,
+  FileText,
+  GraduationCap,
+  Heart,
+  HeartHandshake,
   HelpCircle,
+  Home,
+  Palette,
+  PartyPopper,
+  PawPrint,
+  Scissors,
+  ShoppingCart,
   Sparkles,
   Truck,
   UtensilsCrossed,
@@ -63,5 +73,67 @@ export const HIRE_CATEGORY_TILE_UI: Record<
       "bg-zinc-500/[0.08] ring-zinc-400/25 dark:bg-zinc-500/15 dark:ring-zinc-500/30",
     iconClass: "text-zinc-700 dark:text-zinc-300",
     badgeIconClass: "text-zinc-700",
+  },
+};
+
+/** Icons for `other_help` subcategories (feed titles, compose, create-job). */
+export const OTHER_HELP_SUBCATEGORY_UI: Record<
+  string,
+  { Icon: LucideIcon; iconClass: string; badgeIconClass: string }
+> = {
+  beauty_personal_care: {
+    Icon: Scissors,
+    iconClass: "text-pink-600 dark:text-pink-400",
+    badgeIconClass: "text-pink-700",
+  },
+  heavy_lifting_moving: {
+    Icon: Truck,
+    iconClass: "text-slate-700 dark:text-slate-300",
+    badgeIconClass: "text-slate-700",
+  },
+  coaching_lessons: {
+    Icon: GraduationCap,
+    iconClass: "text-indigo-600 dark:text-indigo-400",
+    badgeIconClass: "text-indigo-700",
+  },
+  shopping_errands: {
+    Icon: ShoppingCart,
+    iconClass: "text-emerald-600 dark:text-emerald-400",
+    badgeIconClass: "text-emerald-700",
+  },
+  pet_help: {
+    Icon: PawPrint,
+    iconClass: "text-amber-600 dark:text-amber-400",
+    badgeIconClass: "text-amber-700",
+  },
+  elderly_help: {
+    Icon: Heart,
+    iconClass: "text-red-600 dark:text-red-400",
+    badgeIconClass: "text-red-700",
+  },
+  paperwork_bureaucracy: {
+    Icon: FileText,
+    iconClass: "text-blue-600 dark:text-blue-400",
+    badgeIconClass: "text-blue-700",
+  },
+  event_help: {
+    Icon: PartyPopper,
+    iconClass: "text-fuchsia-600 dark:text-fuchsia-400",
+    badgeIconClass: "text-fuchsia-700",
+  },
+  home_maintenance: {
+    Icon: Home,
+    iconClass: "text-orange-600 dark:text-orange-400",
+    badgeIconClass: "text-orange-700",
+  },
+  digital_creative: {
+    Icon: Palette,
+    iconClass: "text-violet-600 dark:text-violet-400",
+    badgeIconClass: "text-violet-700",
+  },
+  religious_community: {
+    Icon: HeartHandshake,
+    iconClass: "text-teal-600 dark:text-teal-400",
+    badgeIconClass: "text-teal-700",
   },
 };

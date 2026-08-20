@@ -45,7 +45,80 @@ type GlobalFeedPostLike = {
   post_types?: { id: string; name?: string } | null;
   post_metadata?: Record<string, unknown> | null;
   custom_category?: string | null;
+  row?: {
+    service_type?: string | null;
+    service_details?: Record<string, unknown> | null;
+  };
 };
+
+export type FeedPickupRoute = {
+  from_lat: number;
+  from_lng: number;
+  to_lat: number;
+  to_lng: number;
+  from_address?: string | null;
+  to_address?: string | null;
+};
+
+function finiteCoord(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function pickupRouteFromDetails(
+  details: Record<string, unknown> | null | undefined,
+): FeedPickupRoute | null {
+  if (!details) return null;
+  const from_lat = finiteCoord(details.from_lat ?? details.fromLat);
+  const from_lng = finiteCoord(details.from_lng ?? details.fromLng);
+  const to_lat = finiteCoord(details.to_lat ?? details.toLat);
+  const to_lng = finiteCoord(details.to_lng ?? details.toLng);
+  if (from_lat == null || from_lng == null || to_lat == null || to_lng == null) {
+    return null;
+  }
+  const from_address =
+    typeof details.from_address === "string"
+      ? details.from_address
+      : typeof details.fromAddress === "string"
+        ? details.fromAddress
+        : null;
+  const to_address =
+    typeof details.to_address === "string"
+      ? details.to_address
+      : typeof details.toAddress === "string"
+        ? details.toAddress
+        : null;
+  return { from_lat, from_lng, to_lat, to_lng, from_address, to_address };
+}
+
+/** From/to route for pickup & delivery cards (job request details or post metadata). */
+export function feedPostPickupRoute(post: GlobalFeedPostLike): FeedPickupRoute | null {
+  const fromRow = pickupRouteFromDetails(post.row?.service_details ?? undefined);
+  if (fromRow) return fromRow;
+  const meta = post.post_metadata;
+  if (!meta) return null;
+  const nested =
+    meta.service_details && typeof meta.service_details === "object"
+      ? pickupRouteFromDetails(meta.service_details as Record<string, unknown>)
+      : null;
+  if (nested) return nested;
+  return pickupRouteFromDetails(meta);
+}
+
+function feedMetaString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Other-help subcategory id (`pet_help`, …) or free-form custom text. */
+export function feedPostCustomCategory(post: GlobalFeedPostLike): string | null {
+  return (
+    feedMetaString(post.post_metadata?.custom_category) ||
+    feedMetaString(post.post_metadata?.other_type) ||
+    feedMetaString(post.custom_category) ||
+    feedMetaString(post.row?.service_details?.other_type) ||
+    null
+  );
+}
 
 export function feedCategoryLabel(
   t: TFunction,
@@ -70,27 +143,23 @@ export function feedCategoryLabel(
 export function feedPostServiceCategoryMeta(
   t: TFunction,
   post: GlobalFeedPostLike,
-): { id: string; label: string } | null {
-  if (post.source === "job_request" && post.post_metadata?.category) {
-    const id = String(post.post_metadata.category);
-    return { id, label: feedCategoryLabel(t, id) };
-  }
-  if (post.source !== "post" || !post.post_metadata) return null;
+): { id: string; iconId: string; label: string } | null {
   const typeId = feedPostTypeId(post);
   const categoryId =
-    typeId === "request_help"
-      ? post.post_metadata.category
-      : typeId === "offer_service"
-        ? post.post_metadata.service
-        : null;
+    post.source === "job_request"
+      ? post.post_metadata?.category ?? post.row?.service_type
+      : typeId === "request_help"
+        ? post.post_metadata?.category
+        : typeId === "offer_service"
+          ? post.post_metadata?.service ?? post.post_metadata?.category
+          : null;
   if (!categoryId) return null;
   const id = String(categoryId);
-  const customCategory =
-    typeof post.post_metadata.custom_category === "string"
-      ? post.post_metadata.custom_category
-      : post.custom_category;
+  const customCategory = feedPostCustomCategory(post);
+  const iconId = id === "other_help" && customCategory ? customCategory : id;
   return {
     id,
+    iconId,
     label: feedCategoryLabel(t, id, customCategory),
   };
 }
@@ -183,6 +252,19 @@ export function feedPostTitle(
   generatedCopy: GeneratedPostCopy | null,
   categoryLabel: string | null | undefined,
 ): string | null {
+  const typeId = feedPostTypeId(post);
+  const isHelpRequest = typeId === "request_help" || post.source === "job_request";
+  const customCategory = feedPostCustomCategory(post);
+  const trimmedCategory = categoryLabel?.trim() || "";
+
+  // Other-help subcategories must use the subcategory label, not generic "Other".
+  if (trimmedCategory && customCategory) {
+    if (isHelpRequest) {
+      return t("feed.global.categoryHelpTitle", { category: trimmedCategory });
+    }
+    if (typeId === "offer_service") return trimmedCategory;
+  }
+
   if (generatedCopy?.title?.trim()) return generatedCopy.title.trim();
 
   if (post.source === "post" && post.post_type_id === "event") {
@@ -190,12 +272,8 @@ export function feedPostTitle(
     if (typeof name === "string" && name.trim()) return name.trim();
   }
 
-  const typeId = feedPostTypeId(post);
-  if (
-    (typeId === "request_help" || post.source === "job_request") &&
-    categoryLabel?.trim()
-  ) {
-    return t("feed.global.categoryHelpTitle", { category: categoryLabel.trim() });
+  if (isHelpRequest && trimmedCategory) {
+    return t("feed.global.categoryHelpTitle", { category: trimmedCategory });
   }
 
   return null;
@@ -488,9 +566,9 @@ export const globalFeedMobileFeedAreaClass =
 /** Mobile global feed page background — mirrors native DiscoverPalette background. */
 export const globalFeedMobilePageClass = globalFeedMobileFeedAreaClass;
 
-/** Mobile global feed card shell — edge-to-edge, elevated surface, tight vertical gap. */
+/** Mobile global feed card shell — full width, rounded top and bottom. */
 export const globalFeedMobileCardClass =
-  "max-md:rounded-none max-md:mb-0.5 max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
+  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
 
 /** Mobile card inner horizontal padding. */
 export const globalFeedMobileCardPadClass = "max-md:px-1";

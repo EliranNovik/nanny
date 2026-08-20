@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { inboxAvatarFallbackClass } from "@/lib/inboxAvatarFallback";
 import {
   mobileTallBottomSheetDialogClass,
   mobileBottomSheetSlideAnimationClass,
@@ -609,7 +610,7 @@ export default function MessagesPage() {
     return (
       <div
         data-messages-page=""
-        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background"
+        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background md:pt-16"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
           <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
@@ -649,7 +650,7 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:pt-16"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
@@ -745,13 +746,13 @@ export default function MessagesPage() {
           <ScrollArea
             className={cn(
               "min-h-0 flex-1 bg-transparent",
-              "max-md:[&>[data-orientation=vertical]]:hidden",
+              "[&>[data-orientation=vertical]]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:min-w-0",
               "[&_[data-radix-scroll-area-viewport]]:max-w-full",
               "[&_[data-radix-scroll-area-viewport]]:bg-transparent",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:[scrollbar-width:none]",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:[-ms-overflow-style:none]",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:[&::-webkit-scrollbar]:hidden",
+              "[&_[data-radix-scroll-area-viewport]]:[scrollbar-width:none]",
+              "[&_[data-radix-scroll-area-viewport]]:[-ms-overflow-style:none]",
+              "[&_[data-radix-scroll-area-viewport]]:[&::-webkit-scrollbar]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(3.125rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
             )}
@@ -960,18 +961,13 @@ export default function MessagesPage() {
                               undefined
                             }
                           />
-                          <AvatarFallback className="bg-orange-500/15 text-lg font-bold text-orange-600 dark:text-orange-400">
+                          <AvatarFallback className={cn("text-lg font-bold", inboxAvatarFallbackClass(convo.other_user_id))}>
                             {initials}
                           </AvatarFallback>
                         </Avatar>
                       </div>
                       <div className="relative min-w-0 flex-1">
-                        {convo.last_message && (
-                          <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6.5rem] whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
-                            {formatTime(convo.last_message.created_at)}
-                          </span>
-                        )}
-                        <div className="min-w-0 max-w-full pr-[5.5rem]">
+                        <div className="min-w-0 max-w-full">
                           <p
                             className={cn(
                               "flex min-w-0 items-baseline gap-x-1.5 text-[17px] font-semibold leading-snug text-foreground md:text-base",
@@ -1026,11 +1022,18 @@ export default function MessagesPage() {
                           </button>
                         )}
                       </div>
-                      {convo.unread_count > 0 ? (
-                        <span className="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center self-center rounded-full bg-orange-600 px-1.5 text-[11px] font-bold leading-none text-white">
-                          {convo.unread_count > 9 ? "9+" : convo.unread_count}
-                        </span>
-                      ) : null}
+                      <div className="flex shrink-0 flex-col items-end justify-center gap-1 self-center">
+                        {convo.last_message ? (
+                          <span className="whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
+                            {formatTime(convo.last_message.created_at)}
+                          </span>
+                        ) : null}
+                        {convo.unread_count > 0 ? (
+                          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-orange-600 px-1.5 text-[11px] font-bold leading-none text-white">
+                            {convo.unread_count > 9 ? "9+" : convo.unread_count}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     );
                   })}

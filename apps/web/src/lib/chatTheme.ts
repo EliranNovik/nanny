@@ -1,29 +1,30 @@
 import { cn } from "@/lib/utils";
-import { signedInAppHeaderBgClass } from "@/lib/discoverHomeHeaderChrome";
 
 /** Rich dark gradient + light neutral background for the chat thread. */
 export const chatAreaBgClass = "chat-screen bg-zinc-50 text-foreground dark:text-white";
 
-export const chatChromeBarClass = signedInAppHeaderBgClass;
-
+/** Frosted overlay for the chat header and composer so messages can show through. */
 export const chatComposerBarClass = cn(
-  "bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/90",
-  "dark:bg-[#14161d]/90 dark:supports-[backdrop-filter]:bg-[#14161d]/85",
+  "bg-white/80 shadow-none backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/70",
+  "dark:bg-[#14161d]/80 dark:supports-[backdrop-filter]:bg-[#14161d]/70",
 );
 
+export const chatChromeBarClass = chatComposerBarClass;
+
 export const chatComposerFieldWrapClass = cn(
-  "flex min-h-[56px] flex-1 items-center rounded-[1.5rem] border border-border/50 bg-muted/35 px-3.5 py-1.5 shadow-inner",
-  "dark:border-white/10 dark:bg-white/10",
+  "flex min-h-10 flex-1 items-center rounded-full border-0 bg-muted/35 px-3 py-0 shadow-none outline-none ring-0",
+  "dark:bg-white/10",
   "md:min-h-[48px] md:rounded-[1.375rem] md:px-3 md:py-1",
   "lg:min-h-[44px] lg:py-1",
+  "focus-within:outline-none focus-within:ring-0",
 );
 
 export const chatComposerFieldClass = cn(
   "min-h-0 max-h-[min(40vh,280px)] flex-1 resize-none overflow-hidden border-0 bg-transparent px-2 py-0",
-  "text-[19px] font-normal leading-snug text-foreground placeholder:text-muted-foreground",
+  "text-[16px] font-normal leading-5 text-foreground placeholder:text-muted-foreground",
   "dark:text-white dark:placeholder:text-slate-400",
   "shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-  "md:text-[19px]",
+  "md:text-[19px] md:leading-snug",
   "lg:text-[18px] lg:leading-snug",
 );
 

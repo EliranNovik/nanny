@@ -82,6 +82,7 @@ import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
 import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
   signedInAppHeaderBgClass,
+  signedInDesktopHeaderGlassClass,
   signedInHeaderIconBtnClass,
 } from "@/lib/discoverHomeHeaderChrome";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
@@ -224,6 +225,7 @@ export function BottomNav() {
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuPanelRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const desktopCreateRef = useRef<HTMLDivElement>(null);
   const { openReportModal } = useReportIssue();
   const previousPathnameRef = useRef(location.pathname);
   const viewerId = profile?.id ?? null;
@@ -400,6 +402,7 @@ export function BottomNav() {
       if (plusButtonRef.current?.contains(target)) return;
       if (plusMenuRef.current?.contains(target)) return;
       if (plusMenuPanelRef.current?.contains(target)) return;
+      if (desktopCreateRef.current?.contains(target)) return;
       setPlusMenuOpen(false);
     }
     const id = window.setTimeout(() => {
@@ -808,12 +811,150 @@ export function BottomNav() {
     </button>
   );
 
+  const renderPlusMenuItems = () => (
+    <div className={plusMenuItemsClassName}>
+      {profile?.role === "client" && (
+        <button
+          type="button"
+          role="menuitem"
+          className={plusMenuItemClassName}
+          onClick={() => {
+            setPlusMenuOpen(false);
+            navigate("/client/helpers");
+          }}
+        >
+          <span className={plusMenuIconWrapClassName}>
+            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+          </span>
+          <span>{t("nav.findHelpers")}</span>
+        </button>
+      )}
+      {profile?.role === "freelancer" && (
+        <button
+          type="button"
+          role="menuitem"
+          className={plusMenuItemClassName}
+          onClick={() => {
+            setPlusMenuOpen(false);
+            navigate("/freelancer/jobs/match");
+          }}
+        >
+          <span className={plusMenuIconWrapClassName}>
+            <Rss className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+          </span>
+          <span>{t("nav.findRequests")}</span>
+        </button>
+      )}
+      {profile?.role === "client" && (
+        <button
+          type="button"
+          role="menuitem"
+          className={plusMenuItemClassName}
+          onClick={() => {
+            setPlusMenuOpen(false);
+            guardKycAction("start_request", () =>
+              navigate("/client/create"),
+            );
+          }}
+        >
+          <span className={plusMenuIconWrapClassName}>
+            <Zap className={plusMenuIconClassName} strokeWidth={2.5} aria-hidden />
+          </span>
+          <span>{t("nav.startRequest")}</span>
+        </button>
+      )}
+      {profile?.role === "freelancer" && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={isLiveNow}
+          className={cn(
+            plusMenuItemClassName,
+            isLiveNow &&
+              "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent active:scale-100",
+          )}
+          onClick={() => {
+            if (isLiveNow) return;
+            setPlusMenuOpen(false);
+            guardKycAction("go_live", () =>
+              navigate("/availability/post-now"),
+            );
+          }}
+        >
+          <span className={plusMenuIconWrapClassName}>
+            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+          </span>
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+            <span>{t("nav.goLive")}</span>
+            {isLiveNow && freelancerLiveUntil ? (
+              <span className="shrink-0 rounded-full bg-emerald-500/14 px-2.5 py-1 text-[11px] font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/16 dark:text-emerald-300">
+                <LiveTimer countdownTo={freelancerLiveUntil} />
+              </span>
+            ) : null}
+          </span>
+        </button>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        className={plusMenuItemClassName}
+        onClick={() => {
+          setPlusMenuOpen(false);
+          guardKycAction("share_post", () =>
+            navigate("/community/feed?compose=1"),
+          );
+        }}
+      >
+        <span className={plusMenuIconWrapClassName}>
+          <PenSquare className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+        </span>
+        <span>{t("nav.sharePost")}</span>
+      </button>
+    </div>
+  );
+
+  const DesktopCreateButton = (
+    <div ref={desktopCreateRef} className="relative hidden shrink-0 md:block">
+      <button
+        type="button"
+        onClick={() => setPlusMenuOpen((v) => !v)}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full py-1 pl-3 pr-1",
+          "text-sm font-bold text-zinc-800",
+          "transition-colors hover:bg-zinc-100/80 active:scale-[0.98]",
+          "dark:text-zinc-100 dark:hover:bg-zinc-800/70",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70",
+        )}
+        aria-expanded={plusMenuOpen}
+        aria-haspopup="menu"
+        aria-label={t("common.create")}
+      >
+        <span>{t("common.create")}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+          <Plus className="h-4 w-4" strokeWidth={2.8} aria-hidden />
+        </span>
+      </button>
+      {plusMenuOpen ? (
+        <div
+          role="menu"
+          className={cn(
+            "absolute top-[calc(100%+8px)] start-0 z-[150] w-[17rem] overflow-hidden rounded-2xl",
+            "border border-border/40 bg-background/95 shadow-xl backdrop-blur-xl",
+            "animate-in fade-in zoom-in-95 duration-200",
+          )}
+        >
+          {renderPlusMenuItems()}
+        </div>
+      ) : null}
+    </div>
+  );
+
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
     <header
       data-desktop-header-strip=""
       className={cn(
-        "hidden md:block fixed inset-x-0 top-0 z-50 border-0 shadow-none backdrop-blur-none transition-colors duration-300",
+        "hidden md:block fixed inset-x-0 top-0 z-50 border-0 shadow-none",
         signedInAppHeaderBgClass,
       )}
     >
@@ -824,18 +965,12 @@ export function BottomNav() {
        */}
       <div className="grid h-16 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
         <div aria-hidden="true" />
-        <div className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+        <div className={cn(
+          "grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6",
+          signedInDesktopHeaderGlassClass,
+        )}>
           <div className="flex min-w-0 items-center gap-2 ps-3">
-            {showCommunityFeedHeaderLeft ? (
-              <button
-                type="button"
-                onClick={handleCommunityFeedCompose}
-                className={signedInHeaderIconBtnClass}
-                aria-label={t("nav.sharePost")}
-              >
-                <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-              </button>
-            ) : isDiscoverHome && !desktopDiscoverSearchOpen ? (
+            {isDiscoverHome && !desktopDiscoverSearchOpen ? (
               <>
                 <DiscoverHomeModeSegmentedControl
                   mode={discoverHomeMode}
@@ -852,8 +987,9 @@ export function BottomNav() {
                 >
                   <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
                 </button>
+                {DesktopCreateButton}
               </>
-            ) : !isDiscoverHome ? (
+            ) : !isDiscoverHome && !showCommunityFeedHeaderLeft ? (
               <button
                 type="button"
                 onClick={handleHeaderBack}
@@ -868,6 +1004,7 @@ export function BottomNav() {
           <div className="flex min-w-0 items-center justify-center px-2 md:px-4">
           {isDiscoverHome && desktopDiscoverSearchOpen ? (
             <div className="flex w-full min-w-0 items-center gap-2 md:gap-2.5">
+              {DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch
                   autoFocus
@@ -896,6 +1033,7 @@ export function BottomNav() {
                   />
                 </div>
               )}
+              {DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch />
               </div>
@@ -1389,109 +1527,11 @@ export function BottomNav() {
                   <div
                     ref={plusMenuPanelRef}
                     role="menu"
-                    className={plusMenuPanelClassName}
+                    className={cn(plusMenuPanelClassName, "md:hidden")}
                   >
                     <div className="bottom-nav-plus-menu-glow" aria-hidden />
                     <div className="bottom-nav-plus-menu-readable" aria-hidden />
-                    <div className={plusMenuItemsClassName}>
-                      {profile?.role === "client" && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={plusMenuItemClassName}
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            navigate("/client/helpers");
-                          }}
-                        >
-                          <span className={plusMenuIconWrapClassName}>
-                            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                          </span>
-                          <span>Find helpers</span>
-                        </button>
-                      )}
-                      {profile?.role === "freelancer" && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={plusMenuItemClassName}
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            navigate("/freelancer/jobs/match");
-                          }}
-                        >
-                          <span className={plusMenuIconWrapClassName}>
-                            <Rss className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                          </span>
-                          <span>Find requests</span>
-                        </button>
-                      )}
-                      {profile?.role === "client" && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={plusMenuItemClassName}
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            guardKycAction("start_request", () =>
-                              navigate("/client/create"),
-                            );
-                          }}
-                        >
-                          <span className={plusMenuIconWrapClassName}>
-                            <Zap className={plusMenuIconClassName} strokeWidth={2.5} aria-hidden />
-                          </span>
-                          <span>Start request</span>
-                        </button>
-                      )}
-                      {profile?.role === "freelancer" && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          disabled={isLiveNow}
-                          className={cn(
-                            plusMenuItemClassName,
-                            isLiveNow &&
-                              "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent active:scale-100",
-                          )}
-                          onClick={() => {
-                            if (isLiveNow) return;
-                            setPlusMenuOpen(false);
-                            guardKycAction("go_live", () =>
-                              navigate("/availability/post-now"),
-                            );
-                          }}
-                        >
-                          <span className={plusMenuIconWrapClassName}>
-                            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                          </span>
-                          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                            <span>Go live</span>
-                            {isLiveNow && freelancerLiveUntil ? (
-                              <span className="shrink-0 rounded-full bg-emerald-500/14 px-2.5 py-1 text-[11px] font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/16 dark:text-emerald-300">
-                                <LiveTimer countdownTo={freelancerLiveUntil} />
-                              </span>
-                            ) : null}
-                          </span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={plusMenuItemClassName}
-                        onClick={() => {
-                          setPlusMenuOpen(false);
-                          guardKycAction("share_post", () =>
-                            navigate("/community/feed?compose=1"),
-                          );
-                        }}
-                      >
-                        <span className={plusMenuIconWrapClassName}>
-                          <PenSquare className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                        </span>
-                        <span>Share a post</span>
-                      </button>
-                    </div>
+                    {renderPlusMenuItems()}
                   </div>,
                   document.body,
                 )

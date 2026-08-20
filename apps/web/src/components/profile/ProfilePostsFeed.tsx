@@ -71,6 +71,8 @@ import {
 } from "@/components/ui/dialog";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
 import { LocationPicker } from "@/components/LocationPicker";
+import { DualLocationPicker } from "@/components/DualLocationPicker";
+import { FeedPickupRouteMedia } from "@/components/community/FeedPickupRouteMedia";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
@@ -90,7 +92,7 @@ import {
   otherHelpSubcategoryLabel,
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
-import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
+import { HIRE_CATEGORY_TILE_UI, OTHER_HELP_SUBCATEGORY_UI } from "@/lib/discoverCategoryTileIcons";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useProfilePostsFeedRealtime } from "@/hooks/useProfilePostsFeedRealtime";
 import { FavoritesPostsSidePanel } from "@/components/discover/FavoritesPostsSidePanel";
@@ -99,7 +101,6 @@ import {
   jobRequestMatchesFeedFilters,
   type JobRequestFeedPost,
 } from "@/lib/openHelpRequestFeedPost";
-import { collectLinkedJobRequestIdsFromProfilePosts } from "@/lib/createJobFromRequestHelpCompose";
 import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
 import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
 import {
@@ -127,6 +128,7 @@ import {
   feedPostDescription,
   feedPostLocationAddress,
   feedPostLocationLine,
+  feedPostPickupRoute,
   feedPostServiceCategoryMeta,
   feedPostTitle,
   feedPostTypeCategorySubtitleText,
@@ -191,7 +193,11 @@ import {
 } from "@/lib/profilePostMedia";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import { postMatchesAdvancedFeedFilters } from "@/lib/communityFeedFilters";
-import { createJobRequestFromRequestHelpCompose, linkedJobRequestIdFromPost } from "@/lib/createJobFromRequestHelpCompose";
+import {
+  collectLinkedJobRequestIdsFromProfilePosts,
+  createJobRequestFromRequestHelpCompose,
+  linkedJobRequestIdFromPost,
+} from "@/lib/createJobFromRequestHelpCompose";
 import { openCommunityContact } from "@/lib/communityContact";
 import {
   fetchEventPostHelperCounts,
@@ -435,8 +441,9 @@ function CategoryIcon({
   variant?: "default" | "badge";
 }) {
   const normalized = (categoryId ?? "").trim().toLowerCase();
-  const id = isServiceCategoryId(normalized) ? normalized : null;
-  const ui = id ? HIRE_CATEGORY_TILE_UI[id] : null;
+  const mainUi = isServiceCategoryId(normalized) ? HIRE_CATEGORY_TILE_UI[normalized] : null;
+  const subUi = OTHER_HELP_SUBCATEGORY_UI[normalized] ?? null;
+  const ui = subUi ?? mainUi;
   const Icon = ui?.Icon ?? HelpCircle;
   const colorClass =
     variant === "badge"
@@ -1593,6 +1600,16 @@ export function ComposeModal({
     lat?: number;
     lng?: number;
   }>({ address: "" });
+  const [pickupFrom, setPickupFrom] = useState<{
+    address: string;
+    lat?: number;
+    lng?: number;
+  }>({ address: "" });
+  const [pickupTo, setPickupTo] = useState<{
+    address: string;
+    lat?: number;
+    lng?: number;
+  }>({ address: "" });
   const [timeframe, setTimeframe] = useState<RequestHelpTimeframe>("today");
   const [customWhenDate, setCustomWhenDate] = useState<Date | null>(null);
   const [customWhenTime, setCustomWhenTime] = useState("");
@@ -1670,6 +1687,8 @@ export function ComposeModal({
     setSelectedPostTypeId(null);
     setRequestHelpCategory("");
     setPostLocation({ address: "" });
+    setPickupFrom({ address: "" });
+    setPickupTo({ address: "" });
     setTimeframe("today");
     setCustomWhenDate(null);
     setCustomWhenTime("");
@@ -1778,8 +1797,28 @@ export function ComposeModal({
       addToast({ title: t("composePost.validation.chooseHelpCategory"), variant: "warning" });
       return;
     }
+    const requestIsPickup = requestHelpCategory === "pickup_delivery";
+    const offerIsPickup = offerServiceCategory === "pickup_delivery";
+    if (
+      ((selectedPostTypeId === "request_help" && requestIsPickup) ||
+        (selectedPostTypeId === "offer_service" && offerIsPickup)) &&
+      (pickupFrom.lat == null ||
+        pickupFrom.lng == null ||
+        !pickupFrom.address.trim() ||
+        pickupTo.lat == null ||
+        pickupTo.lng == null ||
+        !pickupTo.address.trim())
+    ) {
+      addToast({
+        title: t("composePost.validation.pickLocation"),
+        description: t("composePost.validation.pickLocationDesc"),
+        variant: "warning",
+      });
+      return;
+    }
     if (
       selectedPostTypeId === "request_help" &&
+      !requestIsPickup &&
       (postLocation.lat == null || postLocation.lng == null || !postLocation.address.trim())
     ) {
       addToast({
@@ -1801,6 +1840,7 @@ export function ComposeModal({
     }
     if (
       selectedPostTypeId === "offer_service" &&
+      !offerIsPickup &&
       (postLocation.lat == null || postLocation.lng == null || !postLocation.address.trim())
     ) {
       addToast({
@@ -1888,12 +1928,22 @@ export function ComposeModal({
         metadata.media_items = uploadedMedia;
       }
       if (selectedPostTypeId === "request_help") {
+        const pickupMeta = requestIsPickup
+          ? {
+              from_address: pickupFrom.address,
+              from_lat: pickupFrom.lat,
+              from_lng: pickupFrom.lng,
+              to_address: pickupTo.address,
+              to_lat: pickupTo.lat,
+              to_lng: pickupTo.lng,
+            }
+          : {};
         metadata = {
           ...metadata,
           category: requestHelpCategory,
-          location: postLocation.address,
-          location_lat: postLocation.lat,
-          location_lng: postLocation.lng,
+          location: requestIsPickup ? pickupFrom.address : postLocation.address,
+          location_lat: requestIsPickup ? pickupFrom.lat : postLocation.lat,
+          location_lng: requestIsPickup ? pickupFrom.lng : postLocation.lng,
           timeframe: timeframe,
           ...(timeframe === "custom" && customWhenDate && customWhenTime
             ? {
@@ -1905,17 +1955,29 @@ export function ComposeModal({
           budget: budgetAmount ? Number(budgetAmount) : null,
           rate_type: budgetRateType,
           ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
+          ...pickupMeta,
         };
       } else if (selectedPostTypeId === "offer_service") {
+        const pickupMeta = offerIsPickup
+          ? {
+              from_address: pickupFrom.address,
+              from_lat: pickupFrom.lat,
+              from_lng: pickupFrom.lng,
+              to_address: pickupTo.address,
+              to_lat: pickupTo.lat,
+              to_lng: pickupTo.lng,
+            }
+          : {};
         metadata = {
           ...metadata,
           service: offerServiceCategory,
-          location: postLocation.address,
-          location_lat: postLocation.lat,
-          location_lng: postLocation.lng,
+          location: offerIsPickup ? pickupFrom.address : postLocation.address,
+          location_lat: offerIsPickup ? pickupFrom.lat : postLocation.lat,
+          location_lng: offerIsPickup ? pickupFrom.lng : postLocation.lng,
           rate: offerRate ? Number(offerRate) : null,
           rate_type: offerRateType,
           ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
+          ...pickupMeta,
         };
       } else if (selectedPostTypeId === "event") {
         const helpersNeeded = eventHelpersNeeded.trim()
@@ -1979,7 +2041,7 @@ export function ComposeModal({
           const { jobId } = await createJobRequestFromRequestHelpCompose({
             category: requestHelpCategory,
             customCategory: savedCustomCategory,
-            locationAddress: postLocation.address,
+            locationAddress: requestIsPickup ? pickupFrom.address : postLocation.address,
             timeframe,
             customWhenDate,
             customWhenTime,
@@ -1988,6 +2050,16 @@ export function ComposeModal({
             caption: captionToSave,
             profilePostId: insertedPost.id,
             mediaItems: uploadedMedia,
+            pickup: requestIsPickup
+              ? {
+                  from_address: pickupFrom.address,
+                  from_lat: pickupFrom.lat,
+                  from_lng: pickupFrom.lng,
+                  to_address: pickupTo.address,
+                  to_lat: pickupTo.lat,
+                  to_lng: pickupTo.lng,
+                }
+              : null,
           });
 
           const linkedMetadata = { ...metadata, job_request_id: jobId };
@@ -2231,7 +2303,15 @@ export function ComposeModal({
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                     {requestHelpCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
-                        <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 shrink-0" />
+                        <CategoryIcon
+                          categoryId={
+                            requestHelpCategory === "other_help" &&
+                            resolvedCustomCategory.trim()
+                              ? resolvedCustomCategory.trim()
+                              : requestHelpCategory
+                          }
+                          className="h-3.5 w-3.5 shrink-0"
+                        />
                         <span>{feedCategoryLabel(t, requestHelpCategory, resolvedCustomCategory)}</span>
                       </div>
                     )}
@@ -2278,7 +2358,15 @@ export function ComposeModal({
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                     {offerServiceCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
-                        <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 shrink-0" />
+                        <CategoryIcon
+                          categoryId={
+                            offerServiceCategory === "other_help" &&
+                            resolvedCustomCategory.trim()
+                              ? resolvedCustomCategory.trim()
+                              : offerServiceCategory
+                          }
+                          className="h-3.5 w-3.5 shrink-0"
+                        />
                         <span>{feedCategoryLabel(t, offerServiceCategory, resolvedCustomCategory)}</span>
                       </div>
                     )}
@@ -2524,16 +2612,28 @@ export function ComposeModal({
 
                     {requestHelpCategory === "other_help" ? otherHelpCategoryField : null}
 
-                    {/* Location */}
-                    <LocationPicker
-                      label={t("composePost.location")}
-                      labelClassName="text-[13px] font-bold text-foreground"
-                      inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder={t("composePost.searchPlace")}
-                      value={postLocation}
-                      onChange={setPostLocation}
-                      requireSelection
-                    />
+                    {requestHelpCategory === "pickup_delivery" ? (
+                      <DualLocationPicker
+                        fromLabel={t("createJob.pickup.fromLabel")}
+                        toLabel={t("createJob.pickup.toLabel")}
+                        fromPlaceholder={t("createJob.pickup.fromPlaceholder")}
+                        toPlaceholder={t("createJob.pickup.toPlaceholder")}
+                        fromValue={pickupFrom}
+                        toValue={pickupTo}
+                        onFromChange={setPickupFrom}
+                        onToChange={setPickupTo}
+                      />
+                    ) : (
+                      <LocationPicker
+                        label={t("composePost.location")}
+                        labelClassName="text-[13px] font-bold text-foreground"
+                        inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
+                        placeholder={t("composePost.searchPlace")}
+                        value={postLocation}
+                        onChange={setPostLocation}
+                        requireSelection
+                      />
+                    )}
 
                     {/* When do you need it? */}
                     <div className="space-y-1.5">
@@ -2681,16 +2781,28 @@ export function ComposeModal({
 
                     {offerServiceCategory === "other_help" ? otherHelpCategoryField : null}
 
-                    {/* Location */}
-                    <LocationPicker
-                      label={t("composePost.location")}
-                      labelClassName="text-[13px] font-bold text-foreground"
-                      inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
-                      placeholder={t("composePost.searchPlace")}
-                      value={postLocation}
-                      onChange={setPostLocation}
-                      requireSelection
-                    />
+                    {offerServiceCategory === "pickup_delivery" ? (
+                      <DualLocationPicker
+                        fromLabel={t("createJob.pickup.fromLabel")}
+                        toLabel={t("createJob.pickup.toLabel")}
+                        fromPlaceholder={t("createJob.pickup.fromPlaceholder")}
+                        toPlaceholder={t("createJob.pickup.toPlaceholder")}
+                        fromValue={pickupFrom}
+                        toValue={pickupTo}
+                        onFromChange={setPickupFrom}
+                        onToChange={setPickupTo}
+                      />
+                    ) : (
+                      <LocationPicker
+                        label={t("composePost.location")}
+                        labelClassName="text-[13px] font-bold text-foreground"
+                        inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
+                        placeholder={t("composePost.searchPlace")}
+                        value={postLocation}
+                        onChange={setPostLocation}
+                        requireSelection
+                      />
+                    )}
 
                     {/* Rate */}
                     <div className="space-y-1.5">
@@ -3867,14 +3979,17 @@ function PostCard({
   // Desktop media sizing:
   // - Portrait: height-capped box with width derived from aspect ratio (no side letterboxing)
   // - Landscape: full width, sized to the media's real aspect ratio
+  // Desktop: keep global-feed images short so cards don't dominate the viewport.
   const portraitDesktopSizingClass = isGlobalFeed
-    ? "md:aspect-[3/4] md:w-full"
+    ? "md:aspect-[16/10] md:h-auto md:max-h-[26rem] md:w-full md:overflow-hidden"
     : isDiscover
     ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
     : isProfile
       ? "md:h-[min(68vh,40rem)] md:max-h-[min(68vh,40rem)] md:w-auto md:max-w-full"
       : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
-  const desktopMediaBoxClass = mediaAspectRatio
+  const desktopMediaBoxClass = isGlobalFeed
+    ? "md:rounded-xl md:aspect-[16/10] md:h-auto md:max-h-[26rem] md:w-full md:overflow-hidden"
+    : mediaAspectRatio
     ? cn(
       "md:rounded-xl",
       isLandscape ? "md:w-full" : portraitDesktopSizingClass,
@@ -3883,7 +3998,9 @@ function PostCard({
       ? "md:w-full md:rounded-xl"
       : cn("md:rounded-xl", portraitDesktopSizingClass);
   const portraitMediaObjectClass = "object-cover object-center";
-  const landscapeMediaObjectClass = "object-contain";
+  const landscapeMediaObjectClass = isGlobalFeed
+    ? "object-contain md:h-full md:w-full md:object-cover md:object-center"
+    : "object-contain";
   const mediaBoxBgClass =
     isLandscape || isGlobalFeedPortrait ? "bg-black/90 dark:bg-black/80" : "bg-transparent";
   // Feed column is always full width so the header type badge aligns across post types.
@@ -3908,7 +4025,9 @@ function PostCard({
           ? "md:w-full md:max-w-[820px]"
           : "md:w-fit md:max-w-[520px]"
       : null;
-  const desktopMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
+  const desktopMediaStyle: React.CSSProperties | undefined = isGlobalFeed
+    ? undefined
+    : feedMediaAspectStyle;
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -4387,9 +4506,12 @@ function PostCard({
     ],
   );
 
+  const pickupRoute = useMemo(() => feedPostPickupRoute(post), [post]);
+
   const isGlobalTextOnlyCard =
     isGlobalFeed &&
     !hasMedia &&
+    !pickupRoute &&
     (isJobRequest ||
       postTypeId === "request_help" ||
       postTypeId === "offer_service" ||
@@ -4973,6 +5095,9 @@ function PostCard({
         </div>
       </div>
       )}
+      {isGlobalFeed && pickupRoute ? (
+        <FeedPickupRouteMedia postId={post.id} route={pickupRoute} />
+      ) : null}
       {/* Media */}
       {hasMedia && hasMultipleMedia ? (
         <div
@@ -5430,9 +5555,9 @@ function PostCard({
                       )}
                       dir={displayPostTitleLayout?.dir}
                     >
-                      {serviceCategoryMeta?.id ? (
+                      {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
                         <CategoryIcon
-                          categoryId={serviceCategoryMeta.id}
+                          categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
                           className="h-6 w-6 shrink-0"
                         />
                       ) : null}
@@ -5581,12 +5706,18 @@ function PostCard({
                     {displayPostTitle ? (
                       <h3
                         className={cn(
-                          "text-[19px] font-bold leading-snug text-foreground",
+                          "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
                           displayPostTitleLayout?.className,
                         )}
                         dir={displayPostTitleLayout?.dir}
                       >
-                        {displayPostTitle}
+                        {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
+                          <CategoryIcon
+                            categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
+                            className="h-6 w-6 shrink-0"
+                          />
+                        ) : null}
+                        <span>{displayPostTitle}</span>
                       </h3>
                     ) : null}
                     {displayPostDescription ? (
@@ -5828,13 +5959,21 @@ function PostCard({
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {post.post_metadata.category ? (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <CategoryIcon categoryId={post.post_metadata.category} className="h-4 w-4 shrink-0" />
+                    <CategoryIcon
+                      categoryId={
+                        serviceCategoryMeta?.iconId ??
+                        post.post_metadata.category
+                      }
+                      className="h-4 w-4 shrink-0"
+                    />
                     <span>
-                      {feedCategoryLabel(
-                        t,
-                        post.post_metadata.category,
-                        post.post_metadata.custom_category,
-                      )}
+                      {serviceCategoryMeta?.label ??
+                        feedCategoryLabel(
+                          t,
+                          post.post_metadata.category,
+                          post.post_metadata.custom_category ??
+                            post.post_metadata.other_type,
+                        )}
                     </span>
                   </div>
                 ) : null}
@@ -5895,13 +6034,20 @@ function PostCard({
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {post.post_metadata.service ? (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <CategoryIcon categoryId={post.post_metadata.service} className="h-4 w-4 shrink-0" />
+                    <CategoryIcon
+                      categoryId={
+                        serviceCategoryMeta?.iconId ?? post.post_metadata.service
+                      }
+                      className="h-4 w-4 shrink-0"
+                    />
                     <span>
-                      {feedCategoryLabel(
-                        t,
-                        post.post_metadata.service,
-                        post.post_metadata.custom_category,
-                      )}
+                      {serviceCategoryMeta?.label ??
+                        feedCategoryLabel(
+                          t,
+                          post.post_metadata.service,
+                          post.post_metadata.custom_category ??
+                            post.post_metadata.other_type,
+                        )}
                     </span>
                   </div>
                 ) : null}
@@ -6898,12 +7044,59 @@ export function ProfilePostsFeed({
       const linkedJobIdsFromProfilePosts = collectLinkedJobRequestIdsFromProfilePosts(
         filteredProfilePosts,
       );
+      const pickupDetailsByJobId = new Map<string, Record<string, unknown>>();
+      for (const row of jobRequestRows) {
+        if (row.service_type === "pickup_delivery" && row.service_details) {
+          pickupDetailsByJobId.set(row.id, row.service_details);
+        }
+      }
+      const missingPickupJobIds = [...linkedJobIdsFromProfilePosts].filter(
+        (id) => !pickupDetailsByJobId.has(id),
+      );
+      if (missingPickupJobIds.length > 0) {
+        const { data: extraJobs } = await supabase
+          .from("job_requests")
+          .select("id, service_type, service_details")
+          .in("id", missingPickupJobIds);
+        for (const extra of extraJobs ?? []) {
+          const extraRow = extra as {
+            id: string;
+            service_type: string | null;
+            service_details: Record<string, unknown> | null;
+          };
+          if (
+            extraRow.service_type === "pickup_delivery" &&
+            extraRow.service_details &&
+            typeof extraRow.service_details === "object"
+          ) {
+            pickupDetailsByJobId.set(extraRow.id, extraRow.service_details);
+          }
+        }
+      }
+      const profilePostsWithPickup = filteredProfilePosts.map((p) => {
+        const jobId = linkedJobRequestIdFromPost(p);
+        if (!jobId) return p;
+        const details = pickupDetailsByJobId.get(jobId);
+        if (!details) return p;
+        return {
+          ...p,
+          post_metadata: {
+            ...(p.post_metadata ?? {}),
+            from_address: details.from_address ?? p.post_metadata?.from_address,
+            from_lat: details.from_lat ?? p.post_metadata?.from_lat,
+            from_lng: details.from_lng ?? p.post_metadata?.from_lng,
+            to_address: details.to_address ?? p.post_metadata?.to_address,
+            to_lat: details.to_lat ?? p.post_metadata?.to_lat,
+            to_lng: details.to_lng ?? p.post_metadata?.to_lng,
+          },
+        };
+      });
       const dedupedJobRequestFeed = jobRequestFeed.filter(
         (j) => !linkedJobIdsFromProfilePosts.has(j.id),
       );
 
       // 10. Merge and sort by created_at
-      let merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...dedupedJobRequestFeed].sort(
+      let merged: FeedPost[] = [...profilePostsWithPickup, ...availFeed, ...dedupedJobRequestFeed].sort(
         (a, b) => {
           const timeA = new Date(a.created_at).getTime();
           const timeB = new Date(b.created_at).getTime();
@@ -6923,6 +7116,9 @@ export function ProfilePostsFeed({
           }
           if (post.source === "post") {
             const typeId = post.post_type_id ?? post.post_types?.id ?? null;
+            if (typeId === "community" || typeId === "event") {
+              return true;
+            }
             if (typeId === "request_help") {
               return post.post_metadata?.category === target;
             }
@@ -6943,6 +7139,10 @@ export function ProfilePostsFeed({
               return (post.post_metadata as any)?.other_type === sub;
             }
             if (post.source === "post") {
+              const typeId = post.post_type_id ?? post.post_types?.id ?? null;
+              if (typeId === "community" || typeId === "event") {
+                return true;
+              }
               return (post.post_metadata as any)?.custom_category === sub;
             }
             // Availability (live helpers) have no subcategory tagging.
@@ -7501,12 +7701,19 @@ export function ProfilePostsFeed({
         >
           <div
             className={cn(
-              "min-w-0 space-y-2 md:flex-1 md:space-y-3",
+              "min-w-0 md:flex-1",
               guestDesktopLightLayout &&
                 !externalFavoritesSidePanel &&
                 "md:rounded-[1.75rem] md:bg-slate-100 md:p-4 md:pb-6 dark:md:bg-transparent dark:md:p-0",
             )}
           >
+            <div
+              className={cn(
+                "w-full space-y-2 md:space-y-3",
+                !externalFavoritesSidePanel &&
+                  "md:mx-auto md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
+              )}
+            >
             {displayPosts.map((post) => (
               <FeedPostItem
                 key={post.id}
@@ -7529,6 +7736,7 @@ export function ProfilePostsFeed({
                 viewerLocation={viewerLocation}
               />
             ))}
+            </div>
           </div>
           {!externalFavoritesSidePanel ? (
             <FavoritesPostsSidePanel

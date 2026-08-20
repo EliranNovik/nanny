@@ -52,7 +52,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { glassBadgeClass, glassIconButtonClass } from "@/lib/glassBadge";
-import { signedInAppHeaderBgClass } from "@/lib/discoverHomeHeaderChrome";
 import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
@@ -94,6 +93,7 @@ import {
 } from "@/components/chat/ChatBubbleMeta";
 import {
   chatAreaBgClass,
+  chatChromeBarClass,
   chatBubbleBodyTextCn,
   chatBubbleInnerMetaWrapCn,
   chatBubbleLinkCn,
@@ -299,8 +299,11 @@ export default function ChatPage({
       window.matchMedia("(min-width: 1024px)").matches;
     const el = isLg ? desktopComposerRef.current : mobileComposerRef.current;
     if (!el) return;
+    // Match the 40px action buttons on mobile while empty / single-line.
+    const minPx = isLg ? 28 : 20;
+    el.style.height = `${minPx}px`;
     el.style.height = "auto";
-    const h = Math.min(el.scrollHeight, maxPx);
+    const h = Math.max(minPx, Math.min(el.scrollHeight, maxPx));
     el.style.height = `${h}px`;
     el.style.overflowY = el.scrollHeight > maxPx ? "auto" : "hidden";
   }
@@ -2327,8 +2330,8 @@ export default function ChatPage({
         {!hideBackButton && (
           <header
             className={cn(
-              "fixed left-0 right-0 top-0 z-20 flex-shrink-0 px-4 pb-2 shadow-none backdrop-blur-none",
-              signedInAppHeaderBgClass,
+              "fixed left-0 right-0 top-0 z-20 flex-shrink-0 px-4 pb-2 shadow-none",
+              chatChromeBarClass,
               "pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
               "md:relative md:top-auto md:z-auto md:min-h-[4.25rem] md:px-5 md:pt-3 md:pb-2",
             )}

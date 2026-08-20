@@ -66,12 +66,12 @@ const SIDE_PANEL_THUMB_CLASS =
   "h-[84px] w-[118px] lg:h-[96px] lg:w-[144px] xl:h-[108px] xl:w-[168px] 2xl:h-[120px] 2xl:w-[192px]";
 
 const SIDE_PANEL_SECTION_TITLE_CLASS =
-  "text-[13px] lg:text-[14px] xl:text-[15px] font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-200";
+  "min-w-0 text-[13px] font-black uppercase leading-tight tracking-wide text-zinc-700 dark:text-zinc-200 lg:text-[14px] xl:text-[15px]";
 
 const SIDE_PANEL_SECTION_CLASS = "mb-4 last:mb-0";
 
 const SIDE_PANEL_SECTION_HEADER_CLASS =
-  "mb-1.5 flex items-center justify-between gap-2 px-1";
+  "sticky top-0 z-[1] mb-1.5 flex items-center justify-between gap-2 bg-white px-1 py-1.5 dark:bg-background";
 
 const SIDE_PANEL_POSTS_LIST_CLASS = "space-y-1.5";
 
@@ -470,7 +470,7 @@ function ThumbCard({
       </div>
 
       <div className="min-w-0 flex-1 py-1">
-        <p className="line-clamp-2 text-[13px] font-bold leading-snug text-zinc-900 dark:text-white lg:text-[14px] xl:text-[15px]">
+        <p className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-zinc-900 dark:text-white lg:text-[14px] xl:text-[15px]">
           {caption}
         </p>
         <div className="mt-1.5 flex items-center gap-1.5 lg:mt-2 lg:gap-2">
@@ -555,11 +555,14 @@ function EmptyState({
 export function FavoritesPostsSidePanel({
   postTypeIds = null,
   fixed = false,
+  embedded = false,
   onPostOpen,
 }: {
   postTypeIds?: string[] | null;
   /** Pin to viewport top-right; panel scrolls independently (community feed page). */
   fixed?: boolean;
+  /** Fill a parent that already sets the panel width (guest community feed). */
+  embedded?: boolean;
   /** Focus a post in the community feed (pins to top without full page reload). */
   onPostOpen?: (postId: string) => void;
 }) {
@@ -634,12 +637,14 @@ export function FavoritesPostsSidePanel({
   return (
     <aside
       className={cn(
-        "hidden md:flex md:flex-col md:shrink-0 md:self-start",
-        FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+        "hidden md:flex md:flex-col md:self-start",
+        embedded
+          ? "w-full min-w-0"
+          : cn("md:shrink-0", FAVORITES_SIDE_PANEL_WIDTH_CLASS),
       )}
       aria-label={panelAriaLabel}
     >
-      <div className="pr-1">
+      <div className={cn(!embedded && "pr-1")}>
         {renderPanelSections({
           t,
           includePersonalSections,
@@ -700,7 +705,7 @@ function renderPanelSections({
         {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
-            <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
+            <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <Bookmark
                 className="h-4 w-4 text-orange-500 lg:h-5 lg:w-5"
                 strokeWidth={2.5}
@@ -734,7 +739,7 @@ function renderPanelSections({
         {/* Section 2: Most liked */}
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
-            <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
+            <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <Flame
                 className="h-4 w-4 text-rose-500 lg:h-5 lg:w-5"
                 strokeWidth={2.5}
@@ -768,7 +773,7 @@ function renderPanelSections({
         {/* Section 3: Most commented */}
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
-            <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
+            <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <MessagesSquare
                 className="h-4 w-4 text-sky-500 lg:h-5 lg:w-5"
                 strokeWidth={2.5}
@@ -802,7 +807,7 @@ function renderPanelSections({
         {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
           <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
-            <h3 className={cn("inline-flex items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
+            <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <UserCircle2
                 className="h-4 w-4 text-emerald-500 lg:h-5 lg:w-5"
                 strokeWidth={2.5}

@@ -467,7 +467,8 @@
       "alreadySavedProfile": "Уже в сохранённых",
       "couldNotSaveProfile": "Не удалось сохранить профиль",
       "signInToSaveProfile": "Войдите, чтобы сохранять профили",
-      "viewProfile": "Открыть профиль {{name}}"
+      "viewProfile": "Открыть профиль {{name}}",
+      "showFullRoute": "Показать весь маршрут"
     },
     "sidePanel": {
       "ariaLabel": "Посты из избранного и популярные посты",

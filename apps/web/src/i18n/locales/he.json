@@ -467,7 +467,8 @@
       "alreadySavedProfile": "כבר בשמורים",
       "couldNotSaveProfile": "לא ניתן לשמור פרופיל",
       "signInToSaveProfile": "התחברו כדי לשמור פרופילים",
-      "viewProfile": "צפו בפרופיל של {{name}}"
+      "viewProfile": "צפו בפרופיל של {{name}}",
+      "showFullRoute": "הציגו את כל המסלול"
     },
     "sidePanel": {
       "ariaLabel": "פוסטים מהמועדפים ופוסטים פופולריים",

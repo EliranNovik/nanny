@@ -2,18 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useKycGate } from "@/context/KycGateContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LiveTimer } from "@/components/LiveTimer";
 import { supabase } from "@/lib/supabase";
-import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
   type LucideIcon,
-  Plus,
   BadgeCheck,
   Bookmark,
   ChevronDown,
@@ -22,8 +18,6 @@ import {
   Rss,
   MessageCircle,
   User,
-  PenSquare,
-  Zap,
   LogOut,
   Menu,
   Shield,
@@ -69,21 +63,16 @@ export function DesktopSidePanel({
 }) {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
-  const { guardKycAction } = useKycGate();
   const { unreadMessages } = useUnreadCounts();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const mountedRef = useRef(false);
-  const [plusOpen, setPlusOpen] = useState(false);
   const [savedProfilesOpen, setSavedProfilesOpen] = useState(true);
   const [savedPostsOpen, setSavedPostsOpen] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<SavedProfileRow[]>([]);
   const [savedPosts, setSavedPosts] = useState<SavedPostRow[]>([]);
   const [savedProfilesLoading, setSavedProfilesLoading] = useState(false);
   const [savedPostsLoading, setSavedPostsLoading] = useState(false);
-  const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
-    null,
-  );
 
   // NOTE: Don't early-return before hooks below (hook order must not change across renders).
   const roleBase =
@@ -100,20 +89,7 @@ export function DesktopSidePanel({
   const profileHref = profile?.id
     ? `/profile/${profile.id}`
     : profileHubHref;
-  const requestHref = "/client/create";
-  const goLiveHref = "/availability/post-now";
-  const findHelpersHref = "/client/helpers";
-  const findRequestsHref = "/freelancer/jobs/match";
   const savedHref = `${roleBase}/profile/saved`;
-
-  const isClient = profile?.role === "client";
-  const isFreelancer = profile?.role === "freelancer";
-  const isLiveNow =
-    isFreelancer &&
-    isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveUntil });
-
-  const plusMenuItemClassName =
-    "flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground transition-colors hover:bg-muted/50 active:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-55";
 
   const openSaved = (tab: "profiles" | "posts") => {
     navigate(`${savedHref}?tab=${tab}`);
@@ -219,29 +195,6 @@ export function DesktopSidePanel({
       mountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    const viewerId = profile?.id;
-    if (!viewerId) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("freelancer_profiles")
-        .select("live_until")
-        .eq("user_id", viewerId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) {
-        console.warn("[DesktopSidePanel] live_until:", error);
-        setFreelancerLiveUntil(null);
-        return;
-      }
-      setFreelancerLiveUntil(data?.live_until ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [profile?.id]);
 
   const loadSavedProfiles = useCallback(async () => {
     if (!user?.id) return;
@@ -359,13 +312,10 @@ export function DesktopSidePanel({
           <button
             type="button"
             onClick={onCollapse}
-            className={cn(
-              "inline-flex h-9 w-9 items-center justify-center rounded-2xl",
-              "bg-muted/55 text-foreground shadow-sm transition-colors hover:bg-muted active:scale-[0.98]",
-            )}
+            className="inline-flex h-10 w-10 items-center justify-center text-foreground transition-opacity hover:opacity-80 active:scale-[0.98]"
             aria-label="Open sidebar"
           >
-            <Menu className="h-5 w-5" strokeWidth={2.6} />
+            <Menu className="h-6 w-6" strokeWidth={2.4} />
           </button>
           <img
             src={BRAND_LOGO_SRC}
@@ -374,79 +324,6 @@ export function DesktopSidePanel({
             loading="eager"
             decoding="async"
           />
-          <button
-            type="button"
-            onClick={() => setPlusOpen((v) => !v)}
-            className={cn(
-              "relative inline-flex h-9 w-9 items-center justify-center rounded-2xl",
-              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
-              "hover:bg-background active:scale-[0.98]",
-            )}
-            aria-label={t("common.create")}
-            aria-expanded={plusOpen}
-            aria-haspopup="menu"
-          >
-            <Plus className="h-5 w-5" strokeWidth={2.8} />
-          </button>
-
-          {plusOpen ? (
-            <>
-              <div
-                className="fixed inset-0 z-[140]"
-                onClick={() => setPlusOpen(false)}
-              />
-              <div
-                role="menu"
-                className={cn(
-                  "absolute start-[calc(100%+12px)] top-16 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
-                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 duration-200",
-                )}
-              >
-                {isClient ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      setPlusOpen(false);
-                      guardKycAction("start_request", () => navigate(requestHref));
-                    }}
-                  >
-                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>{t("nav.postRequest")}</span>
-                  </button>
-                ) : null}
-                {isFreelancer ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      setPlusOpen(false);
-                      guardKycAction("go_live", () => navigate(goLiveHref));
-                    }}
-                  >
-                    <Zap className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>{isLiveNow ? t("nav.liveNow") : t("nav.goLive")}</span>
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={plusMenuItemClassName}
-                  onClick={() => {
-                    setPlusOpen(false);
-                    guardKycAction("share_post", () =>
-                      navigate(`${communityHref}?compose=1`),
-                    );
-                  }}
-                >
-                  <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>{t("nav.sharePost")}</span>
-                </button>
-              </div>
-            </>
-          ) : null}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overscroll-contain px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -580,18 +457,14 @@ export function DesktopSidePanel({
     >
       {/* Fixed top section to allow popouts to escape overflow clipping */}
       <div className="shrink-0 px-3 pt-4 pb-1">
-        <div className="relative mb-1 flex items-center gap-2 rounded-2xl bg-muted/40 px-2.5 py-2 text-foreground">
+        <div className="relative mb-1 flex items-center gap-2 px-1 py-1 text-foreground">
           <button
             type="button"
             onClick={onCollapse}
-            className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
-              "hover:bg-background active:scale-[0.98]",
-            )}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-foreground transition-opacity hover:opacity-80 active:scale-[0.98]"
             aria-label="Collapse sidebar"
           >
-            <Menu className="h-5 w-5" strokeWidth={2.6} />
+            <Menu className="h-6 w-6" strokeWidth={2.4} />
           </button>
 
           <img
@@ -601,119 +474,6 @@ export function DesktopSidePanel({
             loading="eager"
             decoding="async"
           />
-
-          <button
-            type="button"
-            onClick={() => setPlusOpen((v) => !v)}
-            className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
-              "hover:bg-background active:scale-[0.98]",
-            )}
-            aria-label={t("common.create")}
-            aria-expanded={plusOpen}
-            aria-haspopup="menu"
-          >
-            <Plus className="h-5 w-5" strokeWidth={2.8} />
-          </button>
-
-          {plusOpen ? (
-            <>
-              <div
-                className="fixed inset-0 z-[140]"
-                onClick={() => setPlusOpen(false)}
-              />
-              <div
-                role="menu"
-                className={cn(
-                  "absolute start-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
-                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 duration-200",
-                )}
-              >
-                {isClient ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      setPlusOpen(false);
-                      navigate(findHelpersHref);
-                    }}
-                  >
-                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>{t("nav.findHelpers")}</span>
-                  </button>
-                ) : null}
-                {isFreelancer ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      setPlusOpen(false);
-                      navigate(findRequestsHref);
-                    }}
-                  >
-                    <Rss className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>{t("nav.findRequests")}</span>
-                  </button>
-                ) : null}
-                {isClient ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      setPlusOpen(false);
-                      guardKycAction("start_request", () =>
-                        navigate(requestHref),
-                      );
-                    }}
-                  >
-                    <Zap className="h-5 w-5 shrink-0 text-foreground/80" strokeWidth={2.5} />
-                    <span>{t("nav.startRequest")}</span>
-                  </button>
-                ) : null}
-                {isFreelancer ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={isLiveNow}
-                    className={plusMenuItemClassName}
-                    onClick={() => {
-                      if (isLiveNow) return;
-                      setPlusOpen(false);
-                      guardKycAction("go_live", () => navigate(goLiveHref));
-                    }}
-                  >
-                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                      <span>{t("nav.goLive")}</span>
-                      {isLiveNow && freelancerLiveUntil ? (
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold tabular-nums">
-                          <LiveTimer countdownTo={freelancerLiveUntil} />
-                        </span>
-                      ) : null}
-                    </span>
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={plusMenuItemClassName}
-                  onClick={() => {
-                    setPlusOpen(false);
-                    guardKycAction("share_post", () =>
-                      navigate(`${communityHref}?compose=1`),
-                    );
-                  }}
-                >
-                  <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>{t("nav.sharePost")}</span>
-                </button>
-              </div>
-            </>
-          ) : null}
         </div>
       </div>
 

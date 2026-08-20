@@ -15,9 +15,10 @@ import {
   ChevronRight,
   ChevronDown,
   Truck,
-  BadgeCheck,
+  ShieldCheck,
   Loader2,
-  Radio,
+  HelpingHand,
+  HeartHandshake,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
@@ -27,7 +28,6 @@ import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
-import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import {
   communityFeedRequestScrollState,
   communityFeedScrollState,
@@ -293,13 +293,9 @@ export default function LandingPage() {
     navigate("/onboarding?role=client");
   };
 
-  const handleCommunityLive = () => {
-    navigate(GLOBAL_POSTS_PATH);
-  };
-
   return (
     <div
-      className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-slate-50/50 text-slate-900 max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
+      className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-white text-slate-900 max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
       style={{ colorScheme: "light" }}
     >
       <LandingSiteHeader
@@ -325,22 +321,14 @@ export default function LandingPage() {
             onClick={handleSearchingForJob}
             className="h-12 gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50"
           >
-            <Briefcase className="h-4 w-4 text-orange-600" strokeWidth={2.25} />
+            <HelpingHand className="h-6 w-6 text-orange-600" strokeWidth={2.25} />
             Offer Help
-          </Button>
-          <Button
-            type="button"
-            onClick={handleCommunityLive}
-            className="h-12 gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50"
-          >
-            <Radio className="h-4 w-4 text-orange-600" strokeWidth={2.25} aria-hidden />
-            Community Live
           </Button>
           <Button
             onClick={handleHiringHelper}
             className="h-12 gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 text-sm font-bold text-white shadow-md hover:from-orange-600 hover:to-red-700"
           >
-            <Users className="h-4 w-4" strokeWidth={2.25} />
+            <HeartHandshake className="h-6 w-6" strokeWidth={2.25} />
             Need Help
           </Button>
         </div>
@@ -348,14 +336,14 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Full-Screen Hero Section */}
-        <section className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-slate-50">
+        <section className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-white">
           {/* Mobile — white hero with same post collage as desktop */}
           <div className="relative bg-white md:hidden">
             <div className="relative flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(5.75rem,calc(env(safe-area-inset-top,0px)+4.5rem))]">
               <div className="relative z-10 space-y-4 pb-1 animate-in fade-in slide-in-from-bottom-3 duration-700">
                 <h1 className="max-w-[19rem] text-[2.5rem] font-black leading-[1.05] tracking-tight text-slate-900 sm:text-[2.65rem]">
                   One{" "}
-                  <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-orange-600 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.25)]">
+                  <span className="inline-block rotate-[-1deg] rounded-xl bg-orange-50 px-2.5 py-0.5 text-orange-600 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.25)]">
                     community
                   </span>
                   . Many helpers.
@@ -373,23 +361,13 @@ export default function LandingPage() {
               />
 
               <div ref={mobileHeroButtonsRef} className="mt-2 space-y-3">
-                <Button
-                  type="button"
-                  onClick={handleCommunityLive}
-                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-orange-500 to-red-600 text-base font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                    <Radio className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-                  </span>
-                  Community Live
-                </Button>
                 <div className="grid grid-cols-2 gap-2.5">
                   <Button
                     type="button"
                     onClick={handleHiringHelper}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-sm font-black text-white shadow-md transition-all hover:bg-slate-800 active:scale-[0.98]"
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-sm font-black text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
                   >
-                    <Users className="h-4 w-4 shrink-0 text-orange-300" strokeWidth={2.25} aria-hidden />
+                    <HeartHandshake className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
                     Need Help
                   </Button>
                   <Button
@@ -397,7 +375,7 @@ export default function LandingPage() {
                     onClick={handleSearchingForJob}
                     className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-black text-slate-900 transition-all hover:bg-slate-100 active:scale-[0.98]"
                   >
-                    <Briefcase className="h-4 w-4 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+                    <HelpingHand className="h-6 w-6 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
                     Offer Help
                   </Button>
                 </div>
@@ -407,13 +385,69 @@ export default function LandingPage() {
 
           {/* Desktop — Facebook-style post collage + copy column */}
           <div className="hidden md:grid md:min-h-screen md:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-            <LandingHeroCollage posts={heroPosts} loading={heroPostsLoading} />
+            <div className="relative h-full min-h-[min(100vh,920px)]">
+              <LandingHeroCollage posts={heroPosts} loading={heroPostsLoading} />
 
-            <div className="relative flex flex-col justify-center bg-slate-50 px-10 py-28 lg:px-14 xl:px-16">
+              <div
+                className="absolute bottom-8 left-6 z-50 max-w-sm lg:bottom-10 lg:left-10"
+                aria-label="Secure registration powered by Didit"
+              >
+                <button
+                  type="button"
+                  onClick={() => setTebnuApartOpen((open) => !open)}
+                  aria-expanded={tebnuApartOpen}
+                  className="flex items-center gap-2 text-left transition-opacity hover:opacity-70"
+                >
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
+                    What sets Tebnu apart
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200",
+                      tebnuApartOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {tebnuApartOpen ? (
+                  <div className="mt-3">
+                    <p className="text-base font-bold leading-snug text-slate-900 md:text-lg">
+                      Every member verified with{" "}
+                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
+                        Didit
+                        <ShieldCheck
+                          className="h-4 w-4 shrink-0 md:h-[1.125rem] md:w-[1.125rem]"
+                          strokeWidth={2.5}
+                          aria-hidden
+                        />
+                      </span>
+                    </p>
+                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px]">
+                      Real ID and a live selfie before anyone can hire or work.
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5">
+                      {[
+                        "Encrypted ID checks at signup",
+                        "Verified before posting, hiring, or going live",
+                      ].map((line) => (
+                        <li
+                          key={line}
+                          className="text-sm font-semibold text-slate-700 md:text-[15px]"
+                        >
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="relative flex flex-col justify-center bg-white px-10 py-28 lg:px-14 xl:px-16">
               <div className="max-w-xl space-y-6 animate-in fade-in slide-in-from-right-10 duration-1000">
                 <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-slate-900 lg:text-6xl xl:text-7xl">
                   One{" "}
-                  <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-200 bg-orange-50 px-3 py-1 text-orange-600">
+                  <span className="inline-block rounded-xl border-0 bg-orange-50 px-3 py-1 text-orange-600 outline-none ring-0">
                     community
                   </span>
                   . Many helpers.
@@ -435,71 +469,6 @@ export default function LandingPage() {
               </div>
 
               <div
-                className="mt-10 max-w-md"
-                aria-label="Secure registration powered by Didit"
-              >
-                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.12)]">
-                  <button
-                    type="button"
-                    onClick={() => setTebnuApartOpen((open) => !open)}
-                    aria-expanded={tebnuApartOpen}
-                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50/80 lg:px-6 lg:py-5"
-                  >
-                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-[0_6px_18px_-4px_rgba(16,185,129,0.55)] ring-1 ring-emerald-400/30 md:h-14 md:w-14">
-                      <div
-                        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.28),transparent_55%)]"
-                        aria-hidden
-                      />
-                      <BadgeCheck
-                        className="relative h-6 w-6 fill-white text-emerald-600 lg:h-7 lg:w-7"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                    </div>
-                    <span className="min-w-0 flex-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
-                      What sets Tebnu apart
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200",
-                        tebnuApartOpen && "rotate-180",
-                      )}
-                      aria-hidden
-                    />
-                  </button>
-                  {tebnuApartOpen ? (
-                    <div className="border-t border-slate-100 px-5 pb-4 pt-3 lg:px-6 lg:pb-5">
-                        <p className="text-base font-bold leading-snug text-slate-900 md:text-lg lg:text-xl">
-                          Every member verified with{" "}
-                          <span className="text-emerald-600">Didit</span>
-                        </p>
-                        <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px] lg:text-base">
-                          Real ID and a live selfie before anyone can hire or work.
-                        </p>
-                        <ul className="mt-2.5 space-y-1.5 md:space-y-2">
-                          {[
-                            "Encrypted ID checks at signup",
-                            "Verified before posting, hiring, or going live",
-                          ].map((line) => (
-                            <li
-                              key={line}
-                              className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 md:text-[15px]"
-                            >
-                              <CheckCircle2
-                                className="h-4 w-4 shrink-0 text-emerald-600"
-                                strokeWidth={2.5}
-                                aria-hidden
-                              />
-                              <span>{line}</span>
-                            </li>
-                          ))}
-                        </ul>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div
                 ref={buttonsRef}
                 className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap"
               >
@@ -507,22 +476,14 @@ export default function LandingPage() {
                   onClick={handleSearchingForJob}
                   className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
                 >
-                  <Briefcase className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} />
+                  <HelpingHand className="h-7 w-7 shrink-0 text-orange-600" strokeWidth={2.25} />
                   Offer Help
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleCommunityLive}
-                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
-                >
-                  <Radio className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
-                  Community Live
                 </Button>
                 <Button
                   onClick={handleHiringHelper}
                   className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-6 text-base font-bold text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
                 >
-                  <Users className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                  <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} />
                   Need Help
                 </Button>
               </div>
@@ -1084,14 +1045,14 @@ export default function LandingPage() {
             onClick={handleSearchingForJob}
             className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-orange-50 px-4 text-sm font-black tracking-tight text-orange-600 shadow-sm hover:bg-orange-100"
           >
-            <Briefcase className="h-4 w-4" />
+            <HelpingHand className="h-6 w-6" strokeWidth={2.25} />
             Offer Help
           </Button>
           <Button
             onClick={handleHiringHelper}
-            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-orange-500 to-orange-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-orange-700"
+            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-orange-500 to-red-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-red-700"
           >
-            <Users className="h-4 w-4" />
+            <HeartHandshake className="h-6 w-6" strokeWidth={2.25} />
             Need Help
           </Button>
         </div>

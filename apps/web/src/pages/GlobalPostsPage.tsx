@@ -15,6 +15,7 @@ import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
 import { parseJobRequestShareId } from "@/lib/jobRequestShare";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,7 @@ type FeedMainContentProps = {
   onSidePanelPostOpen?: (postId: string) => void;
   /** Guest global feed: grey main column + white cards on desktop light mode. */
   guestDesktopLightLayout?: boolean;
+  guestSidebarOpen?: boolean;
 };
 
 function FeedMainContent({
@@ -120,18 +122,10 @@ function FeedMainContent({
   onOtherSubFilterChange,
   onSidePanelPostOpen,
   guestDesktopLightLayout = false,
+  guestSidebarOpen = false,
 }: FeedMainContentProps) {
   const { t } = useTranslation();
   const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
-  const sidePanelPostTypeIds = useMemo(
-    () =>
-      feedPostTypeIds?.length
-        ? feedPostTypeIds
-        : postTypeFilter === "all"
-          ? null
-          : [postTypeFilter],
-    [feedPostTypeIds, postTypeFilter],
-  );
 
   const showCategoryTabs =
     postTypeFilter === "all" ||
@@ -146,13 +140,24 @@ function FeedMainContent({
         guestDesktopLightLayout && "md:flex md:w-full md:items-start",
       )}
     >
+      {guestDesktopLightLayout ? (
+        <GuestCommunityFeedAside
+          expanded={guestSidebarOpen}
+          postTypeFilter={postTypeFilter}
+          onPostTypeFilterChange={onPostTypeFilterChange}
+        />
+      ) : null}
       <div
         className={cn(
-          guestDesktopLightLayout &&
-            "md:min-w-0 md:flex-1 md:px-6 md:pb-8 md:pt-6 lg:px-10 xl:px-12",
+          guestDesktopLightLayout && "md:min-w-0 md:flex-1 md:pb-8 md:pt-6",
         )}
       >
-        <div className="bg-white dark:bg-background">
+        <div
+          className={cn(
+            "bg-white dark:bg-background",
+            guestDesktopLightLayout && "md:px-1.5 lg:px-2",
+          )}
+        >
         <CommunityFeedHeader
           activeFilter={postTypeFilter}
           onFilterChange={onPostTypeFilterChange}
@@ -175,12 +180,13 @@ function FeedMainContent({
           otherSubFilter={otherSubFilter}
           onOtherSubFilterChange={onOtherSubFilterChange}
           className={cn(
-            "mb-4 px-2 md:mb-5 md:mt-4 md:px-0",
+            "mb-4 px-2 md:mb-5 md:mt-0 md:px-0",
             expandDiscoverLayout ? "mt-0" : "mt-3",
           )}
+          hidePostTypeTabsOnDesktop={guestDesktopLightLayout}
         />
 
-        {showCategoryTabs && (
+        {showCategoryTabs && !guestDesktopLightLayout && (
           <div
             className={cn(
               "mb-4 hidden px-2 md:block md:px-0",
@@ -269,8 +275,14 @@ function FeedMainContent({
 
         <div
           className={cn(
+            guestDesktopLightLayout && "md:flex md:items-start",
+          )}
+        >
+        <div
+          className={cn(
             globalFeedMobileFeedAreaClass,
-            guestDesktopLightLayout && "md:bg-slate-100 dark:md:bg-transparent",
+            guestDesktopLightLayout &&
+              "md:mx-auto md:min-w-0 md:flex-1 md:bg-slate-100 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem] dark:md:bg-transparent",
           )}
         >
         <ProfilePostsFeed
@@ -283,7 +295,7 @@ function FeedMainContent({
             feedPostTypeIds?.length || postTypeFilter === "all" ? null : postTypeFilter
           }
           filterPostTypeIds={feedPostTypeIds}
-          sidePanelPostTypeIds={sidePanelPostTypeIds}
+          sidePanelPostTypeIds={[]}
           filterCommentedOwnPosts={commentedFilterActive}
           filterAcceptedRequests={acceptedFilterActive}
           filterAuthorId={favoriteAuthorFilterId ?? undefined}
@@ -302,30 +314,34 @@ function FeedMainContent({
           guestDesktopLightLayout={guestDesktopLightLayout}
         />
         </div>
-      </div>
 
-      {guestDesktopLightLayout ? (
-        <div
-          className={cn(
-            "hidden md:sticky md:top-6 md:flex md:max-h-[calc(100dvh-1.5rem)] md:min-h-0 md:flex-col md:shrink-0 md:self-start",
-            FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-            "md:bg-white md:px-5 md:pb-6 md:pt-6 lg:px-8 xl:px-10 dark:md:bg-background",
-          )}
-        >
-          <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-            <FavoritesPostsSidePanel
-              postTypeIds={sidePanelPostTypeIds}
-              onPostOpen={onSidePanelPostOpen}
-            />
+        {guestDesktopLightLayout ? (
+          <div
+            className={cn(
+              "hidden md:sticky md:flex md:min-h-0 md:flex-col md:shrink-0 md:self-start md:overflow-y-auto md:overflow-x-hidden",
+              FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+              "md:top-[5.25rem] md:max-h-[calc(100dvh-5.5rem)]",
+              "md:bg-white md:px-3 md:pb-6 md:pt-1 lg:px-4 dark:md:bg-background",
+            )}
+          >
+            <div className="min-h-0 w-full min-w-0 flex-1">
+              <FavoritesPostsSidePanel
+                embedded
+                postTypeIds={null}
+                onPostOpen={onSidePanelPostOpen}
+              />
+            </div>
           </div>
+        ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
+  const { t } = useTranslation();
   useScrollToTopOnPathnameChange();
   useMobileScrollDirectionHeaderHide(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -345,6 +361,7 @@ export default function GlobalPostsPage() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeInitialPostTypeId, setComposeInitialPostTypeId] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [guestSidebarOpen, setGuestSidebarOpen] = useState(false);
   const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
     () => parseCommunityFeedTypeFilter(searchParams.get("type")) ?? "all",
   );
@@ -552,10 +569,41 @@ export default function GlobalPostsPage() {
         <LandingSiteHeader
           hidePostFeedLink
           hideLeftLogo
-          mobileMatchLanding
-          fixedOnMobile
+          hideBackButton
           hideBackButtonMobile
-          variant="brand"
+          hideDesktopNavLinks
+          fullBleedTop
+          onBrandClick={() => setAboutOpen(true)}
+          desktopSidebarOpen={guestSidebarOpen}
+          onDesktopSidebarToggle={() => setGuestSidebarOpen((open) => !open)}
+          centerContent={
+            <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2">
+              <PublicPostsCategoryTabs
+                dense
+                className="justify-center"
+                activeId={categoryFilter}
+                onSelect={handleCategoryFilterChange}
+              />
+              {categoryFilter === "other_help" ? (
+                <select
+                  value={otherSubFilter ?? ""}
+                  onChange={(e) => setOtherSubFilter(e.target.value || null)}
+                  className={cn(
+                    "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-500/90 px-2.5 text-[11px] font-semibold text-white outline-none",
+                    "dark:bg-zinc-800 dark:text-zinc-200",
+                  )}
+                  aria-label={t("discoverHome.filters.pickSubcategory")}
+                >
+                  <option value="">{t("discoverHome.filters.allOther")}</option>
+                  {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {t(`otherHelpSubcategories.${sub.id}`)}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+          }
         />
       ) : null}
 
@@ -564,7 +612,7 @@ export default function GlobalPostsPage() {
           "flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6",
           user
             ? "app-desktop-shell md:px-4 md:py-8 md:ps-8 lg:ps-10 pt-2"
-            : "w-full max-md:pt-[4.25rem] md:px-0 md:pb-0 md:pt-0",
+            : "w-full md:px-0 md:pb-0 md:pt-0",
         )}
       >
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-visible px-0">
@@ -594,6 +642,7 @@ export default function GlobalPostsPage() {
             onOtherSubFilterChange={setOtherSubFilter}
             onSidePanelPostOpen={handleSidePanelPostOpen}
             guestDesktopLightLayout={!user}
+            guestSidebarOpen={guestSidebarOpen}
           />
         </div>
       </div>
@@ -696,10 +745,15 @@ export default function GlobalPostsPage() {
         type="button"
         onClick={user ? openCompose : () => setAboutOpen(true)}
         className={cn(
-          "hidden md:inline-flex fixed left-1/2 bottom-6 z-[120] -translate-x-1/2",
+          "hidden md:inline-flex fixed bottom-6 z-[120]",
+          user
+            ? "left-[calc(220px+1.5rem)]"
+            : guestSidebarOpen
+              ? "left-[calc(15.5rem+1.25rem)]"
+              : "left-[calc(6.5rem+1.25rem)] lg:left-[calc(7rem+1.25rem)]",
           "items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-extrabold tracking-tight",
           "bg-orange-600 text-white shadow-xl shadow-orange-500/25 transition-all",
-          "hover:bg-orange-700 hover:-translate-y-[2px] hover:-translate-x-1/2 active:scale-[0.97]",
+          "hover:bg-orange-700 hover:-translate-y-[2px] active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "whitespace-nowrap",
         )}

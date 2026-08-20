@@ -88,6 +88,7 @@ const ELECTRICIAN_OFFER_TEXT_POST: CollageTextPostMock = {
   body: "Outlets, light fixtures, appliance installs, and TV mounting. Licensed technician — careful, tidy work.",
   whenLabel: "This week · Tel Aviv area",
   rateLabel: "₪120 per hour",
+  imageUrl: "/images/handyman.jpg",
   comments: [
     {
       id: "left-c1",
@@ -377,30 +378,15 @@ function CollageCommentSheet({
 
 function CollageCardShell({
   shellClassName,
-  tilt,
   children,
 }: {
   shellClassName?: string;
   tilt: string;
   children: ReactNode;
 }) {
-  const counterTilt =
-    tilt === "-rotate-5"
-      ? "rotate-5"
-      : tilt === "rotate-2"
-        ? "-rotate-2"
-        : tilt === "rotate-[4deg]"
-          ? "-rotate-[4deg]"
-          : "";
-
   return (
-    <div className={cn("absolute", shellClassName, tilt)}>
-      <div
-        className={cn(
-          "flex h-full w-full flex-col overflow-hidden rounded-[1.35rem] bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] ring-1 ring-black/5",
-          counterTilt,
-        )}
-      >
+    <div className={cn("absolute", shellClassName)}>
+      <div className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-[1.35rem] bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] ring-1 ring-black/5">
         {children}
       </div>
     </div>
@@ -495,14 +481,14 @@ function CollageTextPostCard({
         compact
       />
       <div className="min-h-0 flex-1 overflow-hidden px-2 pb-1.5 pt-1.5 antialiased">
-        <div className="h-full rounded-xl bg-white p-2.5">
-          <div className="flex gap-2">
+        <div className="flex h-full min-h-0 flex-col rounded-xl bg-white p-2.5">
+          <div className="flex min-h-0 gap-2">
             <div className="min-w-0 flex-1">
               <h3 className="flex items-center gap-1.5 text-xs font-bold leading-snug text-slate-900 lg:text-sm">
                 <TitleIcon className="h-3.5 w-3.5 shrink-0 text-slate-600" strokeWidth={2.25} aria-hidden />
                 <span>{post.title}</span>
               </h3>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-700">
+              <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-slate-700">
                 {post.body}
               </p>
               <div className="mt-2 space-y-1 text-xs font-medium text-slate-700">
@@ -520,15 +506,17 @@ function CollageTextPostCard({
                 ) : null}
               </div>
             </div>
-            {post.imageUrl ? (
+          </div>
+          {post.imageUrl ? (
+            <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg">
               <img
                 src={post.imageUrl}
                 alt=""
-                className="h-16 w-16 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-black/5 lg:h-[4.5rem] lg:w-[4.5rem]"
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
       <CollageActionButton
@@ -614,35 +602,33 @@ function LandingHeroCollageCanvas({
           embedded ? "pb-20 pt-2" : "pb-28 pt-28 lg:pb-32 lg:pt-32",
         )}
       >
-        {!embedded ? (
-          <CollageTextPostCard
-            post={ELECTRICIAN_OFFER_TEXT_POST}
-            shellClassName="left-[2%] top-[14%] z-10 h-[42%] w-[38%]"
-            tilt="-rotate-5"
-          />
-        ) : null}
-
         <CollageMediaCard
           mock={EVENT_CARD_MOCK}
           imageUrl={eventImage}
           shellClassName={
             embedded
               ? "left-[3%] top-[6%] z-20 h-[54%] w-[50%]"
-              : "left-[30%] top-[12%] z-20 h-[52%] w-[44%]"
+              : "left-[6%] top-[14%] z-10 h-[54%] w-[46%] !rotate-0"
           }
-          tilt={embedded ? "rotate-0" : "rotate-2"}
+          tilt="rotate-0"
         />
 
-        <CollageTextPostCard
-          post={embedded ? NANNY_TEXT_POST_MOBILE : NANNY_TEXT_POST}
-          shellClassName={
-            embedded
-              ? "left-[46%] top-[12%] z-30 h-[50%] w-[50%]"
-              : "left-[65%] top-[38%] z-30 h-[34%] w-[34%]"
-          }
-          tilt={embedded ? "rotate-0" : "rotate-[4deg]"}
-          hideComments={embedded}
-        />
+        {!embedded ? (
+          <CollageTextPostCard
+            post={ELECTRICIAN_OFFER_TEXT_POST}
+            shellClassName="left-[50%] top-[16%] z-30 h-[50%] w-[42%] !rotate-0"
+            tilt="rotate-0"
+          />
+        ) : null}
+
+        {embedded ? (
+          <CollageTextPostCard
+            post={NANNY_TEXT_POST_MOBILE}
+            shellClassName="left-[46%] top-[12%] z-30 h-[50%] w-[50%]"
+            tilt="rotate-0"
+            hideComments
+          />
+        ) : null}
 
         <div
           className={cn(

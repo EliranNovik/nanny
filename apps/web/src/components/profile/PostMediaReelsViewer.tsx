@@ -426,33 +426,13 @@ export function PostMediaReelsViewer({
       const authorFirstName = authorName.split(" ")[0] || authorName;
       const hasMedia = postHasReelsMedia(p);
       const generatedCopy = p.ai_generated_copy ?? null;
-      const categoryLabel =
-        p.custom_category?.trim() ||
-        (typeof p.post_metadata?.custom_category === "string"
-          ? p.post_metadata.custom_category.trim()
-          : null);
-      const title =
-        p.source === "job_request"
-          ? feedPostTitle(
-              t,
-              {
-                source: "job_request",
-                post_metadata: p.post_metadata,
-              },
-              generatedCopy,
-              categoryLabel,
-            )
-          : feedPostTitle(
-              t,
-              {
-                source: "post",
-                post_type_id: p.post_type_id,
-                post_types: p.post_types,
-                post_metadata: p.post_metadata,
-              },
-              generatedCopy,
-              categoryLabel,
-            );
+      const serviceCategoryMeta = feedPostServiceCategoryMeta(t, p);
+      const title = feedPostTitle(
+        t,
+        p,
+        generatedCopy,
+        serviceCategoryMeta?.label,
+      );
       const description = feedPostDescription(
         generatedCopy,
         p.caption ?? "",
@@ -472,7 +452,6 @@ export function PostMediaReelsViewer({
               post_metadata: p.post_metadata,
             };
       const locationLine = feedPostReelLocationLine(t, postLike);
-      const serviceCategoryMeta = feedPostServiceCategoryMeta(t, p);
       const whenTimeframe =
         postTypeId === "request_help"
           ? ((p.post_metadata?.timeframe as string | null | undefined) ?? null)
@@ -1611,11 +1590,11 @@ function ReelSlide({
 
   const mediaObjectClass = isLandscape
     ? "max-h-full max-w-full object-contain object-center"
-    : "h-full w-full object-cover object-top";
+    : "h-full w-full object-cover object-top md:h-auto md:max-h-full md:w-auto md:max-w-full md:object-contain md:object-center";
 
   const mediaContainerClass = isLandscape
     ? "relative min-h-0 flex flex-1 items-center justify-center bg-black max-md:absolute max-md:inset-0 max-md:z-0"
-    : "absolute inset-0 z-0 overflow-hidden bg-black";
+    : "absolute inset-0 z-0 overflow-hidden bg-black md:relative md:inset-auto md:flex md:h-full md:min-h-0 md:w-full md:flex-1 md:items-center md:justify-center";
 
   const showVideoProgress =
     slide.mediaType === "video" &&
