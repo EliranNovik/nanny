@@ -282,7 +282,7 @@ function FeedMainContent({
           className={cn(
             globalFeedMobileFeedAreaClass,
             guestDesktopLightLayout &&
-              "md:mx-auto md:min-w-0 md:flex-1 md:bg-slate-100 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem] dark:md:bg-transparent",
+              "md:ms-0 md:me-auto md:min-w-0 md:flex-1 md:bg-slate-100 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem] dark:md:bg-transparent",
           )}
         >
         <ProfilePostsFeed

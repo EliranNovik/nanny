@@ -608,7 +608,7 @@ function LandingHeroCollageCanvas({
           shellClassName={
             embedded
               ? "left-[3%] top-[6%] z-20 h-[54%] w-[50%]"
-              : "left-[6%] top-[14%] z-10 h-[54%] w-[46%] !rotate-0"
+              : "left-[34%] top-[24%] z-10 h-[36%] w-[28%] !rotate-0"
           }
           tilt="rotate-0"
         />
@@ -616,7 +616,7 @@ function LandingHeroCollageCanvas({
         {!embedded ? (
           <CollageTextPostCard
             post={ELECTRICIAN_OFFER_TEXT_POST}
-            shellClassName="left-[50%] top-[16%] z-30 h-[50%] w-[42%] !rotate-0"
+            shellClassName="left-[56%] top-[28%] z-30 h-[36%] w-[28%] !rotate-0"
             tilt="rotate-0"
           />
         ) : null}
@@ -633,12 +633,18 @@ function LandingHeroCollageCanvas({
         <div
           className={cn(
             "absolute z-40",
-            embedded ? "bottom-[26%] left-[10%]" : "bottom-[24%] left-[16%]",
+            embedded ? "bottom-[26%] left-[10%]" : "bottom-[30%] left-[42%]",
           )}
         >
           <div className="rounded-full bg-gradient-to-br from-sky-400 via-blue-500 to-emerald-400 p-1 shadow-[0_20px_48px_-12px_rgba(59,130,246,0.55)]">
             <div className="rounded-full bg-white p-1">
-              <Avatar className="h-[7.75rem] w-[7.75rem] lg:h-[9.25rem] lg:w-[9.25rem]">
+              <Avatar
+                className={cn(
+                  embedded
+                    ? "h-[7.75rem] w-[7.75rem] lg:h-[9.25rem] lg:w-[9.25rem]"
+                    : "h-24 w-24 lg:h-28 lg:w-28",
+                )}
+              >
                 <AvatarImage
                   src={HERO_PROFILE.photoUrl}
                   alt={HERO_PROFILE.name}
@@ -736,12 +742,16 @@ export function LandingHeroCollage({
   return (
     <div
       className={cn(
-        "relative h-full min-h-[min(100vh,920px)] w-full overflow-hidden bg-white",
+        "relative h-full min-h-[min(100vh,920px)] w-full overflow-hidden bg-transparent",
         className,
       )}
     >
       <div className="relative mx-auto h-full w-full">
-        <LandingHeroCollageCanvas posts={posts} loading={loading} />
+        <LandingHeroCollageCanvas
+          posts={posts}
+          loading={loading}
+          className="bg-transparent"
+        />
       </div>
     </div>
   );

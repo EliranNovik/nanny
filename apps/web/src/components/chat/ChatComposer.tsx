@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Paperclip, Send, Loader2, MessageSquarePlus } from "lucide-react";
@@ -42,6 +43,7 @@ export function ChatComposer({
   hideBackButton,
   mobileView,
 }: ChatComposerProps) {
+  const { t } = useTranslation();
   const [showPhrases, setShowPhrases] = React.useState(false);
 
   /** Chat input inside floating glass composer shell */
@@ -53,16 +55,16 @@ export function ChatComposer({
     "w-full rounded-xl px-4 py-3.5 text-left text-[19px] font-medium leading-snug text-foreground transition-colors hover:bg-muted/85 active:bg-muted dark:hover:bg-zinc-800/90 md:px-3.5 md:py-3 md:text-[15px]";
 
   const phrases = [
-    "I'm on my way",
-    "Available now",
-    "Can you share a few more details?",
-    "Let's coordinate a time",
-    "What's the exact location?",
-    "How much is the hourly rate?",
-    "Thank you, that works for me",
-    "I might be a bit late",
-    "Can we do this tomorrow instead?",
-    "Sounds good! See you soon",
+    t("messagesPage.phrases.onMyWay"),
+    t("messagesPage.phrases.availableNow"),
+    t("messagesPage.phrases.moreDetails"),
+    t("messagesPage.phrases.coordinateTime"),
+    t("messagesPage.phrases.exactLocation"),
+    t("messagesPage.phrases.hourlyRate"),
+    t("messagesPage.phrases.thatWorks"),
+    t("messagesPage.phrases.mightBeLate"),
+    t("messagesPage.phrases.tomorrowInstead"),
+    t("messagesPage.phrases.seeYouSoon"),
   ];
 
   const attachmentPreview = selectedFile ? (
@@ -73,7 +75,9 @@ export function ChatComposer({
     />
   ) : null;
 
-  const captionPlaceholder = selectedFile ? "Add a caption…" : "Type a message…";
+  const captionPlaceholder = selectedFile
+    ? t("messagesPage.addCaption")
+    : t("messagesPage.typeMessage");
 
   const messageInputProps = bidirectionalInputProps(newMessage, messageFieldClass);
 
@@ -151,7 +155,7 @@ export function ChatComposer({
             className={composerActionBtnClass}
             onClick={() => fileInputRef.current?.click()}
             disabled={sending || uploading}
-            aria-label="Attach file"
+            aria-label={t("messagesPage.attachFile")}
           >
             <Paperclip className={composerIconClass} strokeWidth={1.75} />
           </Button>
@@ -163,7 +167,7 @@ export function ChatComposer({
             className={composerActionBtnClass}
             onClick={() => setShowPhrases(!showPhrases)}
             disabled={sending || uploading}
-            aria-label="Quick replies"
+            aria-label={t("messagesPage.quickReplies")}
           >
             <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
@@ -183,7 +187,9 @@ export function ChatComposer({
               }}
               {...messageInputProps}
               disabled={sending || uploading}
-              aria-label={selectedFile ? "Caption" : "Message"}
+              aria-label={
+                selectedFile ? t("messagesPage.caption") : t("messagesPage.message")
+              }
             />
           </div>
           <Button
@@ -191,7 +197,11 @@ export function ChatComposer({
             size="icon"
             className={composerSendBtnClass}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
-            aria-label={selectedFile ? "Send attachment" : "Send message"}
+            aria-label={
+              selectedFile
+                ? t("messagesPage.sendAttachment")
+                : t("messagesPage.sendMessage")
+            }
           >
             {sending || uploading ? (
               <Loader2 className={cn(composerSendIconClass, "animate-spin")} />
@@ -257,7 +267,7 @@ export function ChatComposer({
             className={composerActionBtnClass}
             onClick={() => fileInputRef.current?.click()}
             disabled={sending || uploading}
-            aria-label="Attach file"
+            aria-label={t("messagesPage.attachFile")}
           >
             <Paperclip className={composerIconClass} strokeWidth={1.75} />
           </Button>
@@ -269,7 +279,7 @@ export function ChatComposer({
             className={composerActionBtnClass}
             onClick={() => setShowPhrases(!showPhrases)}
             disabled={sending || uploading}
-            aria-label="Quick replies"
+            aria-label={t("messagesPage.quickReplies")}
           >
             <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
@@ -289,7 +299,9 @@ export function ChatComposer({
               }}
               {...messageInputProps}
               disabled={sending || uploading}
-              aria-label={selectedFile ? "Caption" : "Message"}
+              aria-label={
+                selectedFile ? t("messagesPage.caption") : t("messagesPage.message")
+              }
             />
           </div>
           <Button
@@ -297,7 +309,11 @@ export function ChatComposer({
             size="icon"
             className={composerSendBtnClass}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
-            aria-label={selectedFile ? "Send attachment" : "Send message"}
+            aria-label={
+              selectedFile
+                ? t("messagesPage.sendAttachment")
+                : t("messagesPage.sendMessage")
+            }
           >
             {sending || uploading ? (
               <Loader2 className={cn(composerSendIconClass, "animate-spin")} />

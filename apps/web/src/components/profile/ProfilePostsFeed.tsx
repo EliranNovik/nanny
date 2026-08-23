@@ -4868,7 +4868,7 @@ function PostCard({
               "rounded-2xl",
               globalFeedMobileCardClass,
               guestDesktopLightLayout
-                ? "bg-white shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
+                ? "bg-zinc-50 shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
                 : globalFeedCardSurfaceClass,
             )
           : isDiscover || isPlainCard
@@ -7711,7 +7711,7 @@ export function ProfilePostsFeed({
               className={cn(
                 "w-full space-y-2 md:space-y-3",
                 !externalFavoritesSidePanel &&
-                  "md:mx-auto md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
+                  "md:ms-0 md:me-auto md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
               )}
             >
             {displayPosts.map((post) => (

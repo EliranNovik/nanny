@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,10 @@ export function ChatSimpleHeader({
   showBackButton = false,
   className,
 }: ChatSimpleHeaderProps) {
+  const { t } = useTranslation();
   const statusLine = isLive24h
-    ? "Live now"
-    : preview?.city?.trim() || "Active recently";
+    ? t("messagesPage.liveNow")
+    : preview?.city?.trim() || t("messagesPage.activeRecently");
 
   return (
     <header
@@ -126,7 +128,7 @@ export function ChatSimpleHeader({
             {isVerified ? (
               <BadgeCheck
                 className="h-5 w-5 shrink-0 text-sky-400"
-                aria-label="Verified"
+                aria-label={t("messagesPage.verified")}
               />
             ) : null}
           </div>

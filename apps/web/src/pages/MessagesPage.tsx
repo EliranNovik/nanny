@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -91,6 +92,7 @@ function shouldOpenMobileChatPane(): boolean {
 }
 
 function InboxSecuredFooter() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-center gap-2.5 px-4 py-8 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:py-10">
       <ShieldCheck
@@ -98,7 +100,7 @@ function InboxSecuredFooter() {
         aria-hidden
       />
       <p className="text-center text-sm font-medium leading-snug text-muted-foreground md:text-[15px]">
-        Secured within{" "}
+        {t("messagesPage.securedWithin")}{" "}
         <span className="text-foreground/75 dark:text-white/70">tebnu.com</span>
       </p>
     </div>
@@ -106,6 +108,7 @@ function InboxSecuredFooter() {
 }
 
 export default function MessagesPage() {
+  const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -534,12 +537,12 @@ export default function MessagesPage() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
+    if (minutes < 1) return t("messagesPage.justNow");
+    if (minutes < 60) return t("messagesPage.minutesAgo", { count: minutes });
+    if (hours < 24) return t("messagesPage.hoursAgo", { count: hours });
+    if (days < 7) return t("messagesPage.daysAgo", { count: days });
     // Compact so inbox timestamps fit on narrow screens (avoid full locale string clipping)
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString(i18n.language, {
       month: "short",
       day: "numeric",
       ...(date.getFullYear() !== now.getFullYear()
@@ -673,7 +676,7 @@ export default function MessagesPage() {
                 glassBadgeClass,
               )}
               role="tablist"
-              aria-label="Inbox sections"
+              aria-label={t("messagesPage.inboxSections")}
             >
               <button
                 type="button"
@@ -681,8 +684,10 @@ export default function MessagesPage() {
                 aria-selected={inboxTab === "messages"}
                 aria-label={
                   inboxUnreadTotal > 0
-                    ? `Messages, ${inboxUnreadTotal} unread`
-                    : "Messages"
+                    ? t("messagesPage.messagesUnread", {
+                        count: inboxUnreadTotal,
+                      })
+                    : t("messagesPage.messages")
                 }
                 onClick={() => setInboxTab("messages")}
                 className={cn(
@@ -693,7 +698,7 @@ export default function MessagesPage() {
                 )}
               >
                 <MessageCircle className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
-                <span className="hidden md:inline">Messages</span>
+                <span className="hidden md:inline">{t("messagesPage.messages")}</span>
                 {inboxUnreadTotal > 0 ? (
                   <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground md:static md:translate-none">
                     {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
@@ -706,8 +711,10 @@ export default function MessagesPage() {
                 aria-selected={inboxTab === "news"}
                 aria-label={
                   visibleActivityAlerts.length > 0
-                    ? `News, ${visibleActivityAlerts.length} items`
-                    : "News"
+                    ? t("messagesPage.newsItems", {
+                        count: visibleActivityAlerts.length,
+                      })
+                    : t("messagesPage.news")
                 }
                 onClick={() => setInboxTab("news")}
                 className={cn(
@@ -718,7 +725,7 @@ export default function MessagesPage() {
                 )}
               >
                 <Bell className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
-                <span className="hidden md:inline">News</span>
+                <span className="hidden md:inline">{t("messagesPage.news")}</span>
                 {visibleActivityAlerts.length > 0 ? (
                   <span className="absolute -right-0.5 -top-0.5 rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15 md:static md:translate-none">
                     {visibleActivityAlerts.length > 99
@@ -761,18 +768,17 @@ export default function MessagesPage() {
               chatInboxRows.length === 0 ? (
               <>
               <h2 className="messages-inbox-section-title shrink-0 md:hidden">
-                Messages
+                {t("messagesPage.messages")}
               </h2>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <MessageCircle className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-foreground">
-                  No conversations yet
+                  {t("messagesPage.emptyTitle")}
                 </h3>
                 <p className="mb-6 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                  When you message a helper or respond to a request, it appears
-                  here with job context so you can act quickly.
+                  {t("messagesPage.emptyBody")}
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
@@ -789,10 +795,10 @@ export default function MessagesPage() {
                     }
                   >
                     {profile?.role === "client"
-                      ? "Browse helpers"
+                      ? t("messagesPage.browseHelpers")
                       : profile?.role === "freelancer"
-                        ? "Browse jobs"
-                        : "Go to home"}
+                        ? t("messagesPage.browseJobs")
+                        : t("messagesPage.goHome")}
                   </Button>
                   <Button
                     type="button"
@@ -806,7 +812,7 @@ export default function MessagesPage() {
                       )
                     }
                   >
-                    Start a request
+                    {t("messagesPage.startRequest")}
                   </Button>
                 </div>
               </div>
@@ -815,7 +821,7 @@ export default function MessagesPage() {
             ) : (
               <>
                 <h2 className="messages-inbox-section-title shrink-0 md:hidden">
-                  Messages
+                  {t("messagesPage.messages")}
                 </h2>
                 <div className="relative shrink-0 md:px-4 md:pb-3 md:pt-3">
                   <div className="messages-inbox-search">
@@ -825,7 +831,7 @@ export default function MessagesPage() {
                       />
                       <input
                         type="search"
-                        placeholder="Search"
+                        placeholder={t("messagesPage.search")}
                         autoComplete="off"
                         value={contactSearchQuery}
                         onChange={(e) => setContactSearchQuery(e.target.value)}
@@ -836,7 +842,7 @@ export default function MessagesPage() {
                           type="button"
                           onClick={() => setContactSearchQuery("")}
                           className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                          aria-label="Clear search"
+                          aria-label={t("messagesPage.clearSearch")}
                         >
                           <X className="h-4 w-4" aria-hidden />
                         </button>
@@ -851,7 +857,7 @@ export default function MessagesPage() {
                         className={contactFilterChipClass(contactFilterUnread)}
                       >
                         <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        <span>Unread</span>
+                        <span>{t("messagesPage.unread")}</span>
                         {inboxUnreadTotal > 0 ? (
                           <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-primary dark:bg-primary/25">
                             {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
@@ -865,7 +871,7 @@ export default function MessagesPage() {
                         className={contactFilterChipClass(contactFilterFavorites)}
                       >
                         <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        <span>Favorites</span>
+                        <span>{t("messagesPage.favorites")}</span>
                       </button>
                       <button
                         type="button"
@@ -882,7 +888,7 @@ export default function MessagesPage() {
                         ) : (
                           <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         )}
-                        <span>{isManageMode ? "Done" : "Remove"}</span>
+                        <span>{isManageMode ? t("messagesPage.done") : t("messagesPage.remove")}</span>
                       </button>
                     </div>
                   </div>
@@ -891,10 +897,10 @@ export default function MessagesPage() {
                 {filteredChatInboxRows.length === 0 ? (
                   <div className="flex flex-col items-center px-6 py-10 text-center">
                     <p className="text-sm font-semibold text-foreground">
-                      No conversations match
+                      {t("messagesPage.noMatchTitle")}
                     </p>
                     <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                      Try a different search or turn off a filter.
+                      {t("messagesPage.noMatchBody")}
                     </p>
                     {hasContactListFilters ? (
                       <Button
@@ -908,7 +914,7 @@ export default function MessagesPage() {
                           setContactFilterFavorites(false);
                         }}
                       >
-                        Clear filters
+                        {t("messagesPage.clearFilters")}
                       </Button>
                     ) : null}
                   </div>
@@ -976,7 +982,7 @@ export default function MessagesPage() {
                           >
                             <span className="min-w-0 truncate">
                               {convo.other_user_profile?.full_name ||
-                                "User"}
+                                t("messagesPage.user")}
                             </span>
                             {locationLabel ? (
                               <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-[15px]">
@@ -993,14 +999,14 @@ export default function MessagesPage() {
                               )}
                             >
                               {convo.last_message.sender_id === user?.id
-                                ? "You · "
+                                ? t("messagesPage.youPrefix")
                                 : ""}
                               {convo.last_message.attachment_type
                                 ? convo.last_message.attachment_type ===
                                   "image"
-                                  ? "Photo"
+                                  ? t("messagesPage.photo")
                                   : convo.last_message.attachment_name ||
-                                    "File"
+                                    t("messagesPage.file")
                                 : trimPreviewNoise(
                                     convo.last_message.body,
                                   )}
@@ -1016,7 +1022,7 @@ export default function MessagesPage() {
                               }
                             }}
                             className="absolute right-0 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-colors hover:bg-red-600"
-                            aria-label="Remove conversation"
+                            aria-label={t("messagesPage.removeConversation")}
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -1045,18 +1051,17 @@ export default function MessagesPage() {
           ) : activityInboxRows.length === 0 ? (
               <>
               <h2 className="messages-inbox-section-title shrink-0 md:hidden">
-                Notifications
+                {t("messagesPage.notifications")}
               </h2>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <Bell className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-foreground">
-                  No updates yet
+                  {t("messagesPage.newsEmptyTitle")}
                 </h3>
                 <p className="mb-6 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                  Job invites, confirmations, and other activity will show up here
-                  when something needs your attention.
+                  {t("messagesPage.newsEmptyBody")}
                 </p>
               </div>
               <InboxSecuredFooter />
@@ -1064,12 +1069,14 @@ export default function MessagesPage() {
             ) : (
               <>
               <h2 className="messages-inbox-section-title shrink-0 md:hidden">
-                Notifications
+                {t("messagesPage.notifications")}
               </h2>
               <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
                 {activityInboxRows.map((row) => {
                   const a = row.alert;
-                  const kind = inboxActivityKindLabel(a.type);
+                  const kind = t(`messagesPage.kinds.${a.type}`, {
+                    defaultValue: inboxActivityKindLabel(a.type),
+                  });
                   const ActivityIcon =
                     a.type === "message"
                       ? MessageSquare
@@ -1176,7 +1183,7 @@ export default function MessagesPage() {
               <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden chat-screen">
                 <ChatSimpleHeader
                   userId={otherUserId}
-                  displayName={otherUserProfile?.full_name || "User"}
+                  displayName={otherUserProfile?.full_name || t("messagesPage.user")}
                   initials={otherInitials}
                   photoUrl={otherUserProfile?.photo_url}
                   isVerified={Boolean(otherUserProfile?.is_verified)}
@@ -1219,9 +1226,9 @@ export default function MessagesPage() {
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <MessageCircle className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Select a chat</h3>
+              <h3 className="font-semibold text-lg mb-2">{t("messagesPage.selectChat")}</h3>
               <p className="text-sm text-muted-foreground">
-                Pick a conversation from your Messages list.
+                {t("messagesPage.selectChatHint")}
               </p>
             </div>
           </div>
@@ -1238,7 +1245,7 @@ export default function MessagesPage() {
             "md:max-h-[min(88dvh,640px)] md:max-w-md md:rounded-2xl md:p-6",
           )}
         >
-          <DialogTitle className="sr-only">Start a new chat</DialogTitle>
+          <DialogTitle className="sr-only">{t("messagesPage.newChatTitle")}</DialogTitle>
 
           <div className="flex shrink-0 justify-center pt-3 pb-1 md:hidden">
             <div
@@ -1249,13 +1256,13 @@ export default function MessagesPage() {
 
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 px-5 py-3.5 md:border-0 md:px-0 md:pb-2 md:pt-0">
             <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-base">
-              New chat
+              {t("messagesPage.newChat")}
             </h2>
             <DialogClose asChild>
               <button
                 type="button"
                 className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                aria-label="Close"
+                aria-label={t("common.close")}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1270,7 +1277,7 @@ export default function MessagesPage() {
               />
               <input
                 type="search"
-                placeholder="Search by name…"
+                placeholder={t("messagesPage.searchByName")}
                 autoComplete="off"
                 className="h-12 w-full rounded-2xl border border-border/50 bg-muted/30 pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 md:h-11 md:text-sm"
                 value={userSearchQuery}
@@ -1281,7 +1288,7 @@ export default function MessagesPage() {
             <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] md:max-h-60">
               {userSearchQuery.trim() && userSearchResults.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  No users found
+                  {t("messagesPage.noUsersFound")}
                 </p>
               ) : null}
               <div className="space-y-1">
@@ -1300,7 +1307,7 @@ export default function MessagesPage() {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-base font-semibold text-foreground">
-                        {u.full_name || "User"}
+                        {u.full_name || t("messagesPage.user")}
                       </p>
                       {u.role ? (
                         <p className="truncate text-sm capitalize text-muted-foreground">

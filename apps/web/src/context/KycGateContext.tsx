@@ -8,10 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
-  kycBlockedActionMessage,
   needsKycVerification,
   type KycBlockedAction,
 } from "@/lib/kyc";
@@ -54,6 +54,12 @@ type KycGateContextValue = {
 
 const KycGateContext = createContext<KycGateContextValue | null>(null);
 
+function blockedActionMessageKey(action: KycBlockedAction) {
+  if (action === "go_live") return "onboarding.verify.reminder.blockedGoLive";
+  if (action === "share_post") return "onboarding.verify.reminder.blockedShare";
+  return "onboarding.verify.reminder.blockedRequest";
+}
+
 function KycVerifyReminderBanner({
   onVerify,
   onDismiss,
@@ -61,6 +67,7 @@ function KycVerifyReminderBanner({
   onVerify: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -74,7 +81,7 @@ function KycVerifyReminderBanner({
           type="button"
           onClick={onDismiss}
           className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-amber-800/70 transition-colors hover:bg-amber-200/60 hover:text-amber-950 dark:text-amber-200/70 dark:hover:bg-amber-900/60 dark:hover:text-amber-50"
-          aria-label="Dismiss verification reminder"
+          aria-label={t("onboarding.verify.reminder.dismiss")}
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -84,11 +91,10 @@ function KycVerifyReminderBanner({
         />
         <div className="min-w-0 flex-1 pr-6">
           <p className="text-sm font-semibold text-amber-950 dark:text-amber-50">
-            Verify your identity
+            {t("onboarding.verify.reminder.title")}
           </p>
           <p className="mt-0.5 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
-            Complete verification to post requests, go live, and share posts. You
-            can finish this anytime.
+            {t("onboarding.verify.reminder.body")}
           </p>
         </div>
         <Button
@@ -97,7 +103,7 @@ function KycVerifyReminderBanner({
           className="h-8 shrink-0 rounded-full px-3 text-xs font-bold"
           onClick={onVerify}
         >
-          Verify
+          {t("onboarding.verify.reminder.verify")}
         </Button>
       </div>
     </div>
@@ -115,21 +121,22 @@ function KycVerifyRequiredDialog({
   onOpenChange: (open: boolean) => void;
   onVerify: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
-            Verification required
+            {t("onboarding.verify.reminder.requiredTitle")}
           </DialogTitle>
           <DialogDescription className="text-left pt-1">
-            {kycBlockedActionMessage(action)}
+            {t(blockedActionMessageKey(action))}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button type="button" className="w-full rounded-xl" onClick={onVerify}>
-            Verify now
+            {t("onboarding.verify.reminder.verifyNow")}
           </Button>
           <Button
             type="button"
@@ -137,7 +144,7 @@ function KycVerifyRequiredDialog({
             className="w-full rounded-xl"
             onClick={() => onOpenChange(false)}
           >
-            Not now
+            {t("onboarding.verify.reminder.notNow")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -154,22 +161,22 @@ function KycHourlyReminderDialog({
   onOpenChange: (open: boolean) => void;
   onVerify: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
-            Reminder: verify your identity
+            {t("onboarding.verify.reminder.hourlyTitle")}
           </DialogTitle>
           <DialogDescription className="text-left pt-1">
-            You still need to complete identity verification to post requests, go
-            live, and share posts. It only takes a few minutes.
+            {t("onboarding.verify.reminder.hourlyBody")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button type="button" className="w-full rounded-xl" onClick={onVerify}>
-            Verify now
+            {t("onboarding.verify.reminder.verifyNow")}
           </Button>
           <Button
             type="button"
@@ -177,7 +184,7 @@ function KycHourlyReminderDialog({
             className="w-full rounded-xl"
             onClick={() => onOpenChange(false)}
           >
-            Remind me later
+            {t("onboarding.verify.reminder.remindLater")}
           </Button>
         </DialogFooter>
       </DialogContent>

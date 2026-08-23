@@ -5,7 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import {
+  guestSiteHeaderChromeProps,
+  LandingSiteHeader,
+} from "@/components/LandingSiteHeader";
 import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { Loader2, Sparkles } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
@@ -196,8 +199,8 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     if (authLoading || !user) {
       return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-          <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
-          <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+          <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+          <main className="flex flex-1 items-center justify-center">
             <AppBootSplashLogo />
           </main>
         </div>
@@ -217,8 +220,8 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     });
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
-        <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+        <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
       </div>
@@ -229,8 +232,8 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   if (user) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
-        <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+        <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
       </div>
@@ -240,24 +243,21 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   console.log("[LoginPage] Rendering login form");
 
   return (
-    <div className="min-h-[100dvh] flex bg-white dark:bg-background">
+    <div className="min-h-[100dvh] flex flex-col bg-white dark:bg-background">
+      <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+      <div className="flex min-h-0 flex-1">
       {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-end p-16 overflow-hidden bg-slate-900 shrink-0">
+      <div className="relative hidden min-h-0 shrink-0 flex-col justify-end overflow-hidden rounded-r-[2rem] bg-slate-900 p-16 lg:flex lg:w-1/2">
         <img
           src="/pexels-rdne-6646861.jpg"
           alt="Trusted professionals connecting locally"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         {/* Gradient overlays to make text brilliant and readable */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/90 pointer-events-none" />
         
         {/* Animated Brand Content */}
         <div className="relative z-10 animate-fade-up pointer-events-none">
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="MamaLama Logo"
-            className="h-[4.5rem] w-auto mb-10"
-          />
           <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
             Find the perfect <br /> helper in minutes.
           </h1>
@@ -269,13 +269,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
 
       {/* RIGHT COLUMN - Auth Form */}
       <div className="flex flex-col flex-1 relative min-w-0">
-        <div className="absolute top-0 right-0 left-0 z-20 pointer-events-none">
-          <div className="pointer-events-auto">
-            <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
-          </div>
-        </div>
-
-        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-32 pb-12 overflow-y-auto">
+        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-8 pb-12 overflow-y-auto">
           <div className="w-full max-w-[380px] animate-fade-in relative z-10 mx-auto">
             
             {/* Mobile Branding (Hidden on Desktop) */}
@@ -400,6 +394,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
             
           </div>
         </main>
+      </div>
       </div>
     </div>
   );

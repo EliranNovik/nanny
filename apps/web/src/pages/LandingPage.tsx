@@ -94,7 +94,7 @@ export default function LandingPage() {
   const [showFixedButtons, setShowFixedButtons] = useState(false);
   const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [tebnuApartOpen, setTebnuApartOpen] = useState(false);
+  const [tebnuApartOpen, setTebnuApartOpen] = useState(true);
   const { activityLoading, activityItems, heroPosts, heroPostsLoading, reviewsLoading, reviews } =
     useLandingPagePreview();
 
@@ -299,9 +299,12 @@ export default function LandingPage() {
       style={{ colorScheme: "light" }}
     >
       <LandingSiteHeader
+        hideLeftLogo
         hideBackButton
         hideBackButtonMobile
-        variant="landingGlass"
+        hideThemeToggle
+        fullBleedTop
+        whiteHeader
         onBrandClick={() => setAboutOpen(true)}
       />
 
@@ -319,16 +322,16 @@ export default function LandingPage() {
         <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
           <Button
             onClick={handleSearchingForJob}
-            className="h-12 gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50"
+            className="h-12 gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-5 text-sm font-bold text-white shadow-md hover:from-emerald-600 hover:to-green-700"
           >
-            <HelpingHand className="h-6 w-6 text-orange-600" strokeWidth={2.25} />
+            <HelpingHand className="h-8 w-8" strokeWidth={2.25} />
             Offer Help
           </Button>
           <Button
             onClick={handleHiringHelper}
             className="h-12 gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 text-sm font-bold text-white shadow-md hover:from-orange-600 hover:to-red-700"
           >
-            <HeartHandshake className="h-6 w-6" strokeWidth={2.25} />
+            <HeartHandshake className="h-8 w-8" strokeWidth={2.25} />
             Need Help
           </Button>
         </div>
@@ -367,15 +370,15 @@ export default function LandingPage() {
                     onClick={handleHiringHelper}
                     className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-sm font-black text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
                   >
-                    <HeartHandshake className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+                    <HeartHandshake className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
                     Need Help
                   </Button>
                   <Button
                     type="button"
                     onClick={handleSearchingForJob}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-black text-slate-900 transition-all hover:bg-slate-100 active:scale-[0.98]"
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-black text-white shadow-md transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98]"
                   >
-                    <HelpingHand className="h-6 w-6 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+                    <HelpingHand className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
                     Offer Help
                   </Button>
                 </div>
@@ -383,110 +386,126 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Desktop — Facebook-style post collage + copy column */}
-          <div className="hidden md:grid md:min-h-screen md:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-            <div className="relative h-full min-h-[min(100vh,920px)]">
-              <LandingHeroCollage posts={heroPosts} loading={heroPostsLoading} />
-
-              <div
-                className="absolute bottom-8 left-6 z-50 max-w-sm lg:bottom-10 lg:left-10"
-                aria-label="Secure registration powered by Didit"
-              >
-                <button
-                  type="button"
-                  onClick={() => setTebnuApartOpen((open) => !open)}
-                  aria-expanded={tebnuApartOpen}
-                  className="flex items-center gap-2 text-left transition-opacity hover:opacity-70"
-                >
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
-                    What sets Tebnu apart
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200",
-                      tebnuApartOpen && "rotate-180",
-                    )}
-                    aria-hidden
-                  />
-                </button>
-                {tebnuApartOpen ? (
-                  <div className="mt-3">
-                    <p className="text-base font-bold leading-snug text-slate-900 md:text-lg">
-                      Every member verified with{" "}
-                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
-                        Didit
-                        <ShieldCheck
-                          className="h-4 w-4 shrink-0 md:h-[1.125rem] md:w-[1.125rem]"
-                          strokeWidth={2.5}
-                          aria-hidden
-                        />
-                      </span>
-                    </p>
-                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px]">
-                      Real ID and a live selfie before anyone can hire or work.
-                    </p>
-                    <ul className="mt-2.5 space-y-1.5">
-                      {[
-                        "Encrypted ID checks at signup",
-                        "Verified before posting, hiring, or going live",
-                      ].map((line) => (
-                        <li
-                          key={line}
-                          className="text-sm font-semibold text-slate-700 md:text-[15px]"
-                        >
-                          {line}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
+          {/* Desktop — side portraits with centered copy */}
+          <div className="relative hidden min-h-[calc(100svh-4rem)] bg-white md:block">
+            <div
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2.25rem]"
+              aria-hidden
+            >
+              <img
+                src="/ChatGPT Image Aug 23, 2026 at 11_08_39 AM.png"
+                alt=""
+                className="h-full w-full object-cover object-center"
+              />
             </div>
 
-            <div className="relative flex flex-col justify-center bg-white px-10 py-28 lg:px-14 xl:px-16">
-              <div className="max-w-xl space-y-6 animate-in fade-in slide-in-from-right-10 duration-1000">
-                <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-slate-900 lg:text-6xl xl:text-7xl">
+            <div className="relative z-10 flex min-h-[calc(100svh-4rem)] flex-col items-center justify-center px-8 py-28 text-center">
+              <div className="relative w-full max-w-3xl animate-in fade-in duration-1000">
+                <div
+                  className="pointer-events-none absolute -inset-x-16 -inset-y-12 rounded-full bg-black/20 blur-3xl"
+                  aria-hidden
+                />
+                <div className="relative">
+                <h1 className="text-6xl font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)] lg:text-7xl xl:text-8xl">
                   One{" "}
-                  <span className="inline-block rounded-xl border-0 bg-orange-50 px-3 py-1 text-orange-600 outline-none ring-0">
+                  <span className="relative inline-block rounded-2xl border-0 bg-white/40 px-4 py-1.5 text-orange-500 shadow-none outline-none ring-0 backdrop-blur-md">
                     community
+                    <span className="pointer-events-none absolute -right-1 -top-5 text-[11px] font-black tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)] lg:-right-2 lg:-top-6 lg:text-xs">
+                      tebnu.com
+                    </span>
                   </span>
                   . Many helpers.
                 </h1>
-                <p className="max-w-lg text-lg font-medium text-slate-600 lg:text-xl">
+                <p className="mx-auto mt-7 max-w-xl text-xl font-semibold text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.5)] lg:text-2xl">
                   Find support, share skills, and connect within minutes.
                 </p>
-                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-slate-500 lg:text-base">
+                <p className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-base font-bold text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] lg:text-lg">
                   <span>Verified users</span>
-                  <span className="text-slate-300" aria-hidden>
+                  <span className="text-white/70" aria-hidden>
                     ·
                   </span>
                   <span>Local helpers</span>
-                  <span className="text-slate-300" aria-hidden>
+                  <span className="text-white/70" aria-hidden>
                     ·
                   </span>
                   <span>Fast response</span>
                 </p>
-              </div>
 
-              <div
-                ref={buttonsRef}
-                className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap"
-              >
-                <Button
-                  onClick={handleSearchingForJob}
-                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 text-base font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
+                <div
+                  ref={buttonsRef}
+                  className="mt-10 flex flex-wrap items-center justify-center gap-8 lg:gap-10"
                 >
-                  <HelpingHand className="h-7 w-7 shrink-0 text-orange-600" strokeWidth={2.25} />
-                  Offer Help
-                </Button>
-                <Button
-                  onClick={handleHiringHelper}
-                  className="group/btn flex h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-6 text-base font-bold text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] sm:min-w-[10.5rem] sm:flex-none"
-                >
-                  <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} />
-                  Need Help
-                </Button>
+                  <Button
+                    onClick={handleSearchingForJob}
+                    className="group/btn flex h-20 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 text-lg font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98] lg:h-[5.25rem] lg:px-10 lg:text-xl"
+                  >
+                    <HelpingHand className="h-12 w-12 shrink-0" strokeWidth={2.25} />
+                    Offer Help
+                  </Button>
+                  <Button
+                    onClick={handleHiringHelper}
+                    className="group/btn flex h-20 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-8 text-lg font-bold text-white shadow-lg shadow-orange-500/30 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[5.25rem] lg:px-10 lg:text-xl"
+                  >
+                    <HeartHandshake className="h-12 w-12 shrink-0" strokeWidth={2.25} />
+                    Need Help
+                  </Button>
+                </div>
+                </div>
               </div>
+            </div>
+
+            <div
+              className="absolute bottom-10 left-10 z-50 w-[min(42rem,calc(100%-5rem))] max-w-none rounded-2xl border-0 bg-black/25 px-6 py-2.5 shadow-none backdrop-blur-xl lg:bottom-12 lg:left-12 lg:px-7 lg:py-3"
+              aria-label="Secure registration powered by Didit"
+            >
+              <button
+                type="button"
+                onClick={() => setTebnuApartOpen((open) => !open)}
+                aria-expanded={tebnuApartOpen}
+                className="flex items-center gap-2 text-left transition-opacity hover:opacity-80"
+              >
+                <span className="text-sm font-black uppercase tracking-[0.12em] text-white md:text-[15px]">
+                  What sets Tebnu apart
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-white transition-transform duration-200",
+                    tebnuApartOpen && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </button>
+              {tebnuApartOpen ? (
+                <div className="mt-1.5">
+                  <p className="text-base font-bold leading-snug text-white md:text-lg">
+                    Every member verified with{" "}
+                    <span className="inline-flex items-center gap-1.5 text-xl font-black text-emerald-300 md:text-2xl">
+                      Didit
+                      <ShieldCheck
+                        className="h-6 w-6 shrink-0 md:h-7 md:w-7"
+                        strokeWidth={2.5}
+                        aria-hidden
+                      />
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm font-medium leading-snug text-white/90">
+                    Real ID and a live selfie before anyone can hire or work.
+                  </p>
+                  <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+                    {[
+                      "Encrypted ID checks at signup",
+                      "Verified before posting, hiring, or going live",
+                    ].map((line) => (
+                      <li
+                        key={line}
+                        className="text-sm font-semibold text-white/95"
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -622,8 +641,8 @@ export default function LandingPage() {
                             className={cn(
                               "relative overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] transition-all duration-700 bg-slate-100",
                               isActive
-                                ? "rounded-2xl sm:rounded-[2rem] md:rounded-[2.5rem] aspect-[16/9] w-full"
-                                : "rounded-2xl sm:rounded-[2rem] aspect-[4/5] w-full",
+                                ? "rounded-2xl sm:rounded-[2rem] md:rounded-[2.5rem] aspect-[4/3] w-full"
+                                : "rounded-2xl sm:rounded-[2rem] aspect-[3/4] w-full",
                             )}
                           >
                             <div className="relative w-full h-full">
@@ -1043,16 +1062,16 @@ export default function LandingPage() {
         <div className="mx-auto flex flex-row items-center justify-center gap-2.5 px-1">
           <Button
             onClick={handleSearchingForJob}
-            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-orange-50 px-4 text-sm font-black tracking-tight text-orange-600 shadow-sm hover:bg-orange-100"
+            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-emerald-500 to-green-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-emerald-500/20 hover:from-emerald-600 hover:to-green-700"
           >
-            <HelpingHand className="h-6 w-6" strokeWidth={2.25} />
+            <HelpingHand className="h-8 w-8" strokeWidth={2.25} />
             Offer Help
           </Button>
           <Button
             onClick={handleHiringHelper}
             className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-orange-500 to-red-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-red-700"
           >
-            <HeartHandshake className="h-6 w-6" strokeWidth={2.25} />
+            <HeartHandshake className="h-8 w-8" strokeWidth={2.25} />
             Need Help
           </Button>
         </div>

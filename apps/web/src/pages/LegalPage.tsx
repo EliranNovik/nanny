@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import {
+  guestSiteHeaderChromeProps,
+  LandingSiteHeader,
+} from "@/components/LandingSiteHeader";
 import { Footer } from "@/components/Footer";
 import { legalContent } from "@/data/legalContent";
 import { useAuth } from "@/context/AuthContext";
@@ -98,17 +101,13 @@ export default function LegalPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      {!user && (
-        <LandingSiteHeader
-          hideLeftLogo
-          mobileMatchLanding
-          fixedOnMobile
-          hideBackButtonMobile
-          className="max-w-5xl"
-        />
-      )}
+      {!user && <LandingSiteHeader {...guestSiteHeaderChromeProps} />}
 
-      <main className="flex-1 pt-[4.25rem] md:pt-32 px-4 md:px-6 pb-20 max-w-7xl mx-auto w-full">
+      <main
+        className={`flex-1 px-4 md:px-6 pb-20 max-w-7xl mx-auto w-full${
+          user ? " pt-[4.25rem] md:pt-32" : " pt-8"
+        }`}
+      >
         {/* Page Header */}
         <div className="mb-10 text-center md:text-left relative overflow-hidden p-8 md:p-12 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white shadow-lg">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>

@@ -291,9 +291,9 @@ export function feedPostDescription(
   return userCaption || text;
 }
 
-/** Global feed post card shell — darker on desktop dark mode for contrast with page bg. */
+/** Global feed post card shell — pale grey in light mode; darker on desktop dark mode. */
 export const globalFeedCardSurfaceClass =
-  "bg-white shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
+  "bg-zinc-50 shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
 
 export function globalFeedPostTypeAccentClass(typeId: string | null): string {
   switch (typeId) {
@@ -568,7 +568,7 @@ export const globalFeedMobilePageClass = globalFeedMobileFeedAreaClass;
 
 /** Mobile global feed card shell — full width, rounded top and bottom. */
 export const globalFeedMobileCardClass =
-  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
+  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-zinc-50 dark:max-md:bg-[#181b1f]";
 
 /** Mobile card inner horizontal padding. */
 export const globalFeedMobileCardPadClass = "max-md:px-1";

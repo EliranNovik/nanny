@@ -1,4 +1,5 @@
 import { Bell, MessageCircle, PenLine, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 const SEGMENT_PILL_WIDTH = 122;
@@ -29,6 +30,7 @@ export function MessagesInboxFloatingHeader({
   composeOpen,
   onToggleCompose,
 }: MessagesInboxFloatingHeaderProps) {
+  const { t } = useTranslation();
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-20 md:hidden">
       <div
@@ -42,7 +44,7 @@ export function MessagesInboxFloatingHeader({
           )}
           style={{ width: SEGMENT_PILL_WIDTH }}
           role="tablist"
-          aria-label="Inbox sections"
+          aria-label={t("messagesPage.inboxSections")}
         >
           <button
             type="button"
@@ -50,8 +52,8 @@ export function MessagesInboxFloatingHeader({
             aria-selected={section === "messages"}
             aria-label={
               messagesUnread > 0
-                ? `Messages, ${messagesUnread} unread`
-                : "Messages"
+                ? t("messagesPage.messagesUnread", { count: messagesUnread })
+                : t("messagesPage.messages")
             }
             onClick={() => onSectionChange("messages")}
             className={cn(
@@ -82,8 +84,10 @@ export function MessagesInboxFloatingHeader({
             aria-selected={section === "news"}
             aria-label={
               notificationsCount > 0
-                ? `Notifications, ${notificationsCount} items`
-                : "Notifications"
+                ? t("messagesPage.notificationsItems", {
+                    count: notificationsCount,
+                  })
+                : t("messagesPage.notifications")
             }
             onClick={() => onSectionChange("news")}
             className={cn(
@@ -118,7 +122,11 @@ export function MessagesInboxFloatingHeader({
               type="button"
               onClick={onToggleCompose}
               className="flex h-full w-full items-center justify-center rounded-[26px] text-slate-900 transition-opacity active:opacity-70 dark:text-white"
-              aria-label={composeOpen ? "Close new message" : "New message"}
+              aria-label={
+                composeOpen
+                  ? t("messagesPage.closeNewMessage")
+                  : t("messagesPage.newMessage")
+              }
             >
               {composeOpen ? (
                 <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />

@@ -21,6 +21,14 @@ import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 const COMMUNITY_FEED_PATH = "/community/feed";
 
+/** Guest Global Posts chrome: full-bleed zinc bar (not the orange pill). */
+export const guestSiteHeaderChromeProps = {
+  hideLeftLogo: true,
+  hideBackButton: true,
+  hideBackButtonMobile: true,
+  fullBleedTop: true,
+} as const;
+
 const navLinkClass =
   "text-sm font-bold hover:text-white/80 transition-colors";
 
@@ -61,8 +69,12 @@ export type LandingSiteHeaderProps = {
    * cards, then frosted glass once the page is scrolled over content.
    */
   fullBleedTop?: boolean;
+  /** Use a white bar instead of the guest-feed zinc chrome. */
+  whiteHeader?: boolean;
   /** Landing hero: plain white “Register” text — no logo or filled pill. */
   simpleRegisterCta?: boolean;
+  /** Hide the light/dark theme toggle (e.g. marketing landing stays light). */
+  hideThemeToggle?: boolean;
   /** Landing: open “What is tebnu?” instead of navigating home when brand is clicked. */
   onBrandClick?: () => void;
   /** Guest feed: desktop hamburger that expands/collapses the left sidebar. */
@@ -95,7 +107,9 @@ export function LandingSiteHeader({
   mobileMatchLanding = false,
   fixedOnMobile = false,
   fullBleedTop = false,
+  whiteHeader = false,
   simpleRegisterCta = false,
+  hideThemeToggle = false,
   onBrandClick,
   desktopSidebarOpen = false,
   onDesktopSidebarToggle,
@@ -124,22 +138,26 @@ export function LandingSiteHeader({
   const isMutedChrome = variant === "glassy" || isFeedChrome;
 
   const linkColorClass = isFeedChrome
-    ? "text-zinc-800 hover:text-zinc-950 dark:text-zinc-100 dark:hover:text-white"
+    ? "text-zinc-800 hover:text-orange-600 dark:text-zinc-100 dark:hover:text-orange-400"
     : variant === "glassy"
       ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
       : "text-white/90 hover:text-white";
 
   const dynamicNavLinkClass = cn(
     "text-sm font-bold transition-colors",
-    linkColorClass
+    linkColorClass,
   );
 
   const headerBgClass = isFeedChrome
     ? cn(
         "border-0 shadow-none ring-0",
-        headerScrolled
-          ? "bg-zinc-100/65 backdrop-blur-xl backdrop-saturate-150 dark:bg-background/65"
-          : "bg-zinc-100 dark:bg-background",
+        whiteHeader
+          ? headerScrolled
+            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150"
+            : "bg-white"
+          : headerScrolled
+            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background/65"
+            : "bg-white dark:bg-background",
       )
     : cn(
         isLandingGlass
@@ -172,7 +190,7 @@ export function LandingSiteHeader({
 
   const signInBtnClass = cn(
     isFeedChrome
-      ? "text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-700/50"
+      ? "text-zinc-800 hover:bg-transparent hover:text-orange-600 dark:text-zinc-100 dark:hover:bg-transparent dark:hover:text-orange-400"
       : variant === "glassy"
         ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
         : isLandingGlass
@@ -239,9 +257,11 @@ export function LandingSiteHeader({
         loading="eager"
         decoding="async"
       />
-      <span className="hidden text-lg font-black tracking-tight text-zinc-900 md:inline md:text-xl lg:text-2xl dark:text-white">
-        tebnu
-      </span>
+      {whiteHeader ? null : (
+        <span className="hidden text-lg font-black tracking-tight text-zinc-900 md:inline md:text-xl lg:text-2xl dark:text-white">
+          tebnu
+        </span>
+      )}
     </span>
   ) : (
     <span className={landingBrandTextClass}>Tebnu</span>
@@ -470,7 +490,7 @@ export function LandingSiteHeader({
             ) : null}
             {!hideLoginCta && !user ? (
               <div className="flex items-center gap-1.5 md:gap-2">
-                {isLandingGlass ? null : (
+                {isLandingGlass || hideThemeToggle ? null : (
                 <button
                   type="button"
                   role="switch"
@@ -497,7 +517,9 @@ export function LandingSiteHeader({
                     "rounded-full px-3 text-sm font-bold md:px-5",
                     isLandingGlass
                       ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10 md:hover:text-white"
-                      : signInBtnClass,
+                      : isFeedChrome
+                        ? "text-zinc-800 hover:bg-transparent hover:text-orange-600 dark:text-zinc-100 dark:hover:bg-transparent dark:hover:text-orange-400"
+                        : signInBtnClass,
                   )}
                 >
                   Sign in

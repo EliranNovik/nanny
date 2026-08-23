@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -247,6 +248,7 @@ export default function ChatPage({
   otherUserId: propOtherUserId,
   chatPaneVisible = true,
 }: ChatPageProps = {}) {
+  const { t } = useTranslation();
   const { conversationId: paramConversationId } = useParams<{
     conversationId?: string;
   }>();
@@ -2908,11 +2910,10 @@ export default function ChatPage({
                             ? ` in ${job.location_city}`
                             : ""
                         }.`
-                      : "Start the conversation — say when you're available."}
+                      : t("messagesPage.startConversation")}
                   </p>
                   <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                    Messages appear instantly. Use a quick reply below to
-                    respond in seconds.
+                    {t("messagesPage.emptyThreadHint")}
                   </p>
                 </div>
               )}

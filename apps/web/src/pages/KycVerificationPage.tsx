@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
   CreditCard,
@@ -33,6 +34,7 @@ type CreateSessionResponse = {
 };
 
 export default function KycVerificationPage() {
+  const { t } = useTranslation();
   const { user, profile, loading, refreshProfile, applyProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -56,8 +58,8 @@ export default function KycVerificationPage() {
     if (typeof meta === "string" && meta.trim()) {
       return meta.trim().split(/\s+/)[0];
     }
-    return "there";
-  }, [profile?.full_name, user?.user_metadata?.full_name]);
+    return t("onboarding.verify.welcomeFallback");
+  }, [profile?.full_name, t, user?.user_metadata?.full_name]);
 
   useEffect(() => {
     if (loading || !user || profile) return;
@@ -152,7 +154,7 @@ export default function KycVerificationPage() {
       navigate(homePath, { replace: true });
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Could not skip verification";
+        err instanceof Error ? err.message : t("onboarding.verify.errors.skipFailed");
       setError(message);
       setBusy(false);
     }
@@ -169,12 +171,12 @@ export default function KycVerificationPage() {
         return;
       }
       if (!data.url) {
-        throw new Error("Verification link was not returned");
+        throw new Error(t("onboarding.verify.errors.noLink"));
       }
       window.location.href = data.url;
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Could not start verification";
+        err instanceof Error ? err.message : t("onboarding.verify.errors.startFailed");
       setError(message);
       setBusy(false);
     }
@@ -209,10 +211,10 @@ export default function KycVerificationPage() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Identity verification
+              {t("onboarding.verify.eyebrow")}
             </p>
             <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-              Verify your ID
+              {t("onboarding.verify.title")}
             </h1>
           </div>
         </div>
@@ -221,21 +223,20 @@ export default function KycVerificationPage() {
       <main className="relative z-10 flex flex-1 flex-col justify-center px-5 py-10 md:py-12">
         <div className="mx-auto flex w-full max-w-xl flex-col space-y-8 md:space-y-10">
         <p className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-          Welcome, {displayName}
+          {t("onboarding.verify.welcome", { name: displayName })}
         </p>
         <div className="space-y-4">
           <div className="relative overflow-hidden rounded-3xl bg-primary/5 shadow-sm ring-1 ring-border/40">
             <img
               src="/images/id-card-scan.png"
-              alt="Scanning an ID card with your phone"
+              alt={t("onboarding.verify.heroAlt")}
               className="aspect-[16/10] w-full object-cover"
               loading="lazy"
               decoding="async"
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-5 pb-3 pt-16 md:px-6 md:pb-4 md:pt-20">
               <p className="text-base leading-relaxed text-white/95 md:text-lg">
-                A verified profile builds trust across the community. Confirm your
-                identity with a photo ID and a quick selfie.
+                {t("onboarding.verify.hero")}
               </p>
             </div>
           </div>
@@ -250,9 +251,9 @@ export default function KycVerificationPage() {
           {isWaiting ? (
             <div className="flex flex-col items-center gap-4 py-2 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-              <p className="text-sm font-semibold">Processing your verification</p>
+              <p className="text-sm font-semibold">{t("onboarding.verify.processing")}</p>
               <p className="max-w-xs text-sm text-muted-foreground">
-                This usually takes under a minute.
+                {t("onboarding.verify.processingHint")}
               </p>
               <Button
                 type="button"
@@ -263,15 +264,14 @@ export default function KycVerificationPage() {
                 onClick={() => void refreshStatus(true)}
               >
                 <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-                Refresh status
+                {t("onboarding.verify.refresh")}
               </Button>
             </div>
           ) : null}
 
           {isDeclined ? (
             <p className="text-sm text-muted-foreground">
-              Verification failed. Try again with a clear, valid ID that matches
-              your profile name.
+              {t("onboarding.verify.declined")}
             </p>
           ) : null}
 
@@ -286,11 +286,13 @@ export default function KycVerificationPage() {
               {busy ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
-                  Opening verification…
+                  {t("onboarding.verify.opening")}
                 </>
               ) : (
                 <>
-                  {isDeclined ? "Try again" : "Continue to verification"}
+                  {isDeclined
+                    ? t("onboarding.verify.tryAgain")
+                    : t("onboarding.verify.continue")}
                   <ArrowRight className="ml-2 h-5 w-5" aria-hidden />
                 </>
               )}
@@ -298,7 +300,7 @@ export default function KycVerificationPage() {
           ) : null}
 
           <p className="text-right text-xs text-muted-foreground md:text-sm">
-            Powered by{" "}
+            {t("onboarding.verify.poweredBy")}{" "}
             <span className="font-semibold text-foreground">Didit</span>
           </p>
         </div>
@@ -306,23 +308,26 @@ export default function KycVerificationPage() {
         <ul className="grid grid-cols-3 gap-3 md:gap-4">
           {[
             {
+              key: "photoId",
               icon: CreditCard,
-              title: "Photo ID",
-              text: "Passport or national ID",
+              title: t("onboarding.verify.photoId"),
+              text: t("onboarding.verify.photoIdHint"),
             },
             {
+              key: "liveCheck",
               icon: ScanFace,
-              title: "Live check",
-              text: "Quick selfie match",
+              title: t("onboarding.verify.liveCheck"),
+              text: t("onboarding.verify.liveCheckHint"),
             },
             {
+              key: "secure",
               icon: ShieldCheck,
-              title: "Secure",
-              text: "Encrypted — we only store the result",
+              title: t("onboarding.verify.secure"),
+              text: t("onboarding.verify.secureHint"),
             },
           ].map((item) => (
             <li
-              key={item.title}
+              key={item.key}
               className="flex flex-col items-center gap-2 text-center"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-background/80 text-primary shadow-sm dark:bg-zinc-800 md:h-14 md:w-14">
@@ -350,13 +355,12 @@ export default function KycVerificationPage() {
               disabled={busy}
               onClick={() => void skipVerification()}
             >
-              Skip for now
+              {t("onboarding.verify.skip")}
             </Button>
           ) : null}
 
           <p className="pt-2 text-center text-xs leading-relaxed text-muted-foreground">
-            By continuing you agree to share ID details with our verification
-            partner for identity checks only.
+            {t("onboarding.verify.disclaimer")}
           </p>
         </div>
         </div>
