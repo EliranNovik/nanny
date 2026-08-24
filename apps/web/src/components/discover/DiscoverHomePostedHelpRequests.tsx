@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronRight, Clock, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { acceptOpenHelpRequest } from "@/lib/acceptOpenHelpRequest";
 import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
 import { globalCommunityFeedPath } from "@/lib/communityFeedNav";
-import { globalJobRequestFeedPath } from "@/lib/jobRequestShare";
+import { isolatedOpenRequestPath } from "@/lib/jobRequestShare";
 import {
   loadDismissedOpenHelpRequestIds,
   rememberDismissedOpenHelpRequest,
@@ -25,11 +25,12 @@ import {
   DiscoverOpenHelpRequestsSeeMoreButton,
 } from "@/components/discover/DiscoverOpenHelpRequestCard";
 import {
+  DiscoverCarouselTabIndicator,
   DiscoverRequestCarouselArrows,
   useDiscoverRequestCarouselScroll,
 } from "@/components/discover/DiscoverRequestCarouselControls";
 import {
-  discoverRequestCardCarouselItemClass,
+  discoverNearbyRequestCardCarouselItemClass,
   discoverRequestCardsCarouselContainerClass,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 import {
@@ -83,7 +84,6 @@ export function DiscoverHomePostedHelpRequests({
     () => loadDismissedOpenHelpRequestIds(user?.id),
   );
   const sortMenuRef = useRef<HTMLDivElement>(null);
-  const { scrollerRef, scrollByDir } = useDiscoverRequestCarouselScroll();
 
   const { data: openRequests = [], isLoading: loading } = useDiscoverOpenHelpRequests(
     enabled,
@@ -91,12 +91,13 @@ export function DiscoverHomePostedHelpRequests({
   );
   const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(user?.id);
 
+  const undismissedRequests = useMemo(
+    () => openRequests.filter((row) => !dismissedJobIds.has(row.id)),
+    [openRequests, dismissedJobIds],
+  );
   const filteredRequests = useMemo(
-    () =>
-      filterOpenHelpRequestsByCategory(openRequests, categoryFilter).filter(
-        (row) => !dismissedJobIds.has(row.id),
-      ),
-    [openRequests, categoryFilter, dismissedJobIds],
+    () => filterOpenHelpRequestsByCategory(undismissedRequests, categoryFilter),
+    [undismissedRequests, categoryFilter],
   );
 
   useEffect(() => {
@@ -118,14 +119,43 @@ export function DiscoverHomePostedHelpRequests({
     [visibleRows],
   );
 
+  const { scrollerRef, scrollByDir, activeIndex, scrollToIndex } =
+    useDiscoverRequestCarouselScroll(visibleRows.length);
+
+  const { data: commentCountByJobId = {} } = useQuery({
+    queryKey: ["discoverOpenHelpRequestComments", visibleJobIdsKey],
+    enabled: enabled && visibleRows.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const ids = visibleJobIdsKey.split(",").filter(Boolean);
+      if (ids.length === 0) return {} as Record<string, number>;
+      const { data, error } = await supabase
+        .from("job_request_comments")
+        .select("job_request_id")
+        .in("job_request_id", ids);
+      if (error) {
+        console.warn("[DiscoverHomePostedHelpRequests] comments", error);
+        return {} as Record<string, number>;
+      }
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        const id = String((row as { job_request_id?: string }).job_request_id ?? "");
+        if (!id) continue;
+        counts[id] = (counts[id] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+  const totalComments = Object.values(commentCountByJobId).reduce((sum, n) => sum + n, 0);
+
   useEffect(() => {
-    if (!user?.id || visibleRows.length === 0) {
-      setAcceptedJobIds(new Set());
+    if (!enabled || !user?.id || !visibleJobIdsKey) {
+      setAcceptedJobIds((prev) => (prev.size === 0 ? prev : new Set()));
       return;
     }
 
     let cancelled = false;
-    const jobIds = visibleRows.map((row) => row.id);
+    const jobIds = visibleJobIdsKey.split(",").filter(Boolean);
 
     void supabase
       .from("job_confirmations")
@@ -141,7 +171,7 @@ export function DiscoverHomePostedHelpRequests({
     return () => {
       cancelled = true;
     };
-  }, [user?.id, visibleJobIdsKey, visibleRows]);
+  }, [enabled, user?.id, visibleJobIdsKey]);
 
   useEffect(() => {
     if (!sortMenuOpen) return;
@@ -212,7 +242,7 @@ export function DiscoverHomePostedHelpRequests({
   const handleOpenRequest = useCallback(
     (jobId: string) => {
       trackEvent("discover_posted_help_request_open", { job_id: jobId });
-      navigate(globalJobRequestFeedPath(jobId));
+      navigate(isolatedOpenRequestPath(jobId));
     },
     [navigate],
   );
@@ -279,7 +309,7 @@ export function DiscoverHomePostedHelpRequests({
   if (loading) {
     return (
       <section className={cn("w-full", className)} aria-label="Posted help requests">
-        <div className="mb-4 space-y-1">
+        <div className="mb-5 space-y-1">
           <div className="h-6 w-56 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
           <div className="h-4 w-40 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
         </div>
@@ -288,8 +318,8 @@ export function DiscoverHomePostedHelpRequests({
             <div
               key={i}
               className={cn(
-                discoverRequestCardCarouselItemClass,
-                "h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70",
+                discoverNearbyRequestCardCarouselItemClass,
+                "h-52 animate-pulse rounded-[1.75rem] bg-zinc-200/70 dark:bg-zinc-800/70",
               )}
             />
           ))}
@@ -298,38 +328,39 @@ export function DiscoverHomePostedHelpRequests({
     );
   }
 
-  if (filteredRequests.length === 0) return null;
+  if (undismissedRequests.length === 0) return null;
 
   const sortLabel = t(`common.${sortBy}`);
 
   return (
     <section className={cn("w-full", className)} aria-label="Posted help requests">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-              {t("discover.openRequestsNearYou")}
-            </h2>
-            <button
-              type="button"
-              onClick={() => handleOpenGlobalRequestsFeed("discover_home_header")}
-              className={cn(
-                "hidden md:inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-sm font-bold text-foreground shadow-sm transition-colors",
-                "hover:bg-zinc-50 active:scale-[0.98]",
-                "dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
-              )}
-            >
-              {t("discover.exploreMore")}
-              <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
-            </button>
-          </div>
-          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
-            {t("discover.openRequestsSubtitle")}
-          </p>
-        </div>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="min-w-0 text-[22px] font-black tracking-tight text-emerald-800 dark:text-emerald-400 sm:text-2xl">
+          {t("discover.openRequests")}
+        </h2>
         <div className="flex shrink-0 items-center gap-1.5">
-          <div ref={sortMenuRef} className="relative">
+          <span className="inline-flex h-8 items-center gap-1 rounded-full bg-emerald-100 px-2.5 text-sm font-bold tabular-nums text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+            <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden />
+            {visibleRows.length}
+          </span>
+          <span className="inline-flex h-8 items-center gap-1 rounded-full bg-zinc-100 px-2.5 text-sm font-bold tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            <MessageCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden />
+            {totalComments}
+          </span>
+          <button
+            type="button"
+            onClick={() => handleOpenGlobalRequestsFeed("discover_home_header")}
+            className={cn(
+              "hidden md:inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-sm font-bold text-foreground shadow-sm transition-colors",
+              "hover:bg-zinc-50 active:scale-[0.98]",
+              "dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
+            )}
+          >
+            {t("discover.exploreMore")}
+            <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
+          </button>
+          <div ref={sortMenuRef} className="relative hidden md:block">
             <button
               type="button"
               className={cn(
@@ -389,7 +420,12 @@ export function DiscoverHomePostedHelpRequests({
       {sortedRequests.length === 0 ? (
         <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/60">
           <p className="text-sm font-semibold text-foreground">
-            {t("discover.noSortMatch", { sort: sortLabel })}
+            {t("discover.noSortMatch", {
+              sort:
+                categoryFilter !== "all" && filteredRequests.length === 0
+                  ? t(`discoverHome.filters.${categoryFilter}`)
+                  : sortLabel,
+            })}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("discover.tryAnotherSort")}
@@ -402,7 +438,8 @@ export function DiscoverHomePostedHelpRequests({
               key={row.id}
               row={row}
               layout="carousel"
-              className={discoverRequestCardCarouselItemClass}
+              className={discoverNearbyRequestCardCarouselItemClass}
+              commentCount={commentCountByJobId[row.id] ?? 0}
               onOpen={() => handleOpenRequest(row.id)}
               saved={savedJobIds.has(row.id)}
               saveBusy={savingJobId === row.id}
@@ -415,6 +452,15 @@ export function DiscoverHomePostedHelpRequests({
           ))}
         </div>
       )}
+
+      {sortedRequests.length > 0 ? (
+        <DiscoverCarouselTabIndicator
+          count={visibleRows.length}
+          activeIndex={activeIndex}
+          onSelect={scrollToIndex}
+          ariaLabel={t("discover.openRequests")}
+        />
+      ) : null}
 
       {sortedRequests.length > 0 ? (
         <div className="mt-4 md:hidden">

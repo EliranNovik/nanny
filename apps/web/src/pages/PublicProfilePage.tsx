@@ -237,6 +237,105 @@ const profileCategoryBadgeClass =
 const profileCategoryScrollRowClass =
   "flex gap-2.5 overflow-x-auto scroll-smooth pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
+const profileGalleryThumbTransform = {
+  width: 480,
+  height: 480,
+  quality: 80,
+  resize: "cover" as const,
+};
+
+function ProfilePhotosGrid({
+  imageRows,
+  isOwnProfile,
+  uploadingMedia,
+  compact = false,
+  onAdd,
+  onOpen,
+  onDelete,
+}: {
+  imageRows: PublicProfileMediaRow[];
+  isOwnProfile: boolean;
+  uploadingMedia: boolean;
+  compact?: boolean;
+  onAdd: () => void;
+  onOpen: (index: number) => void;
+  onDelete: (row: PublicProfileMediaRow) => void;
+}) {
+  if (!isOwnProfile && imageRows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <ImageIcon className="mb-3 h-12 w-12 text-slate-300 opacity-40 dark:text-slate-600" aria-hidden />
+        <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+          No photos
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div dir="ltr" className={cn("grid grid-cols-3", compact ? "gap-1 px-4" : "gap-3")}>
+      {isOwnProfile ? (
+        <button
+          type="button"
+          disabled={uploadingMedia}
+          onClick={onAdd}
+          aria-label="Add photo"
+          className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-slate-500 dark:hover:border-orange-800 dark:hover:bg-orange-950/40 dark:hover:text-orange-400"
+        >
+          {uploadingMedia ? (
+            <Loader2 className={cn("animate-spin", compact ? "h-6 w-6" : "h-8 w-8")} />
+          ) : (
+            <Plus className={compact ? "h-7 w-7" : "h-9 w-9"} strokeWidth={2} />
+          )}
+        </button>
+      ) : null}
+      {imageRows.map((row, idx) => (
+        <div
+          key={row.id}
+          className="group relative aspect-square overflow-hidden rounded-xl bg-muted"
+        >
+          <button
+            type="button"
+            onClick={() => onOpen(idx)}
+            className="absolute inset-0"
+            aria-label="View photo full screen"
+          >
+            <img
+              src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </button>
+          {isOwnProfile ? (
+            <button
+              type="button"
+              disabled={uploadingMedia}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(row);
+              }}
+              className={cn(
+                "absolute right-1.5 top-1.5 z-10 flex items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70 disabled:opacity-60",
+                compact
+                  ? "h-6 w-6"
+                  : "h-8 w-8 opacity-0 group-hover:opacity-100",
+              )}
+              aria-label="Remove photo"
+            >
+              {compact ? (
+                <Plus className="h-3 w-3 rotate-45" strokeWidth={3} />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function OwnProfileBioActions({
   onEditBio,
   profileEditPath,
@@ -1205,11 +1304,6 @@ export default function PublicProfilePage() {
   const galleryImageUrls = imageRows.map((r) =>
     publicProfileMediaPublicUrl(r.storage_path),
   );
-  const profileGalleryThumbTransform = {
-    width: 480,
-    quality: 80,
-    resize: "contain" as const,
-  };
 
   const photoInitials = (profile?.full_name || "??")
     .split(" ")
@@ -1912,35 +2006,15 @@ export default function PublicProfilePage() {
           ) : null}
 
           <TabsContent value="images" className="m-0 focus-visible:outline-none">
-            {imageRows.length === 0 ? (
-              <div className="py-20 flex flex-col items-center justify-center text-slate-300">
-                <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
-                <p className="text-xs font-black uppercase tracking-widest opacity-40">No photos</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-1 px-4">
-                {imageRows.map((row, idx) => (
-                  <div key={row.id} className="relative aspect-square overflow-hidden bg-muted">
-                    <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">
-                      <img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" />
-                    </button>
-                    {isOwnProfile && (
-                      <button onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/40 text-white">
-                        <Plus className="h-3 w-3 rotate-45" strokeWidth={3} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {isOwnProfile && (
-              <div className="p-4 flex justify-center">
-                <button onClick={() => imageInputRef.current?.click()} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-slate-100 dark:bg-white/5 font-black text-[11px] uppercase tracking-widest text-slate-900 dark:text-white">
-                  <Plus className="h-4 w-4" strokeWidth={3} />
-                  Add a photo
-                </button>
-              </div>
-            )}
+            <ProfilePhotosGrid
+              imageRows={imageRows}
+              isOwnProfile={isOwnProfile}
+              uploadingMedia={uploadingMedia}
+              compact
+              onAdd={() => imageInputRef.current?.click()}
+              onOpen={(idx) => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })}
+              onDelete={(row) => void handleDeleteProfileMedia(row)}
+            />
           </TabsContent>
 
           <TabsContent value="videos" className="m-0 focus-visible:outline-none">
@@ -2083,20 +2157,14 @@ export default function PublicProfilePage() {
           {/* Main content (2/3) */}
           <div id="profile-social-feed-desktop" className="col-span-2 scroll-mt-24">
             {profileMediaTab === "images" && (
-              <div className="space-y-4">
-                {imageRows.length === 0 ? (
-                  <div className="flex flex-col items-center gap-4 py-16 text-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800">
-                    <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                    <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No photos yet.</p>
-                    {isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={() => imageInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-5 py-2 text-sm font-semibold text-orange-600 shadow-sm hover:bg-orange-50 disabled:opacity-50 dark:border-orange-800 dark:bg-zinc-900 dark:text-orange-400">{uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Add first photo</button>}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 lg:grid-cols-4">
-                    {imageRows.map((row, idx) => (<div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full" aria-label="View photo full screen"><img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" /></button>{isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100" aria-label="Remove photo"><Trash2 className="h-4 w-4" /></button>}</div>))}
-
-                  </div>
-                )}
-              </div>
+              <ProfilePhotosGrid
+                imageRows={imageRows}
+                isOwnProfile={isOwnProfile}
+                uploadingMedia={uploadingMedia}
+                onAdd={() => imageInputRef.current?.click()}
+                onOpen={(idx) => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })}
+                onDelete={(row) => void handleDeleteProfileMedia(row)}
+              />
             )}
             {profileMediaTab === "videos" && (
               <div className="space-y-4">

@@ -629,20 +629,6 @@ export function HelperResultProfileCard({
                 {h.city?.trim() || "—"}
               </span>
             </div>
-
-            {liveCategories.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                {liveCategories.map((cat, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1.5 rounded-xl border-0 bg-black/40 px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-white shadow-none ring-0 backdrop-blur-md"
-                  >
-                    <CategoryIcon id={cat.id} className="h-4 w-4 text-emerald-400" />
-                    {cat.label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </div>
 
           <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 pt-1 pb-1">
@@ -675,6 +661,26 @@ export function HelperResultProfileCard({
             <p className="line-clamp-2 text-[13px] leading-relaxed text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
               {h.freelancer_profiles.bio}
             </p>
+          ) : null}
+
+          {liveCategories.length > 0 ? (
+            <div
+              className={cn(
+                "pointer-events-auto flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden",
+                "snap-x snap-mandatory touch-pan-x overscroll-x-contain",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              )}
+            >
+              {liveCategories.map((cat, i) => (
+                <span
+                  key={i}
+                  className="inline-flex shrink-0 snap-start items-center gap-1.5 rounded-xl border-0 bg-black/40 px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-white shadow-none ring-0 backdrop-blur-md"
+                >
+                  <CategoryIcon id={cat.id} className="h-4 w-4 text-emerald-400" />
+                  {cat.label}
+                </span>
+              ))}
+            </div>
           ) : null}
 
           <div className="pointer-events-auto flex items-center gap-2">

@@ -34,6 +34,12 @@ import {
   UserCheck,
   HeartHandshake,
   CalendarX,
+  Hourglass,
+  RefreshCw,
+  Baby,
+  StickyNote,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -158,6 +164,10 @@ import {
   type RequestHelpTimeframe,
 } from "@/lib/requestHelpWhen";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
+import {
+  isolatedFeedDetailRows,
+  type IsolatedFeedDetailKind,
+} from "@/lib/isolatedFeedPostDetails";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
   requestPostAccentTextClass,
@@ -391,8 +401,9 @@ function feedWhenLabel(
     custom_when?: string | null;
   },
   createdAt?: string | null,
+  language?: string,
 ): string | null {
-  return feedWhenDisplayLabel(t, metadata, createdAt);
+  return feedWhenDisplayLabel(t, metadata, createdAt, language);
 }
 
 function feedLocationSlug(part: string): string {
@@ -457,6 +468,55 @@ function CategoryIcon({
       aria-hidden
     />
   );
+}
+
+function IsolatedDetailIcon({
+  kind,
+  expired,
+}: {
+  kind: IsolatedFeedDetailKind;
+  expired?: boolean;
+}) {
+  const className = cn(
+    "mt-0.5 h-5 w-5 shrink-0",
+    expired && kind === "when"
+      ? "text-muted-foreground/80"
+      : kind === "budget" || kind === "rate"
+        ? undefined
+        : "text-muted-foreground",
+  );
+  switch (kind) {
+    case "location":
+      return <MapPin className={className} />;
+    case "from":
+      return <ArrowUpRight className={className} />;
+    case "to":
+      return <ArrowDownRight className={className} />;
+    case "when":
+      return <Clock className={className} />;
+    case "schedule":
+      return <CalendarDays className={className} />;
+    case "duration":
+      return <Hourglass className={className} />;
+    case "shift":
+      return <Clock className={className} />;
+    case "careType":
+      return <Briefcase className={className} />;
+    case "frequency":
+      return <RefreshCw className={className} />;
+    case "budget":
+      return <Coins className={cn(className, requestPostBudgetTextClass)} />;
+    case "rate":
+      return <Coins className={cn(className, "text-emerald-600 dark:text-emerald-400")} />;
+    case "people":
+      return <Users className={className} />;
+    case "kids":
+      return <Baby className={className} />;
+    case "notes":
+      return <StickyNote className={className} />;
+    default:
+      return <Sparkles className={className} />;
+  }
 }
 
 function renderCaptionWithMentions(caption: string): React.ReactNode {
@@ -1512,6 +1572,7 @@ function PostTypeCategorySubtitle({
   typeName,
   categoryLabel,
   whenExpired = false,
+  expiredOnLabel,
   variant = "default",
   className,
 }: {
@@ -1519,6 +1580,7 @@ function PostTypeCategorySubtitle({
   typeName?: string;
   categoryLabel?: string | null;
   whenExpired?: boolean;
+  expiredOnLabel?: string | null;
   variant?: "default" | "overlay";
   className?: string;
 }) {
@@ -1546,13 +1608,14 @@ function PostTypeCategorySubtitle({
       {whenExpired && postTypeId === "request_help" ? (
         <>
           <span
-            className={
+            className={cn(
+              "normal-case tracking-normal",
               variant === "overlay"
                 ? "text-white/65"
-                : "text-muted-foreground"
-            }
+                : "text-muted-foreground",
+            )}
           >
-            {t("feed.whenExpired")}
+            {expiredOnLabel || t("feed.whenExpired")}
           </span>
           <span aria-hidden> · </span>
         </>
@@ -3314,7 +3377,7 @@ const mediaWhenBadgeIconClass = "h-4 w-4 shrink-0";
 const mediaWhenUrgentBadgeIconClass = "h-4 w-4 shrink-0 text-white";
 
 const mediaWhenExpiredBadgeClass =
-  "inline-flex items-center gap-2 rounded-full bg-neutral-600/90 px-4 py-2 text-sm font-black uppercase tracking-wide text-white shadow-md backdrop-blur-sm";
+  "inline-flex items-center gap-2 rounded-full bg-neutral-600/90 px-4 py-2 text-sm font-black text-white shadow-md backdrop-blur-sm";
 
 const mediaWhenExpiredBadgeIconClass = "h-4 w-4 shrink-0 text-white/90";
 
@@ -3585,6 +3648,7 @@ type PostCardProps = {
   globalFeedLayout?: boolean;
   guestDesktopLightLayout?: boolean;
   viewerLocation?: ViewerLocation | null;
+  isolateFocusedPost?: boolean;
 };
 
 function FeedPostItem(props: PostCardProps) {
@@ -3619,36 +3683,15 @@ function PostCard({
   globalFeedLayout = false,
   guestDesktopLightLayout = false,
   viewerLocation = null,
-}: {
-  post: FeedPost;
-  currentUserId: string | null;
-  onLikeToggle: (postId: string, liked: boolean) => void;
-  isOwnFeed: boolean;
-  onDeleted: (postId: string) => void;
-  onListingStatusChange: (
-    postId: string,
-    metadata: Record<string, unknown> | null,
-  ) => void;
-  globalVideoUnmuted: boolean;
-  onGlobalVideoUnmutedChange: (next: boolean) => void;
-  refreshPostShareStats: (postId: string, source?: FeedPost["source"]) => void;
-  onOpenMediaReels: (postId: string) => void;
-  /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
-  hidePostLikeButton?: boolean;
-  appearance: "default" | "discover" | "profile";
-  isFocused?: boolean;
-  discoverWideLayout?: boolean;
-  plainCard?: boolean;
-  globalFeedLayout?: boolean;
-  guestDesktopLightLayout?: boolean;
-  viewerLocation?: ViewerLocation | null;
-}) {
+  isolateFocusedPost = false,
+}: PostCardProps) {
   const { t, i18n } = useTranslation();
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { profile: viewerProfile, user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isMobileViewport = useIsMobileViewport();
   const isJobRequest = post.source === "job_request";
   const [chatOpening, setChatOpening] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -4302,17 +4345,17 @@ function PostCard({
 
   const whenLabel = useMemo(() => {
     if (post.source === "job_request" && post.post_metadata?.timeframe) {
-      return feedWhenLabel(t, post.post_metadata, post.created_at);
+      return feedWhenLabel(t, post.post_metadata, post.created_at, i18n.language);
     }
     if (post.source !== "post" || !post.post_metadata) return null;
     if (post.post_type_id === "request_help" && post.post_metadata.timeframe) {
-      return feedWhenLabel(t, post.post_metadata, post.created_at);
+      return feedWhenLabel(t, post.post_metadata, post.created_at, i18n.language);
     }
     if (post.post_type_id === "event") {
       return eventDateTimeLabel;
     }
     return null;
-  }, [post, t, eventDateTimeLabel]);
+  }, [post, t, i18n.language, eventDateTimeLabel]);
 
   const requestWhenTimeframe = useMemo(() => {
     if (post.source === "job_request") {
@@ -4483,6 +4526,12 @@ function PostCard({
       if (linkedJobRequestId && currentUserId === post.author_id) {
         return t("feed.global.viewRequest");
       }
+      if (
+        isolateFocusedPost &&
+        (isJobRequest || postTypeId === "request_help")
+      ) {
+        return jobAcceptedAt ? "Pending confirmation" : t("feed.iCanHelp");
+      }
       return globalFeedCtaLabel(t, {
         isJobRequest,
         jobAcceptedAt,
@@ -4496,6 +4545,7 @@ function PostCard({
       authorFirstName,
       currentUserId,
       eventJoinStatus,
+      isolateFocusedPost,
       isJobRequest,
       isOwnEventPost,
       jobAcceptedAt,
@@ -4508,6 +4558,34 @@ function PostCard({
 
   const pickupRoute = useMemo(() => feedPostPickupRoute(post), [post]);
 
+  const isolatedDetails = useMemo(() => {
+    if (!isolateFocusedPost) return [];
+    const meta =
+      post.source === "availability" ? null : (post.post_metadata ?? null);
+    return isolatedFeedDetailRows({
+      source: post.source,
+      postTypeId,
+      metadata: meta,
+      caption: post.caption,
+      row: post.source === "job_request" ? post.row : undefined,
+      locationLine: postLocationLine,
+      whenLabel,
+      pickupRoute,
+      rateTypeLabel: feedRateTypeLabel(
+        t,
+        typeof meta?.rate_type === "string" ? meta.rate_type : null,
+      ),
+    });
+  }, [
+    isolateFocusedPost,
+    post,
+    postTypeId,
+    postLocationLine,
+    whenLabel,
+    pickupRoute,
+    t,
+  ]);
+
   const isGlobalTextOnlyCard =
     isGlobalFeed &&
     !hasMedia &&
@@ -4518,6 +4596,109 @@ function PostCard({
       postTypeId === "event");
 
   const canOpenInReelsViewer = isReelsViewerPost(post as ReelFeedPost);
+
+  function renderGlobalMetadataLines(includeJobRequestBudget: boolean) {
+    if (isolateFocusedPost) {
+      return isolatedDetails.map((item) => (
+        <div
+          key={item.key}
+          className={cn(
+            "flex items-start gap-2.5",
+            item.kind === "budget" && requestPostBudgetTextClass,
+            item.kind === "rate" && "text-emerald-600 dark:text-emerald-400",
+            item.kind === "when" && whenExpired && "text-muted-foreground",
+          )}
+        >
+          <IsolatedDetailIcon kind={item.kind} expired={whenExpired} />
+          <span
+            className={cn(
+              "min-w-0",
+              item.kind === "notes" && "whitespace-pre-wrap leading-snug",
+              whenExpired && item.kind === "when" && "font-bold",
+            )}
+          >
+            {item.value}
+          </span>
+        </div>
+      ));
+    }
+    return (
+      <>
+        {postLocationLine ? (
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <span>{postLocationLine}</span>
+          </div>
+        ) : null}
+        {whenLabel ? (
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              whenExpired && "text-muted-foreground",
+            )}
+          >
+            <Clock
+              className={cn(
+                "h-5 w-5 shrink-0",
+                whenExpired
+                  ? "text-muted-foreground/80"
+                  : "text-muted-foreground",
+              )}
+            />
+            <span className={cn(whenExpired && "font-bold")}>{whenLabel}</span>
+          </div>
+        ) : null}
+        {post.source === "post" &&
+        post.post_type_id === "request_help" &&
+        post.post_metadata?.budget ? (
+          <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
+            <Coins className="h-5 w-5 shrink-0" />
+            <span>
+              ₪{post.post_metadata.budget}{" "}
+              <span className="text-muted-foreground">
+                {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+              </span>
+            </span>
+          </div>
+        ) : null}
+        {includeJobRequestBudget && isJobRequest && post.post_metadata?.budget ? (
+          <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
+            <Coins className="h-5 w-5 shrink-0" />
+            <span>
+              ₪{post.post_metadata.budget}{" "}
+              <span className="text-muted-foreground">
+                {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+              </span>
+            </span>
+          </div>
+        ) : null}
+        {post.source === "post" &&
+        post.post_type_id === "offer_service" &&
+        post.post_metadata?.rate ? (
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <Coins className="h-5 w-5 shrink-0" />
+            <span>
+              ₪{post.post_metadata.rate}{" "}
+              <span className="text-muted-foreground">
+                {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+              </span>
+            </span>
+          </div>
+        ) : null}
+        {isEventPost && eventHelpersNeeded != null ? (
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <span>
+              {t("feed.event.helpersBadge", {
+                accepted: eventAcceptedHelpers,
+                needed: eventHelpersNeeded,
+              })}
+            </span>
+          </div>
+        ) : null}
+      </>
+    );
+  }
 
   function tryOpenReelsViewer() {
     if (!canOpenInReelsViewer) return;
@@ -4602,6 +4783,7 @@ function PostCard({
   }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   function renderEngagementRow() {
+    const pinEngagementToMobileBottom = isolateFocusedPost && isMobileViewport;
     const btnPad = isGlobalFeed
       ? "py-2.5"
       : hasMedia
@@ -4617,11 +4799,17 @@ function PostCard({
       : "text-[17px] font-semibold";
     const engagementBtnPx = isGlobalFeed ? "px-3" : "px-3.5";
     const engagementDisabled = post.source === "availability";
-    return (
+    const row = (
       <div
         className={cn(
           "flex items-center justify-between",
-          isGlobalFeed
+          pinEngagementToMobileBottom
+            ? cn(
+                "fixed inset-x-0 bottom-0 z-[80] mt-0 border-0 px-2 pt-1.5",
+                "bg-white pb-[max(0.45rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]",
+                "dark:bg-[#181b1f]",
+              )
+            : isGlobalFeed
             ? cn(
                 cardPadX,
                 "mt-1 pb-3.5 pt-2",
@@ -4790,6 +4978,18 @@ function PostCard({
         ) : null}
       </div>
     );
+    if (pinEngagementToMobileBottom && typeof document !== "undefined") {
+      return (
+        <>
+          <div
+            className="h-[calc(3.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
+            aria-hidden
+          />
+          {createPortal(row, document.body)}
+        </>
+      );
+    }
+    return row;
   }
 
   const showFeedMetadataBox =
@@ -4918,6 +5118,7 @@ function PostCard({
                     typeName={feedPostTypeName}
                     categoryLabel={serviceCategoryMeta?.label}
                     whenExpired={whenExpired}
+                    expiredOnLabel={whenLabel}
                   />
                 </div>
                 <p className="text-[15px] font-medium leading-tight text-muted-foreground">
@@ -5025,6 +5226,7 @@ function PostCard({
               typeName={feedPostTypeName}
               categoryLabel={serviceCategoryMeta?.label}
               whenExpired={whenExpired}
+              expiredOnLabel={whenLabel}
             />
           </div>
           <p className="text-[14px] font-medium leading-tight text-muted-foreground">
@@ -5170,6 +5372,7 @@ function PostCard({
                         typeName={feedPostTypeName}
                         categoryLabel={serviceCategoryMeta?.label}
                         whenExpired={whenExpired}
+                        expiredOnLabel={whenLabel}
                         variant="overlay"
                       />
                     </div>
@@ -5430,6 +5633,7 @@ function PostCard({
                         typeName={feedPostTypeName}
                         categoryLabel={serviceCategoryMeta?.label}
                         whenExpired={whenExpired}
+                        expiredOnLabel={whenLabel}
                         variant="overlay"
                       />
                     </div>
@@ -5586,89 +5790,12 @@ function PostCard({
                 ) : null}
                 <div
                   className={cn(
-                    "mt-3 space-y-2 text-[16px] font-medium text-foreground/85",
+                    "mt-3 space-y-2.5 text-[16px] font-medium text-foreground/85",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
                 >
-                  {postLocationLine ? (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>{postLocationLine}</span>
-                    </div>
-                  ) : null}
-                  {whenLabel ? (
-                    <div
-                      className={cn(
-                        "flex items-center gap-2",
-                        whenExpired && "text-muted-foreground",
-                      )}
-                    >
-                      <Clock
-                        className={cn(
-                          "h-5 w-5 shrink-0",
-                          whenExpired
-                            ? "text-muted-foreground/80"
-                            : "text-muted-foreground",
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          whenExpired && "font-bold uppercase tracking-wide",
-                        )}
-                      >
-                        {whenLabel}
-                      </span>
-                    </div>
-                  ) : null}
-                  {post.source === "post" &&
-                  post.post_type_id === "request_help" &&
-                  post.post_metadata?.budget ? (
-                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
-                      <Coins className="h-5 w-5 shrink-0" />
-                      <span>
-                        ₪{post.post_metadata.budget}{" "}
-                        <span className="text-muted-foreground">
-                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
-                        </span>
-                      </span>
-                    </div>
-                  ) : null}
-                  {isJobRequest && post.post_metadata?.budget ? (
-                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
-                      <Coins className="h-5 w-5 shrink-0" />
-                      <span>
-                        ₪{post.post_metadata.budget}{" "}
-                        <span className="text-muted-foreground">
-                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
-                        </span>
-                      </span>
-                    </div>
-                  ) : null}
-                  {post.source === "post" &&
-                  post.post_type_id === "offer_service" &&
-                  post.post_metadata?.rate ? (
-                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                      <Coins className="h-5 w-5 shrink-0" />
-                      <span>
-                        ₪{post.post_metadata.rate}{" "}
-                        <span className="text-muted-foreground">
-                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
-                        </span>
-                      </span>
-                    </div>
-                  ) : null}
-                  {isEventPost && eventHelpersNeeded != null ? (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>
-                        {t("feed.event.helpersBadge", {
-                          accepted: eventAcceptedHelpers,
-                          needed: eventHelpersNeeded,
-                        })}
-                      </span>
-                    </div>
-                  ) : null}
+                  {renderGlobalMetadataLines(true)}
                 </div>
               </div>
             </div>
@@ -5746,82 +5873,16 @@ function PostCard({
                   ) : null}
                 </div>
               )}
-              {showFeedMetadataBox ? (
+              {(isolateFocusedPost ? isolatedDetails.length > 0 : showFeedMetadataBox) ? (
                 <div
                   className={cn(
                     cardPadX,
-                    "mt-2 space-y-2 text-[16px] font-medium text-foreground/90",
+                    "mt-2 space-y-2.5 text-[16px] font-medium text-foreground/90",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
                 >
-                  {postLocationLine ? (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>{postLocationLine}</span>
-                    </div>
-                  ) : null}
-                  {whenLabel ? (
-                    <div
-                      className={cn(
-                        "flex items-center gap-2",
-                        whenExpired && "text-muted-foreground",
-                      )}
-                    >
-                      <Clock
-                        className={cn(
-                          "h-5 w-5 shrink-0",
-                          whenExpired
-                            ? "text-muted-foreground/80"
-                            : "text-muted-foreground",
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          whenExpired && "font-bold uppercase tracking-wide",
-                        )}
-                      >
-                        {whenLabel}
-                      </span>
-                    </div>
-                  ) : null}
-                  {post.source === "post" &&
-                  post.post_type_id === "request_help" &&
-                  post.post_metadata?.budget ? (
-                    <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
-                      <Coins className="h-5 w-5 shrink-0" />
-                      <span>
-                        ₪{post.post_metadata.budget}{" "}
-                        <span className="text-muted-foreground">
-                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
-                        </span>
-                      </span>
-                    </div>
-                  ) : null}
-                  {post.source === "post" &&
-                  post.post_type_id === "offer_service" &&
-                  post.post_metadata?.rate ? (
-                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                      <Coins className="h-5 w-5 shrink-0" />
-                      <span>
-                        ₪{post.post_metadata.rate}{" "}
-                        <span className="text-muted-foreground">
-                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
-                        </span>
-                      </span>
-                    </div>
-                  ) : null}
-                  {isEventPost && eventHelpersNeeded != null ? (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>
-                        {t("feed.event.helpersBadge", {
-                          accepted: eventAcceptedHelpers,
-                          needed: eventHelpersNeeded,
-                        })}
-                      </span>
-                    </div>
-                  ) : null}
+                  {renderGlobalMetadataLines(false)}
                 </div>
               ) : null}
             </>
@@ -6006,13 +6067,12 @@ function PostCard({
                     />
                     <span
                       className={cn(
-                        whenExpired && "uppercase tracking-wide",
                         !whenExpired &&
                           isRequestHelpWhenUrgent(post.post_metadata.timeframe) &&
                           "uppercase tracking-wide",
                       )}
                     >
-                      {feedWhenLabel(t, post.post_metadata, post.created_at) ?? ""}
+                      {feedWhenLabel(t, post.post_metadata, post.created_at, i18n.language) ?? ""}
                     </span>
                   </div>
                 ) : null}
@@ -6349,6 +6409,8 @@ interface ProfilePostsFeedProps {
   filterCategoryId?: string | null;
   /** When category is `other_help`, further filter by a subcategory id. */
   filterOtherSubcategoryId?: string | null;
+  /** Show only the focused post/request — used by isolated offer/request pages. */
+  isolateFocusedPost?: boolean;
 }
 
 export function ProfilePostsFeed({
@@ -6383,6 +6445,7 @@ export function ProfilePostsFeed({
   viewerLocation = null,
   filterCategoryId = null,
   filterOtherSubcategoryId = null,
+  isolateFocusedPost = false,
 }: ProfilePostsFeedProps) {
   const { t } = useTranslation();
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
@@ -7194,11 +7257,12 @@ export function ProfilePostsFeed({
     normalizedFocusRequestId,
   ]);
 
-  const { data: posts = [], isPending } = useQuery({
+  const { data: posts = [], isPending: feedPending } = useQuery({
     queryKey: qk,
     staleTime: 0,
     gcTime: 10 * 60 * 1000,
     queryFn: fetchPosts,
+    enabled: !isolateFocusedPost,
   });
 
   const focusedPostQueryKey = useMemo(
@@ -7208,7 +7272,7 @@ export function ProfilePostsFeed({
 
   const {
     data: focusedPost,
-    isFetching: focusedPostFetching,
+    isPending: focusedPostPending,
   } = useQuery({
     queryKey: focusedPostQueryKey,
     enabled: Boolean(normalizedFocusPostId),
@@ -7242,7 +7306,7 @@ export function ProfilePostsFeed({
 
   const {
     data: focusedRequest,
-    isFetching: focusedRequestFetching,
+    isPending: focusedRequestPending,
   } = useQuery({
     queryKey: queryKeys.jobRequestById(normalizedFocusRequestId, user?.id),
     enabled: allowRequestDeepLink,
@@ -7280,6 +7344,25 @@ export function ProfilePostsFeed({
   );
 
   const displayPosts = useMemo(() => {
+    if (isolateFocusedPost) {
+      if (normalizedFocusPostId) {
+        const match =
+          focusedPost?.id === normalizedFocusPostId && focusedPost.source === "post"
+            ? focusedPost
+            : null;
+        return match ? [match] : [];
+      }
+      if (normalizedFocusRequestId) {
+        const match =
+          focusedRequest?.id === normalizedFocusRequestId &&
+          focusedRequest.source === "job_request"
+            ? focusedRequest
+            : null;
+        return match ? [match] : [];
+      }
+      return [];
+    }
+
     let result = posts;
 
     if (allowPostDeepLink && normalizedFocusPostId) {
@@ -7330,6 +7413,7 @@ export function ProfilePostsFeed({
     posts,
     focusedPost,
     focusedRequest,
+    isolateFocusedPost,
     normalizedFocusPostId,
     normalizedFocusRequestId,
     allowPostDeepLink,
@@ -7337,6 +7421,14 @@ export function ProfilePostsFeed({
     filterPostTypeId,
     effectivePostTypeFilter,
   ]);
+
+  const focusedPostFetching = focusedPostPending;
+  const focusedRequestFetching = focusedRequestPending;
+  const isPending = isolateFocusedPost
+    ? normalizedFocusRequestId
+      ? focusedRequestPending
+      : focusedPostPending
+    : feedPending;
 
   const reelCommentsPreview = useMemo(() => {
     if (!reelCommentsPostId) return null;
@@ -7602,7 +7694,7 @@ export function ProfilePostsFeed({
   if (isPending) {
     return (
       <div className="flex flex-col gap-8 md:gap-7">
-        {[1, 2].map((i) => (
+        {Array.from({ length: isolateFocusedPost ? 1 : 2 }, (_, i) => (
           <div
             key={i}
             className={cn(
@@ -7671,7 +7763,11 @@ export function ProfilePostsFeed({
             aria-hidden
           />
           <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-            {userId
+            {isolateFocusedPost
+              ? t("feed.share.notAvailableTitle", {
+                  defaultValue: "This post is no longer available",
+                })
+              : userId
               ? isOwnProfile ? "You haven't posted anything yet." : "No posts yet."
               : "The community feed is quiet right now. Check back later!"}
           </p>
@@ -7734,6 +7830,7 @@ export function ProfilePostsFeed({
                 globalFeedLayout={globalFeedLayout}
                 guestDesktopLightLayout={guestDesktopLightLayout}
                 viewerLocation={viewerLocation}
+                isolateFocusedPost={isolateFocusedPost}
               />
             ))}
             </div>
@@ -7777,6 +7874,7 @@ export function ProfilePostsFeed({
                 plainCard={plainCards}
                 globalFeedLayout={globalFeedLayout}
                 viewerLocation={viewerLocation}
+                isolateFocusedPost={isolateFocusedPost}
               />
             );
           }
@@ -7808,6 +7906,7 @@ export function ProfilePostsFeed({
                   plainCard={plainCards}
                   globalFeedLayout={globalFeedLayout}
                   viewerLocation={viewerLocation}
+                  isolateFocusedPost={isolateFocusedPost}
                 />
               </div>
 

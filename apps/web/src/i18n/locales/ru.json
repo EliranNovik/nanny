@@ -477,8 +477,10 @@
     "liveHelp": "Живая помощь",
     "liveHelpSubtitle": "Задания, в которых вы сейчас помогаете",
     "openRequestsNearYou": "Открытые запросы рядом",
+    "openRequests": "Открытые запросы",
     "openRequestsSubtitle": "Новые задания за последние 24 часа",
     "ourCommunityLive": "Наше сообщество в эфире",
+    "offersForYou": "Предложения для вас",
     "noLiveHelpYet": "Пока нет активной помощи",
     "noLiveHelpYetSub": "Когда помощник будет подтверждён, запрос появится здесь.",
     "noLiveGigsYet": "Пока нет активных заданий",
@@ -519,6 +521,7 @@
     "refresh": "Обновить",
     "noCommentsYet": "Пока нет комментариев. Будьте первым!",
     "whenExpired": "Истекло",
+    "whenExpiredOn": "Истекло {{date}}",
     "listingStatus": {
       "helperFound": "Помощник найден",
       "alreadyHelping": "Уже помогает",

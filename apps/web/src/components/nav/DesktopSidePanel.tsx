@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
-import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
@@ -19,7 +18,6 @@ import {
   MessageCircle,
   User,
   LogOut,
-  Menu,
   Shield,
   CheckCircle2,
   BarChart3,
@@ -44,7 +42,7 @@ type NavItem = {
   activeMatch: (pathname: string) => boolean;
 };
 
-function isExcludedRoute(pathname: string): boolean {
+export function isDesktopSidePanelExcludedRoute(pathname: string): boolean {
   if (pathname === "/") return true;
   if (pathname === "/login") return true;
   if (pathname === "/onboarding") return true;
@@ -56,10 +54,8 @@ function isExcludedRoute(pathname: string): boolean {
 
 export function DesktopSidePanel({
   collapsed = false,
-  onCollapse,
 }: {
   collapsed?: boolean;
-  onCollapse?: () => void;
 }) {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
@@ -298,7 +294,7 @@ export function DesktopSidePanel({
 
   // After all hooks: decide whether to render.
   if (!user || !profile) return null;
-  if (isExcludedRoute(pathname)) return null;
+  if (isDesktopSidePanelExcludedRoute(pathname)) return null;
 
   if (collapsed) {
     return (
@@ -308,26 +304,8 @@ export function DesktopSidePanel({
           "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
         )}
       >
-        <div className="flex w-full shrink-0 flex-col items-center gap-2 px-2 pt-4 pb-2">
-          <button
-            type="button"
-            onClick={onCollapse}
-            className="inline-flex h-10 w-10 items-center justify-center text-foreground transition-opacity hover:opacity-80 active:scale-[0.98]"
-            aria-label="Open sidebar"
-          >
-            <Menu className="h-6 w-6" strokeWidth={2.4} />
-          </button>
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="Tebnu"
-            className="h-10 w-auto shrink-0"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overscroll-contain px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <nav className="flex w-full flex-col items-center gap-2">
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain px-1.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="flex w-full flex-col items-center gap-1">
             {items.map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
@@ -338,52 +316,56 @@ export function DesktopSidePanel({
                   key={it.href}
                   to={it.href}
                   className={cn(
-                    "relative flex h-11 w-11 items-center justify-center rounded-2xl transition-colors",
-                    "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                    active && "bg-muted/75 text-foreground",
+                    "relative flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
+                    "text-muted-foreground hover:text-foreground hover:opacity-90",
+                    active && "text-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
                   aria-label={label}
-                  title={label}
                 >
-                  {isProfileRow ? (
-                    <Avatar
-                      className={cn(
-                        "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
-                        active
-                          ? "border-transparent ring-2 ring-foreground"
-                          : "border-black/10 dark:border-white/15",
-                      )}
-                    >
-                      <AvatarImage
-                        src={profile?.photo_url ?? undefined}
-                        alt=""
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white">
-                        {(profile?.full_name ?? user?.email ?? "U")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
-                  )}
-                  {it.id === "messages" && unreadMessages > 0 ? (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
-                    >
-                      {unreadMessages > 9 ? "9+" : unreadMessages}
-                    </Badge>
-                  ) : null}
+                  <span className="relative flex h-7 w-7 items-center justify-center">
+                    {isProfileRow ? (
+                      <Avatar
+                        className={cn(
+                          "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
+                          active
+                            ? "border-transparent ring-2 ring-foreground"
+                            : "border-black/10 dark:border-white/15",
+                        )}
+                      >
+                        <AvatarImage
+                          src={profile?.photo_url ?? undefined}
+                          alt=""
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white">
+                          {(profile?.full_name ?? user?.email ?? "U")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                    )}
+                    {it.id === "messages" && unreadMessages > 0 ? (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-2 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
+                      >
+                        {unreadMessages > 9 ? "9+" : unreadMessages}
+                      </Badge>
+                    ) : null}
+                  </span>
+                  <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                    {label}
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
           {profile?.is_admin && (
-            <nav className="flex w-full flex-col items-center gap-2 mt-2 pt-2 border-t border-border/40">
+            <nav className="mt-2 flex w-full flex-col items-center gap-1 border-t border-border/40 pt-2">
               {adminItems.map((it) => {
                 const active = it.activeMatch(pathname);
                 const Icon = it.icon;
@@ -392,38 +374,44 @@ export function DesktopSidePanel({
                     key={it.href}
                     to={it.href}
                     className={cn(
-                      "relative flex h-11 w-11 items-center justify-center rounded-2xl transition-colors",
-                      "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                      active && "bg-muted/75 text-foreground",
+                      "relative flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
+                      "text-muted-foreground hover:text-foreground hover:opacity-90",
+                      active && "text-foreground",
                     )}
                     aria-label={it.label}
-                    title={it.label}
                   >
                     <Icon className="h-5 w-5 shrink-0" strokeWidth={2.4} />
+                    <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                      {it.label}
+                    </span>
                   </Link>
                 );
               })}
             </nav>
           )}
 
-          <div className="mt-auto flex w-full flex-col items-center gap-2 rounded-2xl bg-muted/20 py-2">
+          <div className="mt-auto flex w-full flex-col items-center gap-1 py-2">
             <button
               type="button"
               onClick={() => openSaved("profiles")}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-muted-foreground transition-opacity hover:text-foreground hover:opacity-90"
               aria-label={t("nav.savedProfiles")}
-              title={t("nav.savedProfiles")}
             >
               <Bookmark className="h-5 w-5" strokeWidth={2.5} />
+              <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                {t("nav.savedProfiles")}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => openSaved("posts")}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-muted-foreground transition-opacity hover:text-foreground hover:opacity-90"
               aria-label={t("nav.savedPosts")}
-              title={t("nav.savedPosts")}
             >
               <Bookmark className="h-5 w-5 fill-current" strokeWidth={2.5} />
+              <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                {t("nav.savedPosts")}
+              </span>
             </button>
           </div>
         </div>
@@ -435,13 +423,15 @@ export function DesktopSidePanel({
               await signOut();
             }}
             className={cn(
-              "flex h-11 w-full items-center justify-center rounded-2xl transition-colors",
-              "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 active:scale-[0.98]",
+              "flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
+              "text-red-500 hover:text-red-600 hover:opacity-90 active:scale-[0.98]",
             )}
             aria-label={t("common.logOut")}
-            title={t("common.logOut")}
           >
             <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+            <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+              {t("common.logOut")}
+            </span>
           </button>
         </div>
       </aside>
@@ -455,30 +445,8 @@ export function DesktopSidePanel({
         "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
       )}
     >
-      {/* Fixed top section to allow popouts to escape overflow clipping */}
-      <div className="shrink-0 px-3 pt-4 pb-1">
-        <div className="relative mb-1 flex items-center gap-2 px-1 py-1 text-foreground">
-          <button
-            type="button"
-            onClick={onCollapse}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-foreground transition-opacity hover:opacity-80 active:scale-[0.98]"
-            aria-label="Collapse sidebar"
-          >
-            <Menu className="h-6 w-6" strokeWidth={2.4} />
-          </button>
-
-          <img
-            src={BRAND_LOGO_SRC}
-            alt="Tebnu"
-            className="h-12 w-auto shrink-0 md:h-14"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
-      </div>
-
       {/* Independent scroll: panel content scrolls without moving the page */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
         <div className="mt-2 flex flex-col">
           <nav className="flex w-full flex-col items-stretch gap-1">
@@ -492,9 +460,9 @@ export function DesktopSidePanel({
                   key={it.href}
                   to={it.href}
                   className={cn(
-                    "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
-                    "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                    active && "bg-muted/70 text-foreground",
+                    "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
+                    "text-muted-foreground hover:text-foreground",
+                    active && "text-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
                   title={label}
@@ -554,9 +522,9 @@ export function DesktopSidePanel({
                       key={it.href}
                       to={it.href}
                       className={cn(
-                        "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
-                        "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                        active && "bg-muted/70 text-foreground",
+                        "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
+                        "text-muted-foreground hover:text-foreground",
+                        active && "text-foreground",
                       )}
                       title={it.label}
                     >
@@ -572,11 +540,10 @@ export function DesktopSidePanel({
           )}
 
           <div className="mt-auto pt-4">
-            <div className="rounded-2xl bg-muted/20 p-2">
               {/* Saved profiles */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:bg-muted/35"
+                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:text-foreground"
                 onClick={() => {
                   setSavedProfilesOpen((v) => {
                     const next = !v;
@@ -597,7 +564,7 @@ export function DesktopSidePanel({
                 <div className="mt-1 space-y-1 px-1 pb-1">
                   <button
                     type="button"
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:bg-muted/35 hover:text-foreground"
+                    className="w-full px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:text-foreground"
                     onClick={() => openSaved("profiles")}
                   >
                     View all
@@ -615,7 +582,7 @@ export function DesktopSidePanel({
                       <Link
                         key={p.id}
                         to={`/profile/${p.id}`}
-                        className="flex items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-semibold text-foreground hover:bg-muted/35"
+                        className="flex items-center gap-2 px-2 py-2 text-[13px] font-semibold text-foreground hover:text-foreground/80"
                       >
                         <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted/60">
                           {p.photo_url ? (
@@ -652,7 +619,7 @@ export function DesktopSidePanel({
               {/* Saved posts */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:bg-muted/35"
+                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:text-foreground"
                 onClick={() => {
                   setSavedPostsOpen((v) => {
                     const next = !v;
@@ -673,7 +640,7 @@ export function DesktopSidePanel({
                 <div className="mt-1 space-y-1 px-1 pb-1">
                   <button
                     type="button"
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:bg-muted/35 hover:text-foreground"
+                    className="w-full px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:text-foreground"
                     onClick={() => openSaved("posts")}
                   >
                     View all
@@ -691,7 +658,7 @@ export function DesktopSidePanel({
                       <button
                         key={p.id}
                         type="button"
-                        className="w-full rounded-xl px-2 py-2 text-left hover:bg-muted/35"
+                        className="w-full px-2 py-2 text-left hover:opacity-80"
                         onClick={() => openSaved("posts")}
                       >
                         <div className="truncate text-[13px] font-semibold text-foreground">
@@ -705,7 +672,6 @@ export function DesktopSidePanel({
                   )}
                 </div>
               ) : null}
-            </div>
           </div>
         </div>
       </div>
@@ -716,8 +682,8 @@ export function DesktopSidePanel({
             await signOut();
           }}
           className={cn(
-            "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
-            "text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 active:scale-[0.98]",
+            "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
+            "text-red-500 hover:text-red-600 hover:opacity-90 active:scale-[0.98]",
           )}
           aria-label={t("common.logOut")}
         >

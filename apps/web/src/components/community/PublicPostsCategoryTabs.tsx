@@ -126,6 +126,8 @@ export interface PublicPostsCategoryTabsProps {
   dense?: boolean;
   /** Left-align chips so a horizontal scroller can show every item. */
   startAligned?: boolean;
+  /** Light grey chips (guest feed header) matching profile cards. */
+  lightGrey?: boolean;
 }
 
 /** Icon + label chips to filter `/public/posts?category=`. */
@@ -135,6 +137,7 @@ export function PublicPostsCategoryTabs({
   className,
   dense = false,
   startAligned = false,
+  lightGrey = false,
 }: PublicPostsCategoryTabsProps) {
   const { t } = useTranslation();
 
@@ -170,9 +173,13 @@ export function PublicPostsCategoryTabs({
                 ? "gap-1.5 rounded-full border-0 px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs"
                 : "gap-2 rounded-full border px-3 py-2.5 text-xs font-black sm:px-3.5 sm:text-[13px] md:gap-2.5 md:py-3",
               dense
-                ? selected
-                  ? "bg-zinc-600 text-white dark:bg-white dark:text-zinc-900"
-                  : "bg-zinc-500/90 text-white hover:bg-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                ? lightGrey
+                  ? selected
+                    ? "bg-orange-500 text-white hover:bg-orange-600 dark:bg-white dark:text-zinc-900"
+                    : "bg-zinc-50 text-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  : selected
+                    ? "bg-orange-500 text-white hover:bg-orange-600 dark:bg-white dark:text-zinc-900"
+                    : "bg-zinc-500/90 text-white hover:bg-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                 : cn(
                     selected
                       ? tab.activeClass
@@ -186,9 +193,13 @@ export function PublicPostsCategoryTabs({
                 "shrink-0",
                 dense ? "h-4 w-4 sm:h-5 sm:w-5" : "h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]",
                 dense
-                  ? selected
-                    ? "text-white dark:text-zinc-900"
-                    : tab.iconClass
+                  ? lightGrey
+                    ? selected
+                      ? "text-white dark:text-zinc-900"
+                      : "text-zinc-500 dark:text-zinc-400"
+                    : selected
+                      ? "text-white dark:text-zinc-900"
+                      : tab.iconClass
                   : undefined,
               )}
               strokeWidth={2.25}

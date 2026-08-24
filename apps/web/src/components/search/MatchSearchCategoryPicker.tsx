@@ -1,6 +1,7 @@
+import { Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
+import { categoryIconNode } from "@/components/discover/DiscoverHomeCategoryFilterRow";
 import {
   SERVICE_CATEGORIES,
   type ServiceCategoryId,
@@ -16,28 +17,30 @@ type MatchSearchCategoryPickerProps = {
   hintId?: string;
 };
 
-const CLEAR_BY_THEME: Record<MatchSearchCategoryPickerTheme, string> = {
-  orange: "text-orange-600 dark:text-orange-400",
-  emerald: "text-emerald-700 dark:text-emerald-400",
-};
+const CIRCLE_CLASS =
+  "relative flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full border bg-white/85 shadow-sm backdrop-blur-md transition-all dark:border-0 dark:bg-zinc-800/75 dark:shadow-none";
 
-const CHIP_BY_THEME: Record<
+const LABEL_CLASS =
+  "max-w-[5.5rem] truncate text-center font-extrabold uppercase tracking-[0.14em] text-[10.5px]";
+
+const ICON_CLASS = "h-7 w-7";
+
+const ACCENT: Record<
   MatchSearchCategoryPickerTheme,
-  { on: string; off: string }
+  { ring: string; activeCircle: string; activeLabel: string }
 > = {
   orange: {
-    on: "border-orange-500 bg-orange-500 text-white shadow-sm dark:border-0 dark:bg-orange-500",
-    off: "border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50/80 dark:border-0 dark:bg-zinc-600/55 dark:text-zinc-100 dark:hover:border-0 dark:hover:bg-zinc-500/60",
+    ring: "focus-visible:ring-orange-400/70",
+    activeCircle:
+      "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none",
+    activeLabel: "text-orange-700 dark:text-orange-300",
   },
   emerald: {
-    on: "border-emerald-600 bg-emerald-600 text-white shadow-sm dark:border-0 dark:bg-emerald-600",
-    off: "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-0 dark:bg-zinc-600/55 dark:text-zinc-100 dark:hover:border-0 dark:hover:bg-zinc-500/60",
+    ring: "focus-visible:ring-emerald-400/70",
+    activeCircle:
+      "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none",
+    activeLabel: "text-emerald-700 dark:text-emerald-300",
   },
-};
-
-const FOCUS_RING_BY_THEME: Record<MatchSearchCategoryPickerTheme, string> = {
-  orange: "focus-visible:ring-orange-400/60",
-  emerald: "focus-visible:ring-emerald-400/60",
 };
 
 export function MatchSearchCategoryPicker({
@@ -47,38 +50,54 @@ export function MatchSearchCategoryPicker({
   theme = "orange",
   hintId,
 }: MatchSearchCategoryPickerProps) {
-  const chips = CHIP_BY_THEME[theme];
   const { t } = useTranslation();
+  const accent = ACCENT[theme];
+  const allActive = selectedCategories.size === 0;
 
   return (
-    <div className="space-y-2">
-      {selectedCategories.size > 0 ? (
-        <div className="flex items-center justify-end gap-2 px-0.5">
-          <button
-            type="button"
-            className={cn(
-              "text-xs font-semibold underline-offset-4 hover:underline",
-              CLEAR_BY_THEME[theme],
-            )}
-            onClick={onClearAll}
-          >
-            Clear all
-          </button>
-        </div>
-      ) : null}
+    <div className="min-w-0">
       <div
         className={cn(
-          "flex flex-nowrap gap-2.5 overflow-x-auto pb-1",
+          "flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden",
+          "touch-pan-x overscroll-x-contain pb-1",
           "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-          "md:[scrollbar-width:thin]",
         )}
         role="group"
         aria-label="Categories"
         {...(hintId ? { "aria-describedby": hintId } : {})}
       >
+        <button
+          type="button"
+          onClick={onClearAll}
+          aria-pressed={allActive}
+          className={cn(
+            "flex shrink-0 snap-start flex-col items-center gap-2 transition-transform active:scale-95",
+            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            accent.ring,
+          )}
+        >
+          <div
+            className={cn(
+              CIRCLE_CLASS,
+              allActive
+                ? accent.activeCircle
+                : "border-slate-200/80 text-slate-500 dark:text-zinc-400",
+            )}
+          >
+            <Compass className="h-10 w-10" strokeWidth={2.5} />
+          </div>
+          <span
+            className={cn(
+              LABEL_CLASS,
+              allActive ? accent.activeLabel : "text-slate-500 dark:text-zinc-500",
+            )}
+          >
+            {t("discoverHome.filters.all")}
+          </span>
+        </button>
+
         {SERVICE_CATEGORIES.map((cat) => {
           const on = selectedCategories.has(cat.id);
-          const { Icon, iconClass } = HIRE_CATEGORY_TILE_UI[cat.id];
           return (
             <button
               key={cat.id}
@@ -86,18 +105,29 @@ export function MatchSearchCategoryPicker({
               onClick={() => onToggle(cat.id)}
               aria-pressed={on}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                FOCUS_RING_BY_THEME[theme],
-                on ? chips.on : chips.off,
+                "flex shrink-0 snap-start flex-col items-center gap-2 transition-transform active:scale-95",
+                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                accent.ring,
               )}
             >
-              <Icon
-                className={cn("h-4 w-4 shrink-0", on ? "text-white" : iconClass)}
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              {t(`feed.categories.${cat.id}`, cat.label)}
+              <div
+                className={cn(
+                  CIRCLE_CLASS,
+                  on
+                    ? accent.activeCircle
+                    : "border-slate-200/80 text-slate-500 dark:text-zinc-400",
+                )}
+              >
+                {categoryIconNode(cat.id, ICON_CLASS)}
+              </div>
+              <span
+                className={cn(
+                  LABEL_CLASS,
+                  on ? accent.activeLabel : "text-slate-500 dark:text-zinc-500",
+                )}
+              >
+                {t(`feed.categories.${cat.id}`, cat.label)}
+              </span>
             </button>
           );
         })}

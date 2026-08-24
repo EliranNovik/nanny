@@ -12,7 +12,7 @@ import {
   useDiscoverRequestCarouselScroll,
 } from "@/components/discover/DiscoverRequestCarouselControls";
 import {
-  discoverLeanPersonalCardCarouselItemClass,
+  discoverMyRequestCardCarouselItemClass,
   discoverRequestCardsCarouselContainerClass,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 
@@ -104,7 +104,7 @@ export function DiscoverHomeMyOpenRequests({
   if (loading) {
     return (
       <section className={cn("w-full", className)} aria-label="My open requests">
-        <div className="mb-3 space-y-1">
+        <div className="mb-5 space-y-1">
           <div className="h-6 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
           <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
         </div>
@@ -113,8 +113,8 @@ export function DiscoverHomeMyOpenRequests({
             <div
               key={i}
               className={cn(
-                discoverLeanPersonalCardCarouselItemClass,
-                "h-28 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70",
+                discoverMyRequestCardCarouselItemClass,
+                "h-28 animate-pulse rounded-[1.35rem] bg-zinc-200/70 dark:bg-zinc-800/70",
               )}
             />
           ))}
@@ -129,9 +129,9 @@ export function DiscoverHomeMyOpenRequests({
 
   return (
     <section className={cn("w-full", className)} aria-label="My open requests">
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+          <h2 className="text-[22px] font-black tracking-tight text-orange-700 dark:text-orange-400 sm:text-2xl">
             {t("discover.myRequests")}
           </h2>
           <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
@@ -152,7 +152,7 @@ export function DiscoverHomeMyOpenRequests({
             acceptedCount={acceptedCount}
             acceptedHelpers={acceptedHelpers}
             layout="carousel"
-            className={discoverLeanPersonalCardCarouselItemClass}
+            className={discoverMyRequestCardCarouselItemClass}
             onOpen={() => {
               trackEvent("discover_my_open_request_open", { job_id: row.id });
               navigate(`/client/jobs/${encodeURIComponent(row.id)}/live`);

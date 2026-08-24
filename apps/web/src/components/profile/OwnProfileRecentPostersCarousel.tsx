@@ -2,16 +2,25 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Loader2 } from "lucide-react";
+import { BadgeCheck, Loader2, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { fetchGlobalFeedRecentPosters } from "@/lib/globalFeedRecentPosters";
+import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
+import { StarRating } from "@/components/StarRating";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 
 const CAROUSEL_FETCH_LIMIT = 30;
 const CAROUSEL_DISPLAY_LIMIT = 10;
+
+const posterCardClass = cn(
+  "flex shrink-0 snap-start flex-col overflow-hidden rounded-2xl text-center",
+  "w-[7.25rem] bg-zinc-50 dark:w-[8.5rem] dark:bg-zinc-800",
+);
+const posterPhotoClass = "relative aspect-square w-full overflow-hidden";
 
 type OwnProfileRecentPostersCarouselProps = {
   viewerUserId: string;
@@ -104,12 +113,7 @@ export function OwnProfileRecentPostersCarousel({
 
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          "flex justify-center bg-slate-100 py-6 dark:bg-background",
-          className,
-        )}
-      >
+      <div className={cn("flex justify-center py-6", className)}>
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
       </div>
     );
@@ -119,17 +123,14 @@ export function OwnProfileRecentPostersCarousel({
 
   return (
     <section
-      className={cn(
-        "border-b border-slate-200/60 bg-slate-100 px-4 py-4 dark:border-white/5 dark:bg-background",
-        className,
-      )}
+      className={cn("px-4 py-4", className)}
       aria-label={t("profile.recentPostersCarousel")}
     >
       <div
         className={cn(
-          "flex gap-3 overflow-x-auto pb-1",
+          "flex gap-1.5 overflow-x-auto pb-1 dark:gap-3",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain",
+          "snap-x snap-proximity [touch-action:pan-x_pan-y] overscroll-x-contain",
         )}
         role="list"
       >
@@ -137,37 +138,59 @@ export function OwnProfileRecentPostersCarousel({
           const label = poster.full_name?.trim()?.split(" ")[0] || "Member";
           const displayName = poster.full_name?.trim() || label;
           const savingFavorite = savingFavoriteId === poster.id;
+          const locationLabel = feedLocationDisplayLabel(t, poster.city);
 
           return (
-            <div
-              key={poster.id}
-              role="listitem"
-              className={cn(
-                "flex w-[7.75rem] shrink-0 snap-start flex-col items-center gap-2.5 rounded-2xl px-2.5 py-3",
-                "border border-slate-200/70 bg-white shadow-sm",
-                "dark:border-0 dark:bg-zinc-800 dark:shadow-none",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => navigate(`/profile/${poster.id}`)}
-                className={cn(
-                  "group flex w-full flex-col items-center gap-2 outline-none",
-                  "transition-transform active:scale-[0.97]",
-                  "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                )}
-                aria-label={t("feed.global.viewProfile", { name: displayName })}
-              >
-                <Avatar className="h-[5.5rem] w-[5.5rem] border-0 shadow-none ring-0">
-                  <AvatarImage
-                    src={poster.photo_url ?? undefined}
-                    alt=""
-                    className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  />
-                  <AvatarFallback className="bg-zinc-200 text-xl font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                    {label.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+            <div key={poster.id} role="listitem" className={posterCardClass}>
+              <div className={posterPhotoClass}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/profile/${poster.id}`)}
+                  className={cn(
+                    "group h-full w-full outline-none transition-transform active:scale-[0.97]",
+                    "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  )}
+                  title={displayName}
+                  aria-label={t("feed.global.viewProfile", { name: displayName })}
+                >
+                  <AvatarWithLiveDot
+                    liveUntil={poster.live_until}
+                    className="block h-full w-full"
+                    dotClassName="bottom-auto right-auto top-1.5 left-1.5 border-0"
+                  >
+                    <Avatar className="h-full w-full rounded-none border-0 shadow-none ring-0 !rounded-none">
+                      <AvatarImage
+                        src={poster.photo_url ?? undefined}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      <AvatarFallback className="rounded-none bg-zinc-100 text-xl font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300">
+                        {label.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </AvatarWithLiveDot>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveAuthorToFavorites(poster.id)}
+                  disabled={savingFavorite}
+                  className={cn(
+                    "absolute bottom-1.5 right-1.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full",
+                    "border-0 bg-zinc-500 text-white shadow-sm outline-none ring-0",
+                    "hover:bg-zinc-600 dark:bg-zinc-500 dark:text-white dark:hover:bg-zinc-400",
+                    "transition-transform hover:scale-105 active:scale-95 disabled:opacity-80",
+                  )}
+                  aria-label={t("feed.global.saveProfile", { name: displayName })}
+                >
+                  {savingFavorite ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  )}
+                </button>
+              </div>
+
+              <div className="flex w-full min-w-0 flex-col items-center gap-1 px-2 pb-2.5 pt-2">
                 <span className="flex min-w-0 max-w-full items-center justify-center gap-1 px-0.5">
                   <span className="truncate text-sm font-semibold lowercase leading-tight text-foreground">
                     {displayName}
@@ -180,24 +203,21 @@ export function OwnProfileRecentPostersCarousel({
                     />
                   ) : null}
                 </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void saveAuthorToFavorites(poster.id)}
-                disabled={savingFavorite}
-                className={cn(
-                  "inline-flex h-8 w-full items-center justify-center rounded-full px-2",
-                  "bg-orange-600 text-[11px] font-bold lowercase text-white shadow-sm",
-                  "transition-all hover:bg-orange-700 active:scale-[0.97] disabled:opacity-80",
-                )}
-              >
-                {savingFavorite ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  t("profile.addAsFavorite")
-                )}
-              </button>
+                <StarRating
+                  rating={poster.average_rating ?? 0}
+                  totalRatings={poster.total_ratings ?? 0}
+                  size="sm"
+                  showCount
+                  className="justify-center gap-0.5"
+                  numberClassName="text-[11px] font-bold text-foreground/80"
+                  countClassName="text-[10px] text-muted-foreground"
+                />
+                {locationLabel ? (
+                  <span className="max-w-full truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
+                    {locationLabel}
+                  </span>
+                ) : null}
+              </div>
             </div>
           );
         })}

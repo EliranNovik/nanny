@@ -85,8 +85,11 @@ import {
   signedInDesktopHeaderGlassClass,
   signedInHeaderIconBtnClass,
 } from "@/lib/discoverHomeHeaderChrome";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
+import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
+import { isDesktopSidePanelExcludedRoute } from "@/components/nav/DesktopSidePanel";
 
 /** Tab icons: outline when inactive, filled when active. */
 function bottomNavTabGlyphClass(isActive: boolean) {
@@ -210,6 +213,8 @@ export function BottomNav() {
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
   const { t } = useTranslation();
+  const { collapsed: desktopSidePanelCollapsed, toggleCollapsed: toggleDesktopSidePanel } =
+    useDesktopSidePanel();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const jobsTabCounts = useJobsTabCounts(user);
@@ -217,8 +222,6 @@ export function BottomNav() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [desktopAppMenuOpen, setDesktopAppMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [desktopDiscoverSearchOpen, setDesktopDiscoverSearchOpen] =
-    useState(false);
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -327,6 +330,8 @@ export function BottomNav() {
       : profile?.role === "client"
         ? "/client/home"
         : "/";
+  const showDesktopBrandChrome =
+    !!user && !!profile && !isDesktopSidePanelExcludedRoute(pathnameNorm);
 
   /** Back on profile routes uses explicit targets; community uses history + fallback; elsewhere history or home. */
   const handleHeaderBack = () => {
@@ -365,8 +370,6 @@ export function BottomNav() {
   useEffect(() => {
     if (isDiscoverHome) {
       setDiscoverHomeMode(readDiscoverHomeIntent(profile?.role === "freelancer" ? "work" : "hire"));
-    } else {
-      setDesktopDiscoverSearchOpen(false);
     }
   }, [isDiscoverHome, profile?.role]);
 
@@ -391,6 +394,8 @@ export function BottomNav() {
       (discoverHomeOverlayOpen ||
         mobileSearchOpen)) ||
     (isCommunityFeedPage && communityFeedOverlayOpen) ||
+    /^\/open-requests\/[^/]+$/.test(pathnameNorm) ||
+    /^\/offers\/[^/]+$/.test(pathnameNorm) ||
     /^\/messages\/[^/]+$/.test(pathnameNorm) ||
     (pathnameNorm === "/messages" && !!jobsSearchParams.get("conversation"));
 
@@ -443,7 +448,6 @@ export function BottomNav() {
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname) {
       if (mobileSearchOpen) setMobileSearchOpen(false);
-      setDesktopDiscoverSearchOpen(false);
     }
     previousPathnameRef.current = location.pathname;
   }, [location.pathname, mobileSearchOpen]);
@@ -919,10 +923,11 @@ export function BottomNav() {
         type="button"
         onClick={() => setPlusMenuOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-2 rounded-full py-1 pl-3 pr-1",
+          "inline-flex items-center gap-2 rounded-full py-1 pl-3.5 pr-1",
           "text-sm font-bold text-zinc-800",
-          "transition-colors hover:bg-zinc-100/80 active:scale-[0.98]",
-          "dark:text-zinc-100 dark:hover:bg-zinc-800/70",
+          "bg-zinc-100 hover:bg-zinc-200/90",
+          "dark:bg-zinc-800/80 dark:text-zinc-100 dark:hover:bg-zinc-700/80",
+          "transition-colors active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70",
         )}
         aria-expanded={plusMenuOpen}
@@ -930,7 +935,7 @@ export function BottomNav() {
         aria-label={t("common.create")}
       >
         <span>{t("common.create")}</span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-zinc-700 shadow-sm dark:bg-zinc-600 dark:text-zinc-100 dark:shadow-none">
           <Plus className="h-4 w-4" strokeWidth={2.8} aria-hidden />
         </span>
       </button>
@@ -949,47 +954,54 @@ export function BottomNav() {
     </div>
   );
 
-  /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
+  /** Desktop only: full-width top bar with menu, logo, search, notifications */
   const DesktopHeader = (
     <header
       data-desktop-header-strip=""
       className={cn(
-        "hidden md:block fixed inset-x-0 top-0 z-50 border-0 shadow-none",
+        "hidden md:block fixed inset-x-0 top-0 z-50 w-full border-0 shadow-none",
         signedInAppHeaderBgClass,
+        signedInDesktopHeaderGlassClass,
       )}
     >
-      {/*
-       * Full-viewport grid: 220px sidebar column + content spanning to the right edge.
-       * Inner [auto | 1fr | auto] pins left controls beside the side panel and
-       * language/bell to the viewport end (not the feed column before favorites).
-       */}
-      <div className="grid h-16 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
-        <div aria-hidden="true" />
-        <div className={cn(
-          "grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6",
-          signedInDesktopHeaderGlassClass,
-        )}>
-          <div className="flex min-w-0 items-center gap-2 ps-3">
-            {isDiscoverHome && !desktopDiscoverSearchOpen ? (
-              <>
-                <DiscoverHomeModeSegmentedControl
-                  mode={discoverHomeMode}
-                  onModeChange={(m) => {
-                    void writeDiscoverHomeIntent(m);
-                  }}
-                  variant="header"
-                />
-                <button
-                  type="button"
-                  onClick={() => setDesktopDiscoverSearchOpen(true)}
-                  className={signedInHeaderIconBtnClass}
-                  aria-label={t("common.openSearch")}
-                >
-                  <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-                </button>
-                {DesktopCreateButton}
-              </>
-            ) : !isDiscoverHome && !showCommunityFeedHeaderLeft ? (
+      <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+        {showDesktopBrandChrome ? (
+          <div className="flex shrink-0 items-center gap-1 ps-2 sm:ps-3">
+            <button
+              type="button"
+              onClick={toggleDesktopSidePanel}
+              className={signedInHeaderIconBtnClass}
+              aria-label={desktopSidePanelCollapsed ? "Open menu" : "Collapse menu"}
+              aria-expanded={!desktopSidePanelCollapsed}
+            >
+              <Menu className="h-6 w-6" strokeWidth={2.4} />
+            </button>
+            <Link
+              to={headerBackHomeFallback}
+              className="flex shrink-0 items-center"
+              aria-label={t("common.home")}
+            >
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="Tebnu"
+                className="h-10 w-auto shrink-0 md:h-11"
+                loading="eager"
+                decoding="async"
+              />
+            </Link>
+          </div>
+        ) : null}
+        <div className="grid h-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2 ps-1">
+            {isDiscoverHome ? (
+              <DiscoverHomeModeSegmentedControl
+                mode={discoverHomeMode}
+                onModeChange={(m) => {
+                  void writeDiscoverHomeIntent(m);
+                }}
+                variant="header"
+              />
+            ) : !showCommunityFeedHeaderLeft ? (
               <button
                 type="button"
                 onClick={handleHeaderBack}
@@ -1002,27 +1014,6 @@ export function BottomNav() {
           </div>
 
           <div className="flex min-w-0 items-center justify-center px-2 md:px-4">
-          {isDiscoverHome && desktopDiscoverSearchOpen ? (
-            <div className="flex w-full min-w-0 items-center gap-2 md:gap-2.5">
-              {DesktopCreateButton}
-              <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
-                <UserSearch
-                  autoFocus
-                  onResultSelect={() => setDesktopDiscoverSearchOpen(false)}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setDesktopDiscoverSearchOpen(false)}
-                className={signedInHeaderIconBtnClass}
-                aria-label={t("common.closeSearch")}
-              >
-                <X className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-              </button>
-            </div>
-          ) : isDiscoverHome ? (
-            <div className="min-w-0 flex-1" aria-hidden />
-          ) : (
             <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
               {showCommunityHeaderCategoryDropdown && (
                 <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
@@ -1038,7 +1029,6 @@ export function BottomNav() {
                 <UserSearch />
               </div>
             </div>
-          )}
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-0.5">
@@ -1361,7 +1351,7 @@ export function BottomNav() {
 
     return (
       <>
-        {!isHelpersFindPage ? DesktopHeader : null}
+        {DesktopHeader}
         {MobileSignedInHeader}
         {!hideMobileBottomNav &&
           createPortal(

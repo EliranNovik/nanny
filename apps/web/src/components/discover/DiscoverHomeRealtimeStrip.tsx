@@ -38,15 +38,15 @@ import {
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { canStartInCardLabel, respondsWithinCardLabel } from "@/lib/liveCanStart";
 import {
-  DISCOVER_HOME_CATEGORIES,
   ALL_HELP_CATEGORY_ID,
+  DISCOVER_HOME_CATEGORIES,
   SERVICE_CATEGORIES,
-  OTHER_HELP_SUBCATEGORIES,
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
+import { DiscoverHomeCategoryFilterRow, categoryIconNode } from "@/components/discover/DiscoverHomeCategoryFilterRow";
 import { trackEvent } from "@/lib/analytics";
 import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
@@ -75,8 +75,6 @@ import {
   ClipboardList,
   Clock,
   Compass,
-  CookingPot,
-  LayoutGrid,
   MapPin,
   Loader2,
   MessageCircle,
@@ -88,12 +86,9 @@ import {
   Search,
   Send,
   SlidersHorizontal,
-  Sparkles,
   StickyNote,
   Star,
-  Truck,
   User,
-  Wrench,
   UsersRound,
   X,
 } from "lucide-react";
@@ -234,19 +229,6 @@ const workStripDeclineRoundBtn = cn(
  */
 const stripAvatarClassName =
   "h-[5.5rem] w-[5.5rem] border-0 md:h-[6.5rem] md:w-[6.5rem]";
-
-const stripCategoryCircleClass =
-  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-[4.25rem] md:w-[4.25rem] items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
-
-const stripCategoryLabelClass =
-  "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[10.5px]";
-
-const stripCategoryCompassClass = "max-md:h-10 max-md:w-10 md:h-10 md:w-10";
-
-const stripCategoryIconShellClass =
-  "flex max-md:h-10 max-md:w-10 md:h-10 md:w-10 items-center justify-center";
-
-const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-7 md:w-7";
 
 const stripHireProfileCardClass = cn(
   "flex w-[7.25rem] shrink-0 snap-start flex-col items-center gap-1.5 px-0 py-0 text-center",
@@ -1568,19 +1550,6 @@ function DiscoverRealtimeStripDetailDialog({
   );
 }
 
-function categoryIconNode(
-  serviceType: string | null | undefined,
-  className = "h-4 w-4 shrink-0",
-): ReactNode {
-  // Keep these simple + recognizable on tiny sizes.
-  if (serviceType === "cleaning") return <Sparkles className={className} aria-hidden />;
-  if (serviceType === "cooking") return <CookingPot className={className} aria-hidden />;
-  if (serviceType === "pickup_delivery") return <Truck className={className} aria-hidden />;
-  if (serviceType === "nanny") return <UsersRound className={className} aria-hidden />;
-  if (serviceType === "other_help") return <LayoutGrid className={className} aria-hidden />;
-  return <Wrench className={className} aria-hidden />;
-}
-
 function categoryImageSrc(
   serviceType: string | null | undefined,
 ): string {
@@ -1819,7 +1788,6 @@ export function DiscoverHomeRealtimeStrip({
   const [composeOpen, setComposeOpen] = useState(false);
   // "Other" category subcategory filter (requests only — helper avatars are not tagged by subcategory).
   const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
-  const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
   const [categoryFiltersOpen, setCategoryFiltersOpen] = useState(variant === "work");
 
   useEffect(() => {
@@ -2423,7 +2391,6 @@ export function DiscoverHomeRealtimeStrip({
 
   const selectCategoryFilter = (id: DiscoverHomeCategoryFilter) => {
     if (variant === "hire") {
-      setOtherDropdownOpen(false);
       if (id !== "other_help") setOtherSubFilter(null);
       setSelectedFilterCategory(id);
       navigate(
@@ -2435,14 +2402,7 @@ export function DiscoverHomeRealtimeStrip({
       return;
     }
 
-    if (id === "other_help") {
-      // Toggle the subcategory dropdown when re-tapping the already-active "Other" pill.
-      setOtherDropdownOpen((open) => (selectedFilterCategory === "other_help" ? !open : true));
-      setSelectedFilterCategory("other_help");
-      return;
-    }
-    setOtherDropdownOpen(false);
-    setOtherSubFilter(null);
+    if (id !== "other_help") setOtherSubFilter(null);
     setSelectedFilterCategory(id);
   };
 
@@ -2499,128 +2459,14 @@ export function DiscoverHomeRealtimeStrip({
       </div>
 
       {categoryFiltersVisible ? (
-        <>
-          <div
-            id="discover-home-category-filters"
-            className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4"
-          >
-            <button
-              type="button"
-              onClick={() => selectCategoryFilter("all")}
-              className={cn(
-                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                filterAccent.ring,
-              )}
-            >
-              <div
-                className={cn(
-                  stripCategoryCircleClass,
-                  selectedFilterCategory === "all"
-                    ? filterAccent.activeCircle
-                    : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
-                )}
-              >
-                <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
-              </div>
-              <span
-                className={cn(
-                  stripCategoryLabelClass,
-                  selectedFilterCategory === "all"
-                    ? filterAccent.activeLabel
-                    : "text-slate-500 dark:text-zinc-500",
-                )}
-              >
-                {t("discoverHome.filters.all")}
-              </span>
-            </button>
-
-            {DISCOVER_HOME_CATEGORIES.filter((c) => c.id !== ALL_HELP_CATEGORY_ID).map((cat) => {
-              const isOther = cat.id === "other_help";
-              const active = selectedFilterCategory === cat.id;
-              const subLabel =
-                isOther && otherSubFilter ? t(`otherHelpSubcategories.${otherSubFilter}`) : null;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => selectCategoryFilter(cat.id as DiscoverHomeCategoryFilter)}
-                  className={cn(
-                    "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
-                    "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    filterAccent.ring,
-                  )}
-                >
-                  <div
-                    className={cn(
-                      stripCategoryCircleClass,
-                      active
-                        ? filterAccent.activeCircle
-                        : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
-                    )}
-                  >
-                    <span className={stripCategoryIconShellClass}>
-                      {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
-                    </span>
-                  </div>
-                  <span
-                    className={cn(
-                      stripCategoryLabelClass,
-                      "inline-flex max-w-[5.5rem] items-center gap-0.5 truncate",
-                      active ? filterAccent.activeLabel : "text-slate-500 dark:text-zinc-500",
-                    )}
-                  >
-                    <span className="truncate">{subLabel ?? t(`discoverHome.filters.${cat.id}`)}</span>
-                    {isOther ? <ChevronDown className="h-3 w-3 shrink-0" strokeWidth={3} /> : null}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedFilterCategory === "other_help" && otherDropdownOpen ? (
-            <div className="mx-4 mb-2 rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="px-2 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                {t("discoverHome.filters.pickSubcategory")}
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtherSubFilter(null);
-                    setOtherDropdownOpen(false);
-                  }}
-                  className={cn(
-                    "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                    otherSubFilter === null
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-                  )}
-                >
-                  {t("discoverHome.filters.allOther")}
-                </button>
-                {OTHER_HELP_SUBCATEGORIES.map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    onClick={() => {
-                      setOtherSubFilter(sub.id);
-                      setOtherDropdownOpen(false);
-                    }}
-                    className={cn(
-                      "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                      otherSubFilter === sub.id
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-                    )}
-                  >
-                    {t(`otherHelpSubcategories.${sub.id}`)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </>
+        <DiscoverHomeCategoryFilterRow
+          variant={variant}
+          selected={selectedFilterCategory}
+          onSelect={selectCategoryFilter}
+          otherSubFilter={otherSubFilter}
+          onOtherSubFilterChange={setOtherSubFilter}
+          className="mt-2 px-4 pb-5"
+        />
       ) : null}
     </div>
   );
@@ -2812,12 +2658,19 @@ export function DiscoverHomeRealtimeStrip({
           const locationLabel = feedLocationDisplayLabel(t, it.locationLine);
 
           return (
-          <button
+          <div
             key={it.key}
-            type="button"
             role="listitem"
+            tabIndex={0}
             onClick={() => openHireDetail(it)}
-            className={stripHireProfileCardClass}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openHireDetail(it);
+              }
+            }}
+            className={cn(stripHireProfileCardClass, "cursor-pointer")}
           >
             <div className="relative shrink-0">
               <Avatar className={stripHireAvatarClassName}>
@@ -2868,7 +2721,7 @@ export function DiscoverHomeRealtimeStrip({
                 </span>
               ) : null}
             </div>
-          </button>
+          </div>
           );
         })}
       </div>

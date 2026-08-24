@@ -27,6 +27,10 @@ export const queryKeys = {
   discoverOpenHelpRequests: (excludeUserId?: string | null) =>
     [...queryKeys.jobs, "discoverOpen", excludeUserId ?? "none"] as const,
 
+  /** Get help mobile — offer_service posts for the "Offers for you" carousel. */
+  discoverOffersForYou: (excludeUserId?: string | null, limit = 10) =>
+    [...queryKeys.communityFeed, "offersForYou", excludeUserId ?? "anon", limit] as const,
+
   /** Explore "Live help now" cards — scoped by viewer + mode so hire/work cache independently. */
   exploreLiveHelp: (userId: string | undefined, mode: "hire" | "work") =>
     [...queryKeys.jobs, "exploreLiveHelp", userId ?? "anon", mode] as const,

@@ -477,8 +477,10 @@
     "liveHelp": "Live help",
     "liveHelpSubtitle": "Jobs you're actively helping with right now",
     "openRequestsNearYou": "Open requests near you",
+    "openRequests": "Open requests",
     "openRequestsSubtitle": "New jobs posted in the last 24h",
     "ourCommunityLive": "Our community live",
+    "offersForYou": "Offers for you",
     "noLiveHelpYet": "No live help yet",
     "noLiveHelpYetSub": "When a helper is confirmed on your request, it will appear here.",
     "noLiveGigsYet": "No live gigs yet",
@@ -519,6 +521,7 @@
     "refresh": "Refresh",
     "noCommentsYet": "No comments yet. Be the first!",
     "whenExpired": "Expired",
+    "whenExpiredOn": "Expired {{date}}",
     "listingStatus": {
       "helperFound": "Helper found",
       "alreadyHelping": "Already helping",

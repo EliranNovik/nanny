@@ -310,14 +310,14 @@ export function CommunityFeedHeader({
     : "h-[5.5rem] w-[5.5rem]";
   const storyItemWidthClass = isGlobalVariant ? "w-[6.25rem]" : "w-[5.5rem]";
   const storyAvatarFallbackClass = isGlobalVariant
-    ? "bg-zinc-200 text-xl font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+    ? "bg-zinc-100 text-xl font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300"
     : "bg-gradient-to-br from-emerald-100 to-teal-100 text-xl font-bold text-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200";
   const storyNameClass = isGlobalVariant
     ? "max-w-full truncate px-0.5 text-xs font-medium lowercase leading-tight text-muted-foreground"
     : "max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground";
   const globalPosterCardClass = cn(
     "flex shrink-0 snap-start flex-col overflow-hidden rounded-2xl text-center",
-    "w-[7.25rem] bg-zinc-100 dark:w-[8.5rem] dark:bg-zinc-800",
+    "w-[7.25rem] bg-zinc-50 dark:w-[8.5rem] dark:bg-zinc-800",
   );
   const globalPosterPhotoClass = "relative aspect-square w-full overflow-hidden";
   const posterStripArrowClass = cn(
@@ -372,7 +372,7 @@ export function CommunityFeedHeader({
         >
           {isGlobalVariant ? (
             <>
-              <div className={cn(globalPosterPhotoClass, "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400")}>
+              <div className={cn(globalPosterPhotoClass, "bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400")}>
                 <div className="flex h-full w-full items-center justify-center">
                   <Plus className="h-8 w-8" strokeWidth={2.25} aria-hidden />
                 </div>
@@ -717,6 +717,7 @@ export function CommunityFeedHeader({
             <PublicPostsCategoryTabs
               dense
               startAligned
+              lightGrey={hidePostTypeTabsOnDesktop}
               activeId={categoryFilter}
               onSelect={(id) => {
                 onCategoryFilterChange(id);
@@ -730,8 +731,10 @@ export function CommunityFeedHeader({
                 value={otherSubFilter ?? ""}
                 onChange={(e) => onOtherSubFilterChange?.(e.target.value || null)}
                 className={cn(
-                  "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-500/90 px-2.5 text-[11px] font-semibold text-white outline-none",
-                  "dark:bg-zinc-800 dark:text-zinc-200",
+                  "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 px-2.5 text-[11px] font-semibold outline-none",
+                  hidePostTypeTabsOnDesktop
+                    ? "bg-zinc-50 text-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200"
+                    : "bg-zinc-500/90 text-white dark:bg-zinc-800 dark:text-zinc-200",
                 )}
                 aria-label={t("discoverHome.filters.pickSubcategory")}
               >

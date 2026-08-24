@@ -477,8 +477,10 @@
     "liveHelp": "Aide en direct",
     "liveHelpSubtitle": "Missions sur lesquelles vous aidez actuellement",
     "openRequestsNearYou": "Demandes ouvertes près de vous",
+    "openRequests": "Demandes ouvertes",
     "openRequestsSubtitle": "Nouvelles missions publiées dans les dernières 24 h",
     "ourCommunityLive": "Notre communauté en direct",
+    "offersForYou": "Offres pour vous",
     "noLiveHelpYet": "Pas encore d'aide en direct",
     "noLiveHelpYetSub": "Quand un assistant sera confirmé, la demande apparaîtra ici.",
     "noLiveGigsYet": "Pas encore de mission en direct",
@@ -519,6 +521,7 @@
     "refresh": "Actualiser",
     "noCommentsYet": "Pas encore de commentaires. Soyez le premier !",
     "whenExpired": "Expiré",
+    "whenExpiredOn": "Expiré le {{date}}",
     "listingStatus": {
       "helperFound": "Aide trouvée",
       "alreadyHelping": "Déjà en aide",

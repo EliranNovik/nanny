@@ -85,8 +85,10 @@ export function UserSearch({
       <div className="relative">
         <Search
           className={cn(
-            "absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 transition-colors group-focus-within:text-orange-500 dark:group-focus-within:text-orange-400",
-            isInline && "left-0",
+            "absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 transition-colors",
+            isInline
+              ? "left-0 text-slate-400 group-focus-within:text-orange-500 dark:group-focus-within:text-orange-400"
+              : "text-orange-500 dark:text-orange-400",
           )}
         />
         <input
@@ -104,7 +106,7 @@ export function UserSearch({
             "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isInline
               ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
-              : "h-11 rounded-2xl border-0 bg-black/[0.03] pl-10 pr-10 shadow-none focus:bg-white dark:bg-white/5 dark:focus:bg-zinc-900",
+              : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 pr-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
           )}
         />
         {query && (

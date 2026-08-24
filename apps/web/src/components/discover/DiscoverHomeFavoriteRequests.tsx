@@ -325,11 +325,27 @@ export function DiscoverHomeFavoriteRequests({
           const circlePhotoUrl = clientPhotoUrl || categoryPhotoUrl;
 
           return (
-            <button
+            <div
               key={r.id}
-              type="button"
-              className={cardBtnClass}
+              role="listitem"
+              tabIndex={0}
+              className={cn(cardBtnClass, "cursor-pointer")}
               onClick={() => {
+                trackEvent("discover_favorite_request_open_feed", {
+                  job_id: r.id,
+                  client_id: r.client_id,
+                });
+                navigate(
+                  globalCommunityFeedPath({
+                    type: "request_help",
+                    request: r.id,
+                  }),
+                );
+              }}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
                 trackEvent("discover_favorite_request_open_feed", {
                   job_id: r.id,
                   client_id: r.client_id,
@@ -398,7 +414,7 @@ export function DiscoverHomeFavoriteRequests({
                   </span>
                 ) : null}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

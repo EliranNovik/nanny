@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -14,6 +13,7 @@ import { AppSafeAreaSync } from "@/components/AppSafeAreaSync";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DiscoverHomeScrollHeaderProvider } from "@/context/DiscoverHomeScrollHeaderContext";
+import { DesktopSidePanelProvider, useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
 import { ConfigCheck } from "@/components/ConfigCheck";
@@ -97,6 +97,7 @@ import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
+import IsolatedFeedPostPage from "@/pages/IsolatedFeedPostPage";
 import {
   LegacySharedPostRedirect,
   LegacySharedRequestRedirect,
@@ -250,7 +251,7 @@ function KeepAlivePages() {
  */
 function PageLayoutWithHeader() {
   const { pathname } = useLocation();
-  const [desktopSidePanelCollapsed, setDesktopSidePanelCollapsed] = useState(false);
+  const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const shouldHideDesktopFooter =
     pathname === "/messages" ||
     pathname.startsWith("/messages/") ||
@@ -270,10 +271,7 @@ function PageLayoutWithHeader() {
   return (
     <div className="app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content min-h-[100dvh] min-h-[-webkit-fill-available]">
       <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
-        <DesktopSidePanel
-          collapsed={desktopSidePanelCollapsed}
-          onCollapse={() => setDesktopSidePanelCollapsed((v) => !v)}
-        />
+        <DesktopSidePanel collapsed={desktopSidePanelCollapsed} />
         {/* On desktop, leave room for the fixed left panel */}
         <div
           className={cn(
@@ -285,12 +283,17 @@ function PageLayoutWithHeader() {
           <KeepAlivePages />
           {/* Normal outlet — hidden when a keep-alive route is active */}
           {!isKeepAliveRoute && <Outlet />}
-          {!shouldHideDesktopFooter ? (
-            <div className={shouldShowMobileFooter ? "block" : "hidden md:block"}>
-              <Footer />
-            </div>
-          ) : null}
         </div>
+        {!shouldHideDesktopFooter ? (
+          <div
+            className={cn(
+              "relative z-[201] w-full",
+              shouldShowMobileFooter ? "block" : "hidden md:block",
+            )}
+          >
+            <Footer />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -339,6 +342,8 @@ function AppRoutes() {
         />
         <Route path="/public/posts" element={<PublicCommunityPostsPage />} />
         <Route path="/community/feed" element={<GlobalPostsPage />} />
+        <Route path="/offers/:id" element={<IsolatedFeedPostPage kind="offer" />} />
+        <Route path="/open-requests/:id" element={<IsolatedFeedPostPage kind="request" />} />
         <Route path="/posts/:id" element={<SharedPostLandingPage />} />
         <Route path="/requests/:id" element={<SharedRequestLandingPage />} />
         <Route path="/p/:id" element={<LegacySharedPostRedirect />} />
@@ -715,6 +720,7 @@ export default function App() {
                 <KycGateProvider>
                   <SessionAnalyticsInit />
                   <DiscoverHomeScrollHeaderProvider>
+                    <DesktopSidePanelProvider>
                     <ReportIssueProvider>
                       <NotificationListener />
                       <IncomingRequestToastListener />
@@ -722,6 +728,7 @@ export default function App() {
                       <BottomNav />
                       <ReportIssueModal />
                     </ReportIssueProvider>
+                    </DesktopSidePanelProvider>
                   </DiscoverHomeScrollHeaderProvider>
                 </KycGateProvider>
                 </GuestAuthPromptProvider>

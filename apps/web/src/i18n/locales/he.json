@@ -477,8 +477,10 @@
     "liveHelp": "עזרה חיה",
     "liveHelpSubtitle": "עבודות שאתה עוזר בהן כרגע",
     "openRequestsNearYou": "בקשות פתוחות בקרבתך",
+    "openRequests": "בקשות פתוחות",
     "openRequestsSubtitle": "עבודות חדשות שפורסמו ב-24 השעות האחרונות",
     "ourCommunityLive": "הקהילה שלנו בשידור חי",
+    "offersForYou": "הצעות בשבילך",
     "noLiveHelpYet": "אין עזרה חיה עדיין",
     "noLiveHelpYetSub": "כשעוזר יאושר על הבקשה שלך, היא תופיע כאן.",
     "noLiveGigsYet": "אין עבודות חיות עדיין",
@@ -519,6 +521,7 @@
     "refresh": "רענן",
     "noCommentsYet": "אין תגובות עדיין. תהיה הראשון!",
     "whenExpired": "פג תוקף",
+    "whenExpiredOn": "פג תוקף ב-{{date}}",
     "listingStatus": {
       "helperFound": "נמצא עוזר",
       "alreadyHelping": "כבר עוזר",

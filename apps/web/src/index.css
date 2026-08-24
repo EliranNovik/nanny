@@ -43,7 +43,7 @@
   }
 
   .app-desktop-side-panel {
-    @apply fixed inset-y-0 start-0 z-[200] w-[220px];
+    @apply fixed bottom-0 start-0 top-16 z-[200] w-[220px];
   }
 }
 
@@ -337,6 +337,13 @@
     }
   }
 
+  /* Isolated offer/request: mobile bottom nav is replaced by the engagement dock. */
+  @media (max-width: 767.98px) {
+    .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) {
+      padding-bottom: 0;
+    }
+  }
+
   /**
    * Messages: self-contained split layout (contact list + chat) with internal scroll.
    * - Remove global BottomNav scroll padding (prevents whole-page scroll)
@@ -601,11 +608,6 @@
     }
     .app-content-below-fixed-header:has([data-public-profile-guest]) .md\:pl-\[220px\] {
       padding-left: 0;
-    }
-
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-page]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-page]) {
-      padding-top: 0;
     }
   }
 

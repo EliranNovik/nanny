@@ -80,14 +80,27 @@ export function storageImageUrl(
     "/storage/v1/render/image/public/",
   );
 
-  const params = new URLSearchParams();
-  if (width) params.set("width", String(width));
-  if (height) params.set("height", String(height));
-  params.set("quality", String(quality));
-  params.set("resize", resize);
-  if (format !== "origin") params.set("format", format);
+  const applyParams = (params: URLSearchParams) => {
+    if (width) params.set("width", String(width));
+    if (height) params.set("height", String(height));
+    params.set("quality", String(quality));
+    params.set("resize", resize);
+    if (format !== "origin") params.set("format", format);
+  };
 
-  return `${transformUrl}?${params.toString()}`;
+  try {
+    const parsed = new URL(transformUrl);
+    applyParams(parsed.searchParams);
+    return parsed.toString();
+  } catch {
+    const qIndex = transformUrl.indexOf("?");
+    const base = qIndex >= 0 ? transformUrl.slice(0, qIndex) : transformUrl;
+    const params = new URLSearchParams(
+      qIndex >= 0 ? transformUrl.slice(qIndex + 1) : "",
+    );
+    applyParams(params);
+    return `${base}?${params.toString()}`;
+  }
 }
 
 // ─── Pre-baked size presets ───────────────────────────────────────────────────
@@ -97,21 +110,21 @@ export function storageImageUrl(
  * Sizes match common UI breakpoints (Radix Avatar component sizes).
  */
 export const avatarUrl = {
-  /** 40px — message lists, comment threads, small list items (using 120px for 3x sharpness) */
+  /** 40px — message lists, comment threads, small list items (using 160px for 3x sharpness) */
   xs: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 120, height: 120, quality: 85 }),
+    storageImageUrl(url, { width: 160, quality: 85, resize: "contain" }),
 
-  /** 64px — card thumbnails, search results, notification items (using 240px) */
+  /** 64px — card thumbnails, search results, notification items (using 320px) */
   sm: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 240, height: 240, quality: 85 }),
+    storageImageUrl(url, { width: 320, quality: 85, resize: "contain" }),
 
   /** 96px — profile cards, helper cards, job request cards (using 480px) */
   md: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 480, height: 480, quality: 85 }),
+    storageImageUrl(url, { width: 480, quality: 85, resize: "contain" }),
 
   /** 128px+ — profile hero, large card header (using 800px for hero quality) */
   lg: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 800, height: 800, quality: 88 }),
+    storageImageUrl(url, { width: 800, quality: 88, resize: "contain" }),
 };
 
 /**

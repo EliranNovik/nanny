@@ -1153,7 +1153,7 @@ function ReelPostTypeCategorySubtitle({
 }: {
   slide: Pick<
     ReelSlideData,
-    "postTypeId" | "postTypeName" | "categoryLabel" | "whenExpired"
+    "postTypeId" | "postTypeName" | "categoryLabel" | "whenExpired" | "whenLabel"
   >;
 }) {
   const { t } = useTranslation();
@@ -1171,7 +1171,9 @@ function ReelPostTypeCategorySubtitle({
     >
       {slide.whenExpired && slide.postTypeId === "request_help" ? (
         <>
-          <span className="text-white/65">{t("feed.whenExpired")}</span>
+          <span className="normal-case tracking-normal text-white/65">
+            {slide.whenLabel || t("feed.whenExpired")}
+          </span>
           <span aria-hidden> · </span>
         </>
       ) : null}

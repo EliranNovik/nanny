@@ -3,7 +3,10 @@ import { format, parseISO } from "date-fns";
 import { haversineDistanceKm } from "@/lib/geo";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
-import { isRequestHelpWhenExpired } from "@/lib/requestHelpWhen";
+import {
+  isRequestHelpWhenExpired,
+  requestHelpWhenExpiresAt,
+} from "@/lib/requestHelpWhen";
 import { cn } from "@/lib/utils";
 import {
   isServiceCategoryId,
@@ -488,16 +491,34 @@ function feedWhenLabelFromMetadata(
   return timeframe.replace(/_/g, " ");
 }
 
+export function feedWhenExpiredOnLabel(
+  t: TFunction,
+  language: string,
+  timeframe: string | null | undefined,
+  createdAt: string | Date | null | undefined,
+): string {
+  if (!createdAt) return t("feed.whenExpired");
+  const expiresAt = requestHelpWhenExpiresAt(timeframe, createdAt);
+  if (!expiresAt) return t("feed.whenExpired");
+  const locale = dateFnsLocaleFor(language);
+  const includeYear = expiresAt.getFullYear() !== new Date().getFullYear();
+  const date = format(expiresAt, includeYear ? "MMM d, yyyy" : "MMM d", {
+    locale,
+  });
+  return t("feed.whenExpiredOn", { date });
+}
+
 export function feedWhenDisplayLabel(
   t: TFunction,
   metadata: Record<string, unknown> | null | undefined,
   createdAt?: string | null,
+  language?: string,
 ): string | null {
   if (!metadata) return null;
   const timeframe = metadata.timeframe;
   if (typeof timeframe !== "string" || !timeframe) return null;
   if (createdAt && isRequestHelpWhenExpired(timeframe, createdAt)) {
-    return t("feed.whenExpired");
+    return feedWhenExpiredOnLabel(t, language ?? "en", timeframe, createdAt);
   }
   return feedWhenLabelFromMetadata(t, metadata);
 }
@@ -511,7 +532,7 @@ export function feedPostWhenLabel(
 ): string | null {
   if (!metadata) return null;
   if (postTypeId === "request_help" && metadata.timeframe) {
-    return feedWhenDisplayLabel(t, metadata, createdAt);
+    return feedWhenDisplayLabel(t, metadata, createdAt, language);
   }
   if (postTypeId === "event") {
     return feedEventDateTimeLabel(t, language, metadata);

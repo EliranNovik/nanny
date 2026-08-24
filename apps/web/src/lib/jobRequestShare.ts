@@ -25,6 +25,12 @@ export function globalJobRequestSharePath(jobId: string): string {
   return `/requests/${encodeURIComponent(cleanId)}`;
 }
 
+/** In-app isolated open-request page. */
+export function isolatedOpenRequestPath(jobId: string): string {
+  const cleanId = parseProfilePostShareId(jobId) ?? jobId.trim();
+  return `/open-requests/${encodeURIComponent(cleanId)}`;
+}
+
 /** In-app path to open a help request focused in the global feed. */
 export function globalJobRequestFeedPath(jobId: string): string {
   const cleanId = parseProfilePostShareId(jobId) ?? jobId.trim();

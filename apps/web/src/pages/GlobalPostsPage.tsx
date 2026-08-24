@@ -280,9 +280,9 @@ function FeedMainContent({
         >
         <div
           className={cn(
-            globalFeedMobileFeedAreaClass,
+            !guestDesktopLightLayout && globalFeedMobileFeedAreaClass,
             guestDesktopLightLayout &&
-              "md:ms-0 md:me-auto md:min-w-0 md:flex-1 md:bg-slate-100 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem] dark:md:bg-transparent",
+              "md:ms-0 md:me-auto md:min-w-0 md:flex-1 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
           )}
         >
         <ProfilePostsFeed
@@ -581,6 +581,7 @@ export default function GlobalPostsPage() {
               <PublicPostsCategoryTabs
                 dense
                 className="justify-center"
+                lightGrey
                 activeId={categoryFilter}
                 onSelect={handleCategoryFilterChange}
               />
@@ -589,8 +590,8 @@ export default function GlobalPostsPage() {
                   value={otherSubFilter ?? ""}
                   onChange={(e) => setOtherSubFilter(e.target.value || null)}
                   className={cn(
-                    "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-500/90 px-2.5 text-[11px] font-semibold text-white outline-none",
-                    "dark:bg-zinc-800 dark:text-zinc-200",
+                    "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-50 px-2.5 text-[11px] font-semibold text-zinc-800 outline-none",
+                    "hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200",
                   )}
                   aria-label={t("discoverHome.filters.pickSubcategory")}
                 >

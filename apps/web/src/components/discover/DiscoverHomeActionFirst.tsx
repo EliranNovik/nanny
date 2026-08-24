@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 import {
-  ChevronRight,
   ClipboardList,
   Clock,
   Compass,
@@ -12,6 +11,7 @@ import {
   Radio,
   Search,
   Send,
+  Users,
   UsersRound,
   Wifi,
   Zap,
@@ -74,6 +74,8 @@ import { ExplorePendingResponses } from "@/components/discover/ExplorePendingRes
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
 import { DiscoverHomeMyOpenRequests } from "@/components/discover/DiscoverHomeMyOpenRequests";
 import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
+import { DiscoverHomeOffersForYou } from "@/components/discover/DiscoverHomeOffersForYou";
+import { DiscoverHomeCategoryFilterRow } from "@/components/discover/DiscoverHomeCategoryFilterRow";
 
 type HomeMode = "hire" | "work";
 
@@ -516,6 +518,124 @@ export function DiscoverHomeActionFirst({
     return <>{quickMoreSheet}</>;
   }
 
+  /** Get help mobile: Post request (orange +) and Find helpers (grey people). */
+  function renderMobileHireActionButtons() {
+    return (
+      <div className="flex gap-2.5 px-4 pt-1.5 pb-1">
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_actions_post_request", {
+              mode: homeMode,
+              source: "mobile_hire_cta",
+            });
+            if (!user) {
+              openGuestAuthPrompt({ variant: "create" });
+              return;
+            }
+            writeDiscoverHomeIntent("hire");
+            guardKycAction("start_request", () => {
+              navigate(createRequestPath);
+              recordFirstMeaningfulAction("home_primary_create_request");
+            });
+          }}
+          className={cn(
+            "flex h-14 flex-1 items-center justify-center rounded-full",
+            "bg-orange-500 text-white shadow-sm",
+            "transition-transform active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2",
+          )}
+          aria-label={t("discover.postRequest")}
+        >
+          <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_actions_browse_helpers", {
+              mode: homeMode,
+              source: "mobile_hire_cta",
+            });
+            navigateToHelpersBrowse(navigate);
+          }}
+          className={cn(
+            "flex h-14 flex-1 items-center justify-center rounded-full",
+            "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100",
+            "transition-transform active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 focus-visible:ring-offset-2",
+          )}
+          aria-label={t("nav.findHelpers")}
+        >
+          <Users className="h-7 w-7" strokeWidth={2} aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
+  /** Help others mobile: Go live (green) and Share post (grey). */
+  function renderMobileWorkActionButtons() {
+    return (
+      <div className="flex gap-2.5 px-4 pt-1.5 pb-1">
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_actions_go_live", {
+              mode: homeMode,
+              source: "mobile_work_cta",
+            });
+            if (!user) {
+              openGuestAuthPrompt({ variant: "create" });
+              return;
+            }
+            writeDiscoverHomeIntent("work");
+            guardKycAction("go_live", () => {
+              navigate(workPrimaryPath);
+              recordFirstMeaningfulAction("home_primary_work");
+            });
+          }}
+          className={cn(
+            "flex h-14 flex-1 items-center justify-center rounded-full",
+            "bg-emerald-500 text-white shadow-sm",
+            "transition-transform active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2",
+          )}
+          aria-label={
+            isInActive24hGoLiveWindow
+              ? t("discoverHome.actions.live")
+              : t("nav.goLive")
+          }
+        >
+          <Radio className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_actions_share_post", {
+              mode: homeMode,
+              source: "mobile_work_cta",
+            });
+            if (!user) {
+              openGuestAuthPrompt({ variant: "create" });
+              return;
+            }
+            guardKycAction("share_post", () => {
+              navigate(`${GLOBAL_POSTS_PATH}?compose=1`);
+            });
+          }}
+          className={cn(
+            "flex h-14 flex-1 items-center justify-center rounded-full",
+            "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100",
+            "transition-transform active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 focus-visible:ring-offset-2",
+          )}
+          aria-label={t("nav.sharePost")}
+        >
+          <Send className="h-7 w-7" strokeWidth={2} aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
   /** Desktop hero: three round icon badges + captions (no modal). */
   function renderDesktopWorkLiveBadge() {
     if (isHire) return null;
@@ -748,40 +868,38 @@ export function DiscoverHomeActionFirst({
       )}
     >
       {renderQuickActionDockMobile()}
-      <div className="flex flex-1 md:hidden flex-col gap-0">
-        <div className="shrink-0 pt-0 px-0">
-          <DiscoverHomeRealtimeStrip
-            variant={homeMode}
-            explorePath={explorePath}
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={setCategoryFilter}
-          />
-        </div>
+      <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
+        {isHire ? renderMobileHireActionButtons() : renderMobileWorkActionButtons()}
 
-        <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
-          {isHire ? (
-            <div className="flex flex-col">
-              <div className="w-full px-4 pt-2 pb-2">
-                <DiscoverHomeMyOpenRequests explorePath={explorePath} />
-              </div>
-              <div className="w-full px-4 pt-4 pb-2">
-                <DiscoverHomeMyLiveHelpJobs
-                  mode="hire"
-                  exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
-                  createRequestPath={createRequestPath}
-                />
-              </div>
+        <DiscoverHomeCategoryFilterRow
+          variant={isHire ? "hire" : "work"}
+          selected={categoryFilter}
+          onSelect={setCategoryFilter}
+          className="px-4 pt-3 pb-5"
+        />
+
+        {isHire ? (
+          <div className="flex flex-col px-0 pb-6">
+            <div className="w-full px-4 pt-1 pb-2">
+              <DiscoverHomeOffersForYou categoryFilter={categoryFilter} />
             </div>
-          ) : (
-            <div className="flex flex-col">
+            <div className="w-full px-4 pt-2 pb-2">
+              <DiscoverHomeMyOpenRequests explorePath={explorePath} />
             </div>
-          )}
-        </div>
+            <div className="w-full px-4 pt-4 pb-2">
+              <DiscoverHomeMyLiveHelpJobs
+                mode="hire"
+                exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
+                createRequestPath={createRequestPath}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <DiscoverHomePostedHelpRequests
           enabled={!isHire}
           categoryFilter={categoryFilter}
-          className="w-full px-4 pt-2 pb-2"
+          className="w-full px-4 pt-3 pb-2"
         />
 
         {!isHire ? (
@@ -792,23 +910,6 @@ export function DiscoverHomeActionFirst({
             />
           </div>
         ) : null}
-
-        <section className="mt-6 px-0 md:px-4 pb-24">
-          <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            {t("discover.ourCommunityLive")}
-          </h2>
-          <ProfilePostsFeed {...discoverPostsFeedProps} />
-          <div className="mt-6 flex justify-center px-4 pb-8">
-            <button
-              type="button"
-              onClick={() => navigate("/community/feed")}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3 text-[14px] font-black text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
-            >
-              Show all posts
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        </section>
       </div>
 
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
@@ -983,7 +1084,7 @@ export function DiscoverHomeActionFirst({
         />
 
         <section className="mt-6 pb-0">
-          <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
+          <h2 className="mb-6 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             {t("discover.ourCommunityLive")}
           </h2>
           <ProfilePostsFeed {...discoverPostsFeedProps} />

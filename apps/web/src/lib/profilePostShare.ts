@@ -31,6 +31,12 @@ export function globalProfilePostSharePath(postId: string): string {
   return `/posts/${encodeURIComponent(cleanId)}`;
 }
 
+/** In-app isolated offer post page. */
+export function isolatedOfferPostPath(postId: string): string {
+  const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
+  return `/offers/${encodeURIComponent(cleanId)}`;
+}
+
 /** In-app path to open a profile post focused in the global feed. */
 export function globalProfilePostFeedPath(postId: string): string {
   const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
