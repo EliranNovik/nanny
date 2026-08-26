@@ -450,7 +450,7 @@ export function DiscoverOpenHelpRequestCard({
   className,
   layout = "default",
 }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const detailLine = openHelpRequestDetailLine(row);
