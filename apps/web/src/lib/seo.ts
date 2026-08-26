@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 /** Canonical production origin. Keep sitemap, robots, and page tags on this host. */
-export const SITE_ORIGIN = "https://tebnu.com";
+export const SITE_ORIGIN = "https://www.tebnu.com";
 export const SITE_NAME = "Tebnu";
 export const DEFAULT_TITLE = "Tebnu - Your Helper for Home & Life";
 export const DEFAULT_DESCRIPTION =

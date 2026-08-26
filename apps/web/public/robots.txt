@@ -1,4 +1,4 @@
-# Tebnu — https://tebnu.com
+# Tebnu — https://www.tebnu.com
 # Allow public marketing + shareable pages. Keep signed-in app out of the crawl.
 
 User-agent: *
@@ -19,4 +19,4 @@ Disallow: /liked
 Disallow: /availability
 Disallow: /home
 
-Sitemap: https://tebnu.com/sitemap.xml
+Sitemap: https://www.tebnu.com/sitemap.xml
