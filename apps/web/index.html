@@ -20,14 +20,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Tebnu" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta name="description" content="Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
     <meta name="application-name" content="Tebnu" />
 
     <!-- Open Graph / social. Canonical + og:url are set per route in JS so the SPA shell does not claim every URL is the homepage. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Tebnu" />
     <meta property="og:title" content="Tebnu - Your Helper for Home &amp; Life" />
-    <meta property="og:description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta property="og:description" content="Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
     <meta property="og:image" content="https://www.tebnu.com/brand-mark.png" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="he_IL" />
@@ -35,7 +35,7 @@
     <meta property="og:locale:alternate" content="ru_RU" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Tebnu - Your Helper for Home &amp; Life" />
-    <meta name="twitter:description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta name="twitter:description" content="Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
     <meta name="twitter:image" content="https://www.tebnu.com/brand-mark.png" />
 
     <script type="application/ld+json">
@@ -55,7 +55,7 @@
           "@id": "https://www.tebnu.com/#website",
           "url": "https://www.tebnu.com/",
           "name": "Tebnu",
-          "description": "Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.",
+          "description": "Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.",
           "publisher": { "@id": "https://www.tebnu.com/#organization" },
           "inLanguage": ["en", "he", "fr", "ru"]
         }
@@ -89,16 +89,19 @@
     <div id="root">
       <!-- Replaced on React mount; shows the same logo as AppBootSplash until the bundle runs. -->
       <div
-        style="min-height:100dvh;display:flex;align-items:center;justify-content:center;background:#ffffff;padding:24px;box-sizing:border-box;"
+        style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:24px;box-sizing:border-box;"
       >
         <img
           src="/brand-mark.png"
-          alt=""
+          alt="Tebnu"
           width="280"
           height="280"
           decoding="async"
           style="max-width:min(280px,85vw);max-height:40vh;width:auto;height:auto;object-fit:contain;"
         />
+        <p style="margin:16px 0 0;max-width:28rem;text-align:center;font:500 16px/1.45 system-ui,sans-serif;color:#475569;">
+          Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.
+        </p>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

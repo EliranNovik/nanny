@@ -5,7 +5,7 @@ export const SITE_ORIGIN = "https://www.tebnu.com";
 export const SITE_NAME = "Tebnu";
 export const DEFAULT_TITLE = "Tebnu - Your Helper for Home & Life";
 export const DEFAULT_DESCRIPTION =
-  "Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.";
+  "Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.";
 
 export function absoluteUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
