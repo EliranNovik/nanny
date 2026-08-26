@@ -86,7 +86,7 @@ export function whenBadgeToneClass(timeframe: string | null | undefined): string
 }
 
 export const requestHelpExpiredBadgeClass =
-  "request-help-expired-badge border-0 bg-zinc-200/90 text-zinc-600 dark:bg-neutral-700/90 dark:text-white";
+  "border-0 bg-red-600 text-white shadow-none ring-0 outline-none dark:bg-red-600 dark:text-white";
 
 export function isOpenHelpRequestWhenExpired(
   timeframe: string | null | undefined,

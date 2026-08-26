@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -116,6 +117,7 @@ export function LandingSiteHeader({
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isDarkTheme = theme === "dark";
@@ -213,7 +215,7 @@ export function LandingSiteHeader({
 
   const postFeedLinkDesktop = !hidePostFeedLink ? (
     <Link to={COMMUNITY_FEED_PATH} className={dynamicNavLinkClass}>
-      Post Feed
+      {t("siteNav.postFeed")}
     </Link>
   ) : null;
 
@@ -223,7 +225,7 @@ export function LandingSiteHeader({
       className="text-xl font-black text-slate-900 flex items-center gap-4"
       onClick={() => setIsMenuOpen(false)}
     >
-      <GalleryHorizontal className="w-6 h-6 text-primary" /> Post Feed
+      <GalleryHorizontal className="w-6 h-6 text-primary" /> {t("siteNav.postFeed")}
     </Link>
   ) : null;
 
@@ -249,7 +251,7 @@ export function LandingSiteHeader({
   );
 
   const headerBrandMark = isFeedChrome ? (
-    <span className="flex items-center gap-0.5 md:gap-1">
+    <span className="flex items-center gap-0">
       <img
         src={BRAND_LOGO_SRC}
         alt=""
@@ -257,11 +259,9 @@ export function LandingSiteHeader({
         loading="eager"
         decoding="async"
       />
-      {whiteHeader ? null : (
-        <span className="hidden text-lg font-black tracking-tight text-zinc-900 md:inline md:text-xl lg:text-2xl dark:text-white">
-          tebnu
-        </span>
-      )}
+      <span className="-ml-1 text-lg font-black tracking-tight text-zinc-900 md:-ml-1.5 md:text-xl lg:text-2xl dark:text-white">
+        tebnu
+      </span>
     </span>
   ) : (
     <span className={landingBrandTextClass}>Tebnu</span>
@@ -402,7 +402,7 @@ export function LandingSiteHeader({
           <div
             className={cn(
               "flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-8",
-              !isLandingGlass && !centerContent && "md:justify-start md:pl-2",
+              !isLandingGlass && !centerContent && user && "md:justify-start md:pl-2",
               (homeLinkRight && !user) && "md:justify-center md:pl-0",
             )}
           >
@@ -445,28 +445,30 @@ export function LandingSiteHeader({
                 </div>
                 <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white shrink-0">
                   <Link to="/about" className={navLinkClass}>
-                    About Us
+                    {t("siteNav.aboutUs")}
                   </Link>
                   <Link to="/contact" className={navLinkClass}>
-                    Contact
+                    {t("siteNav.contact")}
                   </Link>
                   {postFeedLinkDesktop}
                 </div>
               </div>
             ) : hideDesktopNavLinks ? null : (
-              <div className={cn("hidden md:flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
+              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden -translate-y-1/2 justify-center md:flex">
+                <div className={cn("pointer-events-auto flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
                 <Link to="/about" className={dynamicNavLinkClass}>
-                  About Us
+                  {t("siteNav.aboutUs")}
                 </Link>
                 <Link to="/contact" className={dynamicNavLinkClass}>
-                  Contact
+                  {t("siteNav.contact")}
                 </Link>
                 {postFeedLinkDesktop}
                 {!homeLinkRight ? (
                   <Link to="/" className={dynamicNavLinkClass}>
-                    Home
+                    {t("siteNav.home")}
                   </Link>
                 ) : null}
+                </div>
               </div>
             )}
           </div>
@@ -478,13 +480,13 @@ export function LandingSiteHeader({
                   to="/"
                   className={cn("hidden md:inline-flex rounded-full px-4 py-2 text-sm font-bold transition-colors", signInBtnClass)}
                 >
-                  Home
+                  {t("siteNav.home")}
                 </Link>
                 <Link
                   to="/"
                   className={cn("md:hidden inline-flex px-2 py-2 text-sm font-bold", isMutedChrome ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white" : "text-white hover:text-white/90")}
                 >
-                  Home
+                  {t("siteNav.home")}
                 </Link>
               </>
             ) : null}
@@ -522,7 +524,7 @@ export function LandingSiteHeader({
                         : signInBtnClass,
                   )}
                 >
-                  Sign in
+                  {t("siteNav.signIn")}
                 </Button>
                 <Button
                   onClick={() => navigate("/onboarding")}
@@ -543,7 +545,7 @@ export function LandingSiteHeader({
                           ),
                   )}
                 >
-                  Register
+                  {t("siteNav.register")}
                 </Button>
               </div>
             ) : user ? (
@@ -593,14 +595,14 @@ export function LandingSiteHeader({
                 className="text-xl font-black text-slate-900 flex items-center gap-4"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Users className="w-6 h-6 text-primary" /> About Us
+                <Users className="w-6 h-6 text-primary" /> {t("siteNav.aboutUs")}
               </Link>
               <Link
                 to="/contact"
                 className="text-xl font-black text-slate-900 flex items-center gap-4"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <MessageCircle className="w-6 h-6 text-primary" /> Contact
+                <MessageCircle className="w-6 h-6 text-primary" /> {t("siteNav.contact")}
               </Link>
               {postFeedLinkMobile}
               <Link
@@ -608,14 +610,14 @@ export function LandingSiteHeader({
                 className="text-xl font-black text-slate-900 flex items-center gap-4"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Home className="w-6 h-6 text-primary" /> Home
+                <Home className="w-6 h-6 text-primary" /> {t("siteNav.home")}
               </Link>
               <Link
                 to="/terms"
                 className="text-xl font-black text-slate-900 flex items-center gap-4"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Scale className="w-6 h-6 text-primary" /> Legal Hub
+                <Scale className="w-6 h-6 text-primary" /> {t("siteNav.legalHub")}
               </Link>
               {(user || !hideLoginCta) && (
                 <>
@@ -645,7 +647,7 @@ export function LandingSiteHeader({
                             : "bg-primary text-white",
                         )}
                       >
-                        Register
+                        {t("siteNav.register")}
                       </Button>
                       <Button
                         variant="outline"
@@ -655,7 +657,7 @@ export function LandingSiteHeader({
                         }}
                         className="w-full h-14 rounded-2xl font-bold text-lg"
                       >
-                        Sign in
+                        {t("siteNav.signIn")}
                       </Button>
                     </>
                   )}
@@ -667,7 +669,7 @@ export function LandingSiteHeader({
               onClick={() => setIsMenuOpen(false)}
               className="mt-8 w-full py-4 text-slate-400 font-bold"
             >
-              Close
+              {t("common.close")}
             </button>
           </div>
         </div>

@@ -39,6 +39,7 @@ import {
   type DiscoverHomeCategoryFilter,
   type DiscoverOpenHelpRequestSort,
 } from "@/lib/discoverHomeCategoryFilter";
+import { isOpenHelpRequestWhenExpired } from "@/lib/openHelpRequestDisplay";
 
 const MAX_VISIBLE = 8;
 
@@ -92,7 +93,12 @@ export function DiscoverHomePostedHelpRequests({
   const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(user?.id);
 
   const undismissedRequests = useMemo(
-    () => openRequests.filter((row) => !dismissedJobIds.has(row.id)),
+    () =>
+      openRequests.filter(
+        (row) =>
+          !dismissedJobIds.has(row.id) &&
+          !isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at),
+      ),
     [openRequests, dismissedJobIds],
   );
   const filteredRequests = useMemo(

@@ -137,3 +137,65 @@ export const OTHER_HELP_SUBCATEGORY_UI: Record<
     badgeIconClass: "text-teal-700",
   },
 };
+
+/**
+ * Prefer an Other-help subcategory id (`digital_creative`, `pet_help`, …)
+ * when present, otherwise the main hire category.
+ */
+export function resolveHelpCategoryIconId(
+  categoryId?: string | null,
+  ...candidates: Array<string | null | undefined>
+): string | null {
+  const extras = candidates
+    .map((value) => (typeof value === "string" ? value.trim().toLowerCase() : ""))
+    .filter(Boolean);
+  const main = (categoryId || "").trim().toLowerCase();
+  for (const id of extras) {
+    if (OTHER_HELP_SUBCATEGORY_UI[id]) return id;
+  }
+  if (main && OTHER_HELP_SUBCATEGORY_UI[main]) return main;
+  return main || extras[0] || null;
+}
+
+const CATEGORY_ILLUSTRATION_IDS = new Set([
+  "cleaning",
+  "cooking",
+  "pickup_delivery",
+  "nanny",
+  "technical_help",
+  "other_help",
+  "beauty_personal_care",
+  "heavy_lifting_moving",
+  "coaching_lessons",
+  "shopping_errands",
+  "pet_help",
+  "elderly_help",
+  "paperwork_bureaucracy",
+  "event_help",
+  "home_maintenance",
+  "digital_creative",
+  "religious_community",
+]);
+
+export function helpCategoryIdFromServiceDetails(
+  details?: Record<string, unknown> | null,
+): string | null {
+  if (!details) return null;
+  for (const key of ["other_type", "custom_category", "subcategory"]) {
+    const value = details[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+/** 3D category illustrations for text-only request cards. */
+export function categoryIllustrationSrc(
+  categoryId?: string | null,
+  ...candidates: Array<string | null | undefined>
+): string {
+  const id = resolveHelpCategoryIconId(categoryId, ...candidates);
+  if (id && CATEGORY_ILLUSTRATION_IDS.has(id)) {
+    return `/category-icons/${id}.png`;
+  }
+  return "/category-icons/other_help.png";
+}

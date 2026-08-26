@@ -10,12 +10,12 @@ import {
 const LEGAL_PATHS = ["/terms", "/disclaimer", "/privacy", "/cookies"];
 
 const GUEST_NAV = [
-  { to: "/about", label: "About Us", icon: Users, match: (path: string) => path === "/about" },
-  { to: "/contact", label: "Contact", icon: MessageCircle, match: (path: string) => path === "/contact" },
-  { to: "/", label: "Home", icon: Home, match: (path: string) => path === "/" },
+  { to: "/about", labelKey: "siteNav.aboutUs", icon: Users, match: (path: string) => path === "/about" },
+  { to: "/contact", labelKey: "siteNav.contact", icon: MessageCircle, match: (path: string) => path === "/contact" },
+  { to: "/", labelKey: "siteNav.home", icon: Home, match: (path: string) => path === "/" },
   {
     to: "/terms",
-    label: "Legal Hub",
+    labelKey: "siteNav.legalHub",
     icon: Scale,
     match: (path: string) => LEGAL_PATHS.includes(path),
   },
@@ -65,8 +65,9 @@ export function GuestCommunityFeedAside({
         )}
       >
         <nav className="flex flex-col items-stretch gap-1" aria-label="Site">
-          {GUEST_NAV.map(({ to, label, icon: Icon, match }) => {
+          {GUEST_NAV.map(({ to, labelKey, icon: Icon, match }) => {
             const active = match(pathname);
+            const label = t(labelKey);
             return (
               <Link
                 key={to}

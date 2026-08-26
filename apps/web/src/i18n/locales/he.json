@@ -34,8 +34,17 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "siteNav": {
+    "aboutUs": "אודותינו",
+    "contact": "צור קשר",
+    "home": "בית",
+    "postFeed": "פיד פוסטים",
+    "signIn": "התחברות",
+    "register": "הרשמה",
+    "legalHub": "מידע משפטי"
+  },
   "onboarding": {
-    "heroTitle": "הצטרפו לקהילת Tebnu.",
+    "heroTitle": "הצטרפו לקהילת \u2068Tebnu\u2069.",
     "heroSubtitle": "רשמו פרופיל כדי להתחבר למקומיים אמינים תוך רגע.",
     "settingUp": "מכינים את החשבון…",
     "stepDetails": "פרטים",
@@ -481,6 +490,7 @@
     "openRequestsSubtitle": "עבודות חדשות שפורסמו ב-24 השעות האחרונות",
     "ourCommunityLive": "הקהילה שלנו בשידור חי",
     "offersForYou": "הצעות בשבילך",
+    "offerLocationFromYou": "{{location}} • {{km}} ק\"מ ממך",
     "noLiveHelpYet": "אין עזרה חיה עדיין",
     "noLiveHelpYetSub": "כשעוזר יאושר על הבקשה שלך, היא תופיע כאן.",
     "noLiveGigsYet": "אין עבודות חיות עדיין",

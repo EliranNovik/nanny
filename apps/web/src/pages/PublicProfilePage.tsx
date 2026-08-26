@@ -43,7 +43,8 @@ import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
 import { type PublicProfileServiceBoardPost, PublicProfileServiceBoard } from "@/components/profile/PublicProfileServiceBoard";
-import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { LandingSiteHeader, guestSiteHeaderChromeProps } from "@/components/LandingSiteHeader";
+import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import {
   getServiceCategoryImage,
   isServiceCategoryId,
@@ -236,6 +237,9 @@ const profileCategoryBadgeClass =
 
 const profileCategoryScrollRowClass =
   "flex gap-2.5 overflow-x-auto scroll-smooth pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+const profileSidebarPanelClass =
+  "rounded-[2rem] border border-zinc-100/70 bg-[#fafafa] p-6 dark:border-border/40 dark:bg-card/80 dark:shadow-xl dark:shadow-black/5";
 
 const profileGalleryThumbTransform = {
   width: 480,
@@ -639,6 +643,7 @@ export default function PublicProfilePage() {
     null,
   );
   const [reviewsSheetOpen, setReviewsSheetOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   /** Completed live-help bookings in the last 7 days (helpers only). */
   const [liveHelpWeekCount, setLiveHelpWeekCount] = useState<number | null>(
     null,
@@ -1544,18 +1549,13 @@ export default function PublicProfilePage() {
       data-public-profile-guest={!currentUser ? "" : undefined}
     >
       {!currentUser ? (
-        <div className="max-md:px-4 max-md:pt-4">
+        <>
           <LandingSiteHeader
-            leftCorner="back"
-            scrollWithPage
-            fullWidth
-            hideLeftLogo
-            mobileMatchLanding
-            hideBackButtonMobile
-            className="mb-0 max-md:max-w-5xl"
-            variant="glassy"
+            {...guestSiteHeaderChromeProps}
+            onBrandClick={() => setAboutOpen(true)}
           />
-        </div>
+          <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        </>
       ) : null}
       {/* 
         Sticky Header (Mobile & Desktop)
@@ -1810,7 +1810,12 @@ export default function PublicProfilePage() {
         {/* Profile hero + tab bar — solid white in light mode until the posts feed */}
         <div className="bg-white dark:bg-background">
         {/* Profile Hero Header Info (Below header bar) */}
-        <div className="px-5 pb-4 pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))]">
+        <div className={cn(
+          "px-5 pb-4",
+          currentUser
+            ? "pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))]"
+            : "pt-4",
+        )}>
           <div className="mb-3 flex items-start gap-3.5">
             <div className="h-28 w-28 shrink-0">
               <button
@@ -1985,7 +1990,12 @@ export default function PublicProfilePage() {
         </div>
 
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
-          <div className="sticky top-0 z-30 border-b border-slate-100 bg-white dark:border-white/5 dark:bg-background py-1">
+          <div
+            className={cn(
+              "sticky z-30 border-b border-slate-100 bg-white dark:border-white/5 dark:bg-background py-1",
+              currentUser ? "top-0" : "top-[52px]",
+            )}
+          >
             <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
               <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
               {[
@@ -2049,7 +2059,7 @@ export default function PublicProfilePage() {
           </TabsContent>
 
           <TabsContent value="about" className="m-0 px-5 py-8 focus-visible:outline-none space-y-12">
-            <section>
+            <section className={profileSidebarPanelClass}>
               <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
               <ProfileBioHeader
                 profile={profile}
@@ -2093,7 +2103,7 @@ export default function PublicProfilePage() {
               </div>
 
               {/* User Reviews — Full Restored Design with gradients and floating avatars */}
-              <div className="pt-4">
+              <div className={cn(profileSidebarPanelClass, "pt-6")}>
                 <button
                   type="button"
                   onClick={() => reviews.length > 0 && setReviewsSheetOpen(true)}
@@ -2189,7 +2199,7 @@ export default function PublicProfilePage() {
             )}
             {profileMediaTab === "posts" && <ProfilePostsFeed {...profilePostsFeedProps} />}
             {profileMediaTab === "about" && (
-              <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
+              <div className={cn(profileSidebarPanelClass, "rounded-[2.5rem] p-10")}>
                 <div className="max-w-2xl">
                   <h2 className="text-[11px] font-black uppercase tracking-[.25em] text-slate-400 mb-6">Introduction</h2>
                   <ProfileBioHeader
@@ -2211,7 +2221,7 @@ export default function PublicProfilePage() {
 
           {/* Desktop Sidebar (1/3) */}
           <div className="col-span-1 space-y-6">
-            <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
+            <div className={profileSidebarPanelClass}>
               <div className="flex items-center gap-2.5 mb-5"><Sparkles className="h-4 w-4 text-orange-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Public Service Board</h3></div>
               <PublicProfileServiceBoard
                 posts={serviceBoardPosts}
@@ -2219,8 +2229,8 @@ export default function PublicProfilePage() {
               />
             </div>
 
-            {reviews.length > 0 ? (
-              <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
+            {profileMediaTab !== "about" && reviews.length > 0 ? (
+              <div className={profileSidebarPanelClass}>
                 <button
                   type="button"
                   onClick={() => setReviewsSheetOpen(true)}
@@ -2252,6 +2262,58 @@ export default function PublicProfilePage() {
               </div>
             ) : null}
           </div>
+
+          {profileMediaTab === "about" ? (
+            <div className={cn(profileSidebarPanelClass, "col-span-3")}>
+              <button
+                type="button"
+                onClick={() => reviews.length > 0 && setReviewsSheetOpen(true)}
+                disabled={reviews.length === 0}
+                className={cn(
+                  "mb-5 flex w-full items-center gap-2.5 text-left outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-orange-500/50",
+                  reviews.length > 0 && "cursor-pointer hover:opacity-80 active:opacity-70",
+                )}
+                aria-label={
+                  reviews.length > 0
+                    ? `View all ${reviews.length} reviews`
+                    : "User reviews"
+                }
+              >
+                <Star className="h-4 w-4 shrink-0 fill-amber-500 text-amber-500" />
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  User Reviews
+                </h3>
+                {reviews.length > 0 ? (
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    View all
+                  </span>
+                ) : null}
+              </button>
+              {reviews.length > 0 ? (
+                <div
+                  className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
+                  role="list"
+                  aria-label="User reviews"
+                >
+                  {reviews.map((review, idx) => (
+                    <ProfileReviewPreviewCard
+                      key={review.id}
+                      review={review}
+                      index={idx}
+                      onClick={() => setReviewsSheetOpen(true)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
+                  <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                  <p className="font-medium text-slate-400 dark:text-slate-500">
+                    No reviews yet for this user
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 

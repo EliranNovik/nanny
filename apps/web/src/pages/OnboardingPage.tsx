@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   SUPPORTED_LOCALES,
+  isRtlLocale,
   normalizeAppLocale,
   type AppLocale,
 } from "@/i18n";
@@ -680,6 +681,7 @@ export default function OnboardingPage() {
   console.log("[OnboardingPage] Rendering onboarding form");
 
   const isHelper = role === "freelancer";
+  const isRtl = isRtlLocale(appLocale);
   const totalSteps = isHelper ? 4 : 3;
   const accountStep = isHelper ? 4 : 3;
   const progressStep = step;
@@ -703,7 +705,12 @@ export default function OnboardingPage() {
       <LandingSiteHeader {...guestSiteHeaderChromeProps} className="shrink-0" />
       <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
-      <div className="relative hidden h-full min-h-0 shrink-0 flex-col justify-end overflow-hidden rounded-r-[2rem] bg-slate-900 p-16 lg:flex lg:w-[45%]">
+      <div
+        className={cn(
+          "relative hidden h-full min-h-0 shrink-0 flex-col justify-end overflow-hidden bg-slate-900 p-16 lg:flex lg:w-[45%]",
+          isRtl ? "rounded-s-[2rem] pb-24 pe-20" : "rounded-e-[2rem] pb-20",
+        )}
+      >
         <img
           src="/ChatGPT Image Apr 19, 2026, 11_35_26 AM.png"
           alt="Trusted professionals connecting locally"
@@ -711,10 +718,24 @@ export default function OnboardingPage() {
         />
         
         <div className="relative z-10 animate-fade-up pointer-events-none">
-          <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
+          <h1
+            className={cn(
+              "mb-5 font-black tracking-tight text-white drop-shadow-xl",
+              isRtl
+                ? "text-start text-[2.85rem] leading-[1.28]"
+                : "text-balance text-[3.25rem] leading-[1.15]",
+            )}
+          >
             {t("onboarding.heroTitle")}
           </h1>
-          <p className="text-xl text-white/90 font-medium max-w-md leading-snug drop-shadow-md text-balance">
+          <p
+            className={cn(
+              "max-w-md text-xl font-medium text-white/90 drop-shadow-md",
+              isRtl
+                ? "text-start leading-[1.7]"
+                : "text-balance leading-snug",
+            )}
+          >
             {t("onboarding.heroSubtitle")}
           </p>
         </div>

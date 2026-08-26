@@ -76,7 +76,7 @@ export function PublicProfileServiceBoard({
 }) {
   if (posts.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground py-2 text-center bg-slate-50/50 dark:bg-white/5 rounded-2xl">
+      <p className="text-xs text-muted-foreground py-2 text-center bg-white dark:bg-white/5 rounded-2xl">
         No posts yet.
       </p>
     );
@@ -96,7 +96,7 @@ export function PublicProfileServiceBoard({
             type="button"
             onClick={() => onPostOpen(post.id)}
             className={cn(
-              "group flex w-full items-start gap-3 rounded-2xl border border-slate-100/50 bg-white/60 p-3 text-left transition-all",
+              "group flex w-full items-start gap-3 rounded-2xl border border-white/80 bg-white p-3 text-left transition-all",
               "hover:bg-white dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/10",
               "outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30",
             )}

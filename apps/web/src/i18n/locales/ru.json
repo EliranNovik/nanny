@@ -34,6 +34,15 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "siteNav": {
+    "aboutUs": "О нас",
+    "contact": "Контакты",
+    "home": "Главная",
+    "postFeed": "Лента",
+    "signIn": "Войти",
+    "register": "Регистрация",
+    "legalHub": "Правовая информация"
+  },
   "onboarding": {
     "heroTitle": "Присоединяйтесь к сообществу Tebnu.",
     "heroSubtitle": "Создайте профиль, чтобы сразу находить проверенных людей рядом.",
@@ -481,6 +490,7 @@
     "openRequestsSubtitle": "Новые задания за последние 24 часа",
     "ourCommunityLive": "Наше сообщество в эфире",
     "offersForYou": "Предложения для вас",
+    "offerLocationFromYou": "{{location}} • {{km}} км от вас",
     "noLiveHelpYet": "Пока нет активной помощи",
     "noLiveHelpYetSub": "Когда помощник будет подтверждён, запрос появится здесь.",
     "noLiveGigsYet": "Пока нет активных заданий",

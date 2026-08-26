@@ -665,8 +665,8 @@ export function DiscoverHomeActionFirst({
   /**
    * Desktop-only key-stat pills overlaid on the right side of the hero image.
    * Clicking a stat deep-links to the matching Explore tab.
-   *  - Hire (Get help now): My requests + Live help
-   *  - Work (Help others): Pending + Live help
+   *  - Hire (Get help now): Live help
+   *  - Work (Help others): Live help
    */
   function renderHeroStats() {
     type HeroStat = {
@@ -678,12 +678,6 @@ export function DiscoverHomeActionFirst({
     const stats: HeroStat[] = isHire
       ? [
           {
-            label: t("discoverHome.actions.myRequests"),
-            value: myRequestsCount,
-            accent: "bg-indigo-500/85",
-            tab: "my_requests",
-          },
-          {
             label: t("discoverHome.actions.liveHelp"),
             value: myLiveHelpCount,
             accent: "bg-emerald-500/85",
@@ -691,12 +685,6 @@ export function DiscoverHomeActionFirst({
           },
         ]
       : [
-          {
-            label: t("discoverHome.actions.pending"),
-            value: pendingWorkRequestsCount,
-            accent: "bg-amber-500/85",
-            tab: "pending",
-          },
           {
             label: t("discoverHome.actions.liveHelp"),
             value: myLiveHelpCount,
@@ -774,7 +762,7 @@ export function DiscoverHomeActionFirst({
 
     if (isHire) {
       return (
-        <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-4 gap-2 md:grid">
+        <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-3 gap-2 md:grid">
           <button
             type="button"
             onClick={() => {
@@ -785,14 +773,6 @@ export function DiscoverHomeActionFirst({
           >
             <Search className="h-5 w-5 shrink-0" strokeWidth={2.5} />
             {t("discoverHome.actions.findHelpers")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMyRequestsOpen(true)}
-            className={cn(buttonBase, neutral)}
-          >
-            <ClipboardList className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            {t("discoverHome.actions.myRequests")}
           </button>
           <button
             type="button"
@@ -817,7 +797,7 @@ export function DiscoverHomeActionFirst({
     }
 
     return (
-      <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-4 gap-2 md:grid">
+      <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-3 gap-2 md:grid">
         <button
           type="button"
           onClick={() => {
@@ -828,14 +808,6 @@ export function DiscoverHomeActionFirst({
         >
           <Compass className="h-5 w-5 shrink-0" strokeWidth={2.5} />
           {t("discoverHome.actions.explore")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setPendingWorkRequestsOpen(true)}
-          className={cn(buttonBase, neutral)}
-        >
-          <Clock className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-          {t("discoverHome.actions.pending")}
         </button>
         <button
           type="button"
@@ -871,20 +843,23 @@ export function DiscoverHomeActionFirst({
       <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
         {isHire ? renderMobileHireActionButtons() : renderMobileWorkActionButtons()}
 
-        <DiscoverHomeCategoryFilterRow
-          variant={isHire ? "hire" : "work"}
-          selected={categoryFilter}
-          onSelect={setCategoryFilter}
-          className="px-4 pt-3 pb-5"
-        />
-
         {isHire ? (
           <div className="flex flex-col px-0 pb-6">
-            <div className="w-full px-4 pt-1 pb-2">
-              <DiscoverHomeOffersForYou categoryFilter={categoryFilter} />
-            </div>
-            <div className="w-full px-4 pt-2 pb-2">
+            <div className="w-full px-4 pt-4 pb-2">
               <DiscoverHomeMyOpenRequests explorePath={explorePath} />
+            </div>
+            <DiscoverHomeCategoryFilterRow
+              variant="hire"
+              layout="pills"
+              selected={categoryFilter}
+              onSelect={setCategoryFilter}
+              className="px-4 pt-4 pb-3"
+            />
+            <div className="w-full px-4 pt-1 pb-2">
+              <DiscoverHomeOffersForYou
+                categoryFilter={categoryFilter}
+                viewerLocation={viewerLocation}
+              />
             </div>
             <div className="w-full px-4 pt-4 pb-2">
               <DiscoverHomeMyLiveHelpJobs
@@ -894,22 +869,27 @@ export function DiscoverHomeActionFirst({
               />
             </div>
           </div>
-        ) : null}
-
-        <DiscoverHomePostedHelpRequests
-          enabled={!isHire}
-          categoryFilter={categoryFilter}
-          className="w-full px-4 pt-3 pb-2"
-        />
-
-        {!isHire ? (
-          <div className="w-full px-4 pt-4 pb-2">
-            <DiscoverHomeMyLiveHelpJobs
-              mode="work"
-              exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+        ) : (
+          <>
+            <DiscoverHomeCategoryFilterRow
+              variant="work"
+              selected={categoryFilter}
+              onSelect={setCategoryFilter}
+              className="px-4 pt-3 pb-5"
             />
-          </div>
-        ) : null}
+            <DiscoverHomePostedHelpRequests
+              enabled
+              categoryFilter={categoryFilter}
+              className="w-full px-4 pt-3 pb-2"
+            />
+            <div className="w-full px-4 pt-4 pb-2">
+              <DiscoverHomeMyLiveHelpJobs
+                mode="work"
+                exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
@@ -1064,6 +1044,19 @@ export function DiscoverHomeActionFirst({
             className={cn("min-w-0 px-0.5 pt-1", !isHire && "hidden")}
             explorePath={explorePath}
           />
+          <div className={cn("min-w-0 px-0.5 pt-4", !isHire && "hidden")}>
+            <DiscoverHomeCategoryFilterRow
+              variant="hire"
+              layout="pills"
+              selected={categoryFilter}
+              onSelect={setCategoryFilter}
+              className="pb-3"
+            />
+            <DiscoverHomeOffersForYou
+              categoryFilter={categoryFilter}
+              viewerLocation={viewerLocation}
+            />
+          </div>
           <DiscoverHomeMyLiveHelpJobs
             mode="hire"
             exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}

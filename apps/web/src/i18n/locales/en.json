@@ -34,6 +34,15 @@
     "ru": "Русский",
     "fr": "Français"
   },
+  "siteNav": {
+    "aboutUs": "About Us",
+    "contact": "Contact",
+    "home": "Home",
+    "postFeed": "Post Feed",
+    "signIn": "Sign in",
+    "register": "Register",
+    "legalHub": "Legal Hub"
+  },
   "onboarding": {
     "heroTitle": "Join the Tebnu community.",
     "heroSubtitle": "Register your profile to connect with trusted locals instantly.",
@@ -481,6 +490,7 @@
     "openRequestsSubtitle": "New jobs posted in the last 24h",
     "ourCommunityLive": "Our community live",
     "offersForYou": "Offers for you",
+    "offerLocationFromYou": "{{location}} • {{km}} km from you",
     "noLiveHelpYet": "No live help yet",
     "noLiveHelpYetSub": "When a helper is confirmed on your request, it will appear here.",
     "noLiveGigsYet": "No live gigs yet",

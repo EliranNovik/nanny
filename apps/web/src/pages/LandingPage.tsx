@@ -13,12 +13,21 @@ import {
   Soup,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Truck,
   ShieldCheck,
   Loader2,
   HelpingHand,
   HeartHandshake,
+  HelpCircle,
+  MapPin,
+  Clock,
+  CalendarDays,
+  Hourglass,
+  Coins,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCw,
+  StickyNote,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
@@ -33,14 +42,23 @@ import {
   communityFeedScrollState,
 } from "@/lib/communityFeedNav";
 import {
-  globalFeedCardSurfaceClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
 } from "@/lib/globalFeedPostUi";
 import { useTheme } from "@/context/ThemeContext";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
+import {
+  HIRE_CATEGORY_TILE_UI,
+  OTHER_HELP_SUBCATEGORY_UI,
+  resolveHelpCategoryIconId,
+} from "@/lib/discoverCategoryTileIcons";
+import { isServiceCategoryId } from "@/lib/serviceCategories";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
+import type {
+  IsolatedFeedDetailKind,
+  IsolatedFeedDetailRow,
+} from "@/lib/isolatedFeedPostDetails";
 import { requestPostBadgeClass } from "@/lib/requestPostTheme";
 
 function landingCategoryGradient(categoryId: string | null): string {
@@ -74,6 +92,156 @@ function landingActivityCtaLabel(kind: LandingActivityKind, authorName: string):
   return `Message ${first}`;
 }
 
+function LandingActivityDetailIcon({
+  kind,
+  className,
+}: {
+  kind: IsolatedFeedDetailKind;
+  className?: string;
+}) {
+  const iconClass = cn("h-3.5 w-3.5 shrink-0", className);
+  switch (kind) {
+    case "location":
+      return <MapPin className={iconClass} aria-hidden />;
+    case "from":
+      return <ArrowUpRight className={iconClass} aria-hidden />;
+    case "to":
+      return <ArrowDownRight className={iconClass} aria-hidden />;
+    case "when":
+    case "shift":
+      return <Clock className={iconClass} aria-hidden />;
+    case "schedule":
+      return <CalendarDays className={iconClass} aria-hidden />;
+    case "duration":
+      return <Hourglass className={iconClass} aria-hidden />;
+    case "careType":
+      return <Briefcase className={iconClass} aria-hidden />;
+    case "frequency":
+      return <RefreshCw className={iconClass} aria-hidden />;
+    case "budget":
+    case "rate":
+      return <Coins className={iconClass} aria-hidden />;
+    case "people":
+      return <Users className={iconClass} aria-hidden />;
+    case "kids":
+      return <Baby className={iconClass} aria-hidden />;
+    case "notes":
+      return <StickyNote className={iconClass} aria-hidden />;
+    default:
+      return <Sparkles className={iconClass} aria-hidden />;
+  }
+}
+
+const MEDIA_BADGE_KIND_ORDER: IsolatedFeedDetailKind[] = [
+  "location",
+  "when",
+  "schedule",
+  "duration",
+  "from",
+  "to",
+  "budget",
+  "rate",
+];
+
+function LandingCategoryIcon({
+  categoryId,
+  customCategory,
+}: {
+  categoryId: string | null;
+  customCategory?: string | null;
+}) {
+  const id = resolveHelpCategoryIconId(categoryId, customCategory);
+  const ui =
+    (id ? OTHER_HELP_SUBCATEGORY_UI[id] : null) ??
+    (id && isServiceCategoryId(id) ? HIRE_CATEGORY_TILE_UI[id] : null);
+  const Icon = ui?.Icon ?? HelpCircle;
+  return (
+    <Icon
+      className={cn("h-5 w-5 shrink-0", ui?.iconClass ?? "text-slate-500")}
+      strokeWidth={2.25}
+      aria-hidden
+    />
+  );
+}
+
+function landingVisibleDetailPoints(
+  points: IsolatedFeedDetailRow[],
+): IsolatedFeedDetailRow[] {
+  return points.filter((point) => {
+    if (point.kind === "budget") return false;
+    const label = `${point.key} ${point.value}`.toLowerCase();
+    if (label.includes("renewed")) return false;
+    return true;
+  });
+}
+
+function landingMediaBadgePoints(
+  points: IsolatedFeedDetailRow[],
+): IsolatedFeedDetailRow[] {
+  const rank = (kind: IsolatedFeedDetailKind) => {
+    const index = MEDIA_BADGE_KIND_ORDER.indexOf(kind);
+    return index === -1 ? 99 : index;
+  };
+  return landingVisibleDetailPoints(points)
+    .filter((point) => point.kind !== "notes")
+    .sort((a, b) => rank(a.kind) - rank(b.kind))
+    .slice(0, 2);
+}
+
+function LandingActivityMedia({
+  src,
+  kind,
+  children,
+}: {
+  src: string;
+  kind: "image" | "video";
+  children?: React.ReactNode;
+}) {
+  const [orientation, setOrientation] = useState<"portrait" | "landscape" | null>(
+    null,
+  );
+
+  function applySize(width: number, height: number) {
+    if (!width || !height) return;
+    const next = width / height >= 1.05 ? "landscape" : "portrait";
+    setOrientation((prev) => (prev === next ? prev : next));
+  }
+
+  const mediaClass = cn(
+    "h-full w-full object-center",
+    orientation === "portrait" ? "object-contain" : "object-cover",
+  );
+
+  return (
+    <div className="relative mt-3 aspect-[16/10] w-full overflow-hidden rounded-xl bg-black/90">
+      {kind === "video" ? (
+        <video
+          src={src}
+          muted
+          playsInline
+          preload="metadata"
+          className={mediaClass}
+          onLoadedMetadata={(e) => {
+            applySize(e.currentTarget.videoWidth, e.currentTarget.videoHeight);
+          }}
+        />
+      ) : (
+        <img
+          src={src}
+          alt=""
+          className={mediaClass}
+          loading="lazy"
+          decoding="async"
+          onLoad={(e) => {
+            applySize(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight);
+          }}
+        />
+      )}
+      {children}
+    </div>
+  );
+}
+
 function helperInitials(name: string | null | undefined): string {
   const parts = (name || "H").trim().split(/\s+/).filter(Boolean);
   return parts
@@ -94,7 +262,6 @@ export default function LandingPage() {
   const [showFixedButtons, setShowFixedButtons] = useState(false);
   const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [tebnuApartOpen, setTebnuApartOpen] = useState(true);
   const { activityLoading, activityItems, heroPosts, heroPostsLoading, reviewsLoading, reviews } =
     useLandingPagePreview();
 
@@ -339,7 +506,7 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Full-Screen Hero Section */}
-        <section className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-white">
+        <section className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-white md:-mt-[64px]">
           {/* Mobile — white hero with same post collage as desktop */}
           <div className="relative bg-white md:hidden">
             <div className="relative flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(5.75rem,calc(env(safe-area-inset-top,0px)+4.5rem))]">
@@ -387,9 +554,9 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop — side portraits with centered copy */}
-          <div className="relative hidden min-h-[calc(100svh-4rem)] bg-white md:block">
+          <div className="relative hidden min-h-svh bg-white md:block">
             <div
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2.25rem]"
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-none"
               aria-hidden
             >
               <img
@@ -399,24 +566,21 @@ export default function LandingPage() {
               />
             </div>
 
-            <div className="relative z-10 flex min-h-[calc(100svh-4rem)] flex-col items-center justify-center px-8 py-28 text-center">
+            <div className="relative z-10 flex min-h-svh flex-col items-center justify-center px-8 pt-24 pb-52 text-center">
               <div className="relative w-full max-w-3xl animate-in fade-in duration-1000">
                 <div
                   className="pointer-events-none absolute -inset-x-16 -inset-y-12 rounded-full bg-black/20 blur-3xl"
                   aria-hidden
                 />
                 <div className="relative">
-                <h1 className="text-6xl font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)] lg:text-7xl xl:text-8xl">
+                <h1 className="text-6xl font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)] lg:text-7xl">
                   One{" "}
-                  <span className="relative inline-block rounded-2xl border-0 bg-white/40 px-4 py-1.5 text-orange-500 shadow-none outline-none ring-0 backdrop-blur-md">
+                  <span className="inline-block rounded-2xl border-0 bg-white/40 px-3.5 py-1 text-orange-500 shadow-none outline-none ring-0 backdrop-blur-md">
                     community
-                    <span className="pointer-events-none absolute -right-1 -top-5 text-[11px] font-black tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)] lg:-right-2 lg:-top-6 lg:text-xs">
-                      tebnu.com
-                    </span>
                   </span>
                   . Many helpers.
                 </h1>
-                <p className="mx-auto mt-7 max-w-xl text-xl font-semibold text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.5)] lg:text-2xl">
+                <p className="mx-auto mt-6 max-w-xl text-xl font-semibold text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.5)] lg:text-2xl">
                   Find support, share skills, and connect within minutes.
                 </p>
                 <p className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-base font-bold text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] lg:text-lg">
@@ -433,20 +597,20 @@ export default function LandingPage() {
 
                 <div
                   ref={buttonsRef}
-                  className="mt-10 flex flex-wrap items-center justify-center gap-8 lg:gap-10"
+                  className="relative z-20 mt-9 flex flex-wrap items-center justify-center gap-5"
                 >
                   <Button
                     onClick={handleSearchingForJob}
-                    className="group/btn flex h-20 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 text-lg font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98] lg:h-[5.25rem] lg:px-10 lg:text-xl"
+                    className="group/btn flex h-16 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 text-lg font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98] lg:h-[4.5rem] lg:px-9 lg:text-xl"
                   >
-                    <HelpingHand className="h-12 w-12 shrink-0" strokeWidth={2.25} />
+                    <HelpingHand className="h-10 w-10 shrink-0 lg:h-11 lg:w-11" strokeWidth={2.25} />
                     Offer Help
                   </Button>
                   <Button
                     onClick={handleHiringHelper}
-                    className="group/btn flex h-20 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-8 text-lg font-bold text-white shadow-lg shadow-orange-500/30 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[5.25rem] lg:px-10 lg:text-xl"
+                    className="group/btn flex h-16 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-8 text-lg font-bold text-white shadow-lg shadow-orange-500/30 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[4.5rem] lg:px-9 lg:text-xl"
                   >
-                    <HeartHandshake className="h-12 w-12 shrink-0" strokeWidth={2.25} />
+                    <HeartHandshake className="h-10 w-10 shrink-0 lg:h-11 lg:w-11" strokeWidth={2.25} />
                     Need Help
                   </Button>
                 </div>
@@ -455,57 +619,36 @@ export default function LandingPage() {
             </div>
 
             <div
-              className="absolute bottom-10 left-10 z-50 w-[min(42rem,calc(100%-5rem))] max-w-none rounded-2xl border-0 bg-black/25 px-6 py-2.5 shadow-none backdrop-blur-xl lg:bottom-12 lg:left-12 lg:px-7 lg:py-3"
+              className="absolute bottom-8 left-8 z-20 w-[min(28rem,calc(100%-4rem))] max-w-none rounded-2xl border-0 bg-black/10 px-5 py-3 shadow-none backdrop-blur-md lg:bottom-10 lg:left-10 lg:px-6 lg:py-3.5"
               aria-label="Secure registration powered by Didit"
             >
-              <button
-                type="button"
-                onClick={() => setTebnuApartOpen((open) => !open)}
-                aria-expanded={tebnuApartOpen}
-                className="flex items-center gap-2 text-left transition-opacity hover:opacity-80"
-              >
-                <span className="text-sm font-black uppercase tracking-[0.12em] text-white md:text-[15px]">
-                  What sets Tebnu apart
+              <p className="text-base font-bold leading-snug text-white md:text-lg">
+                Every member verified with{" "}
+                <span className="inline-flex items-center gap-1.5 text-xl font-black text-emerald-300 md:text-2xl">
+                  Didit
+                  <ShieldCheck
+                    className="h-5 w-5 shrink-0 md:h-6 md:w-6"
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-white transition-transform duration-200",
-                    tebnuApartOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
-              </button>
-              {tebnuApartOpen ? (
-                <div className="mt-1.5">
-                  <p className="text-base font-bold leading-snug text-white md:text-lg">
-                    Every member verified with{" "}
-                    <span className="inline-flex items-center gap-1.5 text-xl font-black text-emerald-300 md:text-2xl">
-                      Didit
-                      <ShieldCheck
-                        className="h-6 w-6 shrink-0 md:h-7 md:w-7"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                    </span>
-                  </p>
-                  <p className="mt-1 text-sm font-medium leading-snug text-white/90">
-                    Real ID and a live selfie before anyone can hire or work.
-                  </p>
-                  <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
-                    {[
-                      "Encrypted ID checks at signup",
-                      "Verified before posting, hiring, or going live",
-                    ].map((line) => (
-                      <li
-                        key={line}
-                        className="text-sm font-semibold text-white/95"
-                      >
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              </p>
+              <p className="mt-1.5 text-sm font-medium leading-snug text-white/90">
+                Real ID and a live selfie before anyone can hire or work.
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+                {[
+                  "Encrypted ID checks at signup",
+                  "Verified before posting, hiring, or going live",
+                ].map((line) => (
+                  <li
+                    key={line}
+                    className="text-sm font-semibold leading-snug text-white/95"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
@@ -859,6 +1002,8 @@ export default function LandingPage() {
             ) : (
               activityItems.map((item) => {
                 const typeId = landingActivityTypeId(item.kind);
+                const detailPoints = landingVisibleDetailPoints(item.detailPoints).slice(0, 4);
+                const mediaBadgePoints = landingMediaBadgePoints(item.detailPoints);
                 return (
                   <Link
                     key={`${item.kind}-${item.id}`}
@@ -869,20 +1014,21 @@ export default function LandingPage() {
                         : communityFeedScrollState(item.id)
                     }
                     className={cn(
-                      "group flex min-h-[320px] w-[min(88vw,320px)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl transition-shadow duration-300 hover:shadow-md sm:w-[340px] md:w-[360px] lg:w-[380px] xl:w-[400px]",
-                      globalFeedCardSurfaceClass,
+                      "group flex min-h-[320px] w-[min(88vw,320px)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl bg-white shadow-lg shadow-slate-900/10 ring-1 ring-slate-100 transition-shadow duration-300 hover:shadow-xl hover:shadow-slate-900/15 sm:w-[340px] md:w-[360px] lg:w-[380px] xl:w-[400px]",
                     )}
                   >
                     <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
                       {item.authorPhotoUrl ? (
-                        <Avatar className="h-12 w-12 shrink-0 ring-2 ring-white">
+                        <Avatar className="h-16 w-16 shrink-0 ring-2 ring-white">
                           <AvatarImage src={item.authorPhotoUrl} alt="" />
-                          <AvatarFallback>{item.authorInitials}</AvatarFallback>
+                          <AvatarFallback className="text-base font-bold">
+                            {item.authorInitials}
+                          </AvatarFallback>
                         </Avatar>
                       ) : (
                         <div
                           className={cn(
-                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white ring-2 ring-white",
+                            "flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-bold text-white ring-2 ring-white",
                             landingCategoryGradient(item.categoryId),
                           )}
                         >
@@ -900,19 +1046,66 @@ export default function LandingPage() {
                         </div>
                         <p
                           className={cn(
-                            "mt-1.5 text-[11px] font-bold uppercase tracking-wide",
+                            "mt-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide",
                             globalFeedPostTypeAccentClass(typeId),
                           )}
                         >
-                          {item.roleLabel}
+                          <LandingCategoryIcon
+                            categoryId={item.categoryId}
+                            customCategory={item.customCategory}
+                          />
+                          <span className="min-w-0 truncate">{item.roleLabel}</span>
                         </p>
                       </div>
                     </div>
 
                     <div className="flex flex-1 flex-col px-4 pb-3">
-                      <p className="line-clamp-5 flex-1 text-sm leading-relaxed text-slate-800 lg:text-[15px]">
+                      <p className="line-clamp-4 text-sm leading-relaxed text-slate-800 lg:text-[15px]">
                         {item.description}
                       </p>
+                      {item.mediaUrl ? (
+                        <LandingActivityMedia
+                          src={item.mediaUrl}
+                          kind={item.mediaKind === "video" ? "video" : "image"}
+                        >
+                          {mediaBadgePoints.length > 0 ? (
+                            <div className="absolute right-2 top-2 max-w-[72%] rounded-xl bg-white/40 px-2.5 py-1.5 shadow-sm ring-1 ring-white/50 backdrop-blur-md">
+                              <ul className="space-y-1">
+                                {mediaBadgePoints.map((point) => (
+                                  <li
+                                    key={point.key}
+                                    className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight text-slate-800"
+                                  >
+                                    <LandingActivityDetailIcon
+                                      kind={point.kind}
+                                      className="text-slate-700"
+                                    />
+                                    <span className="min-w-0 truncate">{point.value}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </LandingActivityMedia>
+                      ) : detailPoints.length > 0 ? (
+                        <div className="mt-auto grid grid-cols-2 gap-x-3.5 gap-y-2.5 pt-5">
+                          {detailPoints.map((point) => (
+                            <div
+                              key={point.key}
+                              className={cn(
+                                "flex min-w-0 items-start gap-2 text-[13px] font-semibold leading-snug text-slate-600 lg:text-sm",
+                                point.kind === "notes" && "col-span-2",
+                              )}
+                            >
+                              <LandingActivityDetailIcon
+                                kind={point.kind}
+                                className="mt-0.5 h-4 w-4 text-slate-400"
+                              />
+                              <span className="min-w-0 line-clamp-2">{point.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="mt-auto border-t border-slate-100 px-4 py-3">

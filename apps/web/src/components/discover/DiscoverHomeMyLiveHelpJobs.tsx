@@ -300,6 +300,7 @@ function DiscoverHomeLiveHelpSection({
               categoryIconTone={otherPartyLabel === "Helper" ? "orange" : "green"}
               otherPartyLabel={otherPartyLabel}
               otherPartyName={otherPartyName}
+              otherPartyPhotoUrl={otherProfile?.photo_url ?? null}
               onOpen={() => {
                 trackEvent(openTrackEvent, { job_id: job.id });
                 navigate(getJobOpenPath(job.id));

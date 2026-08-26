@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Target,
   ShieldCheck,
@@ -12,178 +13,153 @@ const benefits = [
     title: "Ideal helper, faster",
     description:
       "AI matching shows you the best helpers first, ensuring a perfect fit.",
-    icon: <Target className="h-8 w-8 text-blue-500" />,
-    color: "bg-blue-50/80",
-    angle: -90,
+    explanation:
+      "Tell us what you need once. Tebnu ranks local helpers by skills, reviews, and availability so you spend minutes choosing — not hours searching through lists.",
+    icon: Target,
+    color: "text-blue-500",
+    tint: "bg-blue-50",
+    image: "/pexels-rdne-6646861.jpg",
+    imageAlt: "Local helpers ready to match with families",
   },
   {
     title: "Trust powered by AI",
     description:
       "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
-    icon: <ShieldCheck className="h-8 w-8 text-emerald-500" />,
-    color: "bg-emerald-50/80",
-    angle: -28,
+    explanation:
+      "Before anyone can hire or start helping, they complete a Didit ID check and a live selfie match. You always know who you are meeting, and fake profiles never make it onto the platform.",
+    icon: ShieldCheck,
+    color: "text-emerald-500",
+    tint: "bg-emerald-50",
+    image: "/images/id-card-scan.png",
+    imageAlt: "ID card scan for verified signup",
   },
   {
     title: "Real reviews",
     description:
-      "Ratings come only from real families after a completed help together.",
-    icon: <Star className="h-8 w-8 text-yellow-500" />,
-    color: "bg-yellow-50/80",
-    angle: 54,
+      "Ratings come only from real people after they helped together.",
+    explanation:
+      "Stars are not bought and not left by strangers. Only people who actually helped together can rate — so the score you see is earned from real time spent helping.",
+    icon: Star,
+    color: "text-yellow-500",
+    tint: "bg-yellow-50",
+    image: "/pexels-dmitry-rodionov-30660800.jpg",
+    imageAlt: "People who leave reviews after real help",
   },
   {
     title: "No language barriers",
-    description: "Hebrew, English, Russian – built for smooth communication.",
-    icon: <Languages className="h-8 w-8 text-purple-500" />,
-    color: "bg-purple-50/80",
-    angle: 126,
+    description: "Hebrew, English, French, Russian – built for smooth communication.",
+    explanation:
+      "Post, chat, and read profiles in Hebrew, English, French, or Russian. The app is built for mixed-language homes in Israel, so details stay clear from the first message to the last.",
+    icon: Languages,
+    color: "text-purple-500",
+    tint: "bg-purple-50",
+    image: "/pexels-silverkblack-36715260.jpg",
+    imageAlt: "Everyday help that works in any language",
   },
   {
-    title: "Built for busy families",
+    title: "Built for busy days",
     description: "AI handles the hard stuff, making finding help stress‑free.",
-    icon: <Zap className="h-8 w-8 text-orange-500" />,
-    color: "bg-orange-50/80",
-    angle: 208,
+    explanation:
+      "From posting a request to confirming a helper, the flow is short taps — not long forms. Get cleaning, childcare, cooking, or errands covered without pausing the rest of your day.",
+    icon: Zap,
+    color: "text-orange-500",
+    tint: "bg-orange-50",
+    image: "/nanny-mar22.png",
+    imageAlt: "Everyday help when you need it",
   },
-];
-
-function BenefitsHubShowcase() {
-  return (
-    <div className="absolute top-1/2 left-1/2 z-20 w-[min(260px,30vw)] -translate-x-1/2 -translate-y-1/2 xl:w-[min(280px,18vw)]">
-      <div
-        className="benefits-hub-glow pointer-events-none absolute -inset-5 -z-10 rounded-[2.5rem] opacity-90"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -inset-8 -z-20 rounded-full bg-gradient-to-br from-orange-400/25 via-rose-400/20 to-amber-300/25 blur-2xl"
-        aria-hidden
-      />
-
-      <div className="benefits-hub-frame relative overflow-hidden rounded-[2rem] p-[3px] shadow-[0_24px_48px_-12px_rgba(249,115,22,0.35)]">
-        <img
-          src="/pexels-rdne-6646861.jpg"
-          alt="Helpers and families connecting on Tebnu"
-          className="aspect-[4/3] w-full rounded-[calc(2rem-3px)] object-cover object-center"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-    </div>
-  );
-}
+] as const;
 
 export default function Benefits() {
+  const [active, setActive] = useState(0);
+  const current = benefits[active];
+  const ActiveIcon = current.icon;
+
   return (
-    <section className="overflow-hidden px-4 py-24">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center xl:max-w-none xl:px-8">
-        <h2 className="mb-24 text-center text-2xl font-bold text-black md:text-3xl">
+    <section className="px-4 py-20 md:py-24">
+      <div className="mx-auto w-full max-w-6xl">
+        <h2 className="mb-10 text-center text-2xl font-bold text-black md:mb-14 md:text-3xl">
           Your benefits with Tebnu
         </h2>
 
-        {/* Desktop: orbital cards + center image */}
-        <div className="relative mb-20 hidden h-[920px] w-full max-w-[1240px] xl:block xl:max-w-[1440px]">
-          <BenefitsHubShowcase />
-
+        <div
+          className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:gap-3 md:overflow-visible [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label="Tebnu benefits"
+        >
           {benefits.map((benefit, idx) => {
-            const radius = 470;
-            const x = radius * Math.cos((benefit.angle * Math.PI) / 180);
-            const y = radius * Math.sin((benefit.angle * Math.PI) / 180);
-
+            const Icon = benefit.icon;
+            const selected = idx === active;
             return (
-              <div
-                key={idx}
-                className="group absolute w-[272px] transition-all duration-700"
-                style={{
-                  left: `calc(50% + ${x}px)`,
-                  top: `calc(50% + ${y}px)`,
-                  transform: "translate(-50%, -50%)",
-                }}
+              <button
+                key={benefit.title}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onMouseEnter={() => setActive(idx)}
+                onFocus={() => setActive(idx)}
+                onClick={() => setActive(idx)}
+                className={cn(
+                  "flex min-w-[11.5rem] flex-1 flex-col items-start gap-2 rounded-2xl border px-4 py-4 text-left transition-all duration-300 md:min-w-0",
+                  selected
+                    ? "border-orange-200 bg-white shadow-lg shadow-orange-500/10"
+                    : "border-transparent bg-slate-50/80 hover:border-slate-200 hover:bg-white",
+                )}
               >
-                <div className="flex flex-col items-center space-y-4 text-center">
-                  <div
-                    className={cn(
-                      "flex h-20 w-20 items-center justify-center rounded-[2.5rem] border border-white/40 shadow-xl backdrop-blur-sm transition-all duration-500 group-hover:rotate-6 group-hover:scale-110",
-                      benefit.color,
-                    )}
-                  >
-                    {benefit.icon}
-                  </div>
-                  <div className="transition-transform duration-500 group-hover:-translate-y-2">
-                    <h3 className="text-lg font-bold text-gray-900 transition-colors group-hover:text-primary">
-                      {benefit.title}
-                    </h3>
-                    <p className="mx-auto mt-2 max-w-[240px] text-sm font-medium leading-relaxed text-gray-600 opacity-80 transition-opacity group-hover:opacity-100 md:text-base">
-                      {benefit.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                <span
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-2xl",
+                    benefit.tint,
+                    benefit.color,
+                  )}
+                >
+                  <Icon className="h-8 w-8" strokeWidth={2.1} aria-hidden />
+                </span>
+                <span className="text-sm font-bold leading-snug text-slate-900 md:text-[15px]">
+                  {benefit.title}
+                </span>
+                <span className="hidden text-xs font-medium leading-relaxed text-slate-500 sm:block">
+                  {benefit.description}
+                </span>
+              </button>
             );
           })}
         </div>
 
-        {/* Mobile / tablet: image + grid */}
-        <div className="mb-12 w-full max-w-lg xl:hidden">
-          <div className="benefits-hub-frame overflow-hidden rounded-[2rem] p-[3px] shadow-[0_24px_48px_-12px_rgba(249,115,22,0.3)]">
+        <div
+          key={current.title}
+          className="mt-6 grid items-stretch overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-[0_20px_50px_-24px_rgba(15,23,42,0.35)] animate-in fade-in duration-300 md:mt-8 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+        >
+          <div className="relative min-h-[220px] overflow-hidden bg-slate-100 md:min-h-[320px]">
             <img
-              src="/pexels-rdne-6646861.jpg"
-              alt="Helpers and families connecting on Tebnu"
-              className="aspect-[3/2] w-full rounded-[calc(2rem-3px)] object-cover object-center"
-              loading="lazy"
-              decoding="async"
+              src={current.image}
+              alt={current.imageAlt}
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
           </div>
-        </div>
-
-        <div className="grid w-full max-w-4xl grid-cols-1 gap-16 px-8 md:grid-cols-2 xl:hidden">
-          {benefits.map((benefit, idx) => (
-            <div
-              key={idx}
-              className="group flex items-start gap-8 transition-all"
-            >
-              <div
+          <div className="flex flex-col justify-center gap-4 px-6 py-7 md:px-10 md:py-10">
+            <div className="flex items-center gap-3">
+              <span
                 className={cn(
-                  "flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-3xl border border-white/20 shadow-lg transition-transform group-hover:scale-110 md:rounded-[2rem]",
-                  benefit.color,
+                  "flex h-14 w-14 items-center justify-center rounded-2xl",
+                  current.tint,
+                  current.color,
                 )}
               >
-                <div className="scale-125">{benefit.icon}</div>
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-gray-900 transition-colors group-hover:text-primary">
-                  {benefit.title}
-                </h3>
-                <p className="text-base font-medium leading-relaxed text-gray-600">
-                  {benefit.description}
-                </p>
-              </div>
+                <ActiveIcon className="h-8 w-8" strokeWidth={2.1} aria-hidden />
+              </span>
+              <h3 className="text-xl font-black tracking-tight text-slate-900 md:text-2xl">
+                {current.title}
+              </h3>
             </div>
-          ))}
+            <p className="text-base font-semibold leading-relaxed text-slate-700 md:text-lg">
+              {current.description}
+            </p>
+            <p className="text-sm font-medium leading-relaxed text-slate-500 md:text-base">
+              {current.explanation}
+            </p>
+          </div>
         </div>
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes benefits-hub-shimmer {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .benefits-hub-frame {
-          background: linear-gradient(135deg, #f97316, #ec4899, #f59e0b, #ef4444, #f97316);
-          background-size: 300% 300%;
-          animation: benefits-hub-shimmer 8s ease infinite;
-        }
-        .benefits-hub-glow {
-          background: linear-gradient(135deg, rgba(249,115,22,0.55), rgba(244,63,94,0.4), rgba(251,191,36,0.45));
-          background-size: 300% 300%;
-          filter: blur(28px);
-          animation: benefits-hub-shimmer 10s ease infinite;
-        }
-      `,
-        }}
-      />
     </section>
   );
 }

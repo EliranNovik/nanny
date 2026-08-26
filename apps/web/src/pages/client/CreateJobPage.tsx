@@ -39,7 +39,6 @@ import {
 } from "@/lib/requestHelpWhen";
 import { format } from "date-fns";
 import {
-  Heart,
   ChevronRight,
   Loader2,
   Lightbulb,
@@ -64,17 +63,6 @@ import {
   CalendarDays,
   ImagePlus,
   X,
-  Scissors,
-  GraduationCap,
-  ShoppingCart,
-  PawPrint,
-  FileText,
-  PartyPopper,
-  Palette,
-  Truck,
-  HeartHandshake,
-  ChefHat,
-  LayoutGrid,
 } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { cn } from "@/lib/utils";
@@ -84,7 +72,33 @@ import {
   isServiceCategoryId,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
+import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
 import { useLiveJobCounts } from "@/hooks/data/useLiveJobCounts";
+
+function TypeHelpIllustration({
+  categoryId,
+  className,
+}: {
+  categoryId: string;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "relative isolate block overflow-hidden rounded-full bg-transparent",
+        className,
+      )}
+    >
+      <img
+        src={categoryIllustrationSrc(categoryId)}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-center scale-[1.22] object-cover object-center"
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  );
+}
 
 /** Step 2+ list tiles — white surfaces, emerald selection (matches availability wizard) */
 const JOB_CHOICE_IDLE =
@@ -101,46 +115,34 @@ const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
   imageSrc: c.imageSrc,
 }));
 
-/** Step 1 main category tiles — colored boxes with icons (no image backgrounds). */
+/** Step 1 main category tiles — colored boxes with category illustrations. */
 const SERVICE_TYPE_META: Record<
   string,
-  { icon: JSX.Element; idle: string; selected: string; iconWrap: string }
+  { idle: string; selected: string }
 > = {
   cleaning: {
-    icon: <Sparkles className="h-7 w-7" />,
     idle: "bg-sky-50 text-sky-950 dark:bg-sky-500/10 dark:text-sky-50",
-    selected: "bg-sky-600 text-white [&_svg]:text-white",
-    iconWrap: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
+    selected: "bg-sky-600 text-white",
   },
   cooking: {
-    icon: <ChefHat className="h-7 w-7" />,
     idle: "bg-amber-50 text-amber-950 dark:bg-amber-500/10 dark:text-amber-50",
-    selected: "bg-amber-500 text-white [&_svg]:text-white",
-    iconWrap: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
+    selected: "bg-amber-500 text-white",
   },
   pickup_delivery: {
-    icon: <Truck className="h-7 w-7" />,
     idle: "bg-indigo-50 text-indigo-950 dark:bg-indigo-500/10 dark:text-indigo-50",
-    selected: "bg-indigo-600 text-white [&_svg]:text-white",
-    iconWrap: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300",
+    selected: "bg-indigo-600 text-white",
   },
   nanny: {
-    icon: <Baby className="h-7 w-7" />,
     idle: "bg-rose-50 text-rose-950 dark:bg-rose-500/10 dark:text-rose-50",
-    selected: "bg-rose-500 text-white [&_svg]:text-white",
-    iconWrap: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
+    selected: "bg-rose-500 text-white",
   },
   technical_help: {
-    icon: <Wrench className="h-7 w-7" />,
     idle: "bg-slate-100 text-slate-900 dark:bg-slate-500/10 dark:text-slate-50",
-    selected: "bg-slate-700 text-white [&_svg]:text-white",
-    iconWrap: "bg-slate-500/15 text-slate-600 dark:text-slate-300",
+    selected: "bg-slate-700 text-white",
   },
   other_help: {
-    icon: <LayoutGrid className="h-7 w-7" />,
     idle: "bg-emerald-50 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-50",
-    selected: "bg-emerald-600 text-white [&_svg]:text-white",
-    iconWrap: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+    selected: "bg-emerald-600 text-white",
   },
 };
 
@@ -252,26 +254,9 @@ const NANNY_KIDS_COUNTS = [
   },
 ];
 
-const OTHER_HELP_ICONS: Record<string, JSX.Element> = {
-  beauty_personal_care: <Scissors className="w-8 h-8 text-pink-500" />,
-  heavy_lifting_moving: <Truck className="w-8 h-8 text-slate-700" />,
-  coaching_lessons: <GraduationCap className="w-8 h-8 text-indigo-500" />,
-  shopping_errands: <ShoppingCart className="w-8 h-8 text-emerald-600" />,
-  pet_help: <PawPrint className="w-8 h-8 text-amber-600" />,
-  elderly_help: <Heart className="w-8 h-8 text-red-500" />,
-  paperwork_bureaucracy: <FileText className="w-8 h-8 text-blue-500" />,
-  event_help: <PartyPopper className="w-8 h-8 text-fuchsia-500" />,
-  home_maintenance: <Home className="w-8 h-8 text-orange-500" />,
-  digital_creative: <Palette className="w-8 h-8 text-violet-500" />,
-  religious_community: <HeartHandshake className="w-8 h-8 text-teal-600" />,
-};
-
 const OTHER_HELP_TYPES = OTHER_HELP_SUBCATEGORIES.map((sub) => ({
   id: sub.id,
   label: sub.label,
-  icon: OTHER_HELP_ICONS[sub.id] ?? (
-    <Wrench className="w-8 h-8 text-slate-600" />
-  ),
 }));
 
 const STORAGE_KEY = "create_job_form_data";
@@ -552,12 +537,12 @@ export default function CreateJobPage() {
     return t(`feed.categories.${jobData.service_type}`);
   }, [jobData.service_type, jobData.service_details.other_type, t]);
 
-  const chosenCategoryIcon = useMemo(() => {
+  const chosenCategoryIllustrationId = useMemo(() => {
     if (!jobData.service_type) return null;
     if (jobData.service_type === "other_help" && jobData.service_details.other_type) {
-      return OTHER_HELP_ICONS[jobData.service_details.other_type] ?? null;
+      return jobData.service_details.other_type;
     }
-    return SERVICE_TYPE_META[jobData.service_type]?.icon ?? null;
+    return jobData.service_type;
   }, [jobData.service_type, jobData.service_details.other_type]);
 
   /** Step 1 = choosing category — no hero image or category name in header */
@@ -574,10 +559,11 @@ export default function CreateJobPage() {
     if (shouldShowCategory && chosenCategoryLabel) {
       return (
         <span className="inline-flex items-center gap-2 align-middle justify-center md:justify-start">
-          {chosenCategoryIcon && (
-            <span className="inline-flex items-center justify-center shrink-0 [&_svg]:h-5.5 [&_svg]:w-5.5 [&_svg]:text-current [&_svg]:stroke-[2.2]">
-              {chosenCategoryIcon}
-            </span>
+          {chosenCategoryIllustrationId && (
+            <TypeHelpIllustration
+              categoryId={chosenCategoryIllustrationId}
+              className="h-7 w-7 shrink-0"
+            />
           )}
           <span>{chosenCategoryLabel}</span>
           <span className="opacity-60 font-medium mx-0.5">-</span>
@@ -586,7 +572,7 @@ export default function CreateJobPage() {
       );
     }
     return <span>{baseTitle}</span>;
-  }, [step, otherHelpSubOpen, chosenCategoryLabel, chosenCategoryIcon, categoryLabel, t]);
+  }, [step, otherHelpSubOpen, chosenCategoryLabel, chosenCategoryIllustrationId, categoryLabel, t]);
 
   const stepTip =
     step >= 1 && step <= TOTAL_STEPS
@@ -1106,7 +1092,10 @@ export default function CreateJobPage() {
                           : JOB_CHOICE_HOVER,
                       )}
                     >
-                      <div className="flex-shrink-0">{type.icon}</div>
+                      <TypeHelpIllustration
+                        categoryId={type.id}
+                        className="h-16 w-16 shrink-0"
+                      />
                       <span className="text-base font-bold leading-snug">
                         {t(`otherHelpSubcategories.${type.id}`)}
                       </span>
@@ -1125,7 +1114,7 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 1: Service Type — colored boxes with icons; 2 columns on mobile */}
+            {/* Step 1: Service Type — colored boxes with category illustrations; 2 columns on mobile */}
             {step === 1 && !otherHelpSubOpen && (
               <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 md:gap-3">
                 {SERVICE_TYPES.map((type) => {
@@ -1161,14 +1150,10 @@ export default function CreateJobPage() {
                           </span>
                         </div>
                       )}
-                      <div
-                        className={cn(
-                          "flex h-14 w-14 items-center justify-center rounded-2xl transition-colors",
-                          selected ? "bg-white/20 text-white" : meta.iconWrap,
-                        )}
-                      >
-                        {meta.icon}
-                      </div>
+                      <TypeHelpIllustration
+                        categoryId={type.id}
+                        className="h-16 w-16 shrink-0 sm:h-[4.5rem] sm:w-[4.5rem]"
+                      />
                       <div className="space-y-0.5 px-1">
                         <div className="text-base font-black leading-tight tracking-tight sm:text-[15px] md:text-base lg:text-lg">
                           {t(`feed.categories.${type.id}`)}
@@ -1648,11 +1633,12 @@ export default function CreateJobPage() {
                         )}
                       >
                         <div className="flex-shrink-0">
-                          {
-                            OTHER_HELP_TYPES.find(
-                              (x) => x.id === jobData.service_details.other_type,
-                            )?.icon
-                          }
+                          {jobData.service_details.other_type ? (
+                            <TypeHelpIllustration
+                              categoryId={jobData.service_details.other_type}
+                              className="h-12 w-12"
+                            />
+                          ) : null}
                         </div>
                         <span className="flex-1 text-base font-bold leading-snug">
                           {jobData.service_details.other_type

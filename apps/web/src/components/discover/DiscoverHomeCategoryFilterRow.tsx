@@ -66,6 +66,8 @@ type Props = {
   otherSubFilter?: string | null;
   onOtherSubFilterChange?: (id: string | null) => void;
   className?: string;
+  /** Get Help uses compact orange pills; Help others keeps circular tiles. */
+  layout?: "circles" | "pills";
 };
 
 export function DiscoverHomeCategoryFilterRow({
@@ -75,6 +77,7 @@ export function DiscoverHomeCategoryFilterRow({
   otherSubFilter = null,
   onOtherSubFilterChange,
   className,
+  layout = "circles",
 }: Props) {
   const { t } = useTranslation();
   const filterAccent = accentFor(variant);
@@ -95,6 +98,103 @@ export function DiscoverHomeCategoryFilterRow({
     }
     onSelect(id);
   };
+
+  if (layout === "pills") {
+    const pillIdle =
+      "border-zinc-200 bg-white text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400";
+    const pillActive =
+      variant === "work"
+        ? "border-emerald-500 bg-white text-emerald-700 dark:border-emerald-400 dark:text-emerald-300"
+        : "border-orange-500 bg-white text-orange-700 dark:border-orange-400 dark:text-orange-300";
+    const pillBase =
+      "inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[15px] font-semibold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+    return (
+      <div className={className}>
+        <div
+          id="discover-home-category-filters"
+          className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <button
+            type="button"
+            onClick={() => selectCategory("all")}
+            className={cn(
+              pillBase,
+              filterAccent.ring,
+              selected === "all" ? pillActive : pillIdle,
+            )}
+          >
+            <Compass className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden />
+            {t("discoverHome.filters.all")}
+          </button>
+
+          {DISCOVER_HOME_CATEGORIES.filter((c) => c.id !== ALL_HELP_CATEGORY_ID).map((cat) => {
+            const isOther = cat.id === "other_help";
+            const active = selected === cat.id;
+            const subLabel =
+              isOther && otherSubFilter ? t(`otherHelpSubcategories.${otherSubFilter}`) : null;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => selectCategory(cat.id as DiscoverHomeCategoryFilter)}
+                className={cn(pillBase, filterAccent.ring, active ? pillActive : pillIdle)}
+              >
+                {categoryIconNode(cat.id, "h-4 w-4 shrink-0")}
+                <span className="truncate">
+                  {subLabel ?? t(`discoverHome.filters.${cat.id}`)}
+                </span>
+                {isOther ? <ChevronDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} /> : null}
+              </button>
+            );
+          })}
+        </div>
+
+        {selected === "other_help" && otherDropdownOpen ? (
+          <div className="mt-2 rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="px-2 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+              {t("discoverHome.filters.pickSubcategory")}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  onOtherSubFilterChange?.(null);
+                  setOtherDropdownOpen(false);
+                }}
+                className={cn(
+                  "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                  otherSubFilter === null
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                )}
+              >
+                {t("discoverHome.filters.allOther")}
+              </button>
+              {OTHER_HELP_SUBCATEGORIES.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => {
+                    onOtherSubFilterChange?.(sub.id);
+                    setOtherDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                    otherSubFilter === sub.id
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                  )}
+                >
+                  {t(`otherHelpSubcategories.${sub.id}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

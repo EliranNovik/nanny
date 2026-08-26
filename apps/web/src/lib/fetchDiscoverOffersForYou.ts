@@ -7,12 +7,16 @@ export type DiscoverOfferForYou = {
   id: string;
   title: string;
   categoryId: string | null;
+  customCategory: string | null;
   categoryLabel: string;
   createdAt: string;
   authorId: string;
   authorName: string;
   authorPhotoUrl: string | null;
   imageUrl: string | null;
+  locationLabel: string | null;
+  locationLat: number | null;
+  locationLng: number | null;
 };
 
 type ProfileRow = {
@@ -131,17 +135,29 @@ export async function fetchDiscoverOffersForYou(
           resize: "contain",
         })
       : null;
+    const meta = row.post_metadata;
+    const locationRaw =
+      typeof meta?.location === "string" ? meta.location.trim() : "";
+    const locationLabel = locationRaw.split(",")[0]?.trim() || locationRaw || null;
+    const latRaw = meta?.location_lat;
+    const lngRaw = meta?.location_lng;
+    const lat = typeof latRaw === "number" ? latRaw : Number(latRaw);
+    const lng = typeof lngRaw === "number" ? lngRaw : Number(lngRaw);
 
     offers.push({
       id: row.id,
       title,
       categoryId,
+      customCategory: custom,
       categoryLabel,
       createdAt: row.created_at,
       authorId: row.author_id,
       authorName,
       authorPhotoUrl: profile?.photo_url ?? null,
       imageUrl,
+      locationLabel,
+      locationLat: Number.isFinite(lat) ? lat : null,
+      locationLng: Number.isFinite(lng) ? lng : null,
     });
   }
 

@@ -59,6 +59,8 @@ const SKIP_DETAIL_KEYS = new Set([
   "images",
   "media_items",
   "other_type",
+  "renewed_at",
+  "renewedat",
 ]);
 
 const NOTE_KEYS = new Set([

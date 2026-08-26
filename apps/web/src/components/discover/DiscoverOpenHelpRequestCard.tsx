@@ -5,7 +5,6 @@ import {
   Baby,
   BadgeCheck,
   Bookmark,
-  CalendarDays,
   Car,
   Check,
   ChevronRight,
@@ -43,11 +42,18 @@ import {
   openHelpRequestScheduleLine,
   openHelpRequestTitle,
   openHelpRequestWhenBadgeLabel,
-  prettyDurationLabel,
   requestHelpExpiredBadgeClass,
   serviceCategoryTitle,
   whenBadgeToneClass,
 } from "@/lib/openHelpRequestDisplay";
+import {
+  categoryIllustrationSrc,
+  helpCategoryIdFromServiceDetails,
+  HIRE_CATEGORY_TILE_UI,
+  OTHER_HELP_SUBCATEGORY_UI,
+  resolveHelpCategoryIconId,
+} from "@/lib/discoverCategoryTileIcons";
+import { isServiceCategoryId, postServiceCategoryLabel } from "@/lib/serviceCategories";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   cleaning: Sparkles,
@@ -59,13 +65,48 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 
 function CategoryIcon({
   serviceType,
+  serviceDetails,
   className,
 }: {
   serviceType: string | null | undefined;
+  serviceDetails?: Record<string, unknown> | null;
   className?: string;
 }) {
-  const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  const id = resolveHelpCategoryIconId(
+    serviceType,
+    helpCategoryIdFromServiceDetails(serviceDetails),
+  );
+  const ui =
+    (id ? OTHER_HELP_SUBCATEGORY_UI[id] : null) ??
+    (id && isServiceCategoryId(id) ? HIRE_CATEGORY_TILE_UI[id] : null);
+  const Fallback = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  const Icon = ui?.Icon ?? Fallback;
   return <Icon className={className} aria-hidden />;
+}
+
+function CategoryIllustration({
+  serviceType,
+  serviceDetails,
+  className,
+}: {
+  serviceType: string | null | undefined;
+  serviceDetails?: Record<string, unknown> | null;
+  className?: string;
+}) {
+  return (
+    <span className={cn("relative isolate block overflow-hidden rounded-full bg-transparent", className)}>
+      <img
+        src={categoryIllustrationSrc(
+          serviceType,
+          helpCategoryIdFromServiceDetails(serviceDetails),
+        )}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-center scale-[1.22] object-cover object-center"
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  );
 }
 
 function timeAgo(dateStr: string | null | undefined): string {
@@ -88,12 +129,6 @@ function firstName(name: string): string {
   if (!t) return "Member";
   const i = t.indexOf(" ");
   return i > 0 ? t.slice(0, i) : t;
-}
-
-function durationBadgeLabel(row: DiscoverOpenHelpRequestRow): string | null {
-  const raw = prettyDurationLabel(row.time_duration) || prettyDurationLabel(row.shift_hours);
-  if (!raw) return null;
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 function pickupStaticMapUrl(
@@ -335,13 +370,14 @@ function WhenBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border-0 px-2 py-0.5 text-xs font-black",
+        "inline-flex items-center gap-1.5 rounded-full border-0 px-2.5 py-1 text-[13px] font-black shadow-none",
         expired ? "tracking-normal" : "uppercase tracking-[0.1em]",
-        expired ? requestHelpExpiredBadgeClass : whenBadgeToneClass(whenTimeframe),
+        !expired && whenBadgeToneClass(whenTimeframe),
         className,
+        expired && requestHelpExpiredBadgeClass,
       )}
     >
-      <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <Clock className="h-4 w-4 shrink-0" aria-hidden />
       {whenBadge}
     </span>
   );
@@ -373,17 +409,17 @@ const acceptRequestBtnClass = cn(
 );
 
 const iCanHelpBtnClass = cn(
-  "flex h-12 w-full items-center justify-center rounded-full",
-  "bg-emerald-600 text-[15px] font-bold text-white",
+  "pointer-events-auto inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3.5",
+  "bg-emerald-600 text-[13px] font-bold text-white shadow-md",
   "hover:bg-emerald-700 active:scale-[0.99]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   "disabled:pointer-events-none disabled:opacity-60",
 );
 
 const iCanHelpPendingClass = cn(
-  "flex h-12 w-full items-center justify-center rounded-full",
-  "bg-zinc-100 text-[14px] font-bold text-zinc-500",
-  "dark:bg-zinc-800 dark:text-zinc-400",
+  "pointer-events-auto inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3",
+  "bg-white/90 text-[12px] font-bold text-zinc-600 shadow-md backdrop-blur-sm",
+  "dark:bg-zinc-900/85 dark:text-zinc-300",
 );
 
 const dismissOpenHelpRequestBtnClass = cn(
@@ -420,12 +456,13 @@ export function DiscoverOpenHelpRequestCard({
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
-  const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
+  const categoryLabel = postServiceCategoryLabel(
+    row.service_type,
+    helpCategoryIdFromServiceDetails(row.service_details),
+  ).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
   const clientName = (row.client_display_name || "").trim() || "Member";
   const clientFirstName = firstName(clientName);
-  const durationLabel = durationBadgeLabel(row);
-  const expired = isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at);
   const [heroIndex, setHeroIndex] = useState(0);
   const heroCandidates = [
     jobAttachmentImageUrls({
@@ -479,7 +516,7 @@ export function DiscoverOpenHelpRequestCard({
           className,
         )}
       >
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.75rem] bg-zinc-200 dark:bg-zinc-800">
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.75rem] bg-zinc-200 dark:bg-zinc-800">
           {heroSrc ? (
             <img
               src={heroSrc}
@@ -490,12 +527,22 @@ export function DiscoverOpenHelpRequestCard({
               onError={() => setHeroIndex((i) => i + 1)}
             />
           ) : (
-            <DiscoverRequestHeroPlaceholder serviceType={row.service_type} />
+            <>
+              <DiscoverRequestHeroPlaceholder
+                serviceType={row.service_type}
+                serviceDetails={row.service_details}
+              />
+              <CategoryIllustration
+                serviceType={row.service_type}
+                serviceDetails={row.service_details}
+                className="pointer-events-none absolute end-2 top-1/2 z-[9] h-[5.5rem] w-[5.5rem] -translate-y-1/2 sm:h-[6.25rem] sm:w-[6.25rem]"
+              />
+            </>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
 
           <span className="absolute left-2.5 top-2.5 z-10 inline-flex max-w-[70%] items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
-            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0" />
+            <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{categoryLabel}</span>
           </span>
 
@@ -525,63 +572,56 @@ export function DiscoverOpenHelpRequestCard({
             </button>
           </div>
 
-          <div className="absolute inset-x-3 bottom-3 z-10 flex flex-col items-start gap-1.5">
-            <p className="line-clamp-2 text-[17px] font-bold leading-snug text-white">{title}</p>
-            {durationLabel ? (
-              <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold text-white backdrop-blur-sm">
-                <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{durationLabel}</span>
-              </span>
-            ) : expired ? (
-              <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold text-zinc-700 backdrop-blur-sm dark:bg-zinc-900/80 dark:text-zinc-100">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">
-                  {feedWhenExpiredOnLabel(t, i18n.language, row.when_timeframe, row.created_at)}
-                </span>
-              </span>
-            ) : null}
+          <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2">
+            <WhenBadge
+              whenTimeframe={row.when_timeframe}
+              createdAt={row.created_at}
+              className="min-w-0 max-w-[58%] bg-white/90 text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-900/85 dark:text-zinc-100"
+            />
+            {accepted ? (
+              <div className={cn(iCanHelpPendingClass, "ml-auto")}>Accepted · Pending</div>
+            ) : (
+              <button
+                type="button"
+                className={cn(iCanHelpBtnClass, "ml-auto")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAccept();
+                }}
+                disabled={accepting}
+              >
+                {accepting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  t("feed.iCanHelp")
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="mt-3 flex min-w-0 items-center gap-3 px-0.5">
-          <Avatar className="h-14 w-14 shrink-0">
-            <AvatarImage src={photoSrc || undefined} alt="" className="object-cover" />
-            <AvatarFallback className="bg-zinc-200 text-sm font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              {clientFirstName.slice(0, 1).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate text-[16px] font-bold leading-tight text-zinc-900 dark:text-white">
-              {clientFirstName}
-            </p>
-            {metaLine ? (
-              <p className="mt-0.5 truncate text-[13px] font-medium text-zinc-400 dark:text-zinc-500">
-                {metaLine}
+        <div className="mt-2 min-w-0 px-0.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Avatar className="h-11 w-11 shrink-0">
+              <AvatarImage src={photoSrc || undefined} alt="" className="object-cover" />
+              <AvatarFallback className="bg-zinc-200 text-sm font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {clientFirstName.slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-[16px] font-bold leading-tight text-zinc-900 dark:text-white">
+                {clientFirstName}
               </p>
-            ) : null}
+              {metaLine ? (
+                <p className="mt-0.5 truncate text-[13px] font-medium text-zinc-400 dark:text-zinc-500">
+                  {metaLine}
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
-
-        <div className="mt-3 px-0.5">
-          {accepted ? (
-            <div className={iCanHelpPendingClass}>Accepted · Pending</div>
-          ) : (
-            <button
-              type="button"
-              className={iCanHelpBtnClass}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAccept();
-              }}
-              disabled={accepting}
-            >
-              {accepting ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              ) : (
-                t("feed.iCanHelp")
-              )}
-            </button>
-          )}
+          <p className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-snug text-zinc-900 dark:text-white">
+            {title}
+          </p>
         </div>
       </article>
     );
@@ -596,7 +636,7 @@ export function DiscoverOpenHelpRequestCard({
             categoryIconCircleClass(row.service_type, "green"),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-6 w-6" />
+          <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-6 w-6" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
@@ -773,7 +813,10 @@ export function DiscoverMyOpenRequestCard({
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
-  const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
+  const categoryLabel = postServiceCategoryLabel(
+    row.service_type,
+    helpCategoryIdFromServiceDetails(row.service_details),
+  ).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
   const showAccepted = acceptedCount > 0 || acceptedHelpers.length > 0;
   const heroImageUrl = jobAttachmentImageUrls({
@@ -795,6 +838,79 @@ export function DiscoverMyOpenRequestCard({
   };
 
   if (layout === "carousel") {
+    if (!heroImageUrl) {
+      return (
+        <article
+          {...articleProps}
+          className={cn(
+            "flex h-full w-full min-w-0 cursor-pointer flex-col text-left outline-none",
+            "transition-transform active:scale-[0.99]",
+            "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            className,
+          )}
+        >
+          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.35rem]">
+            <DiscoverRequestHeroPlaceholder
+              serviceType={row.service_type}
+              serviceDetails={row.service_details}
+            />
+            <CategoryIllustration
+              serviceType={row.service_type}
+              serviceDetails={row.service_details}
+              className="pointer-events-none absolute end-1.5 top-1/2 z-10 h-[5.75rem] w-[5.75rem] -translate-y-1/2 sm:h-[6.5rem] sm:w-[6.5rem]"
+            />
+
+            <span className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
+              <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{categoryLabel}</span>
+            </span>
+
+            <span
+              className="absolute right-2 top-2 z-10 inline-flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm"
+              aria-label={
+                acceptedCount > 0
+                  ? `${acceptedCount} helpers accepted`
+                  : "No helpers accepted yet"
+              }
+            >
+              <Users className="h-3 w-3 shrink-0" strokeWidth={2.4} aria-hidden />
+              {acceptedCount}
+            </span>
+
+            {expired ? (
+              <span
+                className={cn(
+                  "absolute bottom-2 left-2 z-10 inline-flex max-w-[90%] items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-bold tracking-wide",
+                  requestHelpExpiredBadgeClass,
+                )}
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="truncate">
+                  {feedWhenExpiredOnLabel(
+                    t,
+                    i18n.language,
+                    row.when_timeframe,
+                    row.created_at,
+                  )}
+                </span>
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-2 min-w-0 px-0.5">
+            <p className="line-clamp-2 text-[14px] font-bold leading-snug text-zinc-900 dark:text-white">
+              {requestTitle}
+            </p>
+            {postedLabel ? (
+              <p className="mt-0.5 text-[12px] font-medium text-zinc-400 dark:text-zinc-500">
+                {compactPostedLabel(postedLabel)}
+              </p>
+            ) : null}
+          </div>
+        </article>
+      );
+    }
+
     return (
       <article
         {...articleProps}
@@ -805,23 +921,19 @@ export function DiscoverMyOpenRequestCard({
           className,
         )}
       >
-        <div className="relative aspect-[5/4] w-full overflow-hidden rounded-[1.35rem]">
-          {heroImageUrl ? (
-            <img
-              src={heroImageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <DiscoverRequestHeroPlaceholder serviceType={row.service_type} />
-          )}
+        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.35rem]">
+          <img
+            src={heroImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
 
           <span
             className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm"
           >
-            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0" />
+            <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{categoryLabel}</span>
           </span>
 
@@ -838,8 +950,13 @@ export function DiscoverMyOpenRequestCard({
           </span>
 
           {expired ? (
-            <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[90%] items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-700 shadow-sm backdrop-blur-sm dark:bg-zinc-900/80 dark:text-zinc-100">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span
+              className={cn(
+                "absolute bottom-2 left-2 z-10 inline-flex max-w-[90%] items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-bold tracking-wide",
+                requestHelpExpiredBadgeClass,
+              )}
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
               <span className="truncate">
                 {feedWhenExpiredOnLabel(
                   t,
@@ -878,19 +995,28 @@ export function DiscoverMyOpenRequestCard({
 
   return (
     <article {...articleProps} className={shellClass}>
-      <div className="flex gap-2.5">
+      <div className="flex items-center gap-2.5">
+        {heroImageUrl ? (
         <div
           className={cn(
             "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
             categoryIconCircleClass(row.service_type, "orange"),
           )}
         >
-          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
+          <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-5 w-5" />
         </div>
+        ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="relative flex min-w-0 flex-1 flex-col">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {!heroImageUrl ? (
+                <CategoryIcon
+                  serviceType={row.service_type}
+                  serviceDetails={row.service_details}
+                  className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400"
+                />
+              ) : null}
               <span className={cn(discoverCategoryLabelMutedClass, "sm:text-base")}>
                 {categoryLabel}
               </span>
@@ -937,18 +1063,26 @@ export function DiscoverMyOpenRequestCard({
           </div>
 
           <div className="flex items-end justify-between gap-2 pt-1 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
-            <div className="text-right">
-              {budget ? (
-                <>
-                  <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-                    {budget}
-                  </p>
-                  <p className="text-xs font-semibold text-muted-foreground">
-                    {row.budget_rate_type === "fixed" ? "Fixed budget" : "Total budget"}
-                  </p>
-                </>
-              ) : null}
-            </div>
+            {!heroImageUrl ? (
+              <CategoryIllustration
+                serviceType={row.service_type}
+                serviceDetails={row.service_details}
+                className="h-20 w-20 shrink-0 sm:h-[5.5rem] sm:w-[5.5rem]"
+              />
+            ) : (
+              <div className="text-right">
+                {budget ? (
+                  <>
+                    <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                      {budget}
+                    </p>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      {row.budget_rate_type === "fixed" ? "Fixed budget" : "Total budget"}
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            )}
 
             <button
               type="button"
@@ -976,6 +1110,7 @@ export function DiscoverMyLiveHelpCard({
   row,
   otherPartyName,
   otherPartyLabel = "Helper",
+  otherPartyPhotoUrl = null,
   onOpen,
   className,
   layout = "default",
@@ -996,6 +1131,7 @@ export function DiscoverMyLiveHelpCard({
   >;
   otherPartyName: string;
   otherPartyLabel?: string;
+  otherPartyPhotoUrl?: string | null;
   onOpen: () => void;
   className?: string;
   layout?: "default" | "carousel";
@@ -1003,9 +1139,32 @@ export function DiscoverMyLiveHelpCard({
 }) {
   const { t } = useTranslation();
   const description = openHelpRequestDescription(row);
-  const budget = formatOpenHelpRequestBudget(row);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
+  const photoSrc = resolveClientPhotoUrl(otherPartyPhotoUrl);
+  const photoInitials = helperInitials(otherPartyName);
+  const categoryIconColor =
+    categoryIconTone === "orange"
+      ? "text-orange-600 dark:text-orange-400"
+      : "text-emerald-600 dark:text-emerald-400";
+
+  const otherPartyPhoto = (
+    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800 sm:h-[4.5rem] sm:w-[4.5rem]">
+      {photoSrc ? (
+        <img
+          src={photoSrc}
+          alt=""
+          className="h-full w-full object-cover object-center"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-500 dark:text-zinc-300">
+          {photoInitials}
+        </span>
+      )}
+    </div>
+  );
 
   const liveBadge = (
     <span
@@ -1023,7 +1182,7 @@ export function DiscoverMyLiveHelpCard({
   const shellClass = cn(
     layout === "carousel" ? discoverRequestCardCarouselShellClass : "flex flex-col",
     "rounded-2xl",
-    layout === "carousel" ? "px-3.5 py-3.5" : "px-3 py-3",
+    layout === "carousel" ? "px-3 py-2.5" : "px-3 py-3",
     DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
     "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
@@ -1043,21 +1202,26 @@ export function DiscoverMyLiveHelpCard({
     className: shellClass,
   };
 
+  const chevron = (
+    <ChevronRight
+      className="h-5 w-5 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600"
+      strokeWidth={2}
+      aria-hidden
+    />
+  );
+
   if (layout === "carousel") {
     return (
       <article {...articleProps}>
         <div className="flex h-full w-full items-center gap-3">
-          <div
-            className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-              categoryIconCircleClass(row.service_type, categoryIconTone),
-            )}
-          >
-            <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
-          </div>
-
+          {otherPartyPhoto}
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
             <div className="flex min-w-0 items-center gap-2">
+              <CategoryIcon
+                serviceType={row.service_type}
+                serviceDetails={row.service_details}
+                className={cn("h-4 w-4 shrink-0", categoryIconColor)}
+              />
               <span className={discoverLiveHelpCategoryLabelClass}>{categoryLabel}</span>
               {liveBadge}
             </div>
@@ -1077,13 +1241,7 @@ export function DiscoverMyLiveHelpCard({
               </span>
             </div>
           </div>
-
-          <span
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-full text-zinc-400"
-            aria-hidden
-          >
-            <ChevronRight className="h-5 w-5 rtl-flip-icon" strokeWidth={2.25} />
-          </span>
+          {chevron}
         </div>
       </article>
     );
@@ -1091,76 +1249,44 @@ export function DiscoverMyLiveHelpCard({
 
   return (
     <article {...articleProps}>
-      <div className="flex gap-2.5">
-        <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-            categoryIconCircleClass(row.service_type, categoryIconTone),
-          )}
-        >
-          <CategoryIcon serviceType={row.service_type} className="h-5 w-5" />
-        </div>
+      <div className="flex items-center gap-3">
+        {otherPartyPhoto}
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 items-center gap-2">
+            <CategoryIcon
+              serviceType={row.service_type}
+              serviceDetails={row.service_details}
+              className={cn("h-4 w-4 shrink-0", categoryIconColor)}
+            />
+            <span className={cn(discoverLiveHelpCategoryLabelClass, "sm:text-[15px]")}>
+              {categoryLabel}
+            </span>
+            {liveBadge}
+          </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={cn(discoverLiveHelpCategoryLabelClass, "sm:text-[15px]")}>
-                {categoryLabel}
-              </span>
-              {liveBadge}
-            </div>
+          {description ? (
+            <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
+              {description}
+            </p>
+          ) : null}
 
-            {description ? (
-              <p className="mt-1 line-clamp-2 text-[15px] leading-snug text-muted-foreground sm:text-base">
-                {description}
-              </p>
-            ) : null}
-
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground sm:text-[15px]">
-              {row.location_city ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                  {row.location_city}
-                </span>
-              ) : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground sm:text-[15px]">
+            {row.location_city ? (
               <span className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4 shrink-0" aria-hidden />
-                <span>
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
-                  {otherPartyName}
-                </span>
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                {row.location_city}
               </span>
-            </div>
-          </div>
-
-          <div className="flex items-end justify-between gap-2 pt-1 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
-            <div className="text-right">
-              {budget ? (
-                <>
-                  <p className="text-xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-                    {budget}
-                  </p>
-                  <p className="text-xs font-semibold text-muted-foreground">
-                    {row.budget_rate_type === "fixed" ? "Fixed budget" : "Total budget"}
-                  </p>
-                </>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              className={viewRequestBtnClass}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
-              aria-label={t("discover.viewLive")}
-            >
-              <ChevronRight className="h-4 w-4 rtl-flip-icon" strokeWidth={3} aria-hidden />
-              {t("discover.viewLive")}
-            </button>
+            ) : null}
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">{otherPartyLabel}</span>{" "}
+                {otherPartyName}
+              </span>
+            </span>
           </div>
         </div>
+        {chevron}
       </div>
       {postedLabel ? (
         <span className={cn("mt-2", myRequestPostedBadgeClass)}>{postedLabel}</span>
