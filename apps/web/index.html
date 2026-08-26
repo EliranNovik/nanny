@@ -20,7 +20,48 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Tebnu" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="description" content="Find your helper for home & life" />
+    <meta name="description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta name="application-name" content="Tebnu" />
+
+    <!-- Open Graph / social. Canonical + og:url are set per route in JS so the SPA shell does not claim every URL is the homepage. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tebnu" />
+    <meta property="og:title" content="Tebnu - Your Helper for Home &amp; Life" />
+    <meta property="og:description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta property="og:image" content="https://tebnu.com/brand-mark.png" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="he_IL" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="ru_RU" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tebnu - Your Helper for Home &amp; Life" />
+    <meta name="twitter:description" content="Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
+    <meta name="twitter:image" content="https://tebnu.com/brand-mark.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://tebnu.com/#organization",
+          "name": "Tebnu",
+          "url": "https://tebnu.com/",
+          "logo": "https://tebnu.com/brand-mark.png",
+          "email": "info@tebnu.com"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://tebnu.com/#website",
+          "url": "https://tebnu.com/",
+          "name": "Tebnu",
+          "description": "Find trusted local helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.",
+          "publisher": { "@id": "https://tebnu.com/#organization" },
+          "inLanguage": ["en", "he", "fr", "ru"]
+        }
+      ]
+    }
+    </script>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />

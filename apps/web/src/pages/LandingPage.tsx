@@ -37,6 +37,7 @@ import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, usePageSeo } from "@/lib/seo";
 import {
   communityFeedRequestScrollState,
   communityFeedScrollState,
@@ -252,6 +253,11 @@ function helperInitials(name: string | null | undefined): string {
 }
 
 export default function LandingPage() {
+  usePageSeo({
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    path: "/",
+  });
   const navigate = useNavigate();
   const { theme } = useTheme();
   const buttonsRef = useRef<HTMLDivElement>(null);

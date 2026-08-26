@@ -8,6 +8,7 @@ import {
 import { Footer } from "@/components/Footer";
 import { legalContent } from "@/data/legalContent";
 import { useAuth } from "@/context/AuthContext";
+import { usePageSeo } from "@/lib/seo";
 import { FileText, Shield, Cookie, Scale, Globe, ChevronRight } from "lucide-react";
 
 type DocType = "terms" | "disclaimer" | "privacy" | "cookies";
@@ -69,6 +70,32 @@ export default function LegalPage() {
       navigate(config.path);
     }
   };
+
+  const legalSeo =
+    {
+      terms: {
+        title: "Rules of Service",
+        description: "Terms that govern using the Tebnu platform.",
+      },
+      privacy: {
+        title: "Privacy Policy",
+        description: "How Tebnu collects, uses, and protects your information.",
+      },
+      cookies: {
+        title: "Cookie Policy",
+        description: "How Tebnu uses cookies and similar technologies.",
+      },
+      disclaimer: {
+        title: "Disclaimer",
+        description: "Legal disclaimers for the Tebnu platform.",
+      },
+    }[activeTab];
+
+  usePageSeo({
+    title: legalSeo.title,
+    description: legalSeo.description,
+    path: currentPath,
+  });
 
   // Get active document content based on chosen language
   const translations = legalContent[docLang] || legalContent["en"];

@@ -1,7 +1,7 @@
 {
-  "name": "MamaLama - Find Childcare Fast",
-  "short_name": "MamaLama",
-  "description": "Find and connect with trusted nannies for your childcare needs",
+  "name": "Tebnu - Your Helper for Home & Life",
+  "short_name": "Tebnu",
+  "description": "Find trusted local helpers for home, childcare, cooking, errands, and more",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

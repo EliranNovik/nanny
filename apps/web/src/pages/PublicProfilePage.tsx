@@ -31,6 +31,7 @@ import { StarRating } from "@/components/StarRating";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { isFreelancerLiveWindowActive } from "@/lib/freelancerLiveWindow";
+import { applyPageSeo } from "@/lib/seo";
 
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
@@ -783,6 +784,23 @@ export default function PublicProfilePage() {
       setFavoriteBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!userId) return;
+    const name = profile?.full_name?.trim();
+    const city = profile?.city?.trim();
+    const bio = profile?.bio?.replace(/\s+/g, " ").trim();
+    const description =
+      bio ||
+      (name
+        ? `${name} on Tebnu${city ? ` · ${city}` : ""}`
+        : undefined);
+    applyPageSeo({
+      title: name || "Profile",
+      description,
+      path: `/profile/${userId}`,
+    });
+  }, [userId, profile]);
 
   useEffect(() => {
     if (!currentUser?.id || !userId || currentUser.id === userId) {

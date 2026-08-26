@@ -1,0 +1,22 @@
+# Tebnu — https://tebnu.com
+# Allow public marketing + shareable pages. Keep signed-in app out of the crawl.
+
+User-agent: *
+Allow: /
+
+Disallow: /messages
+Disallow: /chat
+Disallow: /admin
+Disallow: /payments
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /auth/
+Disallow: /client/
+Disallow: /freelancer/
+Disallow: /jobs
+Disallow: /calendar
+Disallow: /liked
+Disallow: /availability
+Disallow: /home
+
+Sitemap: https://tebnu.com/sitemap.xml
