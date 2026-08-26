@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 
 /** Same source as JobDetailsModal: `job.service_details.images` (public URLs). */
 export function jobAttachmentImageUrls(
-  job: { service_details?: { images?: unknown } } | null | undefined,
+  job:
+    | { service_details?: { images?: unknown } | null }
+    | null
+    | undefined,
 ): string[] {
   const raw = job?.service_details?.images;
   if (!Array.isArray(raw)) return [];

@@ -429,7 +429,7 @@ export function DiscoverOpenHelpRequestCard({
   const [heroIndex, setHeroIndex] = useState(0);
   const heroCandidates = [
     jobAttachmentImageUrls({
-      service_details: row.service_details as { images?: unknown } | null,
+      service_details: row.service_details ?? undefined,
     })[0] ?? null,
     pickupStaticMapUrl(row.service_details),
   ].filter((src): src is string => Boolean(src));
@@ -777,7 +777,7 @@ export function DiscoverMyOpenRequestCard({
   const postedLabel = timeAgo(row.created_at);
   const showAccepted = acceptedCount > 0 || acceptedHelpers.length > 0;
   const heroImageUrl = jobAttachmentImageUrls({
-    service_details: row.service_details as { images?: unknown } | null,
+    service_details: row.service_details ?? undefined,
   })[0] ?? null;
   const requestTitle = openHelpRequestDescription(row) || openHelpRequestTitle(row);
   const expired = isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at);
