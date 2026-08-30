@@ -20,9 +20,11 @@ import { queryKeys } from "@/hooks/data/keys";
 import {
   CommunityFeedFilterButton,
   CommunityFeedFilterDialog,
+} from "@/components/community/CommunityFeedFilterDialog";
+import {
   communityFeedFilterActiveBadgeClass,
   communityFeedFilterIdleBadgeClass,
-} from "@/components/community/CommunityFeedFilterDialog";
+} from "@/components/community/communityFeedBadgeClasses";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import type { DiscoverHomeCategoryId } from "@/lib/serviceCategories";
 import { OTHER_HELP_SUBCATEGORIES } from "@/lib/serviceCategories";
@@ -682,13 +684,9 @@ export function CommunityFeedHeader({
                 variant === "global"
                   ? "gap-1.5 px-2.5 py-1.5 text-[11px] sm:px-3 sm:text-xs"
                   : "gap-2.5 px-[1.125rem] py-2.5 text-[13px] font-black uppercase tracking-wide sm:px-5 sm:text-[14px]",
-                variant === "global"
-                  ? selected
-                    ? "bg-zinc-600 text-white dark:bg-zinc-700 dark:text-white"
-                    : "bg-zinc-500/90 text-white hover:bg-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  : selected
-                    ? communityFeedFilterActiveBadgeClass
-                    : communityFeedFilterIdleBadgeClass,
+                selected
+                  ? communityFeedFilterActiveBadgeClass
+                  : communityFeedFilterIdleBadgeClass,
               )}
             >
               <Icon
@@ -717,7 +715,7 @@ export function CommunityFeedHeader({
             <PublicPostsCategoryTabs
               dense
               startAligned
-              lightGrey={hidePostTypeTabsOnDesktop}
+              lightGrey
               activeId={categoryFilter}
               onSelect={(id) => {
                 onCategoryFilterChange(id);
@@ -732,9 +730,7 @@ export function CommunityFeedHeader({
                 onChange={(e) => onOtherSubFilterChange?.(e.target.value || null)}
                 className={cn(
                   "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 px-2.5 text-[11px] font-semibold outline-none",
-                  hidePostTypeTabsOnDesktop
-                    ? "bg-zinc-50 text-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200"
-                    : "bg-zinc-500/90 text-white dark:bg-zinc-800 dark:text-zinc-200",
+                  "bg-zinc-100 text-zinc-700 hover:bg-zinc-200/90 dark:bg-zinc-800 dark:text-zinc-200",
                 )}
                 aria-label={t("discoverHome.filters.pickSubcategory")}
               >

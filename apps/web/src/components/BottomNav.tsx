@@ -63,6 +63,7 @@ import { CommunityPostsCategoryNativeSelect } from "@/components/community/Commu
 import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import {
+  BottomNavFeedIcon,
   BottomNavHomeIcon,
   BottomNavMessagesTabIcon,
   BottomNavProfileIcon,
@@ -81,6 +82,7 @@ import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState"
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
 import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
+  publicProfileHeaderGlassIconBtnClass,
   signedInAppHeaderBgClass,
   signedInDesktopHeaderGlassClass,
   signedInHeaderIconBtnClass,
@@ -250,6 +252,7 @@ export function BottomNav() {
   const viewedPublicProfileUserId = publicProfileRouteMatch?.[1] ?? null;
   const isOwnPublicProfilePage =
     !!viewerId && viewedPublicProfileUserId === viewerId;
+  const isPublicProfilePage = Boolean(publicProfileRouteMatch);
   /** Discover home: header CTAs stay fixed — no scroll-hide chrome. */
   const discoverHomeFixedChrome = isDiscoverHome;
   /** Global community feed: compose on the left. */
@@ -804,11 +807,15 @@ export function BottomNav() {
     </Dialog>
   ) : null;
 
-  const OwnPublicProfileHeaderMenu = (
+  const OwnPublicProfileHeaderMenuBtn = ({
+    className,
+  }: {
+    className: string;
+  }) => (
     <button
       type="button"
       onClick={() => navigate(profilePath)}
-      className={signedInHeaderIconBtnClass}
+      className={className}
       aria-label={t("common.profile")}
     >
       <Menu className="h-7 w-7" strokeWidth={2} aria-hidden />
@@ -1034,7 +1041,7 @@ export function BottomNav() {
           <div className="flex shrink-0 items-center justify-end gap-0.5">
             <LanguageSwitcher />
             {isOwnPublicProfilePage ? (
-              OwnPublicProfileHeaderMenu
+              <OwnPublicProfileHeaderMenuBtn className={signedInHeaderIconBtnClass} />
             ) : (
               <button
                 type="button"
@@ -1063,12 +1070,19 @@ export function BottomNav() {
     </header>
   );
 
+  const mobileProfilePhotoHeader = isPublicProfilePage && !mobileSearchOpen;
+  const mobileHeaderIconClass = mobileProfilePhotoHeader
+    ? publicProfileHeaderGlassIconBtnClass
+    : signedInHeaderIconBtnClass;
+
   const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
     <header
       data-mobile-header-strip
       className={cn(
         "md:hidden fixed inset-x-0 top-0 z-[60] border-0 backdrop-blur-none",
-        signedInAppHeaderBgClass,
+        mobileProfilePhotoHeader
+          ? "bg-transparent"
+          : signedInAppHeaderBgClass,
       )}
       style={{
         paddingTop: "var(--app-safe-top, env(safe-area-inset-top, 0px))",
@@ -1085,7 +1099,7 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={handleCommunityFeedCompose}
-                className={signedInHeaderIconBtnClass}
+                className={mobileHeaderIconClass}
                 aria-label={t("nav.sharePost")}
               >
                 <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
@@ -1102,7 +1116,7 @@ export function BottomNav() {
             <button
               type="button"
               onClick={handleHeaderBack}
-              className={signedInHeaderIconBtnClass}
+              className={mobileHeaderIconClass}
               aria-label="Back"
             >
               <HeaderBackChevron />
@@ -1146,10 +1160,11 @@ export function BottomNav() {
             </>
           ) : (
             <>
+              {isPublicProfilePage ? null : (
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen((v) => !v)}
-                className={signedInHeaderIconBtnClass}
+                className={mobileHeaderIconClass}
                 aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
                 aria-expanded={mobileSearchOpen}
               >
@@ -1159,14 +1174,15 @@ export function BottomNav() {
                   <Search className="h-7 w-7" strokeWidth={2} />
                 )}
               </button>
+              )}
               {!mobileSearchOpen ? (
                 isOwnPublicProfilePage ? (
-                  OwnPublicProfileHeaderMenu
+                  <OwnPublicProfileHeaderMenuBtn className={mobileHeaderIconClass} />
                 ) : (
                   <button
                     type="button"
                     onClick={() => setNotificationsOpen(true)}
-                    className={cn("relative", signedInHeaderIconBtnClass)}
+                    className={cn("relative", mobileHeaderIconClass)}
                     aria-label="Notifications"
                   >
                     <Bell className="h-7 w-7" strokeWidth={2} />
@@ -1397,10 +1413,9 @@ export function BottomNav() {
                 aria-label="Explore live feed"
               >
                 <MobileTabItem active={isExploreActive} label={t("common.feed")}>
-                  <Rss
+                  <BottomNavFeedIcon
+                    active={isExploreActive}
                     className={bottomNavTabGlyphClass(isExploreActive)}
-                    strokeWidth={isExploreActive ? 0 : 1.85}
-                    aria-hidden
                   />
                 </MobileTabItem>
               </Link>

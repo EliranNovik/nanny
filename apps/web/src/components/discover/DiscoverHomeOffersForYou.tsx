@@ -77,14 +77,14 @@ export function DiscoverHomeOffersForYou({
     return (
       <section className={cn("w-full", className)} aria-label={t("discover.offersForYou")}>
         <div className="mb-5 h-7 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-        <div className="flex flex-col gap-5">
-          {Array.from({ length: 3 }, (_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="h-[4.75rem] w-[4.75rem] shrink-0 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3.5">
+              <div className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
               <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-3.5 w-36 animate-pulse rounded bg-zinc-200/70 dark:bg-zinc-800/70" />
-                <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-                <div className="h-3 w-40 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
+                <div className="h-4 w-36 animate-pulse rounded bg-zinc-200/70 dark:bg-zinc-800/70" />
+                <div className="h-5 w-52 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
+                <div className="h-4 w-40 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
               </div>
             </div>
           ))}
@@ -97,23 +97,23 @@ export function DiscoverHomeOffersForYou({
 
   return (
     <section className={cn("w-full", className)} aria-label={t("discover.offersForYou")}>
-      <h2 className="mb-5 text-[22px] font-black tracking-tight text-orange-700 dark:text-orange-400 sm:text-2xl">
+      <h2 className="mb-5 text-[24px] font-black tracking-tight text-orange-700 dark:text-orange-400 sm:text-2xl">
         {t("discover.offersForYou")}
       </h2>
 
       {visibleOffers.length === 0 ? (
         <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/60">
-          <p className="text-sm font-semibold text-foreground">
+          <p className="text-[15px] font-semibold text-foreground sm:text-sm">
             {t("discover.noSortMatch", {
               sort: t(`discoverHome.filters.${categoryFilter}`),
             })}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-[15px] text-muted-foreground sm:text-sm">
             {t("discover.tryAnotherSort")}
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
           {visibleOffers.map((offer) => {
             const iconId = resolveHelpCategoryIconId(offer.categoryId, offer.customCategory);
             const viewerLat = viewerLocation?.lat;
@@ -147,12 +147,12 @@ export function DiscoverHomeOffersForYou({
                 type="button"
                 onClick={() => openOffer(offer.id)}
                 className={cn(
-                  "flex w-full items-center gap-3 text-left",
+                  "flex w-full items-center gap-3.5 text-left sm:gap-3",
                   "outline-none transition-opacity active:opacity-80",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
-                <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800 sm:h-24 sm:w-24">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800">
                   {offer.imageUrl ? (
                     <img
                       src={offer.imageUrl}
@@ -172,36 +172,36 @@ export function DiscoverHomeOffersForYou({
                       <OfferCategoryIcon
                         categoryId={offer.categoryId}
                         customCategory={offer.customCategory}
-                        className="h-8 w-8 text-white"
+                        className="h-10 w-10 text-white"
                       />
                     </div>
                   )}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-orange-700 dark:text-orange-400">
+                  <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-orange-700 dark:text-orange-400 sm:text-[13px]">
                     <OfferCategoryIcon
                       categoryId={offer.categoryId}
                       customCategory={offer.customCategory}
-                      className="h-3.5 w-3.5 shrink-0"
+                      className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5"
                     />
                     <span className="truncate">{offer.categoryLabel}</span>
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-[16px] font-bold leading-snug text-zinc-900 dark:text-white">
+                  <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
                     {offer.title}
                   </p>
                   {locationLine ? (
-                    <p className="mt-0.5 truncate text-[13px] font-medium text-zinc-400 dark:text-zinc-500">
+                    <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
                       {locationLine}
                     </p>
                   ) : null}
-                  <p className="mt-0.5 truncate text-[13px] font-medium text-zinc-400 dark:text-zinc-500">
+                  <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
                     {offer.authorName} • {timeAgo}
                   </p>
                 </div>
 
                 <ChevronRight
-                  className="h-5 w-5 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600"
+                  className="h-6 w-6 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600 sm:h-5 sm:w-5"
                   strokeWidth={2}
                   aria-hidden
                 />

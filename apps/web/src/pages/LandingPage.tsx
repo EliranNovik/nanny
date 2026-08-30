@@ -518,9 +518,6 @@ export default function LandingPage() {
             <div className="relative flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(5.75rem,calc(env(safe-area-inset-top,0px)+4.5rem))]">
               <div className="relative z-10 space-y-4 pb-1 animate-in fade-in slide-in-from-bottom-3 duration-700">
                 <h1 className="max-w-[20rem] text-[2.5rem] font-black leading-[1.05] tracking-tight text-slate-900 sm:text-[2.65rem]">
-                  <span className="mb-2 block text-lg font-black tracking-tight text-orange-600">
-                    Tebnu
-                  </span>
                   One{" "}
                   <span className="inline-block rotate-[-1deg] rounded-xl bg-orange-50 px-2.5 py-0.5 text-orange-600 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.25)]">
                     community
@@ -585,9 +582,6 @@ export default function LandingPage() {
                 />
                 <div className="relative">
                 <h1 className="text-6xl font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)] lg:text-7xl">
-                  <span className="mb-4 block text-2xl font-black tracking-tight text-white lg:text-3xl">
-                    Tebnu
-                  </span>
                   One{" "}
                   <span className="inline-block rounded-2xl border-0 bg-white/40 px-3.5 py-1 text-orange-500 shadow-none outline-none ring-0 backdrop-blur-md">
                     community

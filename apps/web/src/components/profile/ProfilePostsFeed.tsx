@@ -4597,9 +4597,14 @@ function PostCard({
 
   const canOpenInReelsViewer = isReelsViewerPost(post as ReelFeedPost);
 
-  function renderGlobalMetadataLines(includeJobRequestBudget: boolean) {
+  function renderGlobalMetadataLines(
+    includeJobRequestBudget: boolean,
+    omitWhen = false,
+  ) {
     if (isolateFocusedPost) {
-      return isolatedDetails.map((item) => (
+      return isolatedDetails
+        .filter((item) => !omitWhen || item.kind !== "when")
+        .map((item) => (
         <div
           key={item.key}
           className={cn(
@@ -4630,7 +4635,7 @@ function PostCard({
             <span>{postLocationLine}</span>
           </div>
         ) : null}
-        {whenLabel ? (
+        {whenLabel && !omitWhen ? (
           <div
             className={cn(
               "flex items-center gap-2",
@@ -5053,6 +5058,112 @@ function PostCard({
       </div>
     ) : null;
 
+  const showPortraitMediaMeta =
+    isolateFocusedPost ? isolatedDetails.length > 0 : showFeedMetadataBox;
+  const showPortraitMediaOverlay =
+    isGlobalFeed &&
+    hasMedia &&
+    mediaOrientation !== "landscape" &&
+    Boolean(displayPostTitle || showFeedActionButton || showPortraitMediaMeta);
+
+  const globalFeedCtaButton = showFeedActionButton ? (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        handlePrimaryFeedAction();
+      }}
+      disabled={
+        isAcceptableHelpRequest
+          ? jobAccepting || Boolean(jobAcceptedAt)
+          : chatOpening ||
+            eventJoinBusy ||
+            eventJoinStatus === "accepted" ||
+            eventJoinStatus === "declined"
+      }
+      className={cn(
+        "inline-flex h-8 w-auto min-w-[9.25rem] max-w-full shrink-0 items-center justify-center gap-1.5 self-end rounded-lg px-5 text-[12px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:h-11 md:min-w-0 md:max-w-[10.75rem] md:rounded-xl md:px-4 md:text-[15px]",
+        globalFeedPrimaryCtaClass(
+          postTypeId,
+          isJobRequest && jobAcceptedAt
+            ? "accepted"
+            : eventJoinStatus === "accepted"
+              ? "accepted"
+              : eventJoinStatus === "declined"
+                ? "declined"
+                : eventJoinStatus === "pending"
+                  ? "pending"
+                  : undefined,
+        ),
+      )}
+    >
+      {isJobRequest && jobAccepting ? (
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+      ) : chatOpening || eventJoinBusy ? (
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+      ) : null}
+      <span>{globalFeedCtaText}</span>
+    </button>
+  ) : null;
+
+  const portraitMediaGlassOverlay = showPortraitMediaOverlay ? (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] p-3">
+      <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl bg-white/55 px-3 py-2.5 shadow-none backdrop-blur-2xl backdrop-saturate-150">
+        {displayPostTitle ? (
+          <h3
+            className={cn(
+              "flex items-start gap-2 text-[16px] font-bold leading-snug text-zinc-950 drop-shadow-none",
+              displayPostTitleLayout?.className,
+            )}
+            dir={displayPostTitleLayout?.dir}
+          >
+            {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
+              <CategoryIcon
+                categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
+                className="mt-0.5 h-5 w-5 shrink-0"
+              />
+            ) : null}
+            <span className="line-clamp-2">{displayPostTitle}</span>
+          </h3>
+        ) : null}
+        {showPortraitMediaMeta ? (
+          <div
+            className={cn(
+              "space-y-1.5 text-[13px] font-medium text-zinc-800 dark:text-zinc-100",
+              globalFeedContentLayout?.className,
+            )}
+            dir={globalFeedContentLayout?.dir}
+          >
+            {renderGlobalMetadataLines(false, true)}
+          </div>
+        ) : null}
+        {whenLabel || globalFeedCtaButton ? (
+          <div className="flex items-center justify-between gap-2">
+            {whenLabel ? (
+              <span
+                className={cn(
+                  whenBadgeClassForTimeframe(requestWhenTimeframe, whenExpired),
+                  "shrink-0 px-3 py-1.5 text-[12px] shadow-none",
+                )}
+              >
+                <CalendarDays
+                  className={whenBadgeIconClassForTimeframe(
+                    requestWhenTimeframe,
+                    whenExpired,
+                  )}
+                />
+                {whenLabel}
+              </span>
+            ) : (
+              <span />
+            )}
+            {globalFeedCtaButton}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div
       id={
@@ -5419,7 +5530,7 @@ function PostCard({
           </div>
 
           {post.tagged_profiles.length > 0 ? (
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+            <div className={cn("pointer-events-none absolute left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2", showPortraitMediaOverlay ? "bottom-28" : "bottom-3")}>
               <span className={mediaTaggedAtBadgeClass}>
                 <AtSign className="h-5 w-5" aria-hidden />
               </span>
@@ -5456,6 +5567,7 @@ function PostCard({
               ) : null}
             </div>
           ) : null}
+          {portraitMediaGlassOverlay}
         </div>
       ) : null}
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "image" && (
@@ -5507,7 +5619,7 @@ function PostCard({
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+            <div className={cn("pointer-events-none absolute left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2", showPortraitMediaOverlay ? "bottom-28" : "bottom-3")}>
               <span className={mediaTaggedAtBadgeClass}>
                 <AtSign className="h-5 w-5" aria-hidden />
               </span>
@@ -5544,6 +5656,7 @@ function PostCard({
               ) : null}
             </div>
           ) : null}
+          {portraitMediaGlassOverlay}
         </div>
       )}
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "video" && (
@@ -5688,7 +5801,7 @@ function PostCard({
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+            <div className={cn("pointer-events-none absolute left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2", showPortraitMediaOverlay ? "bottom-28" : "bottom-3")}>
               <span className={mediaTaggedAtBadgeClass}>
                 <AtSign className="h-5 w-5" aria-hidden />
               </span>
@@ -5725,6 +5838,7 @@ function PostCard({
               ) : null}
             </div>
           ) : null}
+          {portraitMediaGlassOverlay}
         </div>
       )}
 
@@ -5801,7 +5915,7 @@ function PostCard({
             </div>
           ) : (
             <>
-              {(displayPostTitle || displayPostDescription) && (
+              {((displayPostTitle && !showPortraitMediaOverlay) || displayPostDescription) && (
                 <div
                   className={cn(
                     cardPadX,
@@ -5830,7 +5944,7 @@ function PostCard({
                     )}
                     aria-label={!hasMedia ? "View post full screen" : undefined}
                   >
-                    {displayPostTitle ? (
+                    {displayPostTitle && !showPortraitMediaOverlay ? (
                       <h3
                         className={cn(
                           "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
@@ -5873,7 +5987,7 @@ function PostCard({
                   ) : null}
                 </div>
               )}
-              {(isolateFocusedPost ? isolatedDetails.length > 0 : showFeedMetadataBox) ? (
+              {showPortraitMediaMeta && !showPortraitMediaOverlay ? (
                 <div
                   className={cn(
                     cardPadX,
@@ -5888,45 +6002,14 @@ function PostCard({
             </>
           )}
 
-          {(showFeedActionButton || postStatusBadgesRow) ? (
-            <div className={cn(cardPadX, "mt-3 flex flex-col items-stretch gap-2 pb-1 md:items-end")}>
+          {(!showPortraitMediaOverlay && (showFeedActionButton || postStatusBadgesRow)) ? (
+            <div className={cn(cardPadX, "mt-3 flex flex-col items-end gap-2 pb-1")}>
               {postStatusBadgesRow}
-              {showFeedActionButton ? (
-              <button
-                type="button"
-                onClick={handlePrimaryFeedAction}
-                disabled={
-                  isAcceptableHelpRequest
-                    ? jobAccepting || Boolean(jobAcceptedAt)
-                    : chatOpening ||
-                      eventJoinBusy ||
-                      eventJoinStatus === "accepted" ||
-                      eventJoinStatus === "declined"
-                }
-                className={cn(
-                  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:max-w-[10.75rem] md:self-end",
-                  globalFeedPrimaryCtaClass(
-                    postTypeId,
-                    isJobRequest && jobAcceptedAt
-                      ? "accepted"
-                      : eventJoinStatus === "accepted"
-                        ? "accepted"
-                        : eventJoinStatus === "declined"
-                          ? "declined"
-                          : eventJoinStatus === "pending"
-                            ? "pending"
-                            : undefined,
-                  ),
-                )}
-              >
-                {isJobRequest && jobAccepting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                ) : chatOpening || eventJoinBusy ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                ) : null}
-                <span>{globalFeedCtaText}</span>
-              </button>
-              ) : null}
+              {globalFeedCtaButton}
+            </div>
+          ) : postStatusBadgesRow && showPortraitMediaOverlay ? (
+            <div className={cn(cardPadX, "mt-3 flex flex-col items-end gap-2 pb-1")}>
+              {postStatusBadgesRow}
             </div>
           ) : null}
         </>

@@ -194,6 +194,7 @@ function FeedMainContent({
             )}
           >
           <PublicPostsCategoryTabs
+            lightGrey
             activeId={categoryFilter}
             onSelect={(id) => {
               onCategoryFilterChange(id);

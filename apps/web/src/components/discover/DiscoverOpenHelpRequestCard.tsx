@@ -849,7 +849,7 @@ export function DiscoverMyOpenRequestCard({
             className,
           )}
         >
-          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.35rem]">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.75rem]">
             <DiscoverRequestHeroPlaceholder
               serviceType={row.service_type}
               serviceDetails={row.service_details}
@@ -857,23 +857,23 @@ export function DiscoverMyOpenRequestCard({
             <CategoryIllustration
               serviceType={row.service_type}
               serviceDetails={row.service_details}
-              className="pointer-events-none absolute end-1.5 top-1/2 z-10 h-[5.75rem] w-[5.75rem] -translate-y-1/2 sm:h-[6.5rem] sm:w-[6.5rem]"
+              className="pointer-events-none absolute end-1.5 top-1/2 z-10 h-[6.5rem] w-[6.5rem] -translate-y-1/2 sm:h-[7.25rem] sm:w-[7.25rem]"
             />
 
-            <span className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
-              <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-3.5 w-3.5 shrink-0" />
+            <span className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
+              <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-4 w-4 shrink-0" />
               <span className="truncate">{categoryLabel}</span>
             </span>
 
             <span
-              className="absolute right-2 top-2 z-10 inline-flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm"
+              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[12px] font-bold tabular-nums text-white backdrop-blur-sm"
               aria-label={
                 acceptedCount > 0
                   ? `${acceptedCount} helpers accepted`
                   : "No helpers accepted yet"
               }
             >
-              <Users className="h-3 w-3 shrink-0" strokeWidth={2.4} aria-hidden />
+              <Users className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden />
               {acceptedCount}
             </span>
 
@@ -898,11 +898,11 @@ export function DiscoverMyOpenRequestCard({
           </div>
 
           <div className="mt-2 min-w-0 px-0.5">
-            <p className="line-clamp-2 text-[14px] font-bold leading-snug text-zinc-900 dark:text-white">
+            <p className="line-clamp-2 text-[16px] font-bold leading-snug text-zinc-900 dark:text-white">
               {requestTitle}
             </p>
             {postedLabel ? (
-              <p className="mt-0.5 text-[12px] font-medium text-zinc-400 dark:text-zinc-500">
+              <p className="mt-0.5 text-[14px] font-medium text-zinc-400 dark:text-zinc-500">
                 {compactPostedLabel(postedLabel)}
               </p>
             ) : null}
@@ -921,7 +921,7 @@ export function DiscoverMyOpenRequestCard({
           className,
         )}
       >
-        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.35rem]">
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.75rem]">
           <img
             src={heroImageUrl}
             alt=""
@@ -931,21 +931,21 @@ export function DiscoverMyOpenRequestCard({
           />
 
           <span
-            className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm"
+            className="absolute left-2 top-2 z-10 inline-flex max-w-[75%] items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm"
           >
-            <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-3.5 w-3.5 shrink-0" />
+            <CategoryIcon serviceType={row.service_type} serviceDetails={row.service_details} className="h-4 w-4 shrink-0" />
             <span className="truncate">{categoryLabel}</span>
           </span>
 
           <span
-            className="absolute right-2 top-2 z-10 inline-flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm"
+            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[12px] font-bold tabular-nums text-white backdrop-blur-sm"
             aria-label={
               acceptedCount > 0
                 ? `${acceptedCount} helpers accepted`
                 : "No helpers accepted yet"
             }
           >
-            <Users className="h-3 w-3 shrink-0" strokeWidth={2.4} aria-hidden />
+            <Users className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden />
             {acceptedCount}
           </span>
 
@@ -970,11 +970,11 @@ export function DiscoverMyOpenRequestCard({
         </div>
 
         <div className="mt-2 min-w-0 px-0.5">
-          <p className="line-clamp-2 text-[14px] font-bold leading-snug text-zinc-900 dark:text-white">
+          <p className="line-clamp-2 text-[16px] font-bold leading-snug text-zinc-900 dark:text-white">
             {requestTitle}
           </p>
           {postedLabel ? (
-            <p className="mt-0.5 text-[12px] font-medium text-zinc-400 dark:text-zinc-500">
+            <p className="mt-0.5 text-[14px] font-medium text-zinc-400 dark:text-zinc-500">
               {compactPostedLabel(postedLabel)}
             </p>
           ) : null}

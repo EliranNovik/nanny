@@ -18,13 +18,13 @@ import {
   HelpCircle,
   HeartHandshake,
   Heart,
+  Globe,
   User as UserIcon,
   LayoutGrid,
   Medal,
   Trophy,
   Crown,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
@@ -38,7 +38,7 @@ import {
   publicProfileMediaPublicUrl,
   publicProfileMediaUrl,
 } from "@/lib/publicProfileMedia";
-import { avatarUrl } from "@/lib/imageTransform";
+import { avatarUrl, mediaUrl } from "@/lib/imageTransform";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
@@ -51,7 +51,11 @@ import {
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
-import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
+import {
+  HIRE_CATEGORY_TILE_UI,
+  resolveHelpCategoryIconId,
+} from "@/lib/discoverCategoryTileIcons";
+import { requestHeroWaveToneClass } from "@/components/discover/DiscoverRequestHeroWaves";
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import {
@@ -73,6 +77,7 @@ import {
 } from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { OwnProfileRecentPostersCarousel } from "@/components/profile/OwnProfileRecentPostersCarousel";
+import { FREELANCER_LANGUAGES } from "@/hooks/useFreelancerProfileForm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -144,6 +149,7 @@ type ProfilePostedHelpRequest = {
   status: string;
   created_at: string;
   location_city: string;
+  notes?: string | null;
 };
 
 interface PublicProfile {
@@ -161,6 +167,7 @@ interface PublicProfile {
   telegram_username?: string | null;
   average_rating?: number;
   total_ratings?: number;
+  languages?: string[];
 }
 
 /** Mirrors HelpersPage / `get_helpers_near_location` — freelancer or active client-helper. */
@@ -212,12 +219,18 @@ interface PublicProfileMediaRow {
 
 type ProfileMediaSectionTab = "images" | "videos" | "posts" | "about";
 
-function publicProfileCategoryBadgeIcon(categoryId: string) {
+function publicProfileCategoryBadgeIcon(
+  categoryId: string,
+  iconClassName?: string,
+) {
   const id = categoryId.toLowerCase();
   if (!isServiceCategoryId(id)) {
     return (
       <HelpCircle
-        className="h-[1.125rem] w-[1.125rem] shrink-0 text-slate-500 dark:text-slate-400"
+        className={cn(
+          "h-[1.125rem] w-[1.125rem] shrink-0",
+          iconClassName ?? "text-slate-500 dark:text-slate-400",
+        )}
         strokeWidth={2.25}
         aria-hidden
       />
@@ -226,7 +239,10 @@ function publicProfileCategoryBadgeIcon(categoryId: string) {
   const { Icon, iconClass } = HIRE_CATEGORY_TILE_UI[id];
   return (
     <Icon
-      className={cn("h-[1.125rem] w-[1.125rem] shrink-0", iconClass)}
+      className={cn(
+        "h-[1.125rem] w-[1.125rem] shrink-0",
+        iconClassName ?? iconClass,
+      )}
       strokeWidth={2.25}
       aria-hidden
     />
@@ -337,6 +353,122 @@ function ProfilePhotosGrid({
           ) : null}
         </div>
       ))}
+    </div>
+  );
+}
+
+function normalizeLanguages(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function ProfileLanguagesSection({
+  languages,
+  isOwnProfile,
+  editing,
+  draft,
+  saving,
+  onEdit,
+  onCancel,
+  onToggle,
+  onSave,
+}: {
+  languages: string[];
+  isOwnProfile: boolean;
+  editing: boolean;
+  draft: string[];
+  saving: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onToggle: (lang: string) => void;
+  onSave: () => void;
+}) {
+  if (!isOwnProfile && languages.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="mb-3 flex items-center gap-2">
+        <Globe className="h-4 w-4 shrink-0 text-orange-500" strokeWidth={2.25} aria-hidden />
+        <h3 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400">
+          Languages
+        </h3>
+      </div>
+      {editing && isOwnProfile ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {Array.from(new Set([...FREELANCER_LANGUAGES, ...draft])).map((lang) => {
+              const selected = draft.includes(lang);
+              return (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => onToggle(lang)}
+                  disabled={saving}
+                  className={cn(
+                    "rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-colors",
+                    selected
+                      ? "bg-orange-600 text-white"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                  )}
+                >
+                  {lang}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              onClick={onCancel}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-full"
+              onClick={onSave}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save languages"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {languages.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {languages.map((lang) => (
+                <span
+                  key={lang}
+                  className="rounded-full bg-zinc-100 px-3.5 py-1.5 text-[12px] font-bold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
+                >
+                  {lang}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-medium italic text-slate-400 dark:text-slate-500">
+              No languages added yet.
+            </p>
+          )}
+          {isOwnProfile ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={onEdit}
+            >
+              {languages.length > 0 ? "Edit languages" : "Add languages"}
+            </Button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -605,6 +737,9 @@ export default function PublicProfilePage() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
+  const [editingLanguages, setEditingLanguages] = useState(false);
+  const [languagesDraft, setLanguagesDraft] = useState<string[]>([]);
+  const [savingLanguages, setSavingLanguages] = useState(false);
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
@@ -677,6 +812,35 @@ export default function PublicProfilePage() {
       addToast({ title: "Could not update bio", variant: "error" });
     } finally {
       setSavingBio(false);
+    }
+  }
+
+  async function saveLanguages(nextLanguages: string[]) {
+    if (!userId || !isOwnProfile) return;
+    setSavingLanguages(true);
+    try {
+      const languages = nextLanguages.filter((lang) => lang.trim().length > 0);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ languages })
+        .eq("id", userId);
+      if (error) throw error;
+
+      if ((profile?.role || "") === "freelancer") {
+        await supabase
+          .from("freelancer_profiles")
+          .update({ languages })
+          .eq("user_id", userId);
+      }
+
+      setProfile((p) => (p ? { ...p, languages } : p));
+      setLanguagesDraft(languages);
+      setEditingLanguages(false);
+      addToast({ title: "Languages updated", variant: "success" });
+    } catch {
+      addToast({ title: "Could not update languages", variant: "error" });
+    } finally {
+      setSavingLanguages(false);
     }
   }
 
@@ -832,7 +996,10 @@ export default function PublicProfilePage() {
     const cached = viewerId ? readPublicProfileCache(viewerId, userId) : null;
 
     if (cached) {
-      setProfile(cached.profile as PublicProfile);
+      const cachedProfile = cached.profile as PublicProfile;
+      setProfile(cachedProfile);
+      setBioDraft(cachedProfile.bio ?? "");
+      setLanguagesDraft(normalizeLanguages(cachedProfile.languages));
       setFreelancerMeta((cached.freelancerMeta as FreelancerMeta) ?? null);
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
@@ -859,13 +1026,13 @@ export default function PublicProfilePage() {
             supabase
               .from("profiles")
               .select(
-                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, languages, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
               )
               .eq("id", userId)
               .single(),
             supabase
               .from("freelancer_profiles")
-              .select("bio, live_until, live_can_start_in, available_now")
+              .select("bio, languages, live_until, live_can_start_in, available_now")
               .eq("user_id", userId)
               .maybeSingle(),
           ]);
@@ -876,14 +1043,24 @@ export default function PublicProfilePage() {
           (profileData as { bio?: string | null } | null)?.bio ??
           freelancerData?.bio ??
           null;
+        const rawProfileLanguages = (profileData as { languages?: unknown } | null)
+          ?.languages;
+        const freelancerLanguages = normalizeLanguages(
+          (freelancerData as { languages?: unknown } | null)?.languages,
+        );
+        const languages = Array.isArray(rawProfileLanguages)
+          ? normalizeLanguages(rawProfileLanguages)
+          : freelancerLanguages;
         const nextProfile: PublicProfile = {
           ...profileData,
           bio,
+          languages,
           whatsapp_number: profileData.whatsapp_number_e164,
         };
         if (cancelled) return;
         setProfile(nextProfile);
         setBioDraft(bio ?? "");
+        setLanguagesDraft(languages);
         setFreelancerMeta({
           live_until: freelancerData?.live_until ?? null,
           live_can_start_in: freelancerData?.live_can_start_in ?? null,
@@ -1039,7 +1216,7 @@ export default function PublicProfilePage() {
             .limit(12),
           supabase
             .from("job_requests")
-            .select("id, service_type, status, created_at, location_city")
+            .select("id, service_type, status, created_at, location_city, notes")
             .eq("client_id", userId)
             .in("status", ["ready", "notifying", "confirmations_closed"])
             .order("created_at", { ascending: false })
@@ -1477,6 +1654,19 @@ export default function PublicProfilePage() {
         : null;
 
   function renderPostedHelpRow(job: ProfilePostedHelpRequest) {
+    const categoryLabel = jobServiceLabel(job.service_type);
+    const title = job.notes?.trim() || categoryLabel;
+    const iconId = resolveHelpCategoryIconId(job.service_type, null);
+    const CategoryIcon =
+      (iconId && isServiceCategoryId(iconId)
+        ? HIRE_CATEGORY_TILE_UI[iconId]?.Icon
+        : null) ?? HelpCircle;
+    const thumbSrc = getServiceCategoryImage(job.service_type);
+    const timeAgo = formatDistanceToNow(new Date(job.created_at), {
+      addSuffix: true,
+    });
+    const authorName = (profile?.full_name || "").trim().split(" ")[0] || "";
+
     return (
       <button
         key={job.id}
@@ -1486,51 +1676,54 @@ export default function PublicProfilePage() {
             `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`,
           )
         }
-        className="block w-full focus-visible:outline-none"
+        className={cn(
+          "flex w-full items-center gap-3.5 text-left sm:gap-3",
+          "outline-none transition-opacity active:opacity-80",
+          "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        )}
       >
-        <Card
-          className={cn(
-            "cursor-pointer overflow-hidden rounded-2xl border-0 bg-zinc-50 shadow-sm transition-all",
-            "sm:rounded-2xl sm:border-0 sm:bg-zinc-50 sm:shadow-sm",
-            "hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.99]",
-            "dark:border dark:border-white/10 dark:bg-zinc-900 dark:shadow-none dark:hover:border-white/15",
-            "dark:sm:border dark:sm:border-white/10 dark:sm:bg-zinc-900",
+        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800">
+          {thumbSrc ? (
+            <img
+              src={thumbSrc}
+              alt=""
+              className="h-full w-full object-cover object-center"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div
+              className={cn(
+                "flex h-full w-full items-center justify-center text-white",
+                requestHeroWaveToneClass(iconId ?? job.service_type),
+              )}
+            >
+              <CategoryIcon className="h-10 w-10 text-white" aria-hidden />
+            </div>
           )}
-        >
-          <CardContent className="flex items-center justify-between gap-3.5 p-5 sm:p-6">
-            <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-200/60 dark:bg-zinc-800">
-                <img
-                  src={getServiceCategoryImage(job.service_type)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div className="min-w-0 text-left">
-                <p className="line-clamp-1 text-base font-bold capitalize leading-tight text-slate-900 dark:text-white sm:text-[1.05rem]">
-                  {jobServiceLabel(job.service_type)}
-                </p>
-                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  {job.location_city || "Anywhere"}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2.5">
-              <Badge
-                variant="secondary"
-                className="max-w-[8.5rem] truncate border-0 bg-white/90 px-3 py-1 text-[11px] font-bold tabular-nums text-slate-600 shadow-none dark:bg-zinc-800/90 dark:text-slate-300"
-                title={new Date(job.created_at).toLocaleString()}
-              >
-                {formatDistanceToNow(new Date(job.created_at), {
-                  addSuffix: true,
-                })}
-              </Badge>
-              <ChevronRight className="h-6 w-6 shrink-0 text-slate-400 dark:text-slate-500" />
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-orange-700 dark:text-orange-400 sm:text-[13px]">
+            <CategoryIcon className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+            <span className="truncate">{categoryLabel}</span>
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
+            {title}
+          </p>
+          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+            {job.location_city || "Anywhere"}
+          </p>
+          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+            {authorName ? `${authorName} • ${timeAgo}` : timeAgo}
+          </p>
+        </div>
+
+        <ChevronRight
+          className="h-6 w-6 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600 sm:h-5 sm:w-5"
+          strokeWidth={2}
+          aria-hidden
+        />
       </button>
     );
   }
@@ -1564,12 +1757,14 @@ export default function PublicProfilePage() {
         "min-h-screen bg-background pb-24 md:pb-8",
         globalFeedMobilePageClass,
       )}
+      data-public-profile-page=""
       data-public-profile-guest={!currentUser ? "" : undefined}
     >
       {!currentUser ? (
         <>
           <LandingSiteHeader
             {...guestSiteHeaderChromeProps}
+            overlayOnHero
             onBrandClick={() => setAboutOpen(true)}
           />
           <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
@@ -1690,7 +1885,7 @@ export default function PublicProfilePage() {
                         {openingChat ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={2} />
+                          <MessageSquare className="h-6 w-6 shrink-0" fill="currentColor" strokeWidth={1.75} />
                         )}
                         Message
                       </button>
@@ -1827,90 +2022,123 @@ export default function PublicProfilePage() {
       <div className="md:hidden">
         {/* Profile hero + tab bar — solid white in light mode until the posts feed */}
         <div className="bg-white dark:bg-background">
-        {/* Profile Hero Header Info (Below header bar) */}
-        <div className={cn(
-          "px-5 pb-4",
-          currentUser
-            ? "pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))]"
-            : "pt-4",
-        )}>
-          <div className="mb-3 flex items-start gap-3.5">
-            <div className="h-28 w-28 shrink-0">
-              <button
-                type="button"
-                onClick={() =>
-                  profile?.photo_url && setProfileMediaLightbox({
-                    urls: [profile.photo_url!],
-                    initialIndex: 0,
-                  })
-                }
-                className="relative block h-full w-full overflow-hidden rounded-full ring-2 ring-slate-100 shadow-lg shadow-black/5 transition active:scale-[0.98] dark:ring-white/10 bg-muted"
-                aria-label="View profile photo full screen"
-              >
-                {/* Initials as fallback/underlay */}
-                <div className="absolute inset-0 flex items-center justify-center text-3xl font-black text-slate-300 dark:text-white/20">
-                  {photoInitials}
-                </div>
-
-                {profile?.photo_url && (
-                  <img
-                    src={avatarUrl.lg(profile.photo_url)}
-                    alt={profile.full_name ?? "Profile"}
-                    className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-                    fetchPriority="high"
-                    onLoad={(e) => (e.currentTarget.style.opacity = "1")}
-                    style={{ opacity: 0 }}
-                  />
-                )}
-                {profileLiveNowDot}
-              </button>
+        <div className="relative w-full overflow-hidden bg-muted h-[min(23.5rem,52vh)]">
+          <button
+            type="button"
+            onClick={() =>
+              profile?.photo_url && setProfileMediaLightbox({
+                urls: [profile.photo_url!],
+                initialIndex: 0,
+              })
+            }
+            className="absolute inset-0 block bg-muted transition active:scale-[0.995]"
+            aria-label="View profile photo full screen"
+          >
+            <div className="absolute inset-0 flex items-center justify-center text-5xl font-black text-slate-300 dark:text-white/20">
+              {photoInitials}
             </div>
-            <div className="flex min-w-0 flex-1 flex-col pt-1">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h1 className="min-w-0 truncate text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white">
-                    {profile.full_name}
-                  </h1>
-                  {profile.is_verified ? (
-                    <BadgeCheck
-                      className="h-6 w-6 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
-                      strokeWidth={2.35}
-                      aria-label="Certified verified helper"
-                    />
-                  ) : null}
-                </div>
+            {profile?.photo_url && (
+              <img
+                src={mediaUrl.hero(profile.photo_url)}
+                alt={profile.full_name ?? "Profile"}
+                className="absolute inset-0 h-full w-full object-cover"
+                fetchPriority="high"
+              />
+            )}
+          </button>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-black/20 to-transparent"
+            aria-hidden
+          />
+          {isLiveNow ? (
+            <span
+              className="pointer-events-none absolute right-3 top-[calc(var(--app-safe-top,env(safe-area-inset-top,0px))+4.75rem)] z-20 flex h-9 w-9 items-center justify-center"
+              role="status"
+              aria-label="Live now"
+            >
+              <span className="absolute inset-[5px] animate-ping rounded-full bg-emerald-400/45 motion-reduce:animate-none" />
+              <span className="relative block h-[18px] w-[18px] rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.95)]" />
+            </span>
+          ) : null}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/45 via-black/20 to-transparent px-5 pb-4 pt-12">
+            <div className="pointer-events-auto min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="min-w-0 truncate text-[1.75rem] font-black leading-none tracking-tight text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]">
+                  {profile.full_name}
+                </h1>
+                {profile.is_verified ? (
+                  <BadgeCheck
+                    className="h-6 w-6 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.35)]"
+                    strokeWidth={2.35}
+                    aria-label="Certified verified helper"
+                  />
+                ) : null}
               </div>
-              <div className="mt-2 flex items-center gap-1">
+              <div className="mt-2 flex min-w-0 items-center gap-2.5">
+                {profileLocationLabel ? (
+                  <p className="min-w-0 truncate text-[11px] font-black uppercase tracking-widest text-white/85">
+                    {profileLocationLabel}
+                  </p>
+                ) : null}
                 {reviews.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setReviewsSheetOpen(true)}
-                    className="inline-flex origin-left scale-110 items-center rounded-lg outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-orange-500/50"
-                    aria-label={`View all ${reviews.length} reviews`}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-white/60"
+                    aria-label={`View all ${profile.total_ratings || reviews.length} reviews`}
                   >
-                    <StarRating
-                      rating={profile.average_rating || 0}
-                      totalRatings={profile.total_ratings || 0}
-                      size="sm"
-                    />
+                    <Star className="h-3.5 w-3.5 shrink-0 text-white" fill="currentColor" strokeWidth={0} aria-hidden />
+                    <span className="text-[13px] font-black tabular-nums text-white">
+                      {(profile.average_rating || 0) > 0
+                        ? (profile.average_rating || 0).toFixed(1)
+                        : "New"}
+                    </span>
+                    <span className="text-[13px] font-bold tabular-nums text-white/80">
+                      ({profile.total_ratings || reviews.length})
+                    </span>
                   </button>
                 ) : (
-                  <StarRating
-                    rating={profile.average_rating || 0}
-                    totalRatings={profile.total_ratings || 0}
-                    size="sm"
-                    className="origin-left scale-110"
-                  />
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <Star className="h-3.5 w-3.5 shrink-0 text-white" fill="currentColor" strokeWidth={0} aria-hidden />
+                    <span className="text-[13px] font-black tabular-nums text-white">
+                      {(profile.average_rating || 0) > 0
+                        ? (profile.average_rating || 0).toFixed(1)
+                        : "New"}
+                    </span>
+                    <span className="text-[13px] font-bold tabular-nums text-white/80">
+                      ({profile.total_ratings || 0})
+                    </span>
+                  </span>
                 )}
               </div>
-              {profileLocationLabel ? (
-                <p className="mt-2 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
-                  {profileLocationLabel}
-                </p>
+              {profile.categories && profile.categories.length > 0 ? (
+                <div
+                  className={cn(
+                    "-mx-5 mt-2.5 px-5",
+                    profileCategoryScrollRowClass,
+                  )}
+                >
+                  {profile.categories.map((cat, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        profileCategoryBadgeClass,
+                        "pointer-events-none select-none border-0 bg-black/45 px-3 py-1.5 text-[11px] text-white shadow-none ring-0",
+                        "[-webkit-tap-highlight-color:transparent] backdrop-blur-xl backdrop-saturate-150",
+                      )}
+                    >
+                      {publicProfileCategoryBadgeIcon(cat)}
+                      {cat.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
               ) : null}
-              {helperBadgesRow}
             </div>
           </div>
+        </div>
+
+        <div className="px-5 pb-4 pt-4">
+          {helperBadgesRow}
 
           <ProfileBioHeader
             profile={profile}
@@ -1925,24 +2153,6 @@ export default function PublicProfilePage() {
             profileEditPath={isOwnProfile ? ownProfileEditPath : null}
           />
 
-          {profile.categories && profile.categories.length > 0 ? (
-            <div className={cn("-mx-5 mt-2 px-5", profileCategoryScrollRowClass)}>
-              {profile.categories.map((cat, i) => (
-                <Badge
-                  key={i}
-                  variant="secondary"
-                  className={cn(
-                    profileCategoryBadgeClass,
-                    "bg-slate-100/30 text-slate-950 dark:bg-white/5 dark:text-white",
-                  )}
-                >
-                  {publicProfileCategoryBadgeIcon(cat)}
-                  {cat.replace(/_/g, " ")}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
-
           {/* Connect Actions */}
           {!isOwnProfile && (
             <div className="flex items-center gap-3 mt-8">
@@ -1952,7 +2162,7 @@ export default function PublicProfilePage() {
                 disabled={openingChat}
                 className="flex-1 h-12 flex items-center justify-center gap-2 rounded-full bg-slate-950 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all disabled:opacity-50"
               >
-                {openingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4 shrink-0" />}
+                {openingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-6 w-6 shrink-0" fill="currentColor" strokeWidth={1.75} />}
                 Message
               </button>
               {profile.whatsapp_number ? (
@@ -2008,21 +2218,35 @@ export default function PublicProfilePage() {
         </div>
 
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
-          <div
-            className={cn(
-              "sticky z-30 border-b border-slate-100 bg-white dark:border-white/5 dark:bg-background py-1",
-              currentUser ? "top-0" : "top-[52px]",
-            )}
-          >
-            <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
-              <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
+          <div className="relative z-10 bg-transparent py-1">
+            <div className="relative mx-auto grid h-11 w-full max-w-sm grid-cols-4 items-center p-1">
+              <div
+                className={cn(
+                  "absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 shadow-none transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]",
+                  profileMediaTab === "posts" && "translate-x-0",
+                  profileMediaTab === "images" && "translate-x-full",
+                  profileMediaTab === "videos" && "translate-x-[200%]",
+                  profileMediaTab === "about" && "translate-x-[300%]",
+                )}
+              />
               {[
                 { id: "posts", Icon: LayoutGrid },
                 { id: "images", Icon: ImageIcon },
                 { id: "videos", Icon: Video },
                 { id: "about", Icon: UserCircle },
-              ].map(t => (
-                <button key={t.id} onClick={() => setProfileMediaTab(t.id as any)} className={cn("relative z-10 flex h-full items-center justify-center transition-colors duration-300", profileMediaTab === t.id ? "text-white" : "text-slate-400 dark:text-zinc-600")}>
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setProfileMediaTab(t.id as ProfileMediaSectionTab)}
+                  className={cn(
+                    "relative z-10 flex h-full items-center justify-center bg-transparent transition-colors duration-200",
+                    profileMediaTab === t.id
+                      ? "text-white"
+                      : "text-slate-400 dark:text-zinc-500",
+                  )}
+                  aria-label={t.id}
+                >
                   <t.Icon className="h-5 w-5" strokeWidth={2.5} />
                 </button>
               ))}
@@ -2091,6 +2315,29 @@ export default function PublicProfilePage() {
                 variant="panel"
                 profileEditPath={isOwnProfile ? ownProfileEditPath : null}
               />
+              <ProfileLanguagesSection
+                languages={profile.languages ?? []}
+                isOwnProfile={isOwnProfile}
+                editing={editingLanguages}
+                draft={languagesDraft}
+                saving={savingLanguages}
+                onEdit={() => {
+                  setLanguagesDraft(profile.languages ?? []);
+                  setEditingLanguages(true);
+                }}
+                onCancel={() => {
+                  setLanguagesDraft(profile.languages ?? []);
+                  setEditingLanguages(false);
+                }}
+                onToggle={(lang) =>
+                  setLanguagesDraft((prev) =>
+                    prev.includes(lang)
+                      ? prev.filter((item) => item !== lang)
+                      : [...prev, lang],
+                  )
+                }
+                onSave={() => void saveLanguages(languagesDraft)}
+              />
             </section>
 
             <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-0.5">
@@ -2117,7 +2364,18 @@ export default function PublicProfilePage() {
               {/* Needs Help — Restored to original styles */}
               <div>
                 <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/10"><HeartHandshake className="h-5 w-5 text-orange-600 dark:text-orange-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
-                <div className="space-y-4">{postedHelpRequests.length > 0 ? postedHelpRequests.map((job) => renderPostedHelpRow(job)) : (<div className="flex flex-col items-center gap-3 px-2 py-4 text-center"><HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden /><p className="text-sm font-medium text-slate-400 dark:text-slate-500">No open help requests right now.</p></div>)}</div>
+                <div className="grid grid-cols-1 gap-5">
+                  {postedHelpRequests.length > 0 ? (
+                    postedHelpRequests.map((job) => renderPostedHelpRow(job))
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
+                      <HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                      <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                        No open help requests right now.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* User Reviews — Full Restored Design with gradients and floating avatars */}
@@ -2231,6 +2489,29 @@ export default function PublicProfilePage() {
                     onSave={(next) => void saveBio(next)}
                     variant="panel"
                     profileEditPath={isOwnProfile ? ownProfileEditPath : null}
+                  />
+                  <ProfileLanguagesSection
+                    languages={profile.languages ?? []}
+                    isOwnProfile={isOwnProfile}
+                    editing={editingLanguages}
+                    draft={languagesDraft}
+                    saving={savingLanguages}
+                    onEdit={() => {
+                      setLanguagesDraft(profile.languages ?? []);
+                      setEditingLanguages(true);
+                    }}
+                    onCancel={() => {
+                      setLanguagesDraft(profile.languages ?? []);
+                      setEditingLanguages(false);
+                    }}
+                    onToggle={(lang) =>
+                      setLanguagesDraft((prev) =>
+                        prev.includes(lang)
+                          ? prev.filter((item) => item !== lang)
+                          : [...prev, lang],
+                      )
+                    }
+                    onSave={() => void saveLanguages(languagesDraft)}
                   />
                 </div>
               </div>

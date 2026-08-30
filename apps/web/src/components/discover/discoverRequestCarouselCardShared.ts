@@ -17,22 +17,20 @@ export const discoverRequestCardCarouselItemClass = cn(
   "md:min-h-[13rem] md:w-[26rem] lg:w-[28rem]",
 );
 
-/** Compact snap item for My requests — smaller than Offers for you so more cards peek. */
-export const discoverMyRequestCardCarouselItemClass = cn(
-  "flex h-auto w-[min(calc(100vw-9.5rem),14rem)] shrink-0 snap-start self-start",
-  "md:w-[16.5rem] lg:w-[17.5rem]",
+/** Nearby open-request cards on Help others — matches Offers for you width with peek. */
+export const discoverNearbyRequestCardCarouselItemClass = cn(
+  "flex h-auto w-[min(calc(100vw-5.5rem),20rem)] shrink-0 snap-center self-start",
+  "md:w-[22rem] lg:w-[24rem]",
 );
+
+/** My requests — same box size as Help others nearby requests. */
+export const discoverMyRequestCardCarouselItemClass =
+  discoverNearbyRequestCardCarouselItemClass;
 
 /** Compact snap item for My help live. */
 export const discoverLeanPersonalCardCarouselItemClass = cn(
   "flex h-auto w-[min(calc(100vw-2rem),21rem)] shrink-0 snap-start self-start",
   "md:w-[24rem] lg:w-[26rem]",
-);
-
-/** Nearby open-request cards on Help others — matches Offers for you width with peek. */
-export const discoverNearbyRequestCardCarouselItemClass = cn(
-  "flex h-auto w-[min(calc(100vw-5.5rem),20rem)] shrink-0 snap-center self-start",
-  "md:w-[22rem] lg:w-[24rem]",
 );
 
 export const discoverRequestCardCarouselBodyClass = "flex min-h-0 flex-1 flex-col";

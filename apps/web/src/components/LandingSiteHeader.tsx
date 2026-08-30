@@ -19,6 +19,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
+import { publicProfileHeaderGlassIconBtnClass } from "@/lib/discoverHomeHeaderChrome";
 
 const COMMUNITY_FEED_PATH = "/community/feed";
 
@@ -81,12 +82,14 @@ export type LandingSiteHeaderProps = {
   /** Guest feed: desktop hamburger that expands/collapses the left sidebar. */
   desktopSidebarOpen?: boolean;
   onDesktopSidebarToggle?: () => void;
+  /** Mobile: transparent bar over a full-bleed photo, with glassy icon badges. */
+  overlayOnHero?: boolean;
 };
 
 const brandHeaderBgClass =
   "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
 const glassyHeaderBgClass =
-  "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md";
+  "bg-white/70 dark:bg-background border-0 shadow-md";
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
@@ -114,6 +117,7 @@ export function LandingSiteHeader({
   onBrandClick,
   desktopSidebarOpen = false,
   onDesktopSidebarToggle,
+  overlayOnHero = false,
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
@@ -150,20 +154,24 @@ export function LandingSiteHeader({
     linkColorClass,
   );
 
-  const headerBgClass = isFeedChrome
+  const overlayGlassIconClass = publicProfileHeaderGlassIconBtnClass;
+
+  const headerBgClass = overlayOnHero
+    ? "max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:ring-0 md:border-0 md:shadow-none md:ring-0 md:bg-white dark:md:bg-background"
+    : isFeedChrome
     ? cn(
         "border-0 shadow-none ring-0",
         whiteHeader
           ? headerScrolled
-            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150"
-            : "bg-white"
+            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background dark:backdrop-blur-none"
+            : "bg-white dark:bg-background"
           : headerScrolled
-            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background/65"
+            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background dark:backdrop-blur-none"
             : "bg-white dark:bg-background",
       )
     : cn(
         isLandingGlass
-          ? "max-md:border-0 max-md:bg-white/95 max-md:shadow-none max-md:backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
+          ? "max-md:border-0 max-md:bg-white/95 max-md:shadow-none max-md:backdrop-blur-md max-md:dark:bg-background max-md:dark:backdrop-blur-none md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
           : variant === "glassy"
             ? glassyHeaderBgClass
             : brandHeaderBgClass,
@@ -233,7 +241,10 @@ export function LandingSiteHeader({
     <button
       type="button"
       onClick={() => setIsMenuOpen(!isMenuOpen)}
-      className={cn("md:hidden shrink-0 p-2 pe-0.5 transition-colors", menuIconClass)}
+      className={cn(
+        "md:hidden shrink-0 transition-colors",
+        overlayOnHero ? overlayGlassIconClass : cn("p-2 pe-0.5", menuIconClass),
+      )}
       aria-label="Toggle menu"
     >
       {isMenuOpen ? (
@@ -310,7 +321,9 @@ export function LandingSiteHeader({
       <header
         className={cn(
           "flex items-center px-4 transition-all duration-300 md:px-8 lg:px-12",
-          isFeedChrome
+          overlayOnHero
+            ? "max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-50 max-md:min-h-16 max-md:w-full max-md:max-w-none max-md:rounded-none max-md:px-3 max-md:py-1.5 max-md:pt-[var(--app-safe-top,env(safe-area-inset-top,0px))] md:relative md:sticky md:top-0 md:z-50 md:min-h-[64px] md:w-full md:max-w-none md:rounded-none md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
+            : isFeedChrome
             ? "relative sticky top-0 z-50 min-h-[52px] w-full max-w-none rounded-none px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
             : isLandingGlass
               ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:fixed md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[92%] md:max-w-5xl md:rounded-full md:min-h-[60px] md:py-3"
@@ -359,7 +372,10 @@ export function LandingSiteHeader({
                 <button
                   type="button"
                   onClick={onBrandClick}
-                  className="flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  className={cn(
+                    "flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99]",
+                    overlayOnHero && "max-md:hidden",
+                  )}
                   aria-label="What is Tebnu?"
                 >
                   {headerBrandMark}
@@ -367,7 +383,10 @@ export function LandingSiteHeader({
               ) : (
                 <Link
                   to="/"
-                  className="flex shrink-0 items-center"
+                  className={cn(
+                    "flex shrink-0 items-center",
+                    overlayOnHero && "max-md:hidden",
+                  )}
                   aria-label="Tebnu home"
                 >
                   {headerBrandMark}
@@ -500,7 +519,9 @@ export function LandingSiteHeader({
                   onClick={toggleTheme}
                   className={cn(
                     "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
-                    signInBtnClass,
+                    overlayOnHero
+                      ? cn(overlayGlassIconClass, "max-md:h-11 max-md:w-11")
+                      : signInBtnClass,
                   )}
                   aria-label={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
                   title={isDarkTheme ? "Dark mode" : "Light mode"}
@@ -517,6 +538,7 @@ export function LandingSiteHeader({
                   onClick={() => navigate("/login")}
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-5",
+                    overlayOnHero && "max-md:hidden",
                     isLandingGlass
                       ? "max-md:text-slate-900 max-md:hover:bg-slate-100 max-md:hover:text-slate-950 md:text-white md:hover:bg-white/10 md:hover:text-white"
                       : isFeedChrome
@@ -530,6 +552,7 @@ export function LandingSiteHeader({
                   onClick={() => navigate("/onboarding")}
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-4",
+                    overlayOnHero && "max-md:hidden",
                     simpleRegisterCta
                       ? "max-md:text-slate-900 max-md:hover:bg-slate-100 md:text-white md:hover:bg-white/10 md:hover:text-white/90"
                       : isLandingGlass

@@ -19,7 +19,7 @@ import {
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
 
 const stripCategoryCircleClass =
-  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-[4.25rem] md:w-[4.25rem] items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
+  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-[4.25rem] md:w-[4.25rem] items-center justify-center rounded-full border-0 bg-zinc-100 shadow-none transition-all dark:bg-zinc-800/75 md:dark:bg-zinc-900/55";
 
 const stripCategoryLabelClass =
   "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[10.5px]";
@@ -48,13 +48,13 @@ function accentFor(variant: "hire" | "work") {
     ? {
         ring: "focus-visible:ring-emerald-400/70",
         activeCircle:
-          "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none",
+          "border-0 bg-zinc-100 text-emerald-700 shadow-none dark:bg-zinc-800/75 dark:text-emerald-300 md:dark:bg-zinc-900/55",
         activeLabel: "text-emerald-700 dark:text-emerald-300",
       }
     : {
         ring: "focus-visible:ring-orange-400/70",
         activeCircle:
-          "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none",
+          "border-0 bg-zinc-100 text-orange-700 shadow-none dark:bg-zinc-800/75 dark:text-orange-300 md:dark:bg-zinc-900/55",
         activeLabel: "text-orange-700 dark:text-orange-300",
       };
 }
@@ -101,13 +101,13 @@ export function DiscoverHomeCategoryFilterRow({
 
   if (layout === "pills") {
     const pillIdle =
-      "border-zinc-200 bg-white text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400";
+      "border-0 bg-zinc-100 text-zinc-500 dark:border dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400";
     const pillActive =
       variant === "work"
-        ? "border-emerald-500 bg-white text-emerald-700 dark:border-emerald-400 dark:text-emerald-300"
-        : "border-orange-500 bg-white text-orange-700 dark:border-orange-400 dark:text-orange-300";
+        ? "border-0 bg-zinc-100 text-emerald-700 dark:border dark:border-emerald-400 dark:bg-zinc-900 dark:text-emerald-300"
+        : "border-0 bg-zinc-100 text-orange-700 dark:border dark:border-orange-400 dark:bg-zinc-900 dark:text-orange-300";
     const pillBase =
-      "inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[15px] font-semibold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+      "inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-[15px] font-semibold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
     return (
       <div className={className}>
@@ -216,7 +216,7 @@ export function DiscoverHomeCategoryFilterRow({
               stripCategoryCircleClass,
               selected === "all"
                 ? filterAccent.activeCircle
-                : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
+                : "text-slate-500 dark:text-zinc-400",
             )}
           >
             <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
@@ -254,7 +254,7 @@ export function DiscoverHomeCategoryFilterRow({
                   stripCategoryCircleClass,
                   active
                     ? filterAccent.activeCircle
-                    : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400",
+                    : "text-slate-500 dark:text-zinc-400",
                 )}
               >
                 <span className={stripCategoryIconShellClass}>
