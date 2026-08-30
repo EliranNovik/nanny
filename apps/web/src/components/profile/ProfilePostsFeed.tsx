@@ -5070,8 +5070,7 @@ function PostCard({
     <button
       type="button"
       onClick={(e) => {
-        e.stopPropagation();
-        handlePrimaryFeedAction();
+        handlePrimaryFeedAction(e);
       }}
       disabled={
         isAcceptableHelpRequest
