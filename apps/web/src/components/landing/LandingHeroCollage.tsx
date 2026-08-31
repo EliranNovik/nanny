@@ -189,9 +189,10 @@ const POST_TYPE_LABELS: Record<string, string> = {
   community: "Community",
 };
 
-function postTypeBadgeClass(typeId: string) {
+function postTypeBadgeClass(typeId: string, largeText?: boolean) {
   return cn(
-    "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-xs font-bold",
+    "inline-flex shrink-0 items-center rounded-md font-bold",
+    largeText ? "px-3 py-1.5 text-sm" : "px-2.5 py-1 text-xs",
     typeId === "request_help" && requestPostBadgeClass,
     typeId === "offer_service" && "bg-emerald-100 text-emerald-700",
     typeId === "event" && "bg-violet-100 text-violet-700",
@@ -226,14 +227,23 @@ function collageActionButtonClass(typeId: CollagePostTypeId) {
 function CollagePostTypeBadge({
   typeId,
   className,
+  largeText,
 }: {
   typeId: string;
   className?: string;
+  largeText?: boolean;
 }) {
   const Icon = postTypeIcon(typeId);
   return (
-    <span className={cn(postTypeBadgeClass(typeId), className)}>
-      <Icon className="mr-1 h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+    <span className={cn(postTypeBadgeClass(typeId, largeText), className)}>
+      <Icon
+        className={cn(
+          "mr-1 shrink-0",
+          largeText ? "h-4 w-4" : "h-3.5 w-3.5",
+        )}
+        strokeWidth={2.25}
+        aria-hidden
+      />
       {POST_TYPE_LABELS[typeId] ?? typeId}
     </span>
   );
@@ -262,16 +272,19 @@ function CollagePostHeader({
   author,
   postTypeId,
   compact,
+  largeText,
 }: {
   author: MockAuthor;
   postTypeId: string;
   compact?: boolean;
+  largeText?: boolean;
 }) {
   return (
     <div
       className={cn(
         "flex shrink-0 items-start gap-2 border-b border-slate-100 bg-white antialiased dark:border-zinc-800 dark:bg-zinc-800",
         compact ? "px-2 py-1.5" : "px-2.5 py-2 lg:px-3 lg:py-2.5",
+        largeText && "px-3 py-2.5",
       )}
     >
       <CollageAvatar
@@ -285,7 +298,7 @@ function CollagePostHeader({
             <p
               className={cn(
                 "truncate font-bold leading-tight text-slate-900 dark:text-zinc-100",
-                compact ? "text-base" : "text-base",
+                largeText ? "text-lg" : "text-base",
               )}
             >
               {author.name}
@@ -293,13 +306,13 @@ function CollagePostHeader({
             <p
               className={cn(
                 "mt-0.5 truncate font-medium text-slate-500 dark:text-zinc-400",
-                compact ? "text-xs" : "text-xs",
+                largeText ? "text-sm" : "text-xs",
               )}
             >
               {author.postedLabel}
             </p>
           </div>
-          <CollagePostTypeBadge typeId={postTypeId} />
+          <CollagePostTypeBadge typeId={postTypeId} largeText={largeText} />
         </div>
       </div>
     </div>
@@ -310,16 +323,19 @@ function CollageActionButton({
   typeId,
   label,
   compact,
+  largeText,
 }: {
   typeId: CollagePostTypeId;
   label: string;
   compact?: boolean;
+  largeText?: boolean;
 }) {
   return (
     <div
       className={cn(
         "shrink-0 border-t border-slate-100 bg-white dark:border-zinc-800 dark:bg-zinc-800",
         compact ? "px-2 py-1.5" : "px-2.5 py-2 lg:px-3",
+        largeText && "px-3 py-2",
       )}
     >
       <button
@@ -329,7 +345,7 @@ function CollageActionButton({
         className={cn(
           collageActionButtonClass(typeId),
           "antialiased",
-          compact ? "h-9 text-sm" : "h-9 text-xs lg:text-sm",
+          largeText ? "h-11 text-base" : compact ? "h-9 text-sm" : "h-9 text-xs lg:text-sm",
         )}
       >
         {label}
@@ -341,9 +357,11 @@ function CollageActionButton({
 function CollageCommentSheet({
   comments,
   compact,
+  largeText,
 }: {
   comments: MockComment[];
   compact?: boolean;
+  largeText?: boolean;
 }) {
   return (
     <div className="shrink-0 border-t border-slate-100 bg-white px-2.5 py-2.5 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3 lg:py-3">
@@ -358,7 +376,7 @@ function CollageCommentSheet({
             <p
               className={cn(
                 "min-w-0 leading-snug text-slate-700 dark:text-zinc-200",
-                compact ? "text-sm" : "text-sm",
+                largeText ? "text-base" : "text-sm",
               )}
             >
               <span className="font-bold text-slate-900 dark:text-zinc-100">
@@ -394,6 +412,7 @@ function CollageMediaCard({
   mock,
   imageUrl,
   compact,
+  largeText,
   shellClassName,
   tilt,
   hideComments = false,
@@ -401,6 +420,7 @@ function CollageMediaCard({
   mock: CollageMediaMock;
   imageUrl: string | null;
   compact?: boolean;
+  largeText?: boolean;
   shellClassName?: string;
   tilt: string;
   hideComments?: boolean;
@@ -413,14 +433,30 @@ function CollageMediaCard({
         author={mock.author}
         postTypeId={mock.postTypeId}
         compact={compact}
+        largeText={largeText}
       />
       {mock.title ? (
-        <div className="shrink-0 border-b border-slate-100 bg-white px-2.5 py-2 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3">
-          <p className="text-sm font-bold leading-snug text-slate-900 dark:text-zinc-100">
+        <div
+          className={cn(
+            "shrink-0 border-b border-slate-100 bg-white px-2.5 py-2 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3",
+            largeText && "px-3 py-2.5",
+          )}
+        >
+          <p
+            className={cn(
+              "font-bold leading-snug text-slate-900 dark:text-zinc-100",
+              largeText ? "text-base" : "text-sm",
+            )}
+          >
             {mock.title}
           </p>
           {mock.subtitle ? (
-            <p className="mt-0.5 text-xs leading-snug text-slate-600 dark:text-zinc-300">
+            <p
+              className={cn(
+                "mt-0.5 leading-snug text-slate-600 dark:text-zinc-300",
+                largeText ? "text-sm" : "text-xs",
+              )}
+            >
               {mock.subtitle}
             </p>
           ) : null}
@@ -434,7 +470,7 @@ function CollageMediaCard({
             className="h-full w-full object-cover"
             loading="eager"
             decoding="async"
-            fetchPriority="high"
+            {...{ fetchpriority: "high" }}
           />
         ) : (
           <div
@@ -452,9 +488,10 @@ function CollageMediaCard({
         typeId={mock.postTypeId}
         label={mock.actionLabel}
         compact={compact}
+        largeText={largeText}
       />
       {hideComments ? null : (
-        <CollageCommentSheet comments={mock.comments} compact={compact} />
+        <CollageCommentSheet comments={mock.comments} compact={compact} largeText={largeText} />
       )}
     </CollageCardShell>
   );
@@ -465,11 +502,13 @@ function CollageTextPostCard({
   shellClassName,
   tilt,
   hideComments = false,
+  largeText,
 }: {
   post: CollageTextPostMock;
   shellClassName?: string;
   tilt: string;
   hideComments?: boolean;
+  largeText?: boolean;
 }) {
   const isOffer = post.postTypeId === "offer_service";
   const TitleIcon = isOffer ? Wrench : Baby;
@@ -480,28 +519,63 @@ function CollageTextPostCard({
         author={post.author}
         postTypeId={post.postTypeId}
         compact
+        largeText={largeText}
       />
       <div className="min-h-0 flex-1 overflow-hidden px-2 pb-1.5 pt-1.5 antialiased">
         <div className="flex h-full min-h-0 flex-col rounded-xl bg-white p-2.5 dark:bg-zinc-800">
           <div className="flex min-h-0 gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="flex items-center gap-1.5 text-sm font-bold leading-snug text-slate-900 dark:text-zinc-100">
-                <TitleIcon className="h-4 w-4 shrink-0 text-slate-600 dark:text-zinc-400" strokeWidth={2.25} aria-hidden />
+              <h3
+                className={cn(
+                  "flex items-center gap-1.5 font-bold leading-snug text-slate-900 dark:text-zinc-100",
+                  largeText ? "text-base" : "text-sm",
+                )}
+              >
+                <TitleIcon
+                  className={cn(
+                    "shrink-0 text-slate-600 dark:text-zinc-400",
+                    largeText ? "h-5 w-5" : "h-4 w-4",
+                  )}
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
                 <span>{post.title}</span>
               </h3>
-              <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-zinc-300">
+              <p
+                className={cn(
+                  "mt-1.5 line-clamp-3 leading-relaxed text-slate-700 dark:text-zinc-300",
+                  largeText ? "text-base" : "text-sm",
+                )}
+              >
                 {post.body}
               </p>
-              <div className="mt-2 space-y-1 text-sm font-medium text-slate-700 dark:text-zinc-200">
+              <div
+                className={cn(
+                  "mt-2 space-y-1 font-medium text-slate-700 dark:text-zinc-200",
+                  largeText ? "text-base" : "text-sm",
+                )}
+              >
                 {post.whenLabel ? (
                   <div className="flex items-center gap-1.5">
-                    <Clock className="h-3 w-3 shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
+                    <Clock
+                      className={cn(
+                        "shrink-0 text-slate-500 dark:text-zinc-400",
+                        largeText ? "h-4 w-4" : "h-3 w-3",
+                      )}
+                      aria-hidden
+                    />
                     <span>{post.whenLabel}</span>
                   </div>
                 ) : null}
                 {post.rateLabel ? (
                   <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
-                    <Coins className="h-3 w-3 shrink-0 dark:text-zinc-400" aria-hidden />
+                    <Coins
+                      className={cn(
+                        "shrink-0 dark:text-zinc-400",
+                        largeText ? "h-4 w-4" : "h-3 w-3",
+                      )}
+                      aria-hidden
+                    />
                     <span>{post.rateLabel}</span>
                   </div>
                 ) : null}
@@ -524,9 +598,10 @@ function CollageTextPostCard({
         typeId={post.postTypeId}
         label={post.actionLabel}
         compact
+        largeText={largeText}
       />
       {!hideComments ? (
-        <CollageCommentSheet comments={post.comments} compact />
+        <CollageCommentSheet comments={post.comments} compact largeText={largeText} />
       ) : null}
     </CollageCardShell>
   );
@@ -607,6 +682,7 @@ function LandingHeroCollageCanvas({
           mock={EVENT_CARD_MOCK}
           imageUrl={eventImage}
           compact={embedded}
+          largeText={embedded}
           shellClassName={
             embedded
               ? "left-0 top-[3%] z-20 h-[56%] w-[72%]"
@@ -629,6 +705,7 @@ function LandingHeroCollageCanvas({
             shellClassName="left-[42%] top-[11%] z-30 h-[50%] w-[60%]"
             tilt="rotate-0"
             hideComments
+            largeText
           />
         ) : null}
 

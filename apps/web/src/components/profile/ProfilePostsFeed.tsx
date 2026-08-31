@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -27,6 +27,7 @@ import {
   Users,
   CalendarDays,
   MapPin,
+  MapPinned,
   Coins,
   HelpCircle,
   LifeBuoy,
@@ -491,7 +492,7 @@ function IsolatedDetailIcon({
   );
   switch (kind) {
     case "location":
-      return <MapPin className={className} />;
+      return <MapPinned className={className} />;
     case "from":
       return <ArrowUpRight className={className} />;
     case "to":
@@ -3339,9 +3340,84 @@ export function ComposeModal({
 }
 
 
-/** User-written caption/body — grey, preserve saved line breaks. */
+/** User-written caption/body — grey in light, white in dark. Preserve saved line breaks. */
 const postFreeTextClassName =
-  "whitespace-pre-wrap break-words text-muted-foreground leading-relaxed";
+  "whitespace-pre-wrap break-words text-muted-foreground dark:text-white leading-relaxed";
+
+function FeedExpandableFreeText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  const measure = useCallback(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 2);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (expanded) return;
+    measure();
+  }, [text, expanded, measure]);
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el || expanded) return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expanded, measure]);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  const stop = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  return (
+    <div>
+      <p
+        ref={textRef}
+        {...bidirectionalTextProps(
+          text,
+          cn(postFreeTextClassName, !expanded && "line-clamp-2", className),
+        )}
+      >
+        {renderCaptionWithMentions(text)}
+      </p>
+      {overflows || expanded ? (
+        <span
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          className="relative z-10 mt-1.5 inline-flex cursor-pointer items-center rounded-full bg-zinc-200/90 px-2.5 py-1 text-[12px] font-semibold text-zinc-500 dark:bg-zinc-700/80 dark:text-zinc-400"
+          onMouseDown={stop}
+          onClick={(e) => {
+            stop(e);
+            setExpanded((prev) => !prev);
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            stop(e);
+            setExpanded((prev) => !prev);
+          }}
+        >
+          {expanded ? t("common.showLess") : t("common.showMore")}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 /** Author avatar — green dot when in active 24h go-live (`live_until` in the future). */
 function PostAuthorAvatar({
@@ -4661,7 +4737,7 @@ function PostCard({
       <>
         {postLocationLine ? (
           <div className={cn("flex min-w-0 items-center gap-2", ink)}>
-            <MapPin className={cn("h-5 w-5 shrink-0", mute)} />
+            <MapPinned className={cn("h-5 w-5 shrink-0", mute)} />
             <span className="min-w-0 break-words">{postLocationLine}</span>
           </div>
         ) : null}
@@ -5124,7 +5200,7 @@ function PostCard({
             eventJoinStatus === "declined"
       }
       className={cn(
-        "inline-flex h-8 w-auto min-w-[9.25rem] max-w-full shrink-0 items-center justify-center gap-1.5 self-end rounded-lg px-5 text-[12px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:h-11 md:min-w-0 md:max-w-[10.75rem] md:rounded-xl md:px-4 md:text-[15px]",
+        "inline-flex h-10 w-auto min-w-[10rem] max-w-full shrink-0 items-center justify-center gap-1.5 self-end rounded-xl px-6 text-[13px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:h-12 md:min-w-0 md:max-w-[12rem] md:rounded-xl md:px-5 md:text-[16px]",
         globalFeedPrimaryCtaClass(
           postTypeId,
           isJobRequest && jobAcceptedAt
@@ -5925,14 +6001,10 @@ function PostCard({
                     </h3>
                   ) : null}
                   {displayTextOnlyBody ? (
-                    <p
-                      {...bidirectionalTextProps(
-                        displayTextOnlyBody,
-                        cn("mt-2 text-[17px]", postFreeTextClassName),
-                      )}
-                    >
-                      {renderCaptionWithMentions(displayTextOnlyBody)}
-                    </p>
+                    <FeedExpandableFreeText
+                      text={displayTextOnlyBody}
+                      className="mt-2 text-[17px]"
+                    />
                   ) : null}
                 </button>
                 {postTranslation.showControl ? (
@@ -5946,7 +6018,7 @@ function PostCard({
                 ) : null}
                 <div
                   className={cn(
-                    "mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/85",
+                    "mt-5 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/85",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6004,18 +6076,10 @@ function PostCard({
                       </h3>
                     ) : null}
                     {displayPostDescription ? (
-                      <p
-                        {...bidirectionalTextProps(
-                          displayPostDescription,
-                          cn(
-                            "text-[17px]",
-                            postFreeTextClassName,
-                            displayPostTitle && "mt-1",
-                          ),
-                        )}
-                      >
-                        {renderCaptionWithMentions(displayPostDescription)}
-                      </p>
+                      <FeedExpandableFreeText
+                        text={displayPostDescription}
+                        className={cn("text-[17px]", displayPostTitle && "mt-1")}
+                      />
                     ) : null}
                   </div>
                   {postTranslation.showControl ? (
@@ -6033,7 +6097,7 @@ function PostCard({
                 <div
                   className={cn(
                     cardPadX,
-                    "mt-2 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/90",
+                    "mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/90",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6165,7 +6229,7 @@ function PostCard({
                 ) : null}
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
@@ -6238,7 +6302,7 @@ function PostCard({
                 ) : null}
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
@@ -6272,7 +6336,7 @@ function PostCard({
                 ) : null}
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}

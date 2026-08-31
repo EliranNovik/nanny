@@ -55,7 +55,8 @@ import {
   resolveHelpCategoryIconId,
 } from "@/lib/discoverCategoryTileIcons";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
-import { formatPostedAgo } from "@/components/community/CommunityPostCard";
+import { formatDistanceToNow } from "date-fns";
+import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
 import type {
   IsolatedFeedDetailKind,
@@ -282,7 +283,7 @@ export default function LandingPage() {
     path: "/",
   });
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const isDarkTheme = theme === "dark";
   const buttonsRef = useRef<HTMLDivElement>(null);
@@ -879,7 +880,13 @@ export default function LandingPage() {
                 const mediaBadgePoints = landingMediaBadgePoints(item.detailPoints).filter(
                   (point) => point.kind !== "location",
                 );
-                const postedAgo = formatPostedAgo(item.created_at);
+                const createdAt = new Date(item.created_at);
+                const postedAgo = Number.isNaN(createdAt.getTime())
+                  ? null
+                  : formatDistanceToNow(createdAt, {
+                      addSuffix: true,
+                      locale: dateFnsLocaleFor(i18n.language),
+                    });
                 return (
                   <Link
                     key={`${item.kind}-${item.id}`}
@@ -913,53 +920,55 @@ export default function LandingPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-start justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-1">
-                            <h3 className="truncate text-base font-bold leading-tight text-slate-900 transition-colors group-hover:text-primary dark:text-zinc-100 lg:text-[17px]">
-                              {item.authorName}
-                            </h3>
-                            {item.authorVerified ? (
-                              <BadgeCheck
-                                className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white"
-                                aria-label="Verified"
-                              />
+                          <div className="flex min-w-0 flex-1 flex-col gap-1 leading-tight">
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="truncate text-lg font-bold leading-tight text-slate-900 transition-colors group-hover:text-primary dark:text-zinc-100 md:text-base lg:text-[17px]">
+                                {item.authorName}
+                              </h3>
+                              {item.authorVerified ? (
+                                <BadgeCheck
+                                  className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white"
+                                  aria-label="Verified"
+                                />
+                              ) : null}
+                            </div>
+                            {locationLabel ? (
+                              <p className="truncate text-sm font-medium leading-tight text-slate-500 dark:text-zinc-400 md:text-xs">
+                                {locationLabel}
+                              </p>
                             ) : null}
                           </div>
                           <span
                             className={cn(
-                              "shrink-0 text-[11px] font-bold uppercase tracking-wide",
+                              "shrink-0 text-xs font-bold uppercase tracking-wide md:text-[11px]",
                               globalFeedPostTypeAccentClass(typeId),
                             )}
                           >
                             {landingActivityTypeLabel(item.kind)}
                           </span>
                         </div>
-                        {locationLabel ? (
-                          <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-zinc-400">
-                            {locationLabel}
-                          </p>
-                        ) : null}
-                        {postedAgo ? (
-                          <time
-                            dateTime={item.created_at}
-                            className="mt-1 block text-xs font-medium tabular-nums text-slate-500 dark:text-zinc-400"
-                          >
-                            Posted {postedAgo}
-                          </time>
-                        ) : null}
                       </div>
                     </div>
 
                     <div className="flex flex-1 flex-col px-4 pb-3">
-                      <p className="mb-2 flex items-center justify-start gap-2 text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-zinc-100 md:text-base">
+                      <p className="mb-2 flex items-center justify-start gap-2 text-base font-bold uppercase tracking-wide text-slate-900 dark:text-zinc-100 md:text-sm lg:text-base">
                         <LandingCategoryIcon
                           categoryId={item.categoryId}
                           customCategory={item.customCategory}
                         />
                         <span className="min-w-0 truncate">{item.roleLabel}</span>
                       </p>
-                      <p className="line-clamp-4 text-sm leading-relaxed text-slate-800 dark:text-zinc-300 lg:text-[15px]">
+                      <p className="line-clamp-4 text-base leading-relaxed text-slate-800 dark:text-zinc-300 md:text-sm lg:text-[15px]">
                         {item.description}
                       </p>
+                      {postedAgo ? (
+                        <time
+                          dateTime={item.created_at}
+                          className="mt-2 block text-sm font-medium tabular-nums text-slate-500 dark:text-zinc-400 md:text-xs"
+                        >
+                          Posted {postedAgo}
+                        </time>
+                      ) : null}
                       {item.mediaUrl ? (
                         <LandingActivityMedia
                           src={item.mediaUrl}
@@ -971,7 +980,7 @@ export default function LandingPage() {
                                 {mediaBadgePoints.map((point) => (
                                   <li
                                     key={point.key}
-                                    className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight text-slate-800"
+                                    className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-800 md:text-[11px]"
                                   >
                                     <LandingActivityDetailIcon
                                       kind={point.kind}
@@ -990,13 +999,13 @@ export default function LandingPage() {
                             <div
                               key={point.key}
                               className={cn(
-                                "flex min-w-0 items-start gap-2 text-[13px] font-semibold leading-snug text-slate-600 dark:text-zinc-400 lg:text-sm",
+                                "flex min-w-0 items-start gap-2 text-[15px] font-semibold leading-snug text-slate-600 dark:text-zinc-400 md:text-[13px] lg:text-sm",
                                 point.kind === "notes" && "col-span-2",
                               )}
                             >
                               <LandingActivityDetailIcon
                                 kind={point.kind}
-                                className="mt-0.5 h-4 w-4 text-slate-400"
+                                className="mt-0.5 h-5 w-5 text-slate-400 md:h-4 md:w-4"
                               />
                               <span className="min-w-0 line-clamp-2">{point.value}</span>
                             </div>
@@ -1010,12 +1019,12 @@ export default function LandingPage() {
                         <div className="min-w-0">
                           {item.rateLabel ? (
                             <>
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                              <span className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 md:text-[10px]">
                                 Budget
                               </span>
                               <p
                                 className={cn(
-                                  "truncate text-base font-bold lg:text-lg",
+                                  "truncate text-lg font-bold md:text-base lg:text-lg",
                                   globalFeedPostTypeAccentClass(typeId),
                                 )}
                               >
@@ -1023,12 +1032,12 @@ export default function LandingPage() {
                               </p>
                             </>
                           ) : (
-                            <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">Open request</p>
+                            <p className="text-base font-medium text-slate-500 dark:text-zinc-400 md:text-sm">Open request</p>
                           )}
                         </div>
                         <span
                           className={cn(
-                            "inline-flex h-9 shrink-0 items-center justify-center rounded-lg px-3 text-[11px] font-bold uppercase tracking-wide text-white transition-opacity group-hover:opacity-95",
+                            "inline-flex h-11 shrink-0 items-center justify-center rounded-lg px-4 text-sm font-bold uppercase tracking-wide text-white transition-opacity group-hover:opacity-95 md:h-9 md:px-3 md:text-[11px]",
                             globalFeedPrimaryCtaClass(typeId),
                           )}
                         >

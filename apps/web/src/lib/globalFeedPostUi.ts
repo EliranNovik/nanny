@@ -178,12 +178,9 @@ export function feedPostTypeCategorySubtitleText(
   t: TFunction,
   postTypeId: string,
   typeName: string | undefined,
-  categoryLabel: string | null | undefined,
+  _categoryLabel?: string | null | undefined,
 ): string {
-  const typeLabel = globalFeedPostTypeBadgeLabel(t, postTypeId, typeName);
-  const category = categoryLabel?.trim();
-  if (category) return `${typeLabel} · ${category}`;
-  return typeLabel;
+  return globalFeedPostTypeBadgeLabel(t, postTypeId, typeName);
 }
 
 export function feedPostTypeId(post: GlobalFeedPostLike): string | null {

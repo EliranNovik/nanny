@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
-import { Bookmark, ChevronLeft, Clock, Coins, Heart, Loader2, MapPin, Send } from "lucide-react";
+import { Bookmark, ChevronLeft, Clock, Coins, Heart, HelpCircle, Loader2, MapPinned, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bidirectionalClass,
@@ -56,6 +56,11 @@ import { queryKeys } from "@/hooks/data/keys";
 import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
 import { useContentTranslation } from "@/hooks/useContentTranslation";
 import { TranslateLinkButton } from "@/components/translate/TranslateTextControl";
+import {
+  HIRE_CATEGORY_TILE_UI,
+  OTHER_HELP_SUBCATEGORY_UI,
+} from "@/lib/discoverCategoryTileIcons";
+import { isServiceCategoryId } from "@/lib/serviceCategories";
 import {
   requestPostAccentTextClass,
   requestPostCtaPendingClass,
@@ -151,6 +156,7 @@ type ReelSlideData = {
   postTypeId: string | null;
   postTypeName: string | null;
   categoryLabel: string | null;
+  categoryIconId: string | null;
   locationLine: string | null;
   whenLabel: string | null;
   whenExpired: boolean;
@@ -501,6 +507,7 @@ export function PostMediaReelsViewer({
         postTypeId,
         postTypeName: p.post_types?.name ?? null,
         categoryLabel: serviceCategoryMeta?.label ?? null,
+        categoryIconId: serviceCategoryMeta?.iconId ?? null,
         locationLine,
         whenLabel,
         whenExpired,
@@ -1228,7 +1235,7 @@ function ReelPostDetails({
     <div className="mt-3 space-y-1.5">
       {slide.locationLine ? (
         <div className="flex items-center gap-2">
-          <MapPin className={iconClass} aria-hidden />
+          <MapPinned className={iconClass} aria-hidden />
           <span className={textClass}>{slide.locationLine}</span>
         </div>
       ) : null}
@@ -1263,6 +1270,37 @@ function reelSlideShowTitle(slide: ReelSlideData, bodyText: string | null): bool
   );
 }
 
+function ReelTextOnlyCategoryRow({
+  iconId,
+  label,
+}: {
+  iconId: string | null;
+  label: string | null;
+}) {
+  const trimmed = label?.trim();
+  if (!trimmed) return null;
+  const normalized = (iconId ?? "").trim().toLowerCase();
+  const mainUi = isServiceCategoryId(normalized)
+    ? HIRE_CATEGORY_TILE_UI[normalized]
+    : null;
+  const subUi = OTHER_HELP_SUBCATEGORY_UI[normalized] ?? null;
+  const ui = subUi ?? mainUi;
+  const Icon = ui?.Icon ?? HelpCircle;
+
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <Icon
+        className={cn("h-5 w-5 shrink-0", ui?.iconClass ?? "text-white/85")}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+      <span className="text-[15px] font-bold uppercase tracking-wide text-white">
+        {trimmed}
+      </span>
+    </div>
+  );
+}
+
 function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
   const bodyText = reelSlideBodyText(slide);
   const showTitle = reelSlideShowTitle(slide, bodyText);
@@ -1292,6 +1330,10 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
         )}
         dir={contentLayout.dir}
       >
+        <ReelTextOnlyCategoryRow
+          iconId={slide.categoryIconId}
+          label={slide.categoryLabel}
+        />
         {showTitle && displayTitle ? (
           <h2
             {...bidirectionalTextProps(

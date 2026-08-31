@@ -1806,7 +1806,7 @@ export default function PublicProfilePage() {
                     src={avatarUrl.lg(profile.photo_url)}
                     alt={profile.full_name ?? "Profile"}
                     className="absolute inset-0 h-full w-full object-cover"
-                    fetchPriority="high"
+                    {...{ fetchpriority: "high" }}
                   />
                 )}
                 {profileLiveNowDot}
@@ -2042,7 +2042,7 @@ export default function PublicProfilePage() {
                 src={mediaUrl.hero(profile.photo_url)}
                 alt={profile.full_name ?? "Profile"}
                 className="absolute inset-0 h-full w-full object-cover"
-                fetchPriority="high"
+                {...{ fetchpriority: "high" }}
               />
             )}
           </button>
