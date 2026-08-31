@@ -8,6 +8,7 @@ import { queryKeys } from "@/hooks/data/keys";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { glassBadgeClass } from "@/lib/glassBadge";
 import { discoverMobileSheetBottomOffset } from "@/lib/discoverSheetDialog";
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 
@@ -55,7 +56,7 @@ type GlobalFeedMobileTebnuMenuProps = {
   className?: string;
 };
 
-/** Mobile global feed header: centred tebnu brand opens My favorites. */
+/** Mobile global feed header: tebnu.feed badge next to compose, opens My favorites. */
 export function GlobalFeedMobileTebnuMenu({
   viewerUserId,
   className,
@@ -88,13 +89,16 @@ export function GlobalFeedMobileTebnuMenu({
           setFavoritesOpen(true);
         }}
         className={cn(
-          "inline-flex items-center rounded-lg px-1 py-0.5",
-          "text-[1.625rem] font-black lowercase tracking-tight text-foreground transition-opacity active:opacity-80",
+          glassBadgeClass,
+          "inline-flex items-center rounded-full px-3 py-1",
+          "text-[20px] font-extrabold lowercase leading-none tracking-tight",
+          "transition-opacity active:opacity-80",
           className,
         )}
         aria-label={t("feed.global.myFavorites")}
       >
-        tebnu
+        <span className="text-white">tebnu</span>
+        <span className="text-zinc-400">.feed</span>
       </button>
 
       {favoritesOpen

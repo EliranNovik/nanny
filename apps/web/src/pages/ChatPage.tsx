@@ -898,6 +898,7 @@ export default function ChatPage({
 
   const pendingSmoothScrollRef = useRef(false);
   const lastAnchoredMessageCountRef = useRef(0);
+  const lastSeenNewestIdRef = useRef<string | null>(null);
   const isAnchoringRef = useRef(false);
   const anchorTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -925,13 +926,19 @@ export default function ChatPage({
   }, []);
 
   const runBottomAnchorPass = useCallback(
-    (smooth = false) => {
+    (smooth = false, opts?: { force?: boolean }) => {
       clearAnchorTimers();
       isAnchoringRef.current = true;
       stickToBottomRef.current = true;
+      if (opts?.force) {
+        anchorBottomUntilRef.current = Math.max(
+          anchorBottomUntilRef.current,
+          Date.now() + 2500,
+        );
+      }
 
       const attempt = () => {
-        if (shouldStickToBottom()) scrollToBottom(smooth);
+        if (opts?.force || shouldStickToBottom()) scrollToBottom(smooth);
       };
 
       attempt();
@@ -940,14 +947,19 @@ export default function ChatPage({
         requestAnimationFrame(attempt);
       });
 
-      const delays = hideBackButton ? [0, 50, 120, 250, 450, 700] : [0, 120, 300];
+      const holdMs = opts?.force ? 900 : hideBackButton ? 750 : 350;
+      const delays = opts?.force
+        ? [0, 50, 120, 250, 450, 700]
+        : hideBackButton
+          ? [0, 50, 120, 250, 450, 700]
+          : [0, 120, 300];
       for (const ms of delays) {
         anchorTimersRef.current.push(setTimeout(attempt, ms));
       }
       anchorTimersRef.current.push(
         setTimeout(() => {
           isAnchoringRef.current = false;
-        }, hideBackButton ? 750 : 350),
+        }, holdMs),
       );
     },
     [clearAnchorTimers, hideBackButton, scrollToBottom, shouldStickToBottom],
@@ -957,6 +969,7 @@ export default function ChatPage({
     isInitialLoadRef.current = true;
     stickToBottomRef.current = true;
     lastAnchoredMessageCountRef.current = 0;
+    lastSeenNewestIdRef.current = null;
     anchorBottomUntilRef.current = Date.now() + 4500;
     clearAnchorTimers();
     return () => clearAnchorTimers();
@@ -1064,30 +1077,40 @@ export default function ChatPage({
     }
   }, [hasMoreOlder, loadOlderMessages, loadingOlder]);
 
-  // Open chat already at the bottom (before paint). Smooth scroll only when sending.
+  // Open chat already at the bottom (before paint). Jump to latest when you send.
   useLayoutEffect(() => {
     if (loading || !chatPaneVisible) return;
 
     if (messages.length === 0) {
       lastAnchoredMessageCountRef.current = 0;
+      lastSeenNewestIdRef.current = null;
       return;
     }
+
+    const newest = messages[messages.length - 1];
+    const newestId = newest?.id ?? null;
 
     if (isInitialLoadRef.current) {
       runBottomAnchorPass(false);
       isInitialLoadRef.current = false;
       lastAnchoredMessageCountRef.current = messages.length;
+      lastSeenNewestIdRef.current = newestId;
       pendingSmoothScrollRef.current = false;
       return;
     }
 
     const grew = messages.length > lastAnchoredMessageCountRef.current;
     lastAnchoredMessageCountRef.current = messages.length;
+    const newestChanged = newestId !== lastSeenNewestIdRef.current;
+    lastSeenNewestIdRef.current = newestId;
 
-    const forceScrollOnSend = pendingSmoothScrollRef.current;
+    const ownNewest = Boolean(user?.id) && newest?.sender_id === user?.id;
+    const forceScrollOnSend =
+      pendingSmoothScrollRef.current || (newestChanged && ownNewest);
+
     if (forceScrollOnSend) {
       stickToBottomRef.current = true;
-      runBottomAnchorPass(true);
+      runBottomAnchorPass(false, { force: true });
       pendingSmoothScrollRef.current = false;
       return;
     }
@@ -1101,6 +1124,7 @@ export default function ChatPage({
     messages,
     runBottomAnchorPass,
     shouldStickToBottom,
+    user?.id,
   ]);
 
   // Images, job strip, and pane visibility can grow after first paint — keep pinned briefly.
@@ -1345,6 +1369,11 @@ export default function ChatPage({
     stickToBottomRef.current = true;
     pendingSmoothScrollRef.current = true;
     isInitialLoadRef.current = false;
+    anchorBottomUntilRef.current = Date.now() + 2500;
+    requestAnimationFrame(() => {
+      scrollToBottom(false);
+      requestAnimationFrame(() => scrollToBottom(false));
+    });
 
     const { data, error } = await supabase
       .from("messages")
@@ -2441,7 +2470,7 @@ export default function ChatPage({
              * header sits above the scroll area.
              */
             hideBackButton
-              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.25rem)] md:pt-0"
+              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.25rem)] md:pt-[4.5rem]"
               : "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-4",
             "px-5 md:p-4",
           )}

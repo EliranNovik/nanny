@@ -34,12 +34,12 @@ export function MessagesInboxFloatingHeader({
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-20 md:hidden">
       <div
-        className="pointer-events-auto flex items-center gap-3 px-4 pb-5 pt-[max(0.5rem,env(safe-area-inset-top,0px))]"
+        className="flex items-center gap-3 px-4 pb-5 pt-[max(0.5rem,env(safe-area-inset-top,0px))]"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
       >
         <div
           className={cn(
-            "flex h-[52px] shrink-0 items-center rounded-[26px] border border-white/20",
+            "pointer-events-auto flex h-[52px] shrink-0 items-center rounded-[26px] border border-white/20",
             "bg-white/72 shadow-sm backdrop-blur-[20px] dark:border-white/10 dark:bg-zinc-900/72",
           )}
           style={{ width: SEGMENT_PILL_WIDTH }}
@@ -109,12 +109,10 @@ export function MessagesInboxFloatingHeader({
           </button>
         </div>
 
-        <div className="min-w-0 flex-1" aria-hidden />
-
         {section === "messages" ? (
           <div
             className={cn(
-              "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[26px] border border-white/20",
+              "pointer-events-auto ml-auto flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[26px] border border-white/20",
               "bg-white/72 shadow-sm backdrop-blur-[20px] dark:border-white/10 dark:bg-zinc-900/72",
             )}
           >
@@ -135,10 +133,10 @@ export function MessagesInboxFloatingHeader({
               )}
             </button>
           </div>
-        ) : null}
+        ) : (
+          <div className="ml-auto h-[52px] w-[52px] shrink-0" aria-hidden />
+        )}
       </div>
     </header>
   );
 }
-
-export const MESSAGES_INBOX_TITLE_INSET_PX = SEGMENT_PILL_WIDTH + 12;

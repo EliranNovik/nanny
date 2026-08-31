@@ -5,8 +5,9 @@ export const chatAreaBgClass = "chat-screen bg-zinc-50 text-foreground dark:text
 
 /** Frosted overlay for the chat header and composer so messages can show through. */
 export const chatComposerBarClass = cn(
-  "bg-white/80 shadow-none backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/70",
-  "dark:bg-[#14161d]/80 dark:supports-[backdrop-filter]:bg-[#14161d]/70",
+  "border-0 bg-white/50 shadow-none backdrop-blur-2xl backdrop-saturate-150",
+  "supports-[backdrop-filter]:bg-white/40",
+  "dark:bg-[#14161d]/50 dark:supports-[backdrop-filter]:bg-[#14161d]/40",
 );
 
 export const chatChromeBarClass = chatComposerBarClass;
@@ -38,9 +39,10 @@ export const chatReceivedBubbleCn = cn(
 export const chatReceivedMessageTextCn = "text-zinc-600 dark:text-zinc-300";
 
 export const chatSentBubbleCn = cn(
-  "ml-auto max-w-[86%] rounded-[22px] rounded-br-md px-4 py-2.5 text-left",
+  "chat-sent-bubble ml-auto max-w-[86%] rounded-[22px] rounded-br-md px-4 py-2.5 text-left",
   "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-white",
   "shadow-lg shadow-orange-500/20 border-t border-white/15",
+  "dark:border-0 dark:shadow-none",
   "md:max-w-[74%] md:rounded-[20px] md:px-4 md:py-2",
 );
 

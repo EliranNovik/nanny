@@ -215,14 +215,12 @@ export function ChatComposer({
       {/* Desktop Composer */}
       <div
         className={cn(
-          "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
+          "z-30 hidden lg:flex lg:flex-col",
           chatComposerBarClass,
-          "px-5 pb-4 pt-3",
           hideBackButton
-            ? // Embedded in `MessagesPage` which also has the DesktopSidePanel (220px) on md+.
-              // Keep the composer width aligned with the chat column only.
-              "left-0 md:left-[540px] lg:left-[604px]"
-            : "left-[400px]",
+            ? // Sit in the chat column so the bar is always the full thread width.
+              "absolute inset-x-0 bottom-0 px-3 pb-3 pt-2"
+            : "fixed bottom-0 right-0 left-[400px] px-5 pb-4 pt-3",
         )}
       >
         {attachmentPreview}

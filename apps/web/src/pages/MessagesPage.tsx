@@ -613,7 +613,7 @@ export default function MessagesPage() {
     return (
       <div
         data-messages-page=""
-        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background md:pt-16"
+        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
           <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
@@ -653,7 +653,7 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:pt-16"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
@@ -760,16 +760,16 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:[scrollbar-width:none]",
               "[&_[data-radix-scroll-area-viewport]]:[-ms-overflow-style:none]",
               "[&_[data-radix-scroll-area-viewport]]:[&::-webkit-scrollbar]:hidden",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-0",
               "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(3.125rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
             )}
           >
             {inboxTab === "messages" ? (
               chatInboxRows.length === 0 ? (
               <>
-              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+              <h1 className="messages-inbox-section-title shrink-0 md:hidden">
                 {t("messagesPage.messages")}
-              </h2>
+              </h1>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <MessageCircle className="h-8 w-8 text-muted-foreground" />
@@ -820,9 +820,9 @@ export default function MessagesPage() {
               </>
             ) : (
               <>
-                <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+                <h1 className="messages-inbox-section-title shrink-0 md:hidden">
                   {t("messagesPage.messages")}
-                </h2>
+                </h1>
                 <div className="relative shrink-0 md:px-4 md:pb-3 md:pt-3">
                   <div className="messages-inbox-search">
                       <Search
@@ -1050,9 +1050,9 @@ export default function MessagesPage() {
             )
           ) : activityInboxRows.length === 0 ? (
               <>
-              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+              <h1 className="messages-inbox-section-title shrink-0 md:hidden">
                 {t("messagesPage.notifications")}
-              </h2>
+              </h1>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <Bell className="h-8 w-8 text-muted-foreground" />
@@ -1068,9 +1068,9 @@ export default function MessagesPage() {
               </>
             ) : (
               <>
-              <h2 className="messages-inbox-section-title shrink-0 md:hidden">
+              <h1 className="messages-inbox-section-title shrink-0 md:hidden">
                 {t("messagesPage.notifications")}
-              </h2>
+              </h1>
               <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
                 {activityInboxRows.map((row) => {
                   const a = row.alert;
@@ -1200,7 +1200,7 @@ export default function MessagesPage() {
                   }
                   showBackButton
                   onBack={handleBackToContacts}
-                  className="fixed left-0 right-0 top-0 md:relative md:top-auto"
+                  className="fixed left-0 right-0 top-0 z-40 md:absolute md:inset-x-0 md:top-0"
                 />
 
                 <div className="relative min-h-0 flex-1 overflow-hidden">

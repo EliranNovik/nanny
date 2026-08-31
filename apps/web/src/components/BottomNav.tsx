@@ -297,6 +297,8 @@ export function BottomNav() {
     pathnameNorm.startsWith("/messages/") ||
     isHelpersFindPage ||
     (isFreelancerJobsMatch && !matchSearchChromeVisible);
+  const hideDesktopAppHeader =
+    pathnameNorm === "/messages" || pathnameNorm.startsWith("/messages/");
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -963,7 +965,7 @@ export function BottomNav() {
   );
 
   /** Desktop only: full-width top bar with menu, logo, search, notifications */
-  const DesktopHeader = (
+  const DesktopHeader = hideDesktopAppHeader ? null : (
     <header
       data-desktop-header-strip=""
       className={cn(
@@ -1095,6 +1097,7 @@ export function BottomNav() {
           )}
         >
           {showCommunityFeedHeaderLeft ? (
+              <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleCommunityFeedCompose}
@@ -1103,6 +1106,8 @@ export function BottomNav() {
               >
                 <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
+              <GlobalFeedMobileTebnuMenu viewerUserId={viewerId!} />
+              </div>
             ) : isDiscoverHome && !mobileSearchOpen ? (
             <DiscoverHomeModeSegmentedControl
               mode={discoverHomeMode}
@@ -1135,10 +1140,6 @@ export function BottomNav() {
                 categoryParam={communityCategoryParam}
               />
             </div>
-          </div>
-        ) : isCommunityFeedPage && user && !mobileSearchOpen ? (
-          <div className="flex min-w-0 flex-1 justify-center px-0.5">
-            <GlobalFeedMobileTebnuMenu viewerUserId={viewerId!} />
           </div>
         ) : (
           <div className="min-w-0 flex-1" aria-hidden />

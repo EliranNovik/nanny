@@ -45,6 +45,10 @@
   .app-desktop-side-panel {
     @apply fixed bottom-0 start-0 top-16 z-[200] w-[220px];
   }
+
+  html:has([data-messages-page]) .app-desktop-side-panel {
+    @apply md:top-0;
+  }
 }
 
 /* Hebrew / RTL shell adjustments */
@@ -140,8 +144,8 @@
     --border: 222 10% 26%;
     --input: 222 11% 22%;
     --ring: 24 84% 50%;
-    /* Outgoing chat bubbles: deeper orange than --primary for contrast on dark UI */
-    --chat-bubble-sent: 22 72% 36%;
+    /* Outgoing chat bubbles: flat darker orange (no gradient / gloss) */
+    --chat-bubble-sent: 22 78% 32%;
   }
 }
 
@@ -416,15 +420,21 @@
   }
 
   @media (max-width: 767.98px) {
+    /* Aligns with the floating tabs / compose row, then scrolls away with the list. */
     [data-messages-page] .messages-inbox-section-title {
-      display: flex;
-      align-items: center;
-      min-height: 52px;
-      padding-right: 16px;
-      padding-left: 134px;
+      display: block;
+      min-height: calc(52px + env(safe-area-inset-top, 0px) + 8px);
+      padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+      padding-left: 150px;
+      padding-right: 80px;
+      overflow: hidden;
       font-size: 32px;
       font-weight: 600;
       letter-spacing: -0.5px;
+      line-height: 52px;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: var(--messages-text);
     }
 
@@ -1424,6 +1434,14 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .animate-stagger>*:nth-child(6) {
   animation-delay: 250ms;
+}
+
+/** Dark mode sent bubbles: flat darker orange, no gradient / gloss / glow. */
+.dark .chat-sent-bubble {
+  background-image: none;
+  background-color: hsl(var(--chat-bubble-sent));
+  border-top-width: 0;
+  box-shadow: none;
 }
 
 /**
