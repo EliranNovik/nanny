@@ -173,9 +173,10 @@ export function ProfileReviewsSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="User reviews"
+      desktopPlacement="right"
     >
-      <div className="flex min-h-0 flex-col">
-        <div className="shrink-0 border-b border-border/40 px-5 pb-4 pt-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-border/40 px-5 pb-4 pt-5">
           <div className="flex items-center gap-2.5">
             <Star
               className="h-5 w-5 fill-amber-500 text-amber-500"
@@ -200,7 +201,7 @@ export function ProfileReviewsSheet({
           ) : null}
         </div>
 
-        <div className="space-y-6 px-5 py-5">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
           {reviews.map((review, idx) => (
             <ProfileReviewListItem key={review.id} review={review} index={idx} />
           ))}

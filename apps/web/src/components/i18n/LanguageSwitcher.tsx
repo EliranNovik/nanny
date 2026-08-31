@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Languages } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_LOCALES, normalizeAppLocale } from "@/i18n";
 import { LOCALE_LABEL_KEYS } from "@/components/i18n/localeLabels";
 
 type Props = {
   className?: string;
+  triggerClassName?: string;
   variant?: "header" | "compact" | "profile";
 };
 
-export function LanguageSwitcher({ className, variant = "header" }: Props) {
+export function LanguageSwitcher({ className, triggerClassName, variant = "header" }: Props) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -42,25 +43,21 @@ export function LanguageSwitcher({ className, variant = "header" }: Props) {
             (variant === "profile"
               ? "text-foreground"
               : "bg-black/5 text-slate-900 dark:bg-white/10 dark:text-white"),
+          triggerClassName,
         )}
         aria-label={t("language.label")}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        {variant === "compact" ? (
-          <Languages
-            className="h-5 w-5"
-            strokeWidth={2}
-          />
-        ) : null}
         <span
           className={cn(
-            "text-sm font-bold",
-            variant === "header" && "hidden lg:inline",
-            variant === "profile" && "inline text-[15px] font-semibold",
+            "text-sm font-bold uppercase tracking-wide",
+            variant === "profile" && "inline text-[15px] font-semibold normal-case tracking-normal",
           )}
         >
-          {t(LOCALE_LABEL_KEYS[current] ?? "language.en")}
+          {variant === "profile"
+            ? t(LOCALE_LABEL_KEYS[current] ?? "language.en")
+            : current.toUpperCase()}
         </span>
         <ChevronDown
           className={cn(

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Loader2,
   MapPin,
   MessageCircle,
+  UserRound,
   Zap,
   Sparkles,
   Utensils,
@@ -13,9 +17,13 @@ import {
   Baby,
   Wrench,
   Star,
+  Tag,
+  HelpCircle,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  ProfileReviewsSheet,
+  type ProfileReviewItem,
+} from "@/components/profile/ProfileReviewsSheet";
 
 import { cn } from "@/lib/utils";
 import { openCommunityContact } from "@/lib/communityContact";
@@ -44,6 +52,9 @@ type Slide = { key: string; kind: "image" | "video"; src: string };
 const coloredGlassRoundBtn =
   "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg backdrop-blur-2xl transition-all hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
 
+const mediaGlassArrowBtn =
+  "hidden md:inline-flex absolute top-1/2 z-20 h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-xl backdrop-saturate-150 ring-1 ring-inset ring-white/15 transition-colors hover:bg-black/60 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 supports-[backdrop-filter]:bg-black/35";
+
 function buildSlides(
   photoUrl: string | null,
   gallery: PublicProfileGalleryRow[],
@@ -68,13 +79,96 @@ function buildSlides(
   return slides;
 }
 
+const PHOTO_PLACEHOLDER_COLORS = [
+  "bg-rose-500",
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-lime-600",
+  "bg-emerald-500",
+  "bg-teal-500",
+  "bg-sky-500",
+  "bg-blue-600",
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-fuchsia-500",
+  "bg-pink-500",
+] as const;
+
+function photoPlaceholderColorClass(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = Math.imul(31, hash) + seed.charCodeAt(i);
+  }
+  return PHOTO_PLACEHOLDER_COLORS[Math.abs(hash) % PHOTO_PLACEHOLDER_COLORS.length]!;
+}
+
+function initialsFromName(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) {
+    const w = parts[0]!;
+    return w.slice(0, Math.min(2, w.length)).toUpperCase();
+  }
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+}
+
+function ProfilePhotoPlaceholder({
+  name,
+  seed,
+  className,
+}: {
+  name: string | null | undefined;
+  seed: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 flex flex-col items-center justify-center gap-3",
+        photoPlaceholderColorClass(seed),
+        className,
+      )}
+      aria-hidden
+    >
+      <UserRound className="h-16 w-16 text-white/90" strokeWidth={1.7} />
+      <span className="text-5xl font-black leading-none tracking-tight text-white">
+        {initialsFromName(name)}
+      </span>
+    </div>
+  );
+}
+
+function mapJobReviewRow(row: {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  reviewer:
+    | { full_name: string | null; photo_url: string | null }
+    | { full_name: string | null; photo_url: string | null }[]
+    | null;
+}): ProfileReviewItem {
+  const r = Array.isArray(row.reviewer) ? row.reviewer[0] : row.reviewer;
+  return {
+    id: row.id,
+    rating: row.rating,
+    review_text: row.review_text,
+    created_at: row.created_at,
+    reviewer: {
+      full_name: r?.full_name ?? null,
+      photo_url: r?.photo_url ?? null,
+    },
+  };
+}
+
 function CategoryIcon({ id, className }: { id: string; className?: string }) {
   switch (id) {
     case "cleaning": return <Sparkles className={className} aria-hidden />;
     case "cooking": return <Utensils className={className} aria-hidden />;
     case "pickup_delivery": return <Package className={className} aria-hidden />;
     case "nanny": return <Baby className={className} aria-hidden />;
-    case "other_help": return <Wrench className={className} aria-hidden />;
+    case "technical_help": return <Wrench className={className} aria-hidden />;
+    case "other_help": return <HelpCircle className={className} aria-hidden />;
     default: return <Sparkles className={className} aria-hidden />;
   }
 }
@@ -102,7 +196,7 @@ type HelperResultProfileCardProps = {
   liveHelpWeekCount?: number;
   onToggleFavorite: (userId: string, e: React.MouseEvent) => void;
   onOpenProfile: (userId: string) => void;
-  variant?: "grid" | "fullscreen";
+  variant?: "grid" | "fullscreen" | "browse";
   /** Distance was computed from viewer’s saved coordinates (helpers page) vs search center. */
   distanceFromViewerPin?: boolean;
 };
@@ -122,11 +216,16 @@ export function HelperResultProfileCard({
   distanceFromViewerPin = false,
 }: HelperResultProfileCardProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { addToast } = useToast();
   const { user: currentUser, profile: currentProfile } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [chatOpening, setChatOpening] = useState(false);
+  const [reviewsSheetOpen, setReviewsSheetOpen] = useState(false);
+  const [helperReviews, setHelperReviews] = useState<ProfileReviewItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const reviewsCacheRef = useRef<ProfileReviewItem[] | null>(null);
   const [socialBusy, setSocialBusy] = useState<"wa" | "tg" | null>(null);
   /** When set, drives visibility of WhatsApp / Telegram action buttons. */
   const [socialContactFlags, setSocialContactFlags] = useState<{
@@ -169,6 +268,8 @@ export function HelperResultProfileCard({
     if (!isFreelancerInActive24hLiveWindow(h.freelancer_profiles)) return null;
     return canStartInLabel ? canStartInLabel : canStartInCardLabel(h.freelancer_profiles?.live_can_start_in);
   }, [canStartInLabel, h.freelancer_profiles]);
+
+  const isLive24h = isFreelancerInActive24hLiveWindow(h.freelancer_profiles);
 
 
 
@@ -240,9 +341,28 @@ export function HelperResultProfileCard({
     setActiveIndex(0);
   }, [h.id, h.photo_url, slides.map((s) => s.key).join("|")]);
 
+  useEffect(() => {
+    reviewsCacheRef.current = null;
+    setHelperReviews([]);
+    setReviewsSheetOpen(false);
+  }, [h.id]);
+
   // (Used to render "N more" previously; keep only what we need for the bar indicator.)
 
   const showStrip = slides.length > 1;
+
+  const goToSlide = useCallback(
+    (nextIndex: number, e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      const el = scrollRef.current;
+      if (!el) return;
+      const i = Math.min(slides.length - 1, Math.max(0, nextIndex));
+      el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+      setActiveIndex(i);
+    },
+    [slides.length],
+  );
 
   const openDirectChat = useCallback(
     async (e: React.MouseEvent) => {
@@ -340,7 +460,355 @@ export function HelperResultProfileCard({
     [addToast, h.id],
   );
 
+  const openReviews = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (reviewsCacheRef.current) {
+        setHelperReviews(reviewsCacheRef.current);
+        setReviewsSheetOpen(true);
+        return;
+      }
+      setReviewsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("job_reviews")
+          .select(
+            "id, rating, review_text, created_at, reviewer:profiles!reviewer_id(full_name, photo_url)",
+          )
+          .eq("reviewee_id", h.id)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const mapped = (
+          (data ?? []) as Parameters<typeof mapJobReviewRow>[0][]
+        ).map(mapJobReviewRow);
+        reviewsCacheRef.current = mapped;
+        setHelperReviews(mapped);
+        setReviewsSheetOpen(true);
+      } catch (err: unknown) {
+        console.error(err);
+        addToast({
+          title: "Could not load reviews",
+          variant: "error",
+        });
+      } finally {
+        setReviewsLoading(false);
+      }
+    },
+    [addToast, h.id],
+  );
+
+  const reviewsSheet = (
+    <ProfileReviewsSheet
+      open={reviewsSheetOpen}
+      onOpenChange={setReviewsSheetOpen}
+      reviews={helperReviews}
+      averageRating={h.average_rating || 0}
+      totalRatings={h.total_ratings || 0}
+    />
+  );
+
+  const distanceMeta =
+    h.distanceKm != null
+      ? h.distanceKm < 1
+        ? `${Math.round(h.distanceKm * 1000)} m`
+        : `${h.distanceKm.toFixed(1)} km`
+      : null;
+  const isNewHelper = !(h.average_rating != null && h.average_rating > 0);
+  const reviewCount = h.total_ratings ?? 0;
+  const ratingLabel =
+    h.average_rating != null && h.average_rating > 0
+      ? h.average_rating.toFixed(1)
+      : null;
+  const browseLocation = [
+    h.city?.trim() || null,
+    distanceMeta
+      ? distanceFromViewerPin
+        ? t("findHelpersPage.distanceFromYou", { distance: distanceMeta })
+        : distanceMeta
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+
+  if (variant === "browse") {
+    return (
+    <>
+      <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-zinc-800 shadow-lg shadow-black/30 dark:bg-zinc-800 md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-2xl md:hover:shadow-black/40">
+        <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-900 md:aspect-[4/5] md:flex-none">
+          {slides.length === 0 ? (
+            <ProfilePhotoPlaceholder name={h.full_name} seed={h.id} />
+          ) : showStrip ? (
+            <div
+              ref={scrollRef}
+              onScroll={() => {
+                window.requestAnimationFrame(syncIndex);
+              }}
+              className={cn(
+                "absolute inset-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              )}
+            >
+              {slides.map((slide) => (
+                <div
+                  key={slide.key}
+                  className="relative h-full w-full min-w-full shrink-0 snap-start overflow-hidden"
+                >
+                  {slide.kind === "video" ? (
+                    <video
+                      src={slide.src}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={slide.src}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : slides[0]!.kind === "video" ? (
+            <video
+              src={slides[0]!.src}
+              className="absolute inset-0 h-full w-full object-cover"
+              muted
+              playsInline
+              preload="metadata"
+            />
+          ) : (
+            <img
+              src={slides[0]!.src}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              draggable={false}
+            />
+          )}
+
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/85 via-black/40 to-transparent"
+            aria-hidden
+          />
+
+          {isLive24h ? (
+            <div className="pointer-events-none absolute left-3 top-3 z-10">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full",
+                  "bg-black/50 px-3 py-1.5 text-[12px] font-semibold tracking-tight text-white/95",
+                  "shadow-lg shadow-black/30 backdrop-blur-xl",
+                  "supports-[backdrop-filter]:bg-black/40",
+                )}
+                role="status"
+                aria-label="Available now for jobs"
+              >
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/35 motion-reduce:animate-none" />
+                  <span className="relative block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)] ring-2 ring-emerald-400/35" />
+                </span>
+                Available now
+              </span>
+            </div>
+          ) : null}
+
+          {showStrip ? (
+            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
+              <div className="flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 backdrop-blur-md">
+                {slides.map((_, idx) => (
+                  <span
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={idx}
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      idx === activeIndex ? "bg-white" : "bg-white/35",
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {showStrip && activeIndex > 0 ? (
+            <button
+              type="button"
+              aria-label="Previous photo"
+              className={cn(mediaGlassArrowBtn, "left-2.5")}
+              onClick={(e) => goToSlide(activeIndex - 1, e)}
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.4} aria-hidden />
+            </button>
+          ) : null}
+          {showStrip && activeIndex < slides.length - 1 ? (
+            <button
+              type="button"
+              aria-label="Next photo"
+              className={cn(mediaGlassArrowBtn, "right-2.5")}
+              onClick={(e) => goToSlide(activeIndex + 1, e)}
+            >
+              <ChevronRight className="h-5 w-5" strokeWidth={2.4} aria-hidden />
+            </button>
+          ) : null}
+
+          {viewerId ? (
+            <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                title={
+                  favoriteIds.has(h.id)
+                    ? "Remove from favorites"
+                    : "Save to favorites"
+                }
+                aria-label={
+                  favoriteIds.has(h.id)
+                    ? "Remove from favorites"
+                    : "Add to favorites"
+                }
+                aria-pressed={favoriteIds.has(h.id)}
+                disabled={favoriteBusyId === h.id}
+                onClick={(e) => void onToggleFavorite(h.id, e)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md"
+              >
+                {favoriteBusyId === h.id ? (
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                ) : (
+                  <Heart
+                    className={cn(
+                      "h-5 w-5",
+                      favoriteIds.has(h.id) && "fill-red-500 text-red-500",
+                    )}
+                    strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
+                  />
+                )}
+              </button>
+            </div>
+          ) : null}
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-3.5">
+            <p className="text-[28px] font-black leading-none tracking-tight text-white">
+              {h.full_name || t("findHelpersPage.helperFallback")}
+            </p>
+            {isNewHelper || browseLocation || ratingLabel ? (
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] font-semibold uppercase tracking-wide text-white/80">
+                {isNewHelper ? (
+                  <span>{t("findHelpersPage.newHelper")}</span>
+                ) : null}
+                {isNewHelper && browseLocation ? <span aria-hidden>•</span> : null}
+                {browseLocation ? <span>{browseLocation}</span> : null}
+                {ratingLabel ? (
+                  <>
+                    {(isNewHelper || browseLocation) ? (
+                      <span aria-hidden>•</span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={(e) => void openReviews(e)}
+                      disabled={reviewsLoading}
+                      aria-label={`View all ${reviewCount} reviews`}
+                      className="pointer-events-auto inline-flex items-center gap-1 normal-case tracking-normal outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
+                    >
+                      {reviewsLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <Star
+                          className="h-3.5 w-3.5 shrink-0 fill-white text-white"
+                          aria-hidden
+                        />
+                      )}
+                      <span>{ratingLabel}</span>
+                      <span className="font-semibold text-white/75">
+                        ({reviewCount})
+                      </span>
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col space-y-3.5 px-4 pb-4 pt-3.5">
+          <div
+            className={cn(
+              "flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden md:min-h-[2.125rem]",
+              "touch-pan-x overscroll-x-contain",
+              "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              liveCategories.length === 0 && "max-md:hidden",
+            )}
+          >
+            {liveCategories.map((cat) => (
+              <span
+                key={cat.id}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-zinc-700/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white"
+              >
+                <CategoryIcon id={cat.id} className="h-3.5 w-3.5 text-emerald-400" />
+                {t(`feed.categories.${cat.id}`, { defaultValue: cat.label })}
+              </span>
+            ))}
+          </div>
+
+          <p
+            className={cn(
+              "line-clamp-3 text-[14px] leading-relaxed text-zinc-200 md:min-h-[4.125rem]",
+              !h.freelancer_profiles?.bio && "max-md:hidden",
+            )}
+          >
+            {h.freelancer_profiles?.bio ?? ""}
+          </p>
+
+          <p
+            className={cn(
+              "flex items-center gap-2 text-[15px] font-bold text-white md:min-h-[1.5rem]",
+              !rateLabel && "max-md:hidden",
+            )}
+          >
+            {rateLabel ? (
+              <>
+                <Tag className="h-4 w-4 shrink-0 text-white/80" aria-hidden />
+                {rateLabel}
+              </>
+            ) : null}
+          </p>
+
+          <div className="mt-auto flex items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => onOpenProfile(h.id)}
+              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-full bg-orange-500 px-4 text-[15px] font-bold text-white transition-colors hover:bg-orange-400 active:bg-orange-600"
+            >
+              {t("findHelpersPage.viewProfile")}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => void openDirectChat(e)}
+              disabled={chatOpening}
+              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-zinc-700 px-4 text-[13px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-zinc-600 active:bg-zinc-800 disabled:pointer-events-none disabled:opacity-60"
+            >
+              {chatOpening ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <MessageCircle
+                  className="h-6 w-6 fill-white text-white"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              )}
+              {t("findHelpersPage.message")}
+            </button>
+          </div>
+        </div>
+      </article>
+      {reviewsSheet}
+    </>
+    );
+  }
+
   return (
+    <>
     <Card
       className={cn(
         "group relative cursor-pointer overflow-hidden outline-none",
@@ -364,11 +832,7 @@ export function HelperResultProfileCard({
       >
         <div className="absolute inset-0 z-0 bg-black transform-gpu">
           {slides.length === 0 ? (
-            <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">
-              <AvatarFallback className="rounded-none bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-6xl font-black tracking-tight text-white/25">
-                {(h.full_name || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <ProfilePhotoPlaceholder name={h.full_name} seed={h.id} className="z-0" />
           ) : showStrip ? (
             <div
               ref={scrollRef}
@@ -479,11 +943,11 @@ export function HelperResultProfileCard({
           </div>
         ) : null}
 
-        {(isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ||
+        {(isLive24h ||
           respondsWithinBadge ||
           canStartBadge) && (
             <div className="pointer-events-none absolute left-3 top-6 z-[12] flex max-w-[calc(100%-5.5rem)] flex-col items-start">
-              {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ? (
+              {isLive24h ? (
                 <span
                   className={cn(
                     "mb-8 inline-flex items-center gap-2.5 rounded-full",
@@ -634,13 +1098,23 @@ export function HelperResultProfileCard({
           <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 pt-1 pb-1">
             <div className="flex min-w-0 shrink items-center gap-3">
               {h.average_rating != null && h.average_rating > 0 ? (
-                <div className="flex items-center gap-1.5 text-[14px] font-black tabular-nums tracking-tight text-white drop-shadow-sm">
-                  <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400 drop-shadow-md" aria-hidden />
+                <button
+                  type="button"
+                  onClick={(e) => void openReviews(e)}
+                  disabled={reviewsLoading}
+                  aria-label={`View all ${h.total_ratings ?? 0} reviews`}
+                  className="flex items-center gap-1.5 text-[14px] font-black tabular-nums tracking-tight text-white drop-shadow-sm outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
+                >
+                  {reviewsLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400 drop-shadow-md" aria-hidden />
+                  )}
                   <span>{h.average_rating.toFixed(1)}</span>
                   <span className="text-[11px] font-bold text-white/60">
                     ({h.total_ratings ?? 0})
                   </span>
-                </div>
+                </button>
               ) : (
                 <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/55">
                   New helper
@@ -773,5 +1247,7 @@ export function HelperResultProfileCard({
         </div>
       </CardContent>
     </Card>
+    {reviewsSheet}
+    </>
   );
 }

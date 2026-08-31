@@ -191,7 +191,7 @@ const POST_TYPE_LABELS: Record<string, string> = {
 
 function postTypeBadgeClass(typeId: string) {
   return cn(
-    "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-bold lg:text-[11px]",
+    "inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-xs font-bold",
     typeId === "request_help" && requestPostBadgeClass,
     typeId === "offer_service" && "bg-emerald-100 text-emerald-700",
     typeId === "event" && "bg-violet-100 text-violet-700",
@@ -233,7 +233,7 @@ function CollagePostTypeBadge({
   const Icon = postTypeIcon(typeId);
   return (
     <span className={cn(postTypeBadgeClass(typeId), className)}>
-      <Icon className="mr-1 h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+      <Icon className="mr-1 h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
       {POST_TYPE_LABELS[typeId] ?? typeId}
     </span>
   );
@@ -249,7 +249,7 @@ function CollageAvatar({
   className?: string;
 }) {
   return (
-    <Avatar className={cn("shrink-0 ring-2 ring-white", className)}>
+    <Avatar className={cn("shrink-0", className)}>
       <AvatarImage src={photoUrl} alt="" className="object-cover" />
       <AvatarFallback className="bg-slate-100 text-xs font-black text-slate-600">
         {initials}
@@ -270,7 +270,7 @@ function CollagePostHeader({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-start gap-2 border-b border-slate-100 bg-white antialiased",
+        "flex shrink-0 items-start gap-2 border-b border-slate-100 bg-white antialiased dark:border-zinc-800 dark:bg-zinc-800",
         compact ? "px-2 py-1.5" : "px-2.5 py-2 lg:px-3 lg:py-2.5",
       )}
     >
@@ -284,16 +284,16 @@ function CollagePostHeader({
           <div className="min-w-0">
             <p
               className={cn(
-                "truncate font-bold leading-tight text-slate-900",
-                compact ? "text-sm" : "text-base",
+                "truncate font-bold leading-tight text-slate-900 dark:text-zinc-100",
+                compact ? "text-base" : "text-base",
               )}
             >
               {author.name}
             </p>
             <p
               className={cn(
-                "mt-0.5 truncate font-medium text-slate-500",
-                compact ? "text-[11px]" : "text-xs",
+                "mt-0.5 truncate font-medium text-slate-500 dark:text-zinc-400",
+                compact ? "text-xs" : "text-xs",
               )}
             >
               {author.postedLabel}
@@ -318,7 +318,7 @@ function CollageActionButton({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-slate-100 bg-white",
+        "shrink-0 border-t border-slate-100 bg-white dark:border-zinc-800 dark:bg-zinc-800",
         compact ? "px-2 py-1.5" : "px-2.5 py-2 lg:px-3",
       )}
     >
@@ -329,7 +329,7 @@ function CollageActionButton({
         className={cn(
           collageActionButtonClass(typeId),
           "antialiased",
-          compact ? "h-8 text-xs" : "h-9 text-xs lg:text-sm",
+          compact ? "h-9 text-sm" : "h-9 text-xs lg:text-sm",
         )}
       >
         {label}
@@ -346,25 +346,22 @@ function CollageCommentSheet({
   compact?: boolean;
 }) {
   return (
-    <div className="shrink-0 border-t border-slate-100 bg-white px-2.5 py-2.5 antialiased lg:px-3 lg:py-3">
+    <div className="shrink-0 border-t border-slate-100 bg-white px-2.5 py-2.5 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3 lg:py-3">
       <div className={cn("space-y-2", compact && "space-y-1.5")}>
         {comments.map((comment) => (
           <div key={comment.id} className="flex items-start gap-2">
             <CollageAvatar
               photoUrl={comment.photoUrl}
               initials={comment.authorInitials}
-              className={cn(
-                "ring-1 ring-slate-100",
-                compact ? "h-6 w-6" : "h-7 w-7 lg:h-8 lg:w-8",
-              )}
+              className={compact ? "h-6 w-6" : "h-7 w-7 lg:h-8 lg:w-8"}
             />
             <p
               className={cn(
-                "min-w-0 leading-snug text-slate-700",
-                compact ? "text-xs" : "text-sm",
+                "min-w-0 leading-snug text-slate-700 dark:text-zinc-200",
+                compact ? "text-sm" : "text-sm",
               )}
             >
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-slate-900 dark:text-zinc-100">
                 {comment.authorName}
               </span>{" "}
               <span className="line-clamp-2">{comment.body}</span>
@@ -386,7 +383,7 @@ function CollageCardShell({
 }) {
   return (
     <div className={cn("absolute", shellClassName)}>
-      <div className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-[1.35rem] bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] ring-1 ring-black/5">
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[1.35rem] bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
         {children}
       </div>
     </div>
@@ -399,12 +396,14 @@ function CollageMediaCard({
   compact,
   shellClassName,
   tilt,
+  hideComments = false,
 }: {
   mock: CollageMediaMock;
   imageUrl: string | null;
   compact?: boolean;
   shellClassName?: string;
   tilt: string;
+  hideComments?: boolean;
 }) {
   const showHeart = mock.postTypeId === "event";
 
@@ -416,12 +415,12 @@ function CollageMediaCard({
         compact={compact}
       />
       {mock.title ? (
-        <div className="shrink-0 border-b border-slate-100 bg-white px-2.5 py-2 antialiased lg:px-3">
-          <p className="text-xs font-bold leading-snug text-slate-900 lg:text-sm">
+        <div className="shrink-0 border-b border-slate-100 bg-white px-2.5 py-2 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3">
+          <p className="text-sm font-bold leading-snug text-slate-900 dark:text-zinc-100">
             {mock.title}
           </p>
           {mock.subtitle ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-600 lg:text-xs">
+            <p className="mt-0.5 text-xs leading-snug text-slate-600 dark:text-zinc-300">
               {mock.subtitle}
             </p>
           ) : null}
@@ -454,7 +453,9 @@ function CollageMediaCard({
         label={mock.actionLabel}
         compact={compact}
       />
-      <CollageCommentSheet comments={mock.comments} compact={compact} />
+      {hideComments ? null : (
+        <CollageCommentSheet comments={mock.comments} compact={compact} />
+      )}
     </CollageCardShell>
   );
 }
@@ -481,26 +482,26 @@ function CollageTextPostCard({
         compact
       />
       <div className="min-h-0 flex-1 overflow-hidden px-2 pb-1.5 pt-1.5 antialiased">
-        <div className="flex h-full min-h-0 flex-col rounded-xl bg-white p-2.5">
+        <div className="flex h-full min-h-0 flex-col rounded-xl bg-white p-2.5 dark:bg-zinc-800">
           <div className="flex min-h-0 gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="flex items-center gap-1.5 text-xs font-bold leading-snug text-slate-900 lg:text-sm">
-                <TitleIcon className="h-3.5 w-3.5 shrink-0 text-slate-600" strokeWidth={2.25} aria-hidden />
+              <h3 className="flex items-center gap-1.5 text-sm font-bold leading-snug text-slate-900 dark:text-zinc-100">
+                <TitleIcon className="h-4 w-4 shrink-0 text-slate-600 dark:text-zinc-400" strokeWidth={2.25} aria-hidden />
                 <span>{post.title}</span>
               </h3>
-              <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-slate-700">
+              <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-zinc-300">
                 {post.body}
               </p>
-              <div className="mt-2 space-y-1 text-xs font-medium text-slate-700">
+              <div className="mt-2 space-y-1 text-sm font-medium text-slate-700 dark:text-zinc-200">
                 {post.whenLabel ? (
                   <div className="flex items-center gap-1.5">
-                    <Clock className="h-3 w-3 shrink-0 text-slate-500" aria-hidden />
+                    <Clock className="h-3 w-3 shrink-0 text-slate-500 dark:text-zinc-400" aria-hidden />
                     <span>{post.whenLabel}</span>
                   </div>
                 ) : null}
                 {post.rateLabel ? (
-                  <div className="flex items-center gap-1.5 text-slate-700">
-                    <Coins className="h-3 w-3 shrink-0" aria-hidden />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
+                    <Coins className="h-3 w-3 shrink-0 dark:text-zinc-400" aria-hidden />
                     <span>{post.rateLabel}</span>
                   </div>
                 ) : null}
@@ -578,7 +579,7 @@ type LandingHeroCollageProps = {
 const COLLAGE_DESIGN_WIDTH = 640;
 const COLLAGE_DESIGN_HEIGHT = 720;
 /** Slightly larger than fit-to-width on mobile embedded hero */
-const MOBILE_EMBEDDED_SCALE_BOOST = 1.18;
+const MOBILE_EMBEDDED_SCALE_BOOST = 1.36;
 
 function LandingHeroCollageCanvas({
   posts,
@@ -591,7 +592,7 @@ function LandingHeroCollageCanvas({
   return (
     <div
       className={cn(
-        "relative h-full w-full overflow-hidden bg-white",
+        "relative h-full w-full overflow-hidden bg-white dark:bg-background",
         className,
       )}
       aria-hidden={loading}
@@ -599,15 +600,16 @@ function LandingHeroCollageCanvas({
       <div
         className={cn(
           "relative mx-auto h-full w-full px-6 lg:px-10",
-          embedded ? "pb-20 pt-2" : "pb-28 pt-28 lg:pb-32 lg:pt-32",
+          embedded ? "px-1 pb-16 pt-1" : "pb-28 pt-28 lg:pb-32 lg:pt-32",
         )}
       >
         <CollageMediaCard
           mock={EVENT_CARD_MOCK}
           imageUrl={eventImage}
+          compact={embedded}
           shellClassName={
             embedded
-              ? "left-[3%] top-[6%] z-20 h-[54%] w-[50%]"
+              ? "left-0 top-[3%] z-20 h-[56%] w-[72%]"
               : "left-[34%] top-[24%] z-10 h-[36%] w-[28%] !rotate-0"
           }
           tilt="rotate-0"
@@ -624,7 +626,7 @@ function LandingHeroCollageCanvas({
         {embedded ? (
           <CollageTextPostCard
             post={NANNY_TEXT_POST_MOBILE}
-            shellClassName="left-[46%] top-[12%] z-30 h-[50%] w-[50%]"
+            shellClassName="left-[42%] top-[11%] z-30 h-[50%] w-[60%]"
             tilt="rotate-0"
             hideComments
           />
@@ -633,11 +635,11 @@ function LandingHeroCollageCanvas({
         <div
           className={cn(
             "absolute z-40",
-            embedded ? "bottom-[26%] left-[10%]" : "bottom-[30%] left-[42%]",
+            embedded ? "bottom-[22%] left-[8%]" : "bottom-[30%] left-[42%]",
           )}
         >
           <div className="rounded-full bg-gradient-to-br from-sky-400 via-blue-500 to-emerald-400 p-1 shadow-[0_20px_48px_-12px_rgba(59,130,246,0.55)]">
-            <div className="rounded-full bg-white p-1">
+            <div className="rounded-full bg-white p-1 dark:bg-zinc-800">
               <Avatar
                 className={cn(
                   embedded
@@ -659,7 +661,7 @@ function LandingHeroCollageCanvas({
         </div>
 
         {embedded ? (
-          <p className="absolute bottom-10 left-6 right-6 max-w-md text-left text-[2.35rem] font-black leading-[1.05] tracking-tight text-slate-900 lg:bottom-14 lg:left-10 lg:text-[2.75rem] xl:text-[3.25rem]">
+          <p className="absolute bottom-8 left-4 right-4 max-w-lg text-left text-[2.55rem] font-black leading-[1.05] tracking-tight text-slate-900 dark:text-zinc-50">
             Explore the community you{" "}
             <span className="text-orange-500">love</span>.
           </p>
@@ -697,14 +699,14 @@ function LandingHeroCollageEmbedded({
   return (
     <div
       ref={containerRef}
-      className={cn("w-full overflow-hidden bg-white", className)}
+      className={cn("w-full overflow-hidden bg-white dark:bg-background", className)}
     >
       <div
         className="flex justify-center"
         style={{ height: COLLAGE_DESIGN_HEIGHT * scale }}
       >
         <div
-          className="relative bg-white"
+          className="relative bg-white dark:bg-background"
           style={{
             width: COLLAGE_DESIGN_WIDTH,
             height: COLLAGE_DESIGN_HEIGHT,

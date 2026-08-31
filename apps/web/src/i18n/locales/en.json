@@ -757,5 +757,166 @@
       "errorNotAuthenticated": "You must be signed in to delete your account.",
       "errorNotFound": "We could not find your account. It may already have been deleted."
     }
+  },
+  "landing": {
+    "heroTitleBefore": "One ",
+    "heroTitleHighlight": "community",
+    "heroTitleAfter": "Many helpers.",
+    "heroDescription": "Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.",
+    "verifiedUsers": "Verified users",
+    "localHelpers": "Local helpers",
+    "fastResponse": "Fast response",
+    "offerHelp": "Offer Help",
+    "needHelp": "Need Help",
+    "verifiedAria": "Secure registration powered by Didit",
+    "verifiedTitleBefore": "Every member verified with",
+    "verifiedDidit": "Didit",
+    "verifiedSubtitle": "Real ID and a live selfie before anyone can hire or work.",
+    "verifiedCheck1": "Encrypted ID checks at signup",
+    "verifiedCheck2": "Verified before posting, hiring, or going live",
+    "postsTitle": "Requests, offers, community, and events",
+    "postsSubtitle": "Browse every post type in one feed — then reply, message, or post your own.",
+    "postsCta": "Open post feed",
+    "howItWorksTitle": "How it works",
+    "howItWorksSubtitle": "Simple steps to find the perfect helper or start earning today.",
+    "steps": {
+      "1": {
+        "title": "Post request",
+        "desc": "Answer a few short taps to match with local helpers.",
+        "imageAlt": "Phone showing a short help request form"
+      },
+      "2": {
+        "title": "Get matched",
+        "desc": "Helpers in your area see and respond to your request.",
+        "imageAlt": "Finding local helpers nearby"
+      },
+      "3": {
+        "title": "Choose helper",
+        "desc": "Pick the person who fits you best from their profiles.",
+        "imageAlt": "Choosing a helper from matching profiles"
+      },
+      "4": {
+        "title": "Chat & confirm",
+        "desc": "Sort out details and schedule through direct chat.",
+        "imageAlt": "Chat conversation to confirm the details"
+      },
+      "5": {
+        "title": "You're set!",
+        "desc": "Your helper arrives as agreed. Relax and enjoy.",
+        "imageAlt": "Helper arriving and the job confirmed"
+      }
+    },
+    "experienceTitleBefore": "Experience the ",
+    "experienceTitleBrand": "Tebnu",
+    "experienceTitleAfter": " Ease",
+    "experienceSubtitle": "Find the perfect helper for any task, with all the details at your fingertips.",
+    "whyChooseUs": "Why Choose Us?",
+    "experience": {
+      "special_video": {
+        "title": "Experience Tebnu",
+        "phrase": "See How We Make Life Simpler",
+        "blurb": "Post a request, get matched, and chat with verified helpers nearby.",
+        "details": "Watch how easy it is to connect with trusted helpers in your neighborhood. Fast, secure, and seamless.",
+        "bullets": ["Instant Matching", "Secure Direct Chat", "Verified Profiles", "Easy Management"],
+        "cta": "Get Started Now"
+      },
+      "childcare": {
+        "title": "Childcare",
+        "phrase": "Trusted Care for Your Little Ones",
+        "blurb": "Nannies and babysitters for everyday care or a last-minute sitter.",
+        "details": "Meet verified nannies and babysitters who feel right for your family. From nannies to emergency sitters.",
+        "bullets": ["Vetted & Background Checked", "CPR Certified Options", "Flexible Scheduling", "Real-time Availability"],
+        "cta": "Hire a Nanny"
+      },
+      "cleaning": {
+        "title": "Cleaning",
+        "phrase": "A pristine retreat, every single time.",
+        "blurb": "Housekeepers for a deep clean or regular upkeep at home.",
+        "details": "Our cleaning professionals are dedicated to making your home shine. From deep cleans to regular upkeep, we handle the dust so you can handle the rest.",
+        "bullets": ["Vetted housekeepers", "Environmentally friendly options", "Same-day availability available"],
+        "cta": "Find a Housekeeper"
+      },
+      "cooking": {
+        "title": "Cooking",
+        "phrase": "Gourmet Meals at Your Table",
+        "blurb": "Home cooks and chefs for weeknight meals or dinner parties.",
+        "details": "Find talented home cooks and chefs for daily meal prep or special dinner parties. Customizable to your tastes.",
+        "bullets": ["Dietary Specialists", "Grocery Shopping Included", "Kitchen Cleanup", "Fresh Ingredients"],
+        "cta": "Hire a Chef"
+      },
+      "pickup": {
+        "title": "Delivery",
+        "phrase": "Your Errands, Handled",
+        "blurb": "Pickups and drop-offs for groceries, packages, and everyday errands.",
+        "details": "From groceries to dry cleaning, our reliable couriers pick up and deliver essentials right to your door.",
+        "bullets": ["Fast Point-to-Point", "Real-time Tracking", "Careful Handling", "Available 24/7"],
+        "cta": "Hire a Courier"
+      },
+      "handyman": {
+        "title": "Handyman",
+        "phrase": "Expert Home Maintenance",
+        "blurb": "Assembly, organizing, and small fixes around the house.",
+        "details": "Need help organizing, assembling, or fixing? Our versatile helpers tackle any home task with precision.",
+        "bullets": ["Versatile Skillsets", "On-Demand Tasks", "Creative Problem Solvers", "Project-Based Rates"],
+        "cta": "Find a Helper"
+      }
+    },
+    "benefitsTitle": "Your benefits with Tebnu",
+    "benefitsAria": "Tebnu benefits",
+    "benefits": {
+      "match": {
+        "title": "Ideal helper, faster",
+        "description": "AI matching shows you the best helpers first, ensuring a perfect fit.",
+        "explanation": "Tell us what you need once. Tebnu ranks local helpers by skills, reviews, and availability so you spend minutes choosing — not hours searching through lists.",
+        "imageAlt": "Local helpers ready to match with families"
+      },
+      "trust": {
+        "title": "Trust powered by AI",
+        "description": "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
+        "explanation": "Before anyone can hire or start helping, they complete a Didit ID check and a live selfie match. You always know who you are meeting, and fake profiles never make it onto the platform.",
+        "imageAlt": "ID card scan for verified signup"
+      },
+      "reviews": {
+        "title": "Real reviews",
+        "description": "Ratings come only from real people after they helped together.",
+        "explanation": "Stars are not bought and not left by strangers. Only people who actually helped together can rate — so the score you see is earned from real time spent helping.",
+        "imageAlt": "People who leave reviews after real help"
+      },
+      "language": {
+        "title": "No language barriers",
+        "description": "Hebrew, English, French, Russian – built for smooth communication.",
+        "explanation": "Post, chat, and read profiles in Hebrew, English, French, or Russian. The app is built for mixed-language homes in Israel, so details stay clear from the first message to the last.",
+        "imageAlt": "Everyday help that works in any language"
+      },
+      "busy": {
+        "title": "Built for busy days",
+        "description": "AI handles the hard stuff, making finding help stress‑free.",
+        "explanation": "From posting a request to confirming a helper, the flow is short taps — not long forms. Get cleaning, childcare, cooking, or errands covered without pausing the rest of your day.",
+        "imageAlt": "Everyday help when you need it"
+      }
+    }
+  },
+  "findHelpersPage": {
+    "newHelper": "New helper",
+    "helperFallback": "Helper",
+    "distanceFromYou": "{{distance}} from you",
+    "viewProfile": "View profile",
+    "message": "Message",
+    "filter": "Filter",
+    "filterCategories": "Categories",
+    "filterLocation": "Location",
+    "searchByName": "Search by name",
+    "clear": "Clear",
+    "done": "Done",
+    "applyLocation": "Apply location",
+    "searchCity": "Search city",
+    "noMatch": "No helpers match these filters.",
+    "otherSubcategoriesTitle": "Other help",
+    "pills": {
+      "all": "All helpers",
+      "nearby": "Nearby",
+      "high_rated": "High rated",
+      "available": "Available"
+    }
   }
 }

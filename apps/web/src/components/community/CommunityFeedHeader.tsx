@@ -682,18 +682,15 @@ export function CommunityFeedHeader({
               className={cn(
                 "inline-flex shrink-0 items-center rounded-full border-0 font-semibold transition-all",
                 variant === "global"
-                  ? "gap-1.5 px-2.5 py-1.5 text-[11px] sm:px-3 sm:text-xs"
-                  : "gap-2.5 px-[1.125rem] py-2.5 text-[13px] font-black uppercase tracking-wide sm:px-5 sm:text-[14px]",
+                  ? "gap-2 px-3.5 py-2.5 text-[13px] font-bold md:gap-1.5 md:px-3 md:py-1.5 md:text-xs md:font-semibold"
+                  : "gap-2.5 px-4 py-3 text-[14px] font-black uppercase tracking-wide md:px-5 md:py-2.5 md:text-[14px]",
                 selected
                   ? communityFeedFilterActiveBadgeClass
                   : communityFeedFilterIdleBadgeClass,
               )}
             >
               <Icon
-                className={cn(
-                  "shrink-0",
-                  variant === "global" ? "h-4 w-4 sm:h-5 sm:w-5" : "h-[18px] w-[18px]",
-                )}
+                className="h-5 w-5 shrink-0"
                 strokeWidth={2.25}
                 aria-hidden
               />
@@ -707,7 +704,7 @@ export function CommunityFeedHeader({
         <div className="-mx-2 md:hidden">
           <div
             className={cn(
-              "flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1 pt-0.5",
+              "flex items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 pt-0.5",
               "[-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
               "px-3 pe-6 scroll-ps-3 scroll-pe-6",
             )}
@@ -729,7 +726,7 @@ export function CommunityFeedHeader({
                 value={otherSubFilter ?? ""}
                 onChange={(e) => onOtherSubFilterChange?.(e.target.value || null)}
                 className={cn(
-                  "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 px-2.5 text-[11px] font-semibold outline-none",
+                  "h-10 max-w-[11rem] shrink-0 rounded-full border-0 px-3.5 text-[13px] font-semibold outline-none md:h-8 md:max-w-[9.5rem] md:px-2.5 md:text-[11px]",
                   "bg-zinc-100 text-zinc-700 hover:bg-zinc-200/90 dark:bg-zinc-800 dark:text-zinc-200",
                 )}
                 aria-label={t("discoverHome.filters.pickSubcategory")}

@@ -35,6 +35,8 @@ type DiscoverOverlaySnapSheetProps = {
   title: string;
   children: ReactNode;
   bottomOffsetClass?: string;
+  /** Desktop only: bottom sheet (default) or right-side drawer. */
+  desktopPlacement?: "bottom" | "right";
 };
 
 /** Mobile: native swipe snap sheet. Desktop: centered bottom sheet dialog. */
@@ -44,6 +46,7 @@ export function DiscoverOverlaySnapSheet({
   title,
   children,
   bottomOffsetClass = discoverMobileSheetBottomOffset,
+  desktopPlacement = "bottom",
 }: DiscoverOverlaySnapSheetProps) {
   const isMobile = useIsMobileViewport();
   const [expanded, setExpanded] = useState(true);
@@ -64,6 +67,7 @@ export function DiscoverOverlaySnapSheet({
           if (!next) dismiss();
         }}
         onDismiss={dismiss}
+        hideBorder={desktopPlacement === "right"}
         bottomOffsetClass={bottomOffsetClass}
         ariaLabel="Drag down to close"
         collapsed={
@@ -80,6 +84,30 @@ export function DiscoverOverlaySnapSheet({
           {children}
         </div>
       </MobileSnapBottomSheet>
+    );
+  }
+
+  if (desktopPlacement === "right") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className={cn(
+            "fixed inset-y-0 right-0 left-auto top-0 z-[130] flex h-dvh max-h-dvh w-full max-w-md translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none outline-none ring-0",
+            "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+            "!data-[state=open]:slide-in-from-left-0 !data-[state=open]:slide-in-from-top-0",
+            "!data-[state=closed]:slide-out-to-left-0 !data-[state=closed]:slide-out-to-top-0",
+            "!data-[state=open]:zoom-in-100 !data-[state=closed]:zoom-out-100",
+            "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+          )}
+        >
+          <DialogTitle className="sr-only">{title}</DialogTitle>
+          <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden border-0 bg-card shadow-2xl outline-none ring-0">
+            {children}
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 

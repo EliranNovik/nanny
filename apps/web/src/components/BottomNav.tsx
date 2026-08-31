@@ -295,7 +295,8 @@ export function BottomNav() {
     pathnameNorm === "/availability/post-now" ||
     pathnameNorm === "/messages" ||
     pathnameNorm.startsWith("/messages/") ||
-    (isMatchSearchRoute && !matchSearchChromeVisible);
+    isHelpersFindPage ||
+    (isFreelancerJobsMatch && !matchSearchChromeVisible);
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -1050,14 +1051,12 @@ export function BottomNav() {
                 aria-label={t("common.notifications")}
               >
                 <Bell className="h-7 w-7" />
-                {notificationBadgeCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute end-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:end-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
-                  >
-                    {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                  </Badge>
-                )}
+                {notificationBadgeCount > 0 ? (
+                  <span
+                    className="absolute end-1.5 top-1.5 z-10 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900 md:end-1 md:top-1"
+                    aria-hidden
+                  />
+                ) : null}
               </button>
             )}
             {/*
@@ -1187,12 +1186,10 @@ export function BottomNav() {
                   >
                     <Bell className="h-7 w-7" strokeWidth={2} />
                     {notificationBadgeCount > 0 ? (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center border-2 border-white px-0.5 text-[10px] font-black leading-none shadow-sm dark:border-zinc-900"
-                      >
-                        {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                      </Badge>
+                      <span
+                        className="absolute right-1 top-1 z-10 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900"
+                        aria-hidden
+                      />
                     ) : null}
                   </button>
                 )

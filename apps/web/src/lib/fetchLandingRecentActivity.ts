@@ -53,6 +53,7 @@ export type LandingActivityItem = {
   authorName: string;
   authorPhotoUrl: string | null;
   authorInitials: string;
+  authorVerified: boolean;
   roleLabel: string;
   description: string;
   rateLabel: string | null;
@@ -70,6 +71,7 @@ type ProfileRow = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
+  is_verified: boolean | null;
 };
 
 type ProfilePostRow = {
@@ -96,9 +98,10 @@ type CommunityFeedRow = {
   availability_payload: AvailabilityPayload | null;
   author_full_name: string | null;
   author_photo_url: string | null;
+  author_is_verified?: boolean | null;
 };
 
-const ACTIVITY_LIMIT = 16;
+const ACTIVITY_LIMIT = 8;
 
 function memberInitials(name: string | null | undefined): string {
   const parts = (name || "Member").trim().split(/\s+/).filter(Boolean);
@@ -271,6 +274,7 @@ function mapJobRequest(
     authorName: firstName(name),
     authorPhotoUrl: profile?.photo_url ?? row.client_photo_url ?? null,
     authorInitials: memberInitials(name),
+    authorVerified: Boolean(profile?.is_verified ?? row.is_verified),
     roleLabel: postServiceCategoryLabel(
       row.service_type,
       detailString(row.service_details, ["other_type", "custom_category"]),
@@ -352,6 +356,7 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
     authorName: firstName(name),
     authorPhotoUrl: profile?.photo_url ?? null,
     authorInitials: memberInitials(name),
+    authorVerified: Boolean(profile?.is_verified),
     roleLabel:
       kind === "request"
         ? `${postServiceCategoryLabel(categoryId, customCategory)} request`
@@ -371,6 +376,7 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
 function mapCommunityOffer(
   row: CommunityFeedRow,
   imageUrl: string | null = null,
+  profile?: ProfileRow,
 ): LandingActivityItem {
   const customCategory =
     detailString(
@@ -391,8 +397,9 @@ function mapCommunityOffer(
     kind: "offer",
     created_at: row.created_at,
     authorName: firstName(name),
-    authorPhotoUrl: row.author_photo_url ?? null,
+    authorPhotoUrl: profile?.photo_url ?? row.author_photo_url ?? null,
     authorInitials: memberInitials(name),
+    authorVerified: Boolean(profile?.is_verified ?? row.author_is_verified),
     roleLabel: `${postServiceCategoryLabel(categoryId, customCategory)} offer`,
     description,
     rateLabel: formatPriceHintFromPayload(row.availability_payload),
@@ -445,12 +452,15 @@ export async function fetchLandingRecentActivity(): Promise<LandingActivityItem[
   for (const p of postRows) {
     if (p.author_id) profileIds.add(p.author_id);
   }
+  for (const c of communityRows) {
+    if (c.author_id) profileIds.add(c.author_id);
+  }
 
   let profileMap = new Map<string, ProfileRow>();
   if (profileIds.size > 0) {
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("id, full_name, photo_url")
+      .select("id, full_name, photo_url, is_verified")
       .in("id", [...profileIds]);
     if (error) {
       console.warn("[fetchLandingRecentActivity] profiles", error);
@@ -488,7 +498,11 @@ export async function fetchLandingRecentActivity(): Promise<LandingActivityItem[
       .map((row) => mapProfilePost(row, profileMap.get(row.author_id)))
       .filter((row): row is LandingActivityItem => row != null),
     ...communityRows.map((row) =>
-      mapCommunityOffer(row, communityImageByPost.get(row.id) ?? null),
+      mapCommunityOffer(
+        row,
+        communityImageByPost.get(row.id) ?? null,
+        profileMap.get(row.author_id),
+      ),
     ),
   ];
 

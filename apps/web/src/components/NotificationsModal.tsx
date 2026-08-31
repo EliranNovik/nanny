@@ -10,6 +10,7 @@ import {
 import {
   loadDismissedActivityIds,
   rememberDismissedActivity,
+  rememberDismissedActivities,
 } from "@/lib/inboxDismissedActivity";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import {
@@ -24,6 +25,7 @@ import { mobileSheetSafePaddingBottom } from "@/lib/mobileModalLayout";
 import {
   Bell,
   Briefcase,
+  Check,
   MessageSquare,
   Sparkles,
 } from "lucide-react";
@@ -137,11 +139,17 @@ function welcomeAlertForUser(params: {
 function NotificationListRow({
   alert,
   index,
+  selecting,
+  selected,
   onOpen,
+  onToggle,
 }: {
   alert: NotificationAlert;
   index: number;
+  selecting: boolean;
+  selected: boolean;
   onOpen: (alert: NotificationAlert) => void;
+  onToggle: (alert: NotificationAlert) => void;
 }) {
   const Icon = alertIcon(alert.type);
   const timeLabel = formatAlertTime(alert.created_at);
@@ -149,11 +157,13 @@ function NotificationListRow({
   return (
     <button
       type="button"
-      onClick={() => onOpen(alert)}
+      onClick={() => (selecting ? onToggle(alert) : onOpen(alert))}
+      aria-pressed={selecting ? selected : undefined}
       className={cn(
         "relative w-full text-left transition-colors",
         "px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))]",
         "hover:bg-muted/30 active:bg-muted/40 dark:hover:bg-zinc-900/50 dark:active:bg-zinc-900/70",
+        selecting && selected && "bg-orange-500/10 dark:bg-orange-500/15",
       )}
     >
       {index > 0 ? (
@@ -163,6 +173,19 @@ function NotificationListRow({
         />
       ) : null}
       <div className="flex min-w-0 items-start gap-3.5">
+        {selecting ? (
+          <span
+            className={cn(
+              "mt-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
+              selected
+                ? "border-orange-500 bg-orange-500 text-white"
+                : "border-muted-foreground/35 bg-background",
+            )}
+            aria-hidden
+          >
+            {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+          </span>
+        ) : null}
         <div className="relative shrink-0 pt-0.5">
           {alert.sender_photo ? (
             <Avatar className="h-[3.625rem] w-[3.625rem]">
@@ -227,7 +250,13 @@ function NotificationSkeletonRow({ index }: { index: number }) {
 function NotificationsPanel({
   alerts,
   loading,
+  selecting,
+  selectedIds,
   onOpen,
+  onToggleRow,
+  onStartSelect,
+  onCancelSelect,
+  onMarkSelectedRead,
   onClearAll,
   headerClassName,
   listClassName,
@@ -235,12 +264,20 @@ function NotificationsPanel({
 }: {
   alerts: NotificationAlert[];
   loading: boolean;
+  selecting: boolean;
+  selectedIds: ReadonlySet<string>;
   onOpen: (alert: NotificationAlert) => void;
+  onToggleRow: (alert: NotificationAlert) => void;
+  onStartSelect: () => void;
+  onCancelSelect: () => void;
+  onMarkSelectedRead: () => void;
   onClearAll: () => void;
   headerClassName?: string;
   listClassName?: string;
   footerClassName?: string;
 }) {
+  const selectedCount = selectedIds.size;
+
   return (
     <>
       <div
@@ -260,6 +297,35 @@ function NotificationsPanel({
             </span>
           ) : null}
         </div>
+        {alerts.length > 0 && !loading ? (
+          selecting ? (
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={onCancelSelect}
+                className="text-sm font-semibold text-muted-foreground transition-opacity hover:opacity-80"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onMarkSelectedRead}
+                disabled={selectedCount === 0}
+                className="text-sm font-bold text-orange-600 transition-opacity hover:opacity-80 disabled:opacity-40 dark:text-orange-400"
+              >
+                Mark as read{selectedCount > 0 ? ` (${selectedCount})` : ""}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartSelect}
+              className="shrink-0 text-sm font-bold text-orange-600 transition-opacity hover:opacity-80 dark:text-orange-400"
+            >
+              Read all
+            </button>
+          )
+        ) : null}
       </div>
 
       <div
@@ -291,7 +357,10 @@ function NotificationsPanel({
                 key={alert.id}
                 alert={alert}
                 index={index}
+                selecting={selecting}
+                selected={selectedIds.has(alert.id)}
                 onOpen={onOpen}
+                onToggle={onToggleRow}
               />
             ))}
           </div>
@@ -306,7 +375,7 @@ function NotificationsPanel({
         )}
       >
         <span>{alerts.length > 0 ? `${alerts.length} updates` : "Up to date"}</span>
-        {alerts.length > 0 ? (
+        {alerts.length > 0 && !selecting ? (
           <button
             type="button"
             onClick={onClearAll}
@@ -329,6 +398,8 @@ export function NotificationsModal({
   const isMobile = useIsMobileViewport();
   const [alerts, setAlerts] = useState<NotificationAlert[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [presented, setPresented] = useState(false);
   const alertsRef = useRef<NotificationAlert[]>([]);
@@ -361,6 +432,10 @@ export function NotificationsModal({
 
   useEffect(() => {
     if (open) void fetchAlerts();
+    else {
+      setSelecting(false);
+      setSelectedIds(new Set());
+    }
   }, [open, fetchAlerts]);
 
   useEffect(() => {
@@ -445,15 +520,46 @@ export function NotificationsModal({
 
   const handleClearAll = () => {
     if (!user?.id) return;
-    for (const a of alerts) rememberDismissedActivity(user.id, a.id);
+    rememberDismissedActivities(
+      user.id,
+      alerts.map((a) => a.id),
+    );
     setAlerts([]);
+    setSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleToggleRow = (alert: NotificationAlert) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(alert.id)) next.delete(alert.id);
+      else next.add(alert.id);
+      return next;
+    });
+  };
+
+  const handleMarkSelectedRead = () => {
+    if (!user?.id || selectedIds.size === 0) return;
+    rememberDismissedActivities(user.id, [...selectedIds]);
+    setAlerts((prev) => prev.filter((a) => !selectedIds.has(a.id)));
+    setSelecting(false);
+    setSelectedIds(new Set());
   };
 
   const panel = (
     <NotificationsPanel
       alerts={alerts}
       loading={loading}
+      selecting={selecting}
+      selectedIds={selectedIds}
       onOpen={handleOpen}
+      onToggleRow={handleToggleRow}
+      onStartSelect={() => setSelecting(true)}
+      onCancelSelect={() => {
+        setSelecting(false);
+        setSelectedIds(new Set());
+      }}
+      onMarkSelectedRead={handleMarkSelectedRead}
       onClearAll={handleClearAll}
     />
   );

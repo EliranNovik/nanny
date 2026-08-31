@@ -34,8 +34,17 @@ export function rememberDismissedActivity(
   userId: string,
   activityId: string,
 ): void {
+  rememberDismissedActivities(userId, [activityId]);
+}
+
+/** Mark several activity rows as read/dismissed in one write. */
+export function rememberDismissedActivities(
+  userId: string,
+  activityIds: readonly string[],
+): void {
+  if (activityIds.length === 0) return;
   const s = loadDismissedActivityIds(userId);
-  s.add(activityId);
+  for (const id of activityIds) s.add(id);
   persistDismissedActivityIds(userId, s);
   try {
     if (typeof window !== "undefined") {

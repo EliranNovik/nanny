@@ -473,17 +473,21 @@ function CategoryIcon({
 function IsolatedDetailIcon({
   kind,
   expired,
+  onLightGlass = false,
 }: {
   kind: IsolatedFeedDetailKind;
   expired?: boolean;
+  onLightGlass?: boolean;
 }) {
+  const mute = onLightGlass ? "text-zinc-600" : "text-muted-foreground";
+  const muteSoft = onLightGlass ? "text-zinc-500" : "text-muted-foreground/80";
   const className = cn(
     "mt-0.5 h-5 w-5 shrink-0",
     expired && kind === "when"
-      ? "text-muted-foreground/80"
+      ? muteSoft
       : kind === "budget" || kind === "rate"
         ? undefined
-        : "text-muted-foreground",
+        : mute,
   );
   switch (kind) {
     case "location":
@@ -505,9 +509,23 @@ function IsolatedDetailIcon({
     case "frequency":
       return <RefreshCw className={className} />;
     case "budget":
-      return <Coins className={cn(className, requestPostBudgetTextClass)} />;
+      return (
+        <Coins
+          className={cn(
+            className,
+            onLightGlass ? "text-orange-700" : requestPostBudgetTextClass,
+          )}
+        />
+      );
     case "rate":
-      return <Coins className={cn(className, "text-emerald-600 dark:text-emerald-400")} />;
+      return (
+        <Coins
+          className={cn(
+            className,
+            onLightGlass ? "text-emerald-700" : "text-emerald-600 dark:text-emerald-400",
+          )}
+        />
+      );
     case "people":
       return <Users className={className} />;
     case "kids":
@@ -4600,7 +4618,11 @@ function PostCard({
   function renderGlobalMetadataLines(
     includeJobRequestBudget: boolean,
     omitWhen = false,
+    onLightGlass = false,
   ) {
+    const mute = onLightGlass ? "text-zinc-600" : "text-muted-foreground";
+    const muteSoft = onLightGlass ? "text-zinc-500" : "text-muted-foreground/80";
+    const ink = onLightGlass ? "text-zinc-900" : undefined;
     if (isolateFocusedPost) {
       return isolatedDetails
         .filter((item) => !omitWhen || item.kind !== "when")
@@ -4608,13 +4630,21 @@ function PostCard({
         <div
           key={item.key}
           className={cn(
-            "flex items-start gap-2.5",
-            item.kind === "budget" && requestPostBudgetTextClass,
-            item.kind === "rate" && "text-emerald-600 dark:text-emerald-400",
-            item.kind === "when" && whenExpired && "text-muted-foreground",
+            "flex min-w-0 items-start gap-2.5",
+            ink,
+            item.kind === "notes" && "col-span-2",
+            item.kind === "budget" &&
+              (onLightGlass ? "text-orange-700" : requestPostBudgetTextClass),
+            item.kind === "rate" &&
+              (onLightGlass ? "text-emerald-700" : "text-emerald-600 dark:text-emerald-400"),
+            item.kind === "when" && whenExpired && mute,
           )}
         >
-          <IsolatedDetailIcon kind={item.kind} expired={whenExpired} />
+          <IsolatedDetailIcon
+            kind={item.kind}
+            expired={whenExpired}
+            onLightGlass={onLightGlass}
+          />
           <span
             className={cn(
               "min-w-0",
@@ -4630,24 +4660,22 @@ function PostCard({
     return (
       <>
         {postLocationLine ? (
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <span>{postLocationLine}</span>
+          <div className={cn("flex min-w-0 items-center gap-2", ink)}>
+            <MapPin className={cn("h-5 w-5 shrink-0", mute)} />
+            <span className="min-w-0 break-words">{postLocationLine}</span>
           </div>
         ) : null}
         {whenLabel && !omitWhen ? (
           <div
             className={cn(
-              "flex items-center gap-2",
-              whenExpired && "text-muted-foreground",
+              "flex min-w-0 items-center gap-2",
+              whenExpired ? mute : ink,
             )}
           >
             <Clock
               className={cn(
                 "h-5 w-5 shrink-0",
-                whenExpired
-                  ? "text-muted-foreground/80"
-                  : "text-muted-foreground",
+                whenExpired ? muteSoft : mute,
               )}
             />
             <span className={cn(whenExpired && "font-bold")}>{whenLabel}</span>
@@ -4656,22 +4684,32 @@ function PostCard({
         {post.source === "post" &&
         post.post_type_id === "request_help" &&
         post.post_metadata?.budget ? (
-          <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              onLightGlass ? "text-orange-700" : requestPostBudgetTextClass,
+            )}
+          >
             <Coins className="h-5 w-5 shrink-0" />
             <span>
               ₪{post.post_metadata.budget}{" "}
-              <span className="text-muted-foreground">
+              <span className={mute}>
                 {feedRateTypeLabel(t, post.post_metadata.rate_type)}
               </span>
             </span>
           </div>
         ) : null}
         {includeJobRequestBudget && isJobRequest && post.post_metadata?.budget ? (
-          <div className={cn("flex items-center gap-2", requestPostBudgetTextClass)}>
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              onLightGlass ? "text-orange-700" : requestPostBudgetTextClass,
+            )}
+          >
             <Coins className="h-5 w-5 shrink-0" />
             <span>
               ₪{post.post_metadata.budget}{" "}
-              <span className="text-muted-foreground">
+              <span className={mute}>
                 {feedRateTypeLabel(t, post.post_metadata.rate_type)}
               </span>
             </span>
@@ -4680,19 +4718,24 @@ function PostCard({
         {post.source === "post" &&
         post.post_type_id === "offer_service" &&
         post.post_metadata?.rate ? (
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              onLightGlass ? "text-emerald-700" : "text-emerald-600 dark:text-emerald-400",
+            )}
+          >
             <Coins className="h-5 w-5 shrink-0" />
             <span>
               ₪{post.post_metadata.rate}{" "}
-              <span className="text-muted-foreground">
+              <span className={mute}>
                 {feedRateTypeLabel(t, post.post_metadata.rate_type)}
               </span>
             </span>
           </div>
         ) : null}
         {isEventPost && eventHelpersNeeded != null ? (
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className={cn("flex min-w-0 items-center gap-2", ink)}>
+            <Users className={cn("h-5 w-5 shrink-0", mute)} />
             <span>
               {t("feed.event.helpersBadge", {
                 accepted: eventAcceptedHelpers,
@@ -5119,7 +5162,7 @@ function PostCard({
             {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
               <CategoryIcon
                 categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
-                className="mt-0.5 h-5 w-5 shrink-0"
+                className="mt-0.5 h-5 w-5 shrink-0 dark:text-current"
               />
             ) : null}
             <span className="line-clamp-2">{displayPostTitle}</span>
@@ -5128,12 +5171,12 @@ function PostCard({
         {showPortraitMediaMeta ? (
           <div
             className={cn(
-              "space-y-1.5 text-[13px] font-medium text-zinc-800 dark:text-zinc-100",
+              "grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px] font-medium text-zinc-900",
               globalFeedContentLayout?.className,
             )}
             dir={globalFeedContentLayout?.dir}
           >
-            {renderGlobalMetadataLines(false, true)}
+            {renderGlobalMetadataLines(false, true, true)}
           </div>
         ) : null}
         {whenLabel || globalFeedCtaButton ? (
@@ -5903,7 +5946,7 @@ function PostCard({
                 ) : null}
                 <div
                   className={cn(
-                    "mt-3 space-y-2.5 text-[16px] font-medium text-foreground/85",
+                    "mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/85",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -5990,7 +6033,7 @@ function PostCard({
                 <div
                   className={cn(
                     cardPadX,
-                    "mt-2 space-y-2.5 text-[16px] font-medium text-foreground/90",
+                    "mt-2 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/90",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}

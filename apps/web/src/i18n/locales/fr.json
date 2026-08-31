@@ -745,5 +745,166 @@
       "errorNotAuthenticated": "Vous devez être connecté pour supprimer votre compte.",
       "errorNotFound": "Compte introuvable. Il a peut-être déjà été supprimé."
     }
+  },
+  "landing": {
+    "heroTitleBefore": "Une ",
+    "heroTitleHighlight": "communauté",
+    "heroTitleAfter": "Beaucoup d'entraide.",
+    "heroDescription": "Trouvez de l'aide près de chez vous — ou proposez vos compétences.",
+    "verifiedUsers": "Membres vérifiés",
+    "localHelpers": "Aidants locaux",
+    "fastResponse": "Réponse rapide",
+    "offerHelp": "Proposer de l'aide",
+    "needHelp": "Besoin d'aide",
+    "verifiedAria": "Inscription sécurisée avec Didit",
+    "verifiedTitleBefore": "Chaque membre est vérifié avec",
+    "verifiedDidit": "Didit",
+    "verifiedSubtitle": "Une pièce d'identité réelle et un selfie en direct avant d'embaucher ou de travailler.",
+    "verifiedCheck1": "Contrôles d'identité chiffrés à l'inscription",
+    "verifiedCheck2": "Vérifié avant de publier, d'embaucher ou de passer en ligne",
+    "postsTitle": "Demandes, offres, communauté et événements",
+    "postsSubtitle": "Tous les types de publications dans un seul fil — répondez, envoyez un message ou publiez le vôtre.",
+    "postsCta": "Ouvrir le fil",
+    "howItWorksTitle": "Comment ça marche",
+    "howItWorksSubtitle": "Des étapes simples pour trouver la bonne personne ou commencer à gagner dès aujourd'hui.",
+    "steps": {
+      "1": {
+        "title": "Publier une demande",
+        "desc": "Quelques tapotements suffisent pour trouver des aidants près de chez vous.",
+        "imageAlt": "Téléphone affichant un court formulaire de demande"
+      },
+      "2": {
+        "title": "Être mis en relation",
+        "desc": "Les aidants de votre quartier voient votre demande et y répondent.",
+        "imageAlt": "Recherche d'aidants à proximité"
+      },
+      "3": {
+        "title": "Choisir un aidant",
+        "desc": "Choisissez la personne qui vous convient le mieux d'après les profils.",
+        "imageAlt": "Choix d'un aidant parmi les profils"
+      },
+      "4": {
+        "title": "Discuter et confirmer",
+        "desc": "Réglez les détails et le planning en discussion directe.",
+        "imageAlt": "Conversation pour confirmer les détails"
+      },
+      "5": {
+        "title": "C'est parti !",
+        "desc": "Votre aidant arrive comme convenu. Détendez-vous.",
+        "imageAlt": "L'aidant arrive et la mission est confirmée"
+      }
+    },
+    "experienceTitleBefore": "Découvrez ",
+    "experienceTitleBrand": "Tebnu",
+    "experienceTitleAfter": " en toute simplicité",
+    "experienceSubtitle": "Trouvez la bonne personne pour chaque tâche, avec tous les détails à portée de main.",
+    "whyChooseUs": "Pourquoi nous choisir ?",
+    "experience": {
+      "special_video": {
+        "title": "Découvrir Tebnu",
+        "phrase": "Voir comme la vie devient plus simple",
+        "blurb": "Publiez une demande, trouvez un aidant vérifié près de chez vous.",
+        "details": "Regardez comme il est facile de trouver des aidants de confiance près de chez vous. Rapide, sûr et fluide.",
+        "bullets": ["Mise en relation instantanée", "Chat direct sécurisé", "Profils vérifiés", "Gestion simple"],
+        "cta": "Commencer"
+      },
+      "childcare": {
+        "title": "Garde d'enfants",
+        "phrase": "Une présence de confiance pour vos enfants",
+        "blurb": "Nounous et baby-sitters pour le quotidien ou en urgence.",
+        "details": "Rencontrez des nounous et baby-sitters vérifiées, adaptées à votre famille. De la nounou régulière au dépannage.",
+        "bullets": ["Profils contrôlés", "Options certifiées premiers secours", "Horaires flexibles", "Disponibilité en temps réel"],
+        "cta": "Trouver une nounou"
+      },
+      "cleaning": {
+        "title": "Ménage",
+        "phrase": "Une maison impeccable, à chaque fois.",
+        "blurb": "Aide-ménagères pour un grand ménage ou l'entretien régulier.",
+        "details": "Nos professionnels du ménage font briller votre intérieur. Grand ménage ou entretien régulier.",
+        "bullets": ["Aide-ménagères vérifiées", "Options écologiques", "Disponible le jour même"],
+        "cta": "Trouver une aide-ménagère"
+      },
+      "cooking": {
+        "title": "Cuisine",
+        "phrase": "De bons plats à votre table",
+        "blurb": "Cuisiniers pour les repas de la semaine ou un dîner.",
+        "details": "Trouvez des cuisiniers pour le quotidien ou un dîner spécial. Adapté à vos goûts.",
+        "bullets": ["Régimes alimentaires", "Courses incluses", "Cuisine rangée", "Ingrédients frais"],
+        "cta": "Trouver un cuisinier"
+      },
+      "pickup": {
+        "title": "Livraison",
+        "phrase": "Vos courses, gérées",
+        "blurb": "Courses, colis et petites courses, livrés chez vous.",
+        "details": "Courses, pressing : des coursiers fiables déposent tout chez vous.",
+        "bullets": ["Point à point rapide", "Suivi en temps réel", "Soin des colis", "Disponible 24/7"],
+        "cta": "Trouver un coursier"
+      },
+      "handyman": {
+        "title": "Bricolage",
+        "phrase": "L'entretien de la maison, bien fait",
+        "blurb": "Montage, rangement et petites réparations à la maison.",
+        "details": "Rangement, montage ou réparation ? Des aidants polyvalents s'occupent de la maison.",
+        "bullets": ["Compétences variées", "Tâches à la demande", "Solutions concrètes", "Tarif au projet"],
+        "cta": "Trouver un aidant"
+      }
+    },
+    "benefitsTitle": "Vos avantages avec Tebnu",
+    "benefitsAria": "Avantages Tebnu",
+    "benefits": {
+      "match": {
+        "title": "Le bon aidant, plus vite",
+        "description": "L'IA vous montre d'abord les personnes les plus adaptées.",
+        "explanation": "Dites une fois ce dont vous avez besoin. Tebnu classe les aidants locaux selon les compétences, les avis et la dispo — quelques minutes, pas des heures.",
+        "imageAlt": "Aidants locaux prêts à aider les familles"
+      },
+      "trust": {
+        "title": "La confiance, vérifiée",
+        "description": "Chaque aidant est vérifié par pièce d'identité et selfie.",
+        "explanation": "Avant d'embaucher ou d'aider, chacun passe un contrôle Didit et un selfie en direct. Vous savez toujours qui vous rencontrez.",
+        "imageAlt": "Scan de pièce d'identité à l'inscription"
+      },
+      "reviews": {
+        "title": "Vrais avis",
+        "description": "Les notes viennent uniquement de personnes qui se sont vraiment aidées.",
+        "explanation": "Les étoiles ne s'achètent pas. Seules les personnes qui ont réellement collaboré peuvent noter.",
+        "imageAlt": "Des personnes qui laissent un avis après une vraie aide"
+      },
+      "language": {
+        "title": "Sans barrière de langue",
+        "description": "Hébreu, anglais, français, russe — pour une communication fluide.",
+        "explanation": "Publiez, discutez et lisez les profils en hébreu, anglais, français ou russe. L'appli est pensée pour les foyers mixtes en Israël.",
+        "imageAlt": "Une aide du quotidien dans toutes les langues"
+      },
+      "busy": {
+        "title": "Pensé pour les journées chargées",
+        "description": "L'appli gère le compliqué, pour que trouver de l'aide soit simple.",
+        "explanation": "De la demande à la confirmation : quelques tapotements, pas de longs formulaires.",
+        "imageAlt": "De l'aide au quotidien, quand vous en avez besoin"
+      }
+    }
+  },
+  "findHelpersPage": {
+    "newHelper": "Nouvel aidant",
+    "helperFallback": "Aidant",
+    "distanceFromYou": "{{distance}} de vous",
+    "viewProfile": "Voir le profil",
+    "message": "Message",
+    "filter": "Filtrer",
+    "filterCategories": "Catégories",
+    "filterLocation": "Lieu",
+    "searchByName": "Rechercher par nom",
+    "clear": "Effacer",
+    "done": "Terminé",
+    "applyLocation": "Appliquer le lieu",
+    "searchCity": "Rechercher une ville",
+    "noMatch": "Aucun aidant ne correspond à ces filtres.",
+    "otherSubcategoriesTitle": "Autre aide",
+    "pills": {
+      "all": "Tous les aidants",
+      "nearby": "À proximité",
+      "high_rated": "Mieux notés",
+      "available": "Disponibles"
+    }
   }
 }

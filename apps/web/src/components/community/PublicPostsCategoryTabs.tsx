@@ -66,7 +66,7 @@ export function PublicPostsCategoryTabs({
       className={cn(
         "flex flex-nowrap",
         startAligned
-          ? "w-max justify-start gap-1.5"
+          ? "w-max justify-start gap-2"
           : "gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         !startAligned &&
           (dense
@@ -90,7 +90,7 @@ export function PublicPostsCategoryTabs({
             className={cn(
               "inline-flex shrink-0 snap-start items-center text-left transition-all",
               dense
-                ? "gap-1.5 rounded-full border-0 px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs"
+                ? "gap-2 rounded-full border-0 px-3.5 py-2.5 text-[13px] font-bold sm:px-3.5 sm:text-[13px]"
                 : "gap-2 rounded-full px-3 py-2.5 text-xs font-black sm:px-3.5 sm:text-[13px] md:gap-2.5 md:py-3",
               selected
                 ? communityFeedFilterActiveBadgeClass
@@ -100,7 +100,7 @@ export function PublicPostsCategoryTabs({
             <Icon
               className={cn(
                 "shrink-0",
-                dense ? "h-4 w-4 sm:h-5 sm:w-5" : "h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]",
+                dense ? "h-5 w-5" : "h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]",
                 selected
                   ? "text-zinc-800 dark:text-white"
                   : "text-zinc-500 dark:text-zinc-400",

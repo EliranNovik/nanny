@@ -10,32 +10,37 @@ import {
   MAP_SEARCH_CIRCLE_FIT_PADDING,
 } from "@/lib/googleMapsLoader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Loader2,
   Search,
   Navigation,
-  UsersRound,
-  PlusCircle,
-  Radar,
-  ChevronDown,
+  MapPin,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   HelperResultProfileCard,
   type PublicProfileGalleryRow,
 } from "@/components/helpers/HelperResultProfileCard";
+import {
+  FindHelpersMobileChrome,
+  type FindHelpersMobilePanel,
+  type FindHelpersQuickFilter,
+} from "@/components/helpers/FindHelpersMobileChrome";
+import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { useToast } from "@/components/ui/toast";
 import {
   canStartInCardLabel,
   respondsWithinCardLabel,
 } from "@/lib/liveCanStart";
 import {
-  type ServiceCategoryId,
   isServiceCategoryId,
+  OTHER_HELP_SUBCATEGORIES,
+  type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { haversineDistanceKm } from "@/lib/geo";
+import { cityPlaceFromGeocoderResult } from "@/lib/cityPlace";
 import {
   HELPERS_FOCUS_HELPER_QUERY,
   HELPERS_FOCUS_LAT_QUERY,
@@ -43,12 +48,10 @@ import {
 } from "@/lib/clientAppPaths";
 import {
   BigRadiusSlider,
-  mapRadiusSliderGlassShellClass,
   RADIUS_MAX,
   RADIUS_MIN,
   RADIUS_STEP,
 } from "@/components/search/BigRadiusSlider";
-import { MatchSearchCategoryPicker } from "@/components/search/MatchSearchCategoryPicker";
 import { setMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
@@ -166,18 +169,203 @@ function shouldGeocodeSearchQuery(raw: string): boolean {
 /** `distanceKm` is null when the helper has no lat/lng — we still list them if search/city matches. */
 export type HelperResult = FreelancerRow & { distanceKm: number | null };
 
+const NEARBY_MAX_KM = 25;
+
+/** Same city as the signed-in user, or within 25 km of their saved pin. */
+function helperIsNearbyForViewer(
+  h: HelperResult,
+  viewerProfile: {
+    city?: string | null;
+    location_lat?: number | null;
+    location_lng?: number | null;
+  } | null | undefined,
+): boolean {
+  const viewerCity = normalizeCityLabel(viewerProfile?.city);
+  const helperCity = normalizeCityLabel(h.city);
+  if (viewerCity && helperCity && viewerCity === helperCity) return true;
+
+  const vl = viewerProfile?.location_lat;
+  const vg = viewerProfile?.location_lng;
+  const hl = h.location_lat;
+  const hn = h.location_lng;
+  if (vl != null && vg != null && hl != null && hn != null) {
+    const a = Number(vl);
+    const b = Number(vg);
+    const c = Number(hl);
+    const d = Number(hn);
+    if ([a, b, c, d].every((x) => Number.isFinite(x))) {
+      return haversineDistanceKm(a, b, c, d) <= NEARBY_MAX_KM;
+    }
+  }
+  return false;
+}
+
 function helperMatchesSelectedCategories(
   h: HelperResult,
   selected: ReadonlySet<ServiceCategoryId>,
+  selectedOtherSubs: ReadonlySet<string> = new Set(),
 ): boolean {
   if (selected.size === 0) return true;
   const lc = h.freelancer_profiles?.live_categories;
   if (!lc?.length) return false;
   const live = new Set(lc);
+  const otherSubIds = OTHER_HELP_SUBCATEGORIES.map((s) => s.id);
   for (const id of selected) {
+    if (id === "other_help") {
+      const helperSubs = otherSubIds.filter((sub) => live.has(sub));
+      if (selectedOtherSubs.size > 0) {
+        if (helperSubs.some((sub) => selectedOtherSubs.has(sub))) return true;
+        if (helperSubs.length === 0 && live.has("other_help")) return true;
+      } else if (live.has("other_help") || helperSubs.length > 0) {
+        return true;
+      }
+      continue;
+    }
     if (live.has(id)) return true;
   }
   return false;
+}
+
+function LocationCitySearchBar({
+  isLoaded,
+  value,
+  onChange,
+  onPick,
+  placeholder,
+  onActiveChange,
+}: {
+  isLoaded: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onPick: (lat: number, lng: number, label: string) => void;
+  placeholder: string;
+  onActiveChange?: (active: boolean) => void;
+}) {
+  const [predictions, setPredictions] = useState<
+    google.maps.places.AutocompletePrediction[]
+  >([]);
+  const [resolving, setResolving] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
+
+  useEffect(() => {
+    if (!isLoaded || typeof google === "undefined" || !google.maps?.places) return;
+    serviceRef.current = new google.maps.places.AutocompleteService();
+  }, [isLoaded]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    const q = value.trim();
+    if (!isLoaded || q.length < 2) {
+      setPredictions([]);
+      onActiveChangeRef.current?.(false);
+      return;
+    }
+    debounceRef.current = window.setTimeout(() => {
+      serviceRef.current?.getPlacePredictions(
+        {
+          input: q,
+          types: ["(cities)"],
+          componentRestrictions: { country: "il" },
+        },
+        (results) => {
+          const next = results ?? [];
+          setPredictions(next);
+          onActiveChangeRef.current?.(next.length > 0);
+        },
+      );
+    }, 180);
+  }, [value, isLoaded]);
+
+  const pickPrediction = (prediction: google.maps.places.AutocompletePrediction) => {
+    setResolving(true);
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
+      setResolving(false);
+      setPredictions([]);
+      onActiveChange?.(false);
+      if (status !== "OK" || !results?.[0]?.geometry?.location) return;
+      const loc = results[0].geometry.location;
+      const picked = cityPlaceFromGeocoderResult(results[0]);
+      onPick(
+        loc.lat(),
+        loc.lng(),
+        picked?.label || prediction.structured_formatting?.main_text || prediction.description,
+      );
+    });
+  };
+
+  if (!isLoaded) {
+    return (
+      <div className="flex h-11 items-center gap-2 rounded-2xl bg-zinc-800 px-3">
+        <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative z-30">
+      <Search
+        className="pointer-events-none absolute left-3 top-3.5 z-[1] h-4 w-4 text-zinc-400"
+        aria-hidden
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (predictions.length > 0) onActiveChange?.(true);
+        }}
+        placeholder={placeholder}
+        autoComplete="off"
+        className={cn(
+          "h-11 rounded-2xl border-0 bg-zinc-800 pl-10 pr-3 text-[15px] text-white shadow-none",
+          "placeholder:text-zinc-400",
+          "focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-0",
+        )}
+      />
+      {predictions.length > 0 ? (
+        <ul className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-50 overflow-hidden rounded-2xl bg-zinc-800 py-1 shadow-xl shadow-black/40">
+          {predictions.map((prediction) => (
+            <li key={prediction.place_id}>
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  pickPrediction(prediction);
+                }}
+                className="flex w-full items-start gap-2 px-3.5 py-3 text-left text-[15px] font-medium text-white"
+              >
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
+                <span>
+                  <span className="block leading-snug">
+                    {prediction.structured_formatting?.main_text || prediction.description}
+                  </span>
+                  {prediction.structured_formatting?.secondary_text ? (
+                    <span className="mt-0.5 block text-[12px] font-normal text-zinc-400">
+                      {prediction.structured_formatting.secondary_text}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {resolving ? (
+        <div className="absolute right-3 top-3">
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 type HelpersMapBlockProps = {
@@ -330,6 +518,7 @@ function HelpersMapBlock({
 export default function HelpersPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
@@ -377,6 +566,17 @@ export default function HelpersPage() {
   const [selectedCategories, setSelectedCategories] = useState<
     Set<ServiceCategoryId>
   >(() => new Set());
+  const [selectedOtherSubs, setSelectedOtherSubs] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [quickFilter, setQuickFilter] = useState<FindHelpersQuickFilter>("all");
+  const [nameQuery, setNameQuery] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<FindHelpersMobilePanel>("none");
+  const [citySearchValue, setCitySearchValue] = useState("");
+  const [citySearchActive, setCitySearchActive] = useState(false);
+  const mobileAutoSearchStartedRef = useRef(false);
   /**
    * After a successful "Search helpers", the top search chrome (categories, map, radius, input)
    * collapses to a bottom-left FAB; tapping the FAB restores it.
@@ -390,10 +590,34 @@ export default function HelpersPage() {
   const toggleCategory = useCallback((id: ServiceCategoryId) => {
     setSelectedCategories((prev) => {
       const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        if (id === "other_help") setSelectedOtherSubs(new Set());
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleOtherSub = useCallback((id: string) => {
+    setSelectedOtherSubs((prev) => {
+      const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+    setSelectedCategories((cats) => {
+      if (cats.has("other_help")) return cats;
+      const next = new Set(cats);
+      next.add("other_help");
+      return next;
+    });
+  }, []);
+
+  const clearCategoryFilters = useCallback(() => {
+    setSelectedCategories(new Set());
+    setSelectedOtherSubs(new Set());
   }, []);
 
   const loadFavorites = useCallback(async () => {
@@ -545,7 +769,7 @@ export default function HelpersPage() {
           search_lat: searchLat,
           search_lng: searchLng,
           radius_km: rk,
-          search_query: searchQuery.trim(),
+          search_query: nameQuery.trim() || searchQuery.trim(),
           viewer_city_norm: viewerCityNorm || "",
           geocode_matched_place: geocodeMatchedPlace,
         });
@@ -623,12 +847,6 @@ export default function HelpersPage() {
 
         setHasSearched(true);
         setSearchChromeCollapsed(true);
-        window.setTimeout(() => {
-          resultsAnchorRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }, 80);
       } catch (e: unknown) {
         console.error("HelpersPage fetch:", e);
         setResults([]);
@@ -649,6 +867,7 @@ export default function HelpersPage() {
       center.lng,
       radiusKm,
       searchQuery,
+      nameQuery,
       geocodeMatchedPlace,
       user?.id,
       profile?.city,
@@ -743,10 +962,36 @@ export default function HelpersPage() {
   const helpersMatchingCategories = useMemo(
     () =>
       allFilteredHelpers.filter((h) =>
-        helperMatchesSelectedCategories(h, selectedCategories),
+        helperMatchesSelectedCategories(h, selectedCategories, selectedOtherSubs),
       ),
-    [allFilteredHelpers, selectedCategories],
+    [allFilteredHelpers, selectedCategories, selectedOtherSubs],
   );
+
+  const displayedHelpers = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    let list = helpersMatchingCategories.filter((h) =>
+      q ? (h.full_name ?? "").toLowerCase().includes(q) : true,
+    );
+    if (quickFilter === "available") {
+      list = list.filter((h) =>
+        isFreelancerInActive24hLiveWindow(h.freelancer_profiles),
+      );
+    }
+    if (quickFilter === "nearby") {
+      list = list.filter((h) => helperIsNearbyForViewer(h, profile));
+      list = [...list].sort((a, b) => {
+        const da = resolveHelperDistanceKmForViewer(a, profile).km ?? 9999;
+        const db = resolveHelperDistanceKmForViewer(b, profile).km ?? 9999;
+        return da - db;
+      });
+    } else if (quickFilter === "high_rated") {
+      list = list.filter((h) => (h.average_rating ?? 0) >= 4);
+      list = [...list].sort(
+        (a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0),
+      );
+    }
+    return list;
+  }, [helpersMatchingCategories, nameQuery, quickFilter, profile]);
 
   const galleryFetchKey = useMemo(
     () =>
@@ -798,13 +1043,22 @@ export default function HelpersPage() {
     };
   }, [galleryFetchKey]);
 
-  /** Full search UI until the first successful search; after that, hide when collapsed to FAB. */
-  const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+  useEffect(() => {
+    setMatchSearchChromeVisible(false);
+    return () => setMatchSearchChromeVisible(true);
+  }, []);
 
   useEffect(() => {
-    setMatchSearchChromeVisible(showSearchChrome);
-    return () => setMatchSearchChromeVisible(true);
-  }, [showSearchChrome]);
+    if (typeof window === "undefined") return;
+    if (hasSearched || mobileAutoSearchStartedRef.current) return;
+    if (deepLinkAutoSearchStartedRef.current) return;
+    const t = window.setTimeout(() => {
+      if (hasSearched || mobileAutoSearchStartedRef.current) return;
+      mobileAutoSearchStartedRef.current = true;
+      void runSearch();
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [hasSearched, runSearch]);
 
   const mobileSnapRef = useRef<HTMLDivElement | null>(null);
   const [mobileSnapIndex, setMobileSnapIndex] = useState(0);
@@ -819,9 +1073,9 @@ export default function HelpersPage() {
     if (h <= 0) return;
     const next = Math.round(el.scrollTop / h);
     setMobileSnapIndex(
-      Math.max(0, Math.min(helpersMatchingCategories.length - 1, next)),
+      Math.max(0, Math.min(displayedHelpers.length - 1, next)),
     );
-  }, [helpersMatchingCategories.length]);
+  }, [displayedHelpers.length]);
 
   useEffect(() => {
     // If we have a pending restore scroll position, do NOT reset to top.
@@ -829,7 +1083,7 @@ export default function HelpersPage() {
     setMobileSnapIndex(0);
     const el = mobileSnapRef.current;
     if (el) el.scrollTo({ top: 0, behavior: "auto" });
-  }, [helpersMatchingCategories.map((h) => h.id).join("|")]);
+  }, [displayedHelpers.map((h) => h.id).join("|")]);
 
   const helpersMatchingIdsKey = useMemo(
     () => helpersMatchingCategories.map((h) => h.id).join("|"),
@@ -1042,479 +1296,214 @@ export default function HelpersPage() {
     mobileSnapIndex,
   ]);
 
-  const renderSearchHelpersButton = () => (
-    <Button
-      type="button"
-      size="lg"
-      disabled={loadingFetch}
-      onClick={() => void runSearch()}
-      className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-orange-500/25 transition-all hover:scale-[1.01] active:scale-[0.99]"
-    >
-      {loadingFetch ? (
-        <>
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          Searching…
-        </>
-      ) : (
-        <>
-          <Radar className="mr-2 h-5 w-5" />
-          Search helpers
-        </>
-      )}
-    </Button>
-  );
+  const renderBrowseCard = (h: HelperResult) => {
+    const { km, fromViewerPin } = resolveHelperDistanceKmForViewer(h, profile);
+    return (
+      <HelperResultProfileCard
+        helper={{ ...h, distanceKm: km }}
+        distanceFromViewerPin={fromViewerPin}
+        gallery={galleryByUserId[h.id] ?? []}
+        viewerId={user?.id}
+        favoriteIds={favoriteIds}
+        favoriteBusyId={favoriteBusyId}
+        respondsWithinLabel={respondsWithinCardLabel(
+          helperReplyStatsByHelperId[h.id]?.avg_seconds,
+          helperReplyStatsByHelperId[h.id]?.sample_count,
+        )}
+        canStartInLabel={canStartInCardLabel(
+          h.freelancer_profiles?.live_can_start_in,
+        )}
+        liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
+        onToggleFavorite={toggleFavorite}
+        onOpenProfile={(id) => navigate(`/profile/${id}`)}
+        variant="browse"
+      />
+    );
+  };
 
   return (
     <div
       data-find-helpers-page=""
-      {...(!showSearchChrome ? { "data-find-helpers-cards-view": "" } : {})}
+      data-find-helpers-cards-view=""
       className={cn(
         "min-h-screen bg-background",
-        /* Room for mobile fixed dock above BottomNav (md+ keeps normal padding). */
-        "max-md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pb-8",
+        "max-md:h-[100dvh] max-md:overflow-hidden max-md:pb-0 md:pb-8",
       )}
     >
       <div
         className={cn(
-          "app-desktop-shell space-y-8 pt-6 md:pt-8",
-          hasSearched &&
-            searchChromeCollapsed &&
-            "max-md:space-y-2 max-md:pt-[max(0.35rem,env(safe-area-inset-top,0px))]",
+          "app-desktop-shell max-md:!px-0",
+          "max-md:h-full max-md:space-y-0 max-md:pt-0 md:space-y-0 md:pt-0",
         )}
       >
-        {showSearchChrome ? (
-          <>
-            <div className="mx-auto w-full max-w-lg md:max-w-3xl animate-in fade-in zoom-in-95 duration-300">
-          <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
-            <MatchSearchCategoryPicker
-              hintId="helpers-category-hint"
-              theme="orange"
-              selectedCategories={selectedCategories}
-              onToggle={toggleCategory}
-              onClearAll={() => setSelectedCategories(new Set())}
-            />
-
-            <div className="relative mx-auto w-full max-w-md md:max-w-2xl max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
-              <div
-                className={cn(
-                  "google-map-embed-minimal relative aspect-square w-full overflow-hidden rounded-2xl md:aspect-[16/10]",
-                  "shadow-md shadow-black/10 dark:shadow-black/30",
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-orange-50/25 to-transparent dark:from-orange-950/20" />
-                <HelpersMapBlock
-                  center={center}
-                  radiusKm={radiusKm}
-                  hasSearched={hasSearched}
-                  results={helpersMatchingCategories}
-                  isLoaded={isLoaded}
-                  loadError={loadError}
-                  mapsApiKey={mapsApiKey}
-                  onMapClick={onMapClick}
-                  onProfileOpen={onProfileOpen}
-                />
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={locating}
-                  aria-label="Use my location"
-                  className={cn(
-                    "absolute left-2.5 top-2.5 z-[12] flex h-9 w-9 items-center justify-center rounded-full border border-white/55",
-                    "bg-white/35 shadow-sm backdrop-blur-xl",
-                    "ring-1 ring-inset ring-white/50 transition-colors",
-                    "hover:bg-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "disabled:pointer-events-none disabled:opacity-60",
-                  )}
-                >
-                  {locating ? (
-                    <Loader2
-                      className="h-4 w-4 shrink-0 animate-spin"
-                      aria-hidden
-                    />
-                  ) : (
-                    <Navigation className="h-4 w-4 shrink-0" aria-hidden />
-                  )}
-                </button>
-                <div className="pointer-events-auto absolute bottom-6 left-2.5 z-[12] hidden w-[calc(50%-0.625rem)] md:block">
-                  <div className="relative">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 z-[2] h-4 w-4 -translate-y-1/2 text-slate-600/90 dark:text-slate-800/80"
-                      aria-hidden
-                    />
-                    <Input
-                      id="helpers-city-name"
-                      placeholder="City or name"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void runSearch();
-                        }
-                      }}
-                      aria-busy={loadingFetch}
-                      className={cn(
-                        "h-11 rounded-2xl border border-white/55 bg-white/35 pl-10 pr-3 text-[15px] text-slate-900 shadow-sm backdrop-blur-xl",
-                        "placeholder:text-slate-600/80",
-                        "ring-1 ring-inset ring-white/50",
-                        "focus-visible:border-orange-400/60 focus-visible:ring-orange-400/40",
-                        "dark:border-white/50 dark:bg-white/30 dark:text-slate-950 dark:placeholder:text-slate-700/80",
-                      )}
-                    />
-                  </div>
-                </div>
-                <div className={cn(mapRadiusSliderGlassShellClass, "hidden md:block")}>
-                  <BigRadiusSlider
-                    id="helpers-radius"
-                    value={radiusKm}
-                    onChange={setRadiusKm}
-                    orientation="vertical"
-                    variant="glass"
+        <div
+          className={cn(
+            "flex flex-col",
+            "max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-10 max-md:[bottom:var(--app-bottom-nav-stack)]",
+          )}
+        >
+          <FindHelpersMobileChrome
+            quickFilter={quickFilter}
+            onQuickFilter={setQuickFilter}
+            selectedCategories={selectedCategories}
+            onToggleCategory={toggleCategory}
+            onClearCategories={clearCategoryFilters}
+            selectedOtherSubs={selectedOtherSubs}
+            onToggleOtherSub={toggleOtherSub}
+            nameQuery={nameQuery}
+            onNameQueryChange={setNameQuery}
+            searchOpen={mobileSearchOpen}
+            onSearchOpenChange={setMobileSearchOpen}
+            filterMenuOpen={filterMenuOpen}
+            onFilterMenuOpenChange={setFilterMenuOpen}
+            panel={mobilePanel}
+            onPanelChange={setMobilePanel}
+            onBack={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/client/home");
+              }
+            }}
+            locationPanel={
+              <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-3 pb-5">
+                <div className="shrink-0 pb-3">
+                  <LocationCitySearchBar
+                    isLoaded={isLoaded}
+                    value={citySearchValue}
+                    onChange={setCitySearchValue}
+                    placeholder={t("findHelpersPage.searchCity")}
+                    onActiveChange={setCitySearchActive}
+                    onPick={(lat, lng, label) => {
+                      gpsLockRef.current = true;
+                      setCenter({ lat, lng });
+                      setGeocodeMatchedPlace(true);
+                      setCitySearchValue(label);
+                    }}
                   />
                 </div>
+                <div
+                  className={cn(
+                    "relative h-[48vh] max-h-[380px] shrink-0 overflow-hidden rounded-2xl md:h-[52vh] md:max-h-[520px]",
+                    citySearchActive && "pointer-events-none",
+                  )}
+                >
+                  <HelpersMapBlock
+                    center={center}
+                    radiusKm={radiusKm}
+                    hasSearched={hasSearched}
+                    results={helpersMatchingCategories}
+                    isLoaded={isLoaded}
+                    loadError={loadError}
+                    mapsApiKey={mapsApiKey}
+                    onMapClick={onMapClick}
+                    onProfileOpen={onProfileOpen}
+                  />
+                  <button
+                    type="button"
+                    onClick={useMyLocation}
+                    disabled={locating}
+                    aria-label="Use my location"
+                    className={cn(
+                      "absolute left-2.5 top-2.5 z-[12] flex h-9 w-9 items-center justify-center rounded-full",
+                      "bg-white/35 shadow-sm backdrop-blur-xl",
+                    )}
+                  >
+                    {locating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Navigation className="h-4 w-4" aria-hidden />
+                    )}
+                  </button>
+                </div>
+                <div className="mt-3">
+                  <BigRadiusSlider
+                    id="helpers-radius-mobile-overlay"
+                    value={radiusKm}
+                    onChange={setRadiusKm}
+                    orientation="horizontal"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={loadingFetch}
+                  className="mt-4 h-12 w-full rounded-2xl text-base font-bold"
+                  onClick={() => {
+                    void runSearch();
+                    setMobilePanel("none");
+                  }}
+                >
+                  {loadingFetch ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : null}
+                  {t("findHelpersPage.applyLocation")}
+                </Button>
               </div>
-              <div className="mt-3 px-1 md:hidden">
-                <BigRadiusSlider
-                  id="helpers-radius-mobile"
-                  value={radiusKm}
-                  onChange={setRadiusKm}
-                  orientation="horizontal"
-                />
-              </div>
+            }
+          />
+          {(!hasSearched || loadingFetch) && displayedHelpers.length === 0 ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center md:hidden">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
             </div>
-
-            {/* md+: primary CTA in flow. Mobile uses fixed dock below. */}
-            <div className="hidden md:block">{renderSearchHelpersButton()}</div>
-          </div>
-        </div>
-          </>
-        ) : (
-          <div className="max-md:hidden sticky top-[80px] z-40 -mt-4 mb-4 flex justify-center pointer-events-none">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-full shadow-lg pointer-events-auto border-orange-500/20 bg-white/95 backdrop-blur-sm px-6 h-10 font-bold text-slate-800 dark:bg-zinc-900/95 dark:text-slate-200"
-              onClick={() => {
-                setSearchChromeCollapsed(false);
-                window.requestAnimationFrame(() => {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                });
+          ) : displayedHelpers.length === 0 && hasSearched ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-sm font-medium text-zinc-400 md:hidden">
+              {t("findHelpersPage.noMatch")}
+            </div>
+          ) : (
+            <div
+              ref={mobileSnapRef}
+              onScroll={() => {
+                window.requestAnimationFrame(syncMobileSnapIndex);
               }}
+              className={cn(
+                "min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain md:hidden",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              )}
+              aria-label="Helpers"
             >
-              <Radar className="mr-2 h-4 w-4 text-orange-500" />
-              Map & search
-            </Button>
-          </div>
-        )}
+              {displayedHelpers.map((h) => (
+                <div
+                  key={h.id}
+                  id={`helper-result-mobile-${h.id}`}
+                  className="flex h-full w-full shrink-0 snap-start snap-always items-stretch pt-2 pb-0"
+                >
+                  <div className="h-full w-full min-h-0">{renderBrowseCard(h)}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {hasSearched && allFilteredHelpers.length > 0 && (
-          <div
-            className="animate-in fade-in slide-in-from-bottom-4 mx-auto hidden w-full max-w-5xl items-center justify-between px-2 duration-700 md:flex md:max-w-6xl"
-          >
-            <h2 className="text-lg font-black text-slate-900 dark:text-white">
-              <>
-                {helpersMatchingCategories.length} helper
-                {helpersMatchingCategories.length === 1 ? "" : "s"}
-                <span className="ml-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  (matches
-                  {selectedCategories.size > 0
-                    ? ` · ${selectedCategories.size} categor${selectedCategories.size === 1 ? "y" : "ies"}`
-                    : " all categories"}
-                  )
-                </span>
-              </>
-            </h2>
-            {helpersMatchingCategories.length > 0 && (
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                {helpersMatchingCategories.some((r) => r.distanceKm == null)
-                  ? "Mixed match"
-                  : "By distance"}
-              </span>
-            )}
-          </div>
-        )}
-
-        {!hasSearched ? null : results.length === 0 ? (
-          <div
-            ref={resultsAnchorRef}
-            className="animate-in fade-in slide-in-from-bottom-3 mx-auto w-full max-w-5xl px-2 duration-700 md:max-w-6xl"
-          >
-            <Card className="border border-dashed">
-              <CardContent className="py-14 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                  <UsersRound className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <p className="text-base font-semibold text-foreground mb-1">
-                  No helpers in this area
-                </p>
-                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                  Widen the radius or move the map.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const next = Math.min(RADIUS_MAX, radiusKm + 10);
-                      setRadiusKm(next);
-                      void runSearch({ radiusKm: next });
-                    }}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Expand radius (+10 km)
-                  </Button>
-                  <Button onClick={() => navigate("/client/create")}>
-                    Post a request instead
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : allFilteredHelpers.length === 0 ? (
-          <div
-            ref={resultsAnchorRef}
-            className="animate-in fade-in slide-in-from-bottom-3 mx-auto w-full max-w-5xl px-2 duration-700 md:max-w-6xl"
-          >
-            <Card className="border border-dashed">
-              <CardContent className="py-14 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                  <UsersRound className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <p className="text-base font-semibold text-foreground mb-1">
-                  No live helpers in this area yet
-                </p>
-                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                  No one with an active 24-hour availability window matched this
-                  search. Try a wider radius or check back later.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const next = Math.min(RADIUS_MAX, radiusKm + 10);
-                      setRadiusKm(next);
-                      void runSearch({ radiusKm: next });
-                    }}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Expand radius (+10 km)
-                  </Button>
-                  <Button onClick={() => navigate("/client/create")}>
-                    Post a request instead
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : helpersMatchingCategories.length === 0 ? (
-          <div
-            ref={resultsAnchorRef}
-            className="animate-in fade-in slide-in-from-bottom-3 mx-auto w-full max-w-5xl px-2 duration-700 md:max-w-6xl"
-          >
-            <Card className="border border-dashed">
-              <CardContent className="py-14 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                  <UsersRound className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <p className="text-base font-semibold text-foreground mb-1">
-                  No helpers match your categories
-                </p>
-                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                  {allFilteredHelpers.length} helper
-                  {allFilteredHelpers.length === 1 ? "" : "s"} found, but none
-                  match the categories you selected. Deselect categories or
-                  pick different ones.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedCategories(new Set())}
-                  >
-                    Clear category filter
-                  </Button>
-                  <Button onClick={() => navigate("/client/create")}>
-                    Post a request instead
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <>
-            {/* Mobile: full-screen fixed snap scroller above bottom dock */}
-            {!showSearchChrome ? (
+          <div className="hidden md:block md:pb-8">
+            {(!hasSearched || loadingFetch) && displayedHelpers.length === 0 ? (
+              <div className="flex min-h-[40vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              </div>
+            ) : displayedHelpers.length === 0 && hasSearched ? (
               <div
-                className={cn(
-                  "fixed inset-x-0 z-[50] md:hidden",
-                  "top-[max(0px,env(safe-area-inset-top,0px))]",
-                  // Leave room for BottomNav + the fixed dock panel
-                  "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+5.25rem)]",
-                  "overflow-y-auto overscroll-y-contain",
-                  "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-                  "bg-background",
-                )}
-                aria-label="Helpers"
-                ref={mobileSnapRef}
-                onScroll={() => {
-                  window.requestAnimationFrame(syncMobileSnapIndex);
-                }}
+                ref={resultsAnchorRef}
+                className="flex min-h-[40vh] items-center justify-center px-5 text-center text-sm font-medium text-zinc-400"
               >
-                {helpersMatchingCategories.map((h) => {
-                  const { km, fromViewerPin } =
-                    resolveHelperDistanceKmForViewer(h, profile);
-                  return (
+                {t("findHelpersPage.noMatch")}
+              </div>
+            ) : (
+              <div
+                ref={resultsAnchorRef}
+                className="grid grid-cols-3 items-stretch gap-5 xl:grid-cols-4"
+              >
+                {displayedHelpers.map((h) => (
                   <div
                     key={h.id}
                     id={`helper-result-${h.id}`}
-                    className="relative h-full w-full snap-start snap-always px-2 py-2"
+                    className="flex min-h-0 h-full flex-col"
                   >
-                    <div className="h-full w-full overflow-hidden rounded-[22px]">
-                      <HelperResultProfileCard
-                        helper={{ ...h, distanceKm: km }}
-                        distanceFromViewerPin={fromViewerPin}
-                        gallery={galleryByUserId[h.id] ?? []}
-                        viewerId={user?.id}
-                        favoriteIds={favoriteIds}
-                        favoriteBusyId={favoriteBusyId}
-                        respondsWithinLabel={respondsWithinCardLabel(
-                          helperReplyStatsByHelperId[h.id]?.avg_seconds,
-                          helperReplyStatsByHelperId[h.id]?.sample_count,
-                        )}
-                        canStartInLabel={canStartInCardLabel(
-                          h.freelancer_profiles?.live_can_start_in,
-                        )}
-                        liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
-                        onToggleFavorite={toggleFavorite}
-                        onOpenProfile={(id) => navigate(`/profile/${id}`)}
-                        variant="fullscreen"
-                      />
-                    </div>
-
-                    {(() => {
-                      const remaining = Math.max(
-                        0,
-                        helpersMatchingCategories.length - (mobileSnapIndex + 1),
-                      );
-                      if (remaining <= 0) return null;
-                      const badge = remaining > 10 ? "10+" : String(remaining);
-                      return (
-                        <div
-                          className={cn(
-                            "pointer-events-none absolute inset-x-0 bottom-3 z-[60] flex items-center justify-center",
-                            "px-3",
-                          )}
-                          aria-hidden
-                        >
-                          <div className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/15">
-                            <ChevronDown
-                              className="h-4 w-4 text-white/85 motion-reduce:animate-none animate-bounce"
-                              strokeWidth={2.5}
-                              aria-hidden
-                            />
-                            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-black tabular-nums">
-                              {badge}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    {renderBrowseCard(h)}
                   </div>
-                );
-                })}
+                ))}
               </div>
-            ) : null}
-
-            {/* Desktop/tablet: keep grid */}
-            <div
-              ref={resultsAnchorRef}
-              className={cn(
-                "animate-in fade-in slide-in-from-bottom-3 mx-auto hidden w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:grid md:max-w-6xl lg:grid-cols-3",
-                "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
-              )}
-            >
-              {helpersMatchingCategories.map((h) => {
-                const { km, fromViewerPin } =
-                  resolveHelperDistanceKmForViewer(h, profile);
-                return (
-                <div key={h.id} id={`helper-result-${h.id}`} className="min-h-0">
-                  <HelperResultProfileCard
-                    helper={{ ...h, distanceKm: km }}
-                    distanceFromViewerPin={fromViewerPin}
-                    gallery={galleryByUserId[h.id] ?? []}
-                    viewerId={user?.id}
-                    favoriteIds={favoriteIds}
-                    favoriteBusyId={favoriteBusyId}
-                    respondsWithinLabel={respondsWithinCardLabel(
-                      helperReplyStatsByHelperId[h.id]?.avg_seconds,
-                      helperReplyStatsByHelperId[h.id]?.sample_count,
-                    )}
-                    canStartInLabel={canStartInCardLabel(
-                      h.freelancer_profiles?.live_can_start_in,
-                    )}
-                    liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
-                    onToggleFavorite={toggleFavorite}
-                    onOpenProfile={(id) => navigate(`/profile/${id}`)}
-                  />
-                </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* Mobile: full-width Search helpers fixed above BottomNav while panel is open */}
-        {showSearchChrome ? (
-          <div
-            className={cn(
-              "pointer-events-none fixed inset-x-0 z-[130] md:hidden",
-              "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
             )}
-          >
-            <div
-              className={cn(
-                "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
-                "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
-              )}
-            >
-              <div className="mx-auto w-full max-w-lg">
-                {renderSearchHelpersButton()}
-              </div>
-            </div>
           </div>
-        ) : null}
-
-        {/* Mobile: after search, reopen map/filters when panel is collapsed */}
-        {hasSearched && searchChromeCollapsed ? (
-          <div
-            className={cn(
-              "pointer-events-none fixed inset-x-0 z-[130] md:hidden",
-              "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
-            )}
-          >
-            <div
-              className={cn(
-                "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
-                "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
-              )}
-            >
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-14 w-full rounded-2xl border-orange-500/30 text-base font-black"
-                onClick={() => {
-                  setSearchChromeCollapsed(false);
-                  window.requestAnimationFrame(() => {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  });
-                }}
-              >
-                <Radar className="mr-2 h-5 w-5" />
-                Map & search
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );
