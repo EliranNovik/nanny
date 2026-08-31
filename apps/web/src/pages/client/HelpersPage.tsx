@@ -245,7 +245,7 @@ function LocationCitySearchBar({
     google.maps.places.AutocompletePrediction[]
   >([]);
   const [resolving, setResolving] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef = useRef<number | null>(null);
   const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const onActiveChangeRef = useRef(onActiveChange);
   onActiveChangeRef.current = onActiveChange;

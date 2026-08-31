@@ -25,6 +25,7 @@ import {
   type ProfileReviewItem,
 } from "@/components/profile/ProfileReviewsSheet";
 
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { openCommunityContact } from "@/lib/communityContact";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
