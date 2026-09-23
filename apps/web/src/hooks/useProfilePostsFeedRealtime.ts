@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { normalizeAppLocale } from "@/i18n";
+import type { FeedPost, ProfilePost } from "@/components/profile/ProfilePostsFeed";
 import {
   communityPostMatchesFeedFilters,
   hydrateAndUpsertAvailabilityPost,
@@ -20,6 +22,7 @@ type Options = ProfilePostsFeedFilters & {
   queryClient: QueryClient;
   queryKey: readonly unknown[];
   viewerUserId: string | null;
+  viewerLocale?: string | null;
   enabled?: boolean;
 };
 
@@ -31,6 +34,7 @@ export function useProfilePostsFeedRealtime({
   queryClient,
   queryKey,
   viewerUserId,
+  viewerLocale = null,
   enabled = true,
   userId,
   filterTaggedUserId,
@@ -129,11 +133,12 @@ export function useProfilePostsFeedRealtime({
             viewerUserId,
             filtersRef.current.sortOrder ?? "newest",
             filtersRef.current.limit,
+            viewerLocale,
           ),
         invalidateFeed,
       );
     },
-    [invalidateFeed, queryClient, queryKey, runHydrate, viewerUserId],
+    [invalidateFeed, queryClient, queryKey, runHydrate, viewerLocale, viewerUserId],
   );
 
   const onCommunityPost = useCallback(
@@ -218,6 +223,7 @@ export function useProfilePostsFeedRealtime({
               viewerUserId,
               filtersRef.current.sortOrder ?? "newest",
               filtersRef.current.limit,
+              viewerLocale,
             ),
           invalidateFeed,
         );
@@ -228,7 +234,56 @@ export function useProfilePostsFeedRealtime({
         removeFeedPostFromCache(queryClient, queryKey, row.post_id, "post");
       }
     },
-    [invalidateFeed, queryClient, queryKey, runHydrate, viewerUserId],
+    [invalidateFeed, queryClient, queryKey, runHydrate, viewerLocale, viewerUserId],
+  );
+
+  const onTranslation = useCallback(
+    (payload: RealtimePayload) => {
+      const row = (payload.new ?? payload.old) as
+        | {
+            post_id?: string;
+            language?: string;
+            caption?: string | null;
+            title?: string | null;
+            provider?: string;
+          }
+        | undefined;
+      if (!row?.post_id) return;
+      const locale = normalizeAppLocale(viewerLocale ?? "en");
+      const rowLang = row.language ? normalizeAppLocale(String(row.language)) : null;
+      if (rowLang && rowLang !== locale) return;
+
+      queryClient.setQueryData<FeedPost[]>(queryKey, (prev) => {
+        if (!prev) return prev;
+        const idx = prev.findIndex((p) => p.source === "post" && p.id === row.post_id);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        const post = next[idx] as ProfilePost;
+        if (payload.eventType === "DELETE") {
+          next[idx] = { ...post, translation_overlay: null };
+          return next;
+        }
+        if (row.provider !== "google_translate") return prev;
+        const source = post.original_language
+          ? normalizeAppLocale(post.original_language)
+          : null;
+        if (source && source === locale) {
+          next[idx] = { ...post, translation_overlay: null };
+          return next;
+        }
+        next[idx] = {
+          ...post,
+          translation_overlay: {
+            language: locale,
+            caption: row.caption ?? null,
+            title: row.title ?? null,
+            provider: "google_translate",
+          },
+        };
+        return next;
+      });
+    },
+    [queryClient, queryKey, viewerLocale],
   );
 
   useEffect(
@@ -271,5 +326,14 @@ export function useProfilePostsFeedRealtime({
       enabled: enabled && Boolean(filterLikedByUserId),
     },
     onLikedPost,
+  );
+
+  useRealtimeSubscription(
+    {
+      table: "profile_post_translations",
+      event: "*",
+      enabled,
+    },
+    onTranslation,
   );
 }

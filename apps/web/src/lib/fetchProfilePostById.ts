@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { withProfilePostTranslationOverlays } from "@/lib/profilePostTranslations";
+import type { ProfilePostTranslationOverlay } from "@/lib/profilePostTranslations";
 
 type ProfileSnippet = {
   id: string;
@@ -35,6 +37,8 @@ export type FetchedProfilePost = {
   } | null;
   post_metadata?: any | null;
   ai_generated_copy?: GeneratedPostCopy | null;
+  original_language?: string | null;
+  translation_overlay?: ProfilePostTranslationOverlay | null;
 };
 
 /**
@@ -44,11 +48,12 @@ export type FetchedProfilePost = {
 export async function fetchProfilePostById(
   postId: string,
   viewerUserId: string | null,
+  viewerLocale?: string | null,
 ): Promise<FetchedProfilePost | null> {
   const { data: row, error } = await supabase
     .from("profile_posts")
     .select(
-      "id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, post_types (id, name, emoji, color)",
+      "id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, original_language, post_types (id, name, emoji, color)",
     )
     .eq("id", postId)
     .maybeSingle();
@@ -125,7 +130,7 @@ export async function fetchProfilePostById(
     }
     | undefined;
 
-  return {
+  const post: FetchedProfilePost = {
     id: row.id as string,
     author_id: authorId,
     caption: row.caption as string | null,
@@ -152,5 +157,11 @@ export async function fetchProfilePostById(
       return { ...(meta ?? {}), custom_category: custom };
     })(),
     ai_generated_copy: parseGeneratedPostCopy(row.ai_generated_copy),
+    original_language: (row as { original_language?: string | null }).original_language ?? null,
+    translation_overlay: null,
   };
+
+  if (!viewerLocale) return post;
+  const [overlaid] = await withProfilePostTranslationOverlays([post], viewerLocale);
+  return overlaid ?? post;
 }

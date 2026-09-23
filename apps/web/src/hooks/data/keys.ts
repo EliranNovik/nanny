@@ -80,12 +80,14 @@ export const queryKeys = {
     filterCategoryId?: string | null;
     filterOtherSubcategoryId?: string | null;
     limit?: number | null;
+    viewerLocale?: string | null;
   }) =>
     [
       ...queryKeys.community,
       "profilePostsFeed",
       opts.userId ?? "all",
       opts.viewerUserId ?? "anon",
+      opts.viewerLocale ?? "",
       opts.filterTaggedUserId ?? "",
       opts.filterAuthorId ?? "",
       opts.authorNameFilter ?? "",
@@ -105,12 +107,17 @@ export const queryKeys = {
       opts.limit ?? 0,
     ] as const,
 
-  profilePostById: (postId?: string | null, viewerUserId?: string | null) =>
+  profilePostById: (
+    postId?: string | null,
+    viewerUserId?: string | null,
+    viewerLocale?: string | null,
+  ) =>
     [
       ...queryKeys.community,
       "profilePostById",
       postId ?? "",
       viewerUserId ?? "anon",
+      viewerLocale ?? "",
     ] as const,
 
   jobRequestById: (jobId?: string | null, viewerUserId?: string | null) =>

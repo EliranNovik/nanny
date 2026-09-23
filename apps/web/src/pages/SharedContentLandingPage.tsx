@@ -34,7 +34,7 @@ type SharedKind = "post" | "request";
 
 function SharedContentLandingPage({ kind }: { kind: SharedKind }) {
   const { id: rawId } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,11 @@ function SharedContentLandingPage({ kind }: { kind: SharedKind }) {
       setNotFound(false);
       try {
         if (kind === "post") {
-          const post = await fetchProfilePostById(cleanId!, user?.id ?? null);
+          const post = await fetchProfilePostById(
+            cleanId!,
+            user?.id ?? null,
+            i18n.language,
+          );
           if (cancelled) return;
           if (!post) {
             setNotFound(true);
@@ -123,7 +127,7 @@ function SharedContentLandingPage({ kind }: { kind: SharedKind }) {
     return () => {
       cancelled = true;
     };
-  }, [cleanId, kind, t, user?.id]);
+  }, [cleanId, i18n.language, kind, t, user?.id]);
 
   if (user && cleanId) {
     const feedState =

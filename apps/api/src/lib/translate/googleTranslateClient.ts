@@ -1,5 +1,6 @@
 import { v2 } from "@google-cloud/translate";
 import {
+  canonicalizeLocaleCode,
   normalizeAppLocale,
   toGoogleTargetLanguage,
   type AppLocale,
@@ -51,6 +52,7 @@ export type GoogleTranslateResult = {
 export async function translateTextsWithGoogle(
   texts: string[],
   targetLocale: AppLocale,
+  sourceLocale?: AppLocale | null,
 ): Promise<GoogleTranslateResult> {
   const nonEmpty = texts.map((t) => t.trim()).filter(Boolean);
   if (nonEmpty.length === 0) {
@@ -59,11 +61,15 @@ export async function translateTextsWithGoogle(
 
   const apiKey = process.env.GOOGLE_CLOUD_TRANSLATE_API_KEY?.trim();
   const target = toGoogleTargetLanguage(normalizeAppLocale(targetLocale));
+  const source = sourceLocale
+    ? toGoogleTargetLanguage(normalizeAppLocale(sourceLocale))
+    : null;
 
   if (apiKey) {
     const params = new URLSearchParams();
     params.set("key", apiKey);
     params.set("target", target);
+    if (source) params.set("source", source);
     params.set("format", "text");
     for (const text of nonEmpty) {
       params.append("q", text);
@@ -94,16 +100,19 @@ export async function translateTextsWithGoogle(
     };
 
     const translations = body.data?.translations ?? [];
+    const detected =
+      translations.find((t) => t.detectedSourceLanguage)?.detectedSourceLanguage ??
+      null;
     return {
       translatedTexts: translations.map((t) => t.translatedText ?? ""),
-      detectedSourceLanguage:
-        translations.find((t) => t.detectedSourceLanguage)?.detectedSourceLanguage ??
-        null,
+      detectedSourceLanguage: detected ? canonicalizeLocaleCode(detected) : null,
     };
   }
 
   const translate = getTranslateClient();
-  const [translatedTexts, apiResponse] = await translate.translate(nonEmpty, target);
+  const [translatedTexts, apiResponse] = source
+    ? await translate.translate(nonEmpty, { from: source, to: target })
+    : await translate.translate(nonEmpty, target);
   const list = Array.isArray(translatedTexts) ? translatedTexts : [translatedTexts];
   const detected =
     (apiResponse as { data?: { translations?: Array<{ detectedSourceLanguage?: string }> } })
@@ -111,7 +120,7 @@ export async function translateTextsWithGoogle(
 
   return {
     translatedTexts: list,
-    detectedSourceLanguage: detected,
+    detectedSourceLanguage: detected ? canonicalizeLocaleCode(detected) : null,
   };
 }
 

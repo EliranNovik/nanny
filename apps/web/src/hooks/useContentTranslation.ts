@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   apiTranslateContent,
@@ -10,12 +10,19 @@ import { isTextLikelyInAppLocale } from "@/lib/detectTextLocale";
 
 export type ContentTranslationMode = "original" | "translated";
 
+type PrecomputedTranslation = {
+  translatedTitle?: string | null;
+  translatedBody?: string | null;
+};
+
 type UseContentTranslationArgs = {
   contentKind: TranslateContentKind;
   contentId: string;
   title?: string | null;
   body?: string | null;
   enabled?: boolean;
+  /** Precomputed feed overlay — do not call Google. */
+  precomputed?: PrecomputedTranslation | null;
 };
 
 export function useContentTranslation({
@@ -24,13 +31,56 @@ export function useContentTranslation({
   title,
   body,
   enabled = true,
+  precomputed = null,
 }: UseContentTranslationArgs) {
   const { i18n, t } = useTranslation();
   const targetLocale = normalizeAppLocale(i18n.language);
-  const [mode, setMode] = useState<ContentTranslationMode>("original");
+  const hasPrecomputed = Boolean(
+    precomputed?.translatedTitle?.trim() || precomputed?.translatedBody?.trim(),
+  );
+  const [mode, setMode] = useState<ContentTranslationMode>(
+    hasPrecomputed ? "translated" : "original",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<TranslateContentResponse | null>(null);
+  const [result, setResult] = useState<TranslateContentResponse | null>(() =>
+    hasPrecomputed
+      ? {
+          fields: {
+            title: precomputed?.translatedTitle ?? undefined,
+            body: precomputed?.translatedBody ?? undefined,
+          },
+          sourceLocale: null,
+          targetLocale,
+          cached: true,
+          alreadyInTargetLanguage: false,
+        }
+      : null,
+  );
+
+  const hadPrecomputedRef = useRef(hasPrecomputed);
+  useEffect(() => {
+    if (!hasPrecomputed) return;
+    setResult({
+      fields: {
+        title: precomputed?.translatedTitle ?? undefined,
+        body: precomputed?.translatedBody ?? undefined,
+      },
+      sourceLocale: null,
+      targetLocale,
+      cached: true,
+      alreadyInTargetLanguage: false,
+    });
+    if (!hadPrecomputedRef.current) {
+      setMode("translated");
+    }
+    hadPrecomputedRef.current = true;
+  }, [
+    hasPrecomputed,
+    precomputed?.translatedBody,
+    precomputed?.translatedTitle,
+    targetLocale,
+  ]);
 
   const hasText = Boolean(title?.trim() || body?.trim());
   const canAttempt = enabled && hasText;
@@ -52,10 +102,11 @@ export function useContentTranslation({
 
   const showControl =
     canAttempt &&
-    !likelyAlreadyInLanguage &&
-    !result?.alreadyInTargetLanguage;
+    (hasPrecomputed ||
+      (!likelyAlreadyInLanguage && !result?.alreadyInTargetLanguage));
 
   const fetchTranslation = useCallback(async () => {
+    if (hasPrecomputed) return result;
     if (!canAttempt) return null;
     setLoading(true);
     setError(null);
@@ -91,7 +142,7 @@ export function useContentTranslation({
     } finally {
       setLoading(false);
     }
-  }, [canAttempt, contentId, contentKind, t, targetLocale]);
+  }, [canAttempt, contentId, contentKind, hasPrecomputed, result, t, targetLocale]);
 
   const toggle = useCallback(async () => {
     if (mode === "translated") {

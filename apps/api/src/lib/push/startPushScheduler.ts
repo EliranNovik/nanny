@@ -1,3 +1,4 @@
+import { processTranslationJobs } from "../translate/processTranslationJobs";
 import { runPushWorker } from "./processQueue";
 import { PUSH_WORKER_VERSION, pushLog } from "./log";
 
@@ -23,6 +24,19 @@ async function tick(): Promise<void> {
     const result = await runPushWorker();
     if (result.processed > 0 || result.expiry_enqueued > 0) {
       console.log("[PushScheduler] Tick complete", result);
+    }
+
+    try {
+      const translations = await processTranslationJobs();
+      if (translations.claimed > 0) {
+        console.log("[TranslateQueue] Tick complete", translations);
+      }
+    } catch (translateErr: unknown) {
+      const translateMessage =
+        translateErr instanceof Error
+          ? translateErr.message
+          : "Translation worker failed";
+      console.error("[TranslateQueue] Tick failed:", translateMessage);
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Push worker failed";

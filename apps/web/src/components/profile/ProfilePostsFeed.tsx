@@ -87,6 +87,12 @@ import {
 } from "@/lib/publicProfileMedia";
 import { scrollToProfilePostWhenReady, shareProfilePost, parseProfilePostShareId } from "@/lib/profilePostShare";
 import { fetchProfilePostById } from "@/lib/fetchProfilePostById";
+import { normalizeAppLocale } from "@/i18n";
+import {
+  precomputedFromProfilePostOverlay,
+  withProfilePostTranslationOverlays,
+} from "@/lib/profilePostTranslations";
+import type { ProfilePostTranslationOverlay } from "@/lib/profilePostTranslations";
 import {
   debugProfilePostDeepLink,
   warnProfilePostDeepLink,
@@ -274,6 +280,8 @@ export type ProfilePost = {
   ai_generated_copy?: GeneratedPostCopy | null;
   /** Accepted helper count for event posts (from join interests). */
   event_accepted_helpers_count?: number;
+  original_language?: string | null;
+  translation_overlay?: ProfilePostTranslationOverlay | null;
 };
 
 export type AvailabilityPost = {
@@ -1662,7 +1670,7 @@ export function ComposeModal({
   authorProfile: ProfileSnippet;
   initialPostTypeId?: string | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
   const { openKycRequiredDialog } = useKycGate();
   const { addToast } = useToast();
@@ -2099,6 +2107,8 @@ export function ComposeModal({
         null;
       let insertedProfilePostId: string | null = null;
 
+      const originalLanguage = normalizeAppLocale(i18n.language);
+
       if (selectedPostTypeId === "request_help") {
         const { data: insertedPost, error: insertErr } = await supabase
           .from("profile_posts")
@@ -2112,6 +2122,7 @@ export function ComposeModal({
             post_metadata: metadata,
             custom_category: null,
             ai_generated_copy: generatedCopy,
+            original_language: originalLanguage,
           })
           .select("id")
           .single();
@@ -2167,6 +2178,7 @@ export function ComposeModal({
             post_metadata: metadata,
             custom_category: null,
             ai_generated_copy: generatedCopy,
+            original_language: originalLanguage,
           })
           .select("id")
           .single();
@@ -4600,6 +4612,10 @@ function PostCard({
     title: postTitle,
     body: globalTextOnlyBody || postDescription || effectiveCaption || null,
     enabled: post.source === "post" || post.source === "job_request",
+    precomputed:
+      post.source === "post"
+        ? precomputedFromProfilePostOverlay(post.translation_overlay)
+        : null,
   });
   const displayPostTitle = postTranslation.displayTitle ?? postTitle;
   const displayTextOnlyBody =
@@ -6636,7 +6652,7 @@ export function ProfilePostsFeed({
   filterOtherSubcategoryId = null,
   isolateFocusedPost = false,
 }: ProfilePostsFeedProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
   const effectivePostTypeFilter = useMemo(() => {
     if (filterPostTypeIds?.length) return filterPostTypeIds;
@@ -6691,6 +6707,7 @@ export function ProfilePostsFeed({
     filterCategoryId: filterCategoryId ?? null,
     filterOtherSubcategoryId: filterOtherSubcategoryId ?? null,
     limit,
+    viewerLocale: i18n.language,
   }), [
     userId,
     user?.id,
@@ -6711,12 +6728,14 @@ export function ProfilePostsFeed({
     filterCategoryId,
     filterOtherSubcategoryId,
     limit,
+    i18n.language,
   ]);
 
   useProfilePostsFeedRealtime({
     queryClient,
     queryKey: qk,
     viewerUserId: user?.id ?? null,
+    viewerLocale: i18n.language,
     userId,
     filterTaggedUserId,
     filterAuthorId,
@@ -6919,7 +6938,7 @@ export function ProfilePostsFeed({
       // 2. Fetch profile posts
       let query = supabase
         .from("profile_posts")
-        .select("id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, post_types (id, name, emoji, color)");
+        .select("id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, original_language, post_types (id, name, emoji, color)");
 
       if (filterLikedByUserId && likedPostIds) {
         query = query.in("id", likedPostIds);
@@ -7222,7 +7241,8 @@ export function ProfilePostsFeed({
           : new Map<string, { accepted_count: number }>();
 
       // 7. Build profile posts
-      const profilePostsFeed: ProfilePost[] = rawPosts.map((p) => ({
+      const profilePostsFeed: ProfilePost[] = await withProfilePostTranslationOverlays(
+        rawPosts.map((p) => ({
         id: p.id,
         author_id: p.author_id,
         caption: p.caption,
@@ -7239,7 +7259,7 @@ export function ProfilePostsFeed({
         tagged_profiles: p.tagged_user_ids
           .map((id) => profileMap.get(id))
           .filter(Boolean) as ProfileSnippet[],
-        source: "post",
+        source: "post" as const,
         post_type_id: p.post_type_id,
         post_types: Array.isArray(p.post_types) ? p.post_types[0] : (p.post_types || null),
         post_metadata: mergeProfilePostMetadata(
@@ -7251,7 +7271,11 @@ export function ProfilePostsFeed({
           p.post_type_id === "event"
             ? (eventHelperCountMap.get(p.id)?.accepted_count ?? 0)
             : undefined,
-      }));
+        original_language: (p as { original_language?: string | null }).original_language ?? null,
+        translation_overlay: null,
+      })),
+        i18n.language,
+      );
 
       const filteredProfilePosts = advancedFilters
         ? profilePostsFeed.filter((p) =>
@@ -7444,6 +7468,7 @@ export function ProfilePostsFeed({
     limit,
     hideOwnJobRequests,
     normalizedFocusRequestId,
+    i18n.language,
   ]);
 
   const { data: posts = [], isPending: feedPending } = useQuery({
@@ -7455,8 +7480,8 @@ export function ProfilePostsFeed({
   });
 
   const focusedPostQueryKey = useMemo(
-    () => queryKeys.profilePostById(normalizedFocusPostId, user?.id),
-    [normalizedFocusPostId, user?.id],
+    () => queryKeys.profilePostById(normalizedFocusPostId, user?.id, i18n.language),
+    [normalizedFocusPostId, user?.id, i18n.language],
   );
 
   const {
@@ -7467,7 +7492,7 @@ export function ProfilePostsFeed({
     enabled: Boolean(normalizedFocusPostId),
     staleTime: 60_000,
     queryFn: () =>
-      fetchProfilePostById(normalizedFocusPostId!, user?.id ?? null),
+      fetchProfilePostById(normalizedFocusPostId!, user?.id ?? null, i18n.language),
   });
 
   const allowRequestDeepLink =

@@ -56,6 +56,8 @@ import { queryKeys } from "@/hooks/data/keys";
 import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
 import { useContentTranslation } from "@/hooks/useContentTranslation";
 import { TranslateLinkButton } from "@/components/translate/TranslateTextControl";
+import { precomputedFromProfilePostOverlay } from "@/lib/profilePostTranslations";
+import type { ProfilePostTranslationOverlay } from "@/lib/profilePostTranslations";
 import {
   HIRE_CATEGORY_TILE_UI,
   OTHER_HELP_SUBCATEGORY_UI,
@@ -109,6 +111,7 @@ export type ReelFeedPost = {
     live_until?: string | null;
     role?: string | null;
   } | null;
+  translation_overlay?: ProfilePostTranslationOverlay | null;
 };
 
 function postHasReelsMedia(p: ReelFeedPost): boolean {
@@ -168,6 +171,7 @@ type ReelSlideData = {
   actionLabel: string;
   showActionButton: boolean;
   jobRequestId: string | null;
+  translationOverlay?: ProfilePostTranslationOverlay | null;
 };
 
 function reelCaptionParts(caption: string): ReactNode {
@@ -541,6 +545,8 @@ export function PostMediaReelsViewer({
             ? !isOwnPost
             : !isOwnPost || Boolean(jobRequestId && postTypeId === "request_help"),
         jobRequestId,
+        translationOverlay:
+          p.source === "post" ? p.translation_overlay ?? null : null,
       };
     });
   }, [posts, t, i18n.language, user?.id]);
@@ -1309,6 +1315,7 @@ function ReelTextOnlyCenter({ slide }: { slide: ReelSlideData }) {
     contentId: slide.postId,
     title: slide.title,
     body: bodyText,
+    precomputed: precomputedFromProfilePostOverlay(slide.translationOverlay),
   });
   const displayTitle = translation.displayTitle ?? slide.title;
   const displayBody = translation.displayBody ?? bodyText;
@@ -1403,6 +1410,7 @@ function ReelSlideBottomPanel({
     title: showTitle ? slide.title : null,
     body: bodyText,
     enabled: !slide.isTextOnly,
+    precomputed: precomputedFromProfilePostOverlay(slide.translationOverlay),
   });
   const displayTitle = translation.displayTitle ?? slide.title;
   const displayBody = translation.displayBody ?? bodyText;

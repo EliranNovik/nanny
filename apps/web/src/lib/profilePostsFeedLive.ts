@@ -157,8 +157,9 @@ export async function hydrateAndUpsertProfilePost(
   viewerUserId: string | null,
   sortOrder: "newest" | "oldest" = "newest",
   limit?: number,
+  viewerLocale?: string | null,
 ): Promise<boolean> {
-  const hydrated = await fetchProfilePostById(postId, viewerUserId);
+  const hydrated = await fetchProfilePostById(postId, viewerUserId, viewerLocale);
   if (!hydrated) return false;
   upsertFeedPostInCache(queryClient, queryKey, hydrated, sortOrder, limit);
   return true;

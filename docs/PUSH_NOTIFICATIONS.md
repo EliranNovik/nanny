@@ -169,9 +169,12 @@ Every **1–2 minutes**:
 ```bash
 curl -X POST "https://YOUR_API_HOST/api/push/process-queue" \
   -H "x-cron-secret: YOUR_PUSH_CRON_SECRET"
+
+curl -X POST "https://YOUR_API_HOST/api/translate/process-queue" \
+  -H "x-cron-secret: YOUR_PUSH_CRON_SECRET"
 ```
 
-No user JWT required — only `x-cron-secret`.
+No user JWT required — only `x-cron-secret`. The in-process scheduler also drains `translation_jobs` on the same interval.
 
 ---
 
@@ -187,6 +190,7 @@ All user routes: `Authorization: Bearer <supabase_access_token>`.
 | `PATCH` | `/api/push/preferences` | Update preferences |
 | `GET` | `/api/push/status` | Health check |
 | `POST` | `/api/push/process-queue` | Cron (`x-cron-secret`) |
+| `POST` | `/api/translate/process-queue` | Cron (`x-cron-secret`) — profile-post translations |
 
 See full preference schema and payload shapes in this doc’s sections below.
 

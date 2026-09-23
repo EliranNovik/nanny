@@ -19,6 +19,7 @@ import { contactRouter } from "./routes/contact";
 import { translateRouter } from "./routes/translate";
 import { pushRouter } from "./routes/push";
 import { handleProcessPushQueue } from "./routes/pushCron";
+import { handleProcessTranslationQueue } from "./routes/translateProcessQueue";
 import { requireCronSecret } from "./middleware/cronSecret";
 import { startPushScheduler } from "./lib/push/startPushScheduler";
 
@@ -51,9 +52,14 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 app.use("/api/og", ogProfilePostRouter);
 app.use("/api/og", ogJobRequestRouter);
 app.use("/api/contact", contactRouter);
-app.use("/api/translate", translateRouter);
 
-// Push queue worker — cron secret only (no user JWT)
+// Translation + push queue workers — cron secret only (no user JWT)
+app.post(
+  "/api/translate/process-queue",
+  requireCronSecret,
+  handleProcessTranslationQueue,
+);
+app.use("/api/translate", translateRouter);
 app.post("/api/push/process-queue", requireCronSecret, handleProcessPushQueue);
 
 // Protected routes

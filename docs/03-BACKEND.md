@@ -41,6 +41,10 @@ PUSH_CRON_SECRET=your-long-random-secret
 PUSH_CRON_ENABLED=true
 # Interval in ms (default 120000 = 2 minutes)
 PUSH_CRON_INTERVAL_MS=120000
+
+# Google Translate (on-demand /api/translate + profile-post queue worker)
+GOOGLE_CLOUD_TRANSLATE_API_KEY=
+# or GOOGLE_CLOUD_SERVICE_ACCOUNT_JSON / GOOGLE_APPLICATION_CREDENTIALS
 ```
 
 ## File Structure
