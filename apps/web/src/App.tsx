@@ -321,6 +321,22 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/client/profile/account/verify"
+        element={
+          <ProtectedRoute skipKycGate>
+            <KycVerificationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/freelancer/profile/account/verify"
+        element={
+          <ProtectedRoute skipKycGate>
+            <KycVerificationPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>

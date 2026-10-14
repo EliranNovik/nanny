@@ -1,5 +1,6 @@
 import {
   Baby,
+  BadgeCheck,
   Briefcase,
   CalendarDays,
   Clock,
@@ -10,13 +11,13 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { LandingHeroPost } from "@/lib/fetchLandingHeroPosts";
 import { requestPostBadgeClass, requestPostCtaClass } from "@/lib/requestPostTheme";
+import landingEventImage from "@/assets/landing-event-rooftop.jpg";
 
-const EVENT_IMAGE = "/ChatGPT Image Apr 19, 2026, 11_35_26 AM.png";
+const EVENT_IMAGE = landingEventImage;
 
 /** External portrait URLs for marketing collage avatars */
 const PORTRAITS = {
@@ -50,6 +51,7 @@ type MockAuthor = {
   initials: string;
   photoUrl: string;
   postedLabel: string;
+  verified?: boolean;
 };
 
 type CollagePostTypeId = "offer_service" | "event" | "request_help";
@@ -113,6 +115,7 @@ const EVENT_CARD_MOCK: CollageMediaMock = {
     initials: "T",
     photoUrl: AVATARS.tom,
     postedLabel: "5h ago · Tel Aviv",
+    verified: true,
   },
   postTypeId: "event",
   actionLabel: "I'm interested",
@@ -173,7 +176,9 @@ const NANNY_TEXT_POST_MOBILE: CollageTextPostMock = {
     ...NANNY_TEXT_POST.author,
     name: "Nick",
     initials: "N",
+    postedLabel: "1h ago",
   },
+  body: "Looking for a babysitter Friday 6–10pm. Two kids, ages 4 & 7.",
 };
 
 const HERO_PROFILE = {
@@ -282,7 +287,7 @@ function CollagePostHeader({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-start gap-2 border-b border-slate-100 bg-white antialiased dark:border-zinc-800 dark:bg-zinc-800",
+        "flex shrink-0 items-start gap-2 bg-white antialiased dark:bg-zinc-800",
         compact ? "px-2 py-1.5" : "px-2.5 py-2 lg:px-3 lg:py-2.5",
         largeText && "px-3 py-2.5",
       )}
@@ -297,11 +302,20 @@ function CollagePostHeader({
           <div className="min-w-0">
             <p
               className={cn(
-                "truncate font-bold leading-tight text-slate-900 dark:text-zinc-100",
+                "flex min-w-0 items-center gap-1 font-bold leading-tight text-slate-900 dark:text-zinc-100",
                 largeText ? "text-lg" : "text-base",
               )}
             >
-              {author.name}
+              <span className="truncate">{author.name}</span>
+              {author.verified ? (
+                <BadgeCheck
+                  className={cn(
+                    "shrink-0 fill-sky-500 text-white",
+                    largeText ? "h-5 w-5" : "h-4 w-4",
+                  )}
+                  aria-label="Verified"
+                />
+              ) : null}
             </p>
             <p
               className={cn(
@@ -418,7 +432,7 @@ function CollageMediaCard({
   hideComments = false,
 }: {
   mock: CollageMediaMock;
-  imageUrl: string | null;
+  imageUrl: string;
   compact?: boolean;
   largeText?: boolean;
   shellClassName?: string;
@@ -438,7 +452,7 @@ function CollageMediaCard({
       {mock.title ? (
         <div
           className={cn(
-            "shrink-0 border-b border-slate-100 bg-white px-2.5 py-2 antialiased dark:border-zinc-800 dark:bg-zinc-800 lg:px-3",
+            "shrink-0 bg-white px-2.5 py-2 antialiased dark:bg-zinc-800 lg:px-3",
             largeText && "px-3 py-2.5",
           )}
         >
@@ -462,34 +476,46 @@ function CollageMediaCard({
           ) : null}
         </div>
       ) : null}
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-100">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="eager"
-            decoding="async"
-            {...{ fetchpriority: "high" }}
-          />
-        ) : (
-          <div
-            className="h-full w-full animate-pulse bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200"
-            aria-hidden
-          />
-        )}
+      <div
+        className="relative min-h-[9rem] flex-1 overflow-hidden bg-slate-100 bg-cover bg-center"
+        style={{ backgroundImage: `url(${imageUrl})` }}
+      >
+        <img
+          src={imageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden
+          title={mock.actionLabel}
+          className={cn(
+            "absolute right-2 top-2 flex items-center justify-center rounded-full shadow-lg lg:right-3 lg:top-3",
+            largeText ? "h-12 w-12" : "h-10 w-10 lg:h-11 lg:w-11",
+            mock.postTypeId === "event"
+              ? "bg-violet-600 text-white"
+              : "bg-emerald-600 text-white",
+          )}
+        >
           {showHeart ? (
-            <div className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg lg:bottom-3 lg:right-3 lg:h-11 lg:w-11">
-              <Heart className="h-5 w-5 fill-white lg:h-6 lg:w-6" strokeWidth={2} aria-hidden />
-            </div>
-          ) : null}
+            <Heart
+              className={cn("fill-white", largeText ? "h-6 w-6" : "h-5 w-5 lg:h-6 lg:w-6")}
+              strokeWidth={2}
+              aria-hidden
+            />
+          ) : (
+            <CalendarDays
+              className={largeText ? "h-6 w-6" : "h-5 w-5 lg:h-6 lg:w-6"}
+              strokeWidth={2.25}
+              aria-hidden
+            />
+          )}
+        </button>
       </div>
-      <CollageActionButton
-        typeId={mock.postTypeId}
-        label={mock.actionLabel}
-        compact={compact}
-        largeText={largeText}
-      />
       {hideComments ? null : (
         <CollageCommentSheet comments={mock.comments} compact={compact} largeText={largeText} />
       )}
@@ -527,24 +553,25 @@ function CollageTextPostCard({
             <div className="min-w-0 flex-1">
               <h3
                 className={cn(
-                  "flex items-center gap-1.5 font-bold leading-snug text-slate-900 dark:text-zinc-100",
+                  "flex items-start gap-1.5 font-bold leading-snug text-slate-900 dark:text-zinc-100",
                   largeText ? "text-base" : "text-sm",
                 )}
               >
                 <TitleIcon
                   className={cn(
-                    "shrink-0 text-slate-600 dark:text-zinc-400",
+                    "mt-0.5 shrink-0 text-slate-600 dark:text-zinc-400",
                     largeText ? "h-5 w-5" : "h-4 w-4",
                   )}
                   strokeWidth={2.25}
                   aria-hidden
                 />
-                <span>{post.title}</span>
+                <span className="min-w-0">{post.title}</span>
               </h3>
               <p
                 className={cn(
-                  "mt-1.5 line-clamp-3 leading-relaxed text-slate-700 dark:text-zinc-300",
-                  largeText ? "text-base" : "text-sm",
+                  "mt-1.5 leading-relaxed text-slate-700 dark:text-zinc-300",
+                  hideComments ? "line-clamp-4 text-sm" : "line-clamp-3",
+                  !hideComments && (largeText ? "text-base" : "text-sm"),
                 )}
               >
                 {post.body}
@@ -594,53 +621,19 @@ function CollageTextPostCard({
           ) : null}
         </div>
       </div>
-      <CollageActionButton
-        typeId={post.postTypeId}
-        label={post.actionLabel}
-        compact
-        largeText={largeText}
-      />
+      {hideComments ? null : (
+        <CollageActionButton
+          typeId={post.postTypeId}
+          label={post.actionLabel}
+          compact
+          largeText={largeText}
+        />
+      )}
       {!hideComments ? (
         <CollageCommentSheet comments={post.comments} compact largeText={largeText} />
       ) : null}
     </CollageCardShell>
   );
-}
-
-function pickEventImage(posts: LandingHeroPost[]): string {
-  const eventFromFeed = posts.find((p) => p.postTypeId === "event")?.imageUrl;
-  return eventFromFeed ?? EVENT_IMAGE;
-}
-
-function useResolvedEventImage(
-  posts: LandingHeroPost[],
-  loading: boolean,
-): string | null {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const targetUrl = loading ? null : pickEventImage(posts);
-
-  useEffect(() => {
-    if (!targetUrl) {
-      setResolvedUrl(null);
-      return;
-    }
-
-    let cancelled = false;
-    const img = new Image();
-    img.onload = () => {
-      if (!cancelled) setResolvedUrl(targetUrl);
-    };
-    img.onerror = () => {
-      if (!cancelled) setResolvedUrl(targetUrl);
-    };
-    img.src = targetUrl;
-
-    return () => {
-      cancelled = true;
-    };
-  }, [targetUrl]);
-
-  return resolvedUrl;
 }
 
 type LandingHeroCollageProps = {
@@ -653,16 +646,13 @@ type LandingHeroCollageProps = {
 
 const COLLAGE_DESIGN_WIDTH = 640;
 const COLLAGE_DESIGN_HEIGHT = 720;
-/** Slightly larger than fit-to-width on mobile embedded hero */
-const MOBILE_EMBEDDED_SCALE_BOOST = 1.36;
 
 function LandingHeroCollageCanvas({
-  posts,
   loading = false,
   className,
   embedded = false,
 }: LandingHeroCollageProps) {
-  const eventImage = useResolvedEventImage(posts, loading);
+  const eventImage = EVENT_IMAGE;
 
   return (
     <div
@@ -675,7 +665,7 @@ function LandingHeroCollageCanvas({
       <div
         className={cn(
           "relative mx-auto h-full w-full px-6 lg:px-10",
-          embedded ? "px-1 pb-16 pt-1" : "pb-28 pt-28 lg:pb-32 lg:pt-32",
+          embedded ? "px-3 pb-20 pt-2" : "pb-28 pt-28 lg:pb-32 lg:pt-32",
         )}
       >
         <CollageMediaCard
@@ -683,9 +673,10 @@ function LandingHeroCollageCanvas({
           imageUrl={eventImage}
           compact={embedded}
           largeText={embedded}
+          hideComments={embedded}
           shellClassName={
             embedded
-              ? "left-0 top-[3%] z-20 h-[56%] w-[72%]"
+              ? "left-0 top-2 z-20 h-[62%] w-[78%]"
               : "left-[34%] top-[24%] z-10 h-[36%] w-[28%] !rotate-0"
           }
           tilt="rotate-0"
@@ -702,7 +693,7 @@ function LandingHeroCollageCanvas({
         {embedded ? (
           <CollageTextPostCard
             post={NANNY_TEXT_POST_MOBILE}
-            shellClassName="left-[42%] top-[11%] z-30 h-[50%] w-[60%]"
+            shellClassName="right-0 top-16 z-30 h-auto w-[64%]"
             tilt="rotate-0"
             hideComments
             largeText
@@ -712,7 +703,7 @@ function LandingHeroCollageCanvas({
         <div
           className={cn(
             "absolute z-40",
-            embedded ? "bottom-[22%] left-[8%]" : "bottom-[30%] left-[42%]",
+            embedded ? "bottom-[26%] left-3" : "bottom-[30%] left-[42%]",
           )}
         >
           <div className="rounded-full bg-gradient-to-br from-sky-400 via-blue-500 to-emerald-400 p-1 shadow-[0_20px_48px_-12px_rgba(59,130,246,0.55)]">
@@ -720,7 +711,7 @@ function LandingHeroCollageCanvas({
               <Avatar
                 className={cn(
                   embedded
-                    ? "h-[7.75rem] w-[7.75rem] lg:h-[9.25rem] lg:w-[9.25rem]"
+                    ? "h-24 w-24"
                     : "h-24 w-24 lg:h-28 lg:w-28",
                 )}
               >
@@ -738,7 +729,7 @@ function LandingHeroCollageCanvas({
         </div>
 
         {embedded ? (
-          <p className="absolute bottom-8 left-4 right-4 max-w-lg text-left text-[2.55rem] font-black leading-[1.05] tracking-tight text-slate-900 dark:text-zinc-50">
+          <p className="absolute bottom-3 left-3 right-3 max-w-sm text-left text-[1.85rem] font-black leading-[1.1] tracking-tight text-slate-900 dark:text-zinc-50">
             Explore the community you{" "}
             <span className="text-orange-500">love</span>.
           </p>
@@ -753,51 +744,21 @@ function LandingHeroCollageEmbedded({
   loading = false,
   className,
 }: LandingHeroCollageProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-
-    const updateScale = () => {
-      const width = node.clientWidth;
-      if (width > 0) {
-        setScale((width / COLLAGE_DESIGN_WIDTH) * MOBILE_EMBEDDED_SCALE_BOOST);
-      }
-    };
-
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <div
-      ref={containerRef}
-      className={cn("w-full overflow-hidden bg-white dark:bg-background", className)}
+      className={cn(
+        "relative w-full overflow-hidden bg-white dark:bg-background",
+        className,
+      )}
+      style={{
+        aspectRatio: `${COLLAGE_DESIGN_WIDTH} / ${COLLAGE_DESIGN_HEIGHT}`,
+      }}
     >
-      <div
-        className="flex justify-center"
-        style={{ height: COLLAGE_DESIGN_HEIGHT * scale }}
-      >
-        <div
-          className="relative bg-white dark:bg-background"
-          style={{
-            width: COLLAGE_DESIGN_WIDTH,
-            height: COLLAGE_DESIGN_HEIGHT,
-            transform: `scale(${scale})`,
-            transformOrigin: "top center",
-          }}
-        >
-          <LandingHeroCollageCanvas
-            posts={posts}
-            loading={loading}
-            embedded
-          />
-        </div>
-      </div>
+      <LandingHeroCollageCanvas
+        posts={posts}
+        loading={loading}
+        embedded
+      />
     </div>
   );
 }

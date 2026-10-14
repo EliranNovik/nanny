@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
@@ -7,6 +7,7 @@ import {
   ScanFace,
   Loader2,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
@@ -14,7 +15,11 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiGet, apiPost } from "@/lib/api";
 import {
-  needsKycVerification,
+  KYC_REQUIRED_FOR_ACTIONS,
+  isIdentityVerified,
+  isKycInterrupted,
+  isKycUnderReview,
+  roleAccountPath,
   roleHomePath,
 } from "@/lib/kyc";
 import { Button } from "@/components/ui/button";
@@ -37,8 +42,10 @@ export default function KycVerificationPage() {
   const { t } = useTranslation();
   const { user, profile, loading, refreshProfile, applyProfile } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const returnedFromDidit = searchParams.get("return") === "1";
+  const settingsMode = pathname.includes("/profile/account/verify");
 
   const [kycStatus, setKycStatus] = useState<string>("not_started");
   const [busy, setBusy] = useState(false);
@@ -50,6 +57,11 @@ export default function KycVerificationPage() {
     () => (profile ? roleHomePath(profile.role) : "/"),
     [profile],
   );
+  const accountPath = useMemo(
+    () => (profile ? roleAccountPath(profile.role) : "/"),
+    [profile],
+  );
+  const exitPath = settingsMode ? accountPath : homePath;
 
   const displayName = useMemo(() => {
     const fromProfile = profile?.full_name?.trim();
@@ -113,10 +125,17 @@ export default function KycVerificationPage() {
 
   useEffect(() => {
     if (loading || !user || !profile) return;
-    if (!needsKycVerification(profile)) {
+
+    if (!settingsMode && !KYC_REQUIRED_FOR_ACTIONS && !returnedFromDidit) {
       navigate(homePath, { replace: true });
       return;
     }
+
+    if (!settingsMode && isIdentityVerified(profile)) {
+      navigate(homePath, { replace: true });
+      return;
+    }
+
     setKycStatus(profile.kyc_status ?? "not_started");
     if (returnedFromDidit) {
       void refreshStatus(true);
@@ -128,6 +147,7 @@ export default function KycVerificationPage() {
     profile,
     refreshStatus,
     returnedFromDidit,
+    settingsMode,
     user,
   ]);
 
@@ -140,10 +160,11 @@ export default function KycVerificationPage() {
   }, [kycStatus, refreshStatus, returnedFromDidit]);
 
   useEffect(() => {
+    if (settingsMode) return;
     if (kycStatus === "approved" && profile) {
       navigate(homePath, { replace: true });
     }
-  }, [homePath, kycStatus, navigate, profile]);
+  }, [homePath, kycStatus, navigate, profile, settingsMode]);
 
   async function skipVerification() {
     setError(null);
@@ -164,10 +185,16 @@ export default function KycVerificationPage() {
     setError(null);
     setBusy(true);
     try {
-      const data = await apiPost<CreateSessionResponse>("/api/kyc/session", {});
+      const data = await apiPost<CreateSessionResponse>("/api/kyc/session", {
+        source: settingsMode ? "settings" : "onboarding",
+      });
       if (data.alreadyVerified) {
         await refreshProfile();
-        navigate(homePath, { replace: true });
+        setKycStatus("approved");
+        setBusy(false);
+        if (!settingsMode) {
+          navigate(homePath, { replace: true });
+        }
         return;
       }
       if (!data.url) {
@@ -191,11 +218,58 @@ export default function KycVerificationPage() {
   }
 
   const isDeclined = kycStatus === "declined";
-  const isReview = kycStatus === "in_review" || kycStatus === "pending_review";
+  const isReview = isKycUnderReview(kycStatus);
   const isWaiting =
     returnedFromDidit &&
     (kycStatus === "in_progress" || isReview) &&
     !isDeclined;
+  const showVerified = settingsMode && kycStatus === "approved";
+  const showSkip = !settingsMode && KYC_REQUIRED_FOR_ACTIONS && !isWaiting && !isReview;
+  const showNotNow =
+    settingsMode && !showVerified && (isKycInterrupted(kycStatus) || isWaiting || isReview);
+
+  if (showVerified) {
+    return (
+      <div className="relative flex min-h-[100dvh] flex-col bg-background text-foreground">
+        <header className="relative z-10 bg-background/80 px-5 pb-6 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-xl items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(exitPath)}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted"
+              aria-label={t("onboarding.verify.back")}
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <h1 className="text-xl font-bold tracking-tight">
+              {t("onboarding.verify.eyebrow")}
+            </h1>
+          </div>
+        </header>
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-10">
+          <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShieldCheck className="h-8 w-8" aria-hidden />
+            </span>
+            <h2 className="text-2xl font-bold tracking-tight">
+              {t("onboarding.verify.verifiedTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("onboarding.verify.verifiedBody")}
+            </p>
+            <Button
+              type="button"
+              size="lg"
+              className="mt-2 h-12 w-full rounded-2xl font-bold"
+              onClick={() => navigate(exitPath)}
+            >
+              {t("onboarding.verify.done")}
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col bg-background text-foreground">
@@ -206,9 +280,20 @@ export default function KycVerificationPage() {
 
       <header className="relative z-10 bg-background/80 px-5 pb-6 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md md:pb-8">
         <div className="mx-auto flex w-full max-w-xl items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <ShieldCheck className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-          </div>
+          {settingsMode ? (
+            <button
+              type="button"
+              onClick={() => navigate(exitPath)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
+              aria-label={t("onboarding.verify.back")}
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+            </button>
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShieldCheck className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
               {t("onboarding.verify.eyebrow")}
@@ -236,7 +321,9 @@ export default function KycVerificationPage() {
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-5 pb-3 pt-16 md:px-6 md:pb-4 md:pt-20">
               <p className="text-base leading-relaxed text-white/95 md:text-lg">
-                {t("onboarding.verify.hero")}
+                {settingsMode
+                  ? t("onboarding.verify.settingsHero")
+                  : t("onboarding.verify.hero")}
               </p>
             </div>
           </div>
@@ -248,12 +335,18 @@ export default function KycVerificationPage() {
             </div>
           ) : null}
 
-          {isWaiting ? (
+          {isWaiting || isReview ? (
             <div className="flex flex-col items-center gap-4 py-2 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-              <p className="text-sm font-semibold">{t("onboarding.verify.processing")}</p>
+              <p className="text-sm font-semibold">
+                {isReview
+                  ? t("onboarding.verify.reviewing")
+                  : t("onboarding.verify.processing")}
+              </p>
               <p className="max-w-xs text-sm text-muted-foreground">
-                {t("onboarding.verify.processingHint")}
+                {isReview
+                  ? t("onboarding.verify.reviewingHint")
+                  : t("onboarding.verify.processingHint")}
               </p>
               <Button
                 type="button"
@@ -275,7 +368,7 @@ export default function KycVerificationPage() {
             </p>
           ) : null}
 
-          {!isWaiting ? (
+          {!isWaiting && !isReview ? (
             <Button
               type="button"
               size="lg"
@@ -346,7 +439,7 @@ export default function KycVerificationPage() {
         </ul>
 
         <div className="space-y-4">
-          {!isWaiting && !isReview ? (
+          {showSkip ? (
             <Button
               type="button"
               variant="ghost"
@@ -356,6 +449,19 @@ export default function KycVerificationPage() {
               onClick={() => void skipVerification()}
             >
               {t("onboarding.verify.skip")}
+            </Button>
+          ) : null}
+
+          {showNotNow ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              className="h-11 w-full rounded-2xl text-sm font-semibold text-muted-foreground"
+              disabled={busy}
+              onClick={() => navigate(exitPath)}
+            >
+              {t("onboarding.verify.reminder.notNow")}
             </Button>
           ) : null}
 

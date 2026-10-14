@@ -17,6 +17,7 @@ import {
   commitPendingProfile,
   readPendingProfile,
 } from "@/lib/pendingProfile";
+import { needsKycVerification, roleHomePath } from "@/lib/kyc";
 
 export default function LoginPage({ oauthCallback = false }: { oauthCallback?: boolean }) {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -93,8 +94,13 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     if (!authLoading && user && (profile || pendingProfileResolved)) {
       console.log("[LoginPage] Ready to redirect", { profile });
       if (pendingProfileCommitted) {
-        console.log("[LoginPage] Redirecting to /onboarding/verify after pending profile commit");
-        navigate("/onboarding/verify", { replace: true });
+        const afterSignup = needsKycVerification(profile)
+          ? "/onboarding/verify"
+          : profile
+            ? roleHomePath(profile.role)
+            : "/client/home";
+        console.log("[LoginPage] Redirecting after pending profile commit", afterSignup);
+        navigate(afterSignup, { replace: true });
         return;
       }
 

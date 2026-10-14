@@ -1,3 +1,6 @@
+/** Flip to true to restore ID-check blocks on requests, posts, go-live, and onboarding. */
+export const KYC_REQUIRED_FOR_ACTIONS = false;
+
 /** True when identity is fully verified (Didit approved). */
 export function isKycApproved(profile: {
   kyc_status?: string | null;
@@ -7,11 +10,35 @@ export function isKycApproved(profile: {
   return profile.kyc_status === "approved";
 }
 
-/** Show reminders / block start-request and go-live until verified. */
+/** True when Didit approved this user (badge), ignoring the action-gate switch. */
+export function isIdentityVerified(profile: {
+  kyc_status?: string | null;
+} | null | undefined): boolean {
+  return profile?.kyc_status === "approved";
+}
+
+export function isKycUnderReview(status: string | null | undefined): boolean {
+  return status === "in_review" || status === "pending_review";
+}
+
+export function isKycInterrupted(status: string | null | undefined): boolean {
+  return (
+    status === "in_progress" ||
+    status === "abandoned" ||
+    status === "expired" ||
+    status === "declined"
+  );
+}
+
+/**
+ * Show reminders / block start-request and go-live until verified.
+ * All in-app gates go through this; KYC_REQUIRED_FOR_ACTIONS turns them off.
+ */
 export function needsKycVerification(profile: {
   kyc_status?: string | null;
   is_admin?: boolean | null;
 } | null | undefined): boolean {
+  if (!KYC_REQUIRED_FOR_ACTIONS) return false;
   return !isKycApproved(profile);
 }
 
@@ -43,6 +70,17 @@ export function roleHomePath(role: "client" | "freelancer" | "admin" | string): 
   if (role === "client") return "/client/home";
   if (role === "freelancer") return "/freelancer/home";
   return "/";
+}
+
+export function roleAccountPath(role: "client" | "freelancer" | "admin" | string): string {
+  if (role === "freelancer") return "/freelancer/profile/account";
+  return "/client/profile/account";
+}
+
+export function roleAccountVerifyPath(
+  role: "client" | "freelancer" | "admin" | string,
+): string {
+  return `${roleAccountPath(role)}/verify`;
 }
 
 export type KycBlockedAction = "start_request" | "go_live" | "share_post";

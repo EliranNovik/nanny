@@ -49,6 +49,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
+import landingEventImage from "@/assets/landing-event-rooftop.jpg";
 import {
   HIRE_CATEGORY_TILE_UI,
   OTHER_HELP_SUBCATEGORY_UI,
@@ -282,6 +283,16 @@ export default function LandingPage() {
     description: DEFAULT_DESCRIPTION,
     path: "/",
   });
+  useEffect(() => {
+    const href = landingEventImage;
+    if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    link.fetchPriority = "high";
+    document.head.appendChild(link);
+  }, []);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
@@ -674,12 +685,12 @@ export default function LandingPage() {
                   <img
                     src={isDarkTheme ? step.imageDark : step.image}
                     alt={t(`landing.steps.${step.step}.imageAlt`)}
-                    className="mb-4 h-32 w-32 object-contain"
+                    className="mb-4 h-40 w-40 object-contain"
                   />
-                  <h3 className="mb-2 text-[17px] font-bold leading-tight text-slate-900 dark:text-zinc-100">
+                  <h3 className="mb-2 text-2xl font-bold leading-tight text-slate-900 dark:text-zinc-100">
                     {t(`landing.steps.${step.step}.title`)}
                   </h3>
-                  <p className="text-sm font-medium leading-relaxed text-slate-500 dark:text-zinc-400">
+                  <p className="text-lg font-medium leading-relaxed text-slate-500 dark:text-zinc-400">
                     {t(`landing.steps.${step.step}.desc`)}
                   </p>
                 </article>

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
 import { ProfileAccountDangerZone } from "@/components/profile/ProfileAccountDangerZone";
+import { ProfileAccountIdentitySection } from "@/components/profile/ProfileAccountIdentitySection";
 import { ProfilePushPreferences } from "@/components/profile/ProfilePushPreferences";
 
 export function ProfileAccountPage() {
@@ -12,6 +13,7 @@ export function ProfileAccountPage() {
       description={t("profile.myAccountDescription")}
       className="bg-white dark:bg-background"
     >
+      <ProfileAccountIdentitySection />
       <ProfilePushPreferences />
       <ProfileAccountDangerZone />
     </ProfileSubpageLayout>

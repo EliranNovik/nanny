@@ -43,7 +43,7 @@
   }
 
   .app-desktop-side-panel {
-    @apply fixed bottom-0 start-0 top-16 z-[200] w-[220px];
+    @apply fixed bottom-0 start-0 top-0 z-[200] w-[220px];
   }
 
   html:has([data-messages-page]) .app-desktop-side-panel {

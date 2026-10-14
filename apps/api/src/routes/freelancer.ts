@@ -11,7 +11,7 @@ const GoLiveSchema = z.object({
   live_can_start_in: z.string().min(1),
 });
 
-/** Start 24h go-live window (requires approved KYC). */
+/** Start 24h go-live window. */
 freelancerRouter.post("/go-live", async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;

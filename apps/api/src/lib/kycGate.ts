@@ -2,6 +2,9 @@ import { supabaseAdmin } from "../supabase";
 
 export const KYC_REQUIRED_CODE = "KYC_REQUIRED";
 
+/** Flip to true to restore API KYC gates on job create and go-live. */
+export const KYC_REQUIRED_FOR_ACTIONS = false;
+
 export async function loadProfileKycStatus(
   userId: string,
 ): Promise<{ kyc_status: string; is_admin: boolean | null } | null> {
@@ -27,6 +30,9 @@ export async function assertKycApproved(userId: string): Promise<
   | { ok: true }
   | { ok: false; error: string; code: typeof KYC_REQUIRED_CODE }
 > {
+  if (!KYC_REQUIRED_FOR_ACTIONS) {
+    return { ok: true };
+  }
   const profile = await loadProfileKycStatus(userId);
   if (!profile) {
     return { ok: false, error: "Profile not found", code: KYC_REQUIRED_CODE };

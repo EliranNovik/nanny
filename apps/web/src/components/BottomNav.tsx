@@ -974,7 +974,13 @@ export function BottomNav() {
         signedInDesktopHeaderGlassClass,
       )}
     >
-      <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+      <div
+        className={cn(
+          "flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6",
+          showDesktopBrandChrome &&
+            (desktopSidePanelCollapsed ? "md:ps-24" : "md:ps-[220px]"),
+        )}
+      >
         {showDesktopBrandChrome ? (
           <div className="flex shrink-0 items-center gap-1 ps-2 sm:ps-3">
             <button

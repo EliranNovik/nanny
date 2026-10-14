@@ -43,6 +43,7 @@ import {
   readPendingProfile,
   savePendingProfile,
 } from "@/lib/pendingProfile";
+import { needsKycVerification, roleHomePath } from "@/lib/kyc";
 
 type Role = "client" | "freelancer";
 
@@ -152,15 +153,9 @@ export default function OnboardingPage() {
           setCheckingProfile(false);
           clearPendingProfile();
 
-          const shouldVerify =
-            !existingProfile.is_admin &&
-            existingProfile.kyc_status !== "approved" &&
-            existingProfile.kyc_status !== "skipped";
-          const target = shouldVerify
+          const target = needsKycVerification(existingProfile)
             ? "/onboarding/verify"
-            : existingProfile.role === "client"
-              ? "/client/home"
-              : "/freelancer/home";
+            : roleHomePath(existingProfile.role);
           navigate(target, { replace: true });
 
           refreshProfile().catch(() => {});
@@ -206,7 +201,11 @@ export default function OnboardingPage() {
             setProfileChecked(true);
             setCheckingProfile(false);
             setCompletingSignup(false);
-            navigate("/onboarding/verify", { replace: true });
+            const createdTarget =
+              createdProfile && needsKycVerification(createdProfile)
+                ? "/onboarding/verify"
+                : roleHomePath(createdProfile?.role ?? "client");
+            navigate(createdTarget, { replace: true });
             void refreshProfile();
           } catch (createError) {
             console.error("[OnboardingPage] Error committing pending profile", createError);
@@ -568,15 +567,9 @@ export default function OnboardingPage() {
       setCompletingSignup(false);
       creatingProfileRef.current = false;
 
-      const shouldVerify =
-        !existingProfile.is_admin &&
-        existingProfile.kyc_status !== "approved" &&
-        existingProfile.kyc_status !== "skipped";
-      const target = shouldVerify
+      const target = needsKycVerification(existingProfile)
         ? "/onboarding/verify"
-        : existingProfile.role === "client"
-          ? "/client/home"
-          : "/freelancer/home";
+        : roleHomePath(existingProfile.role);
       navigate(target, { replace: true });
       return;
     }
@@ -674,7 +667,10 @@ export default function OnboardingPage() {
     creatingProfileRef.current = false;
 
     applyProfile(profileData[0]);
-    navigate("/onboarding/verify", { replace: true });
+    const createdTarget = needsKycVerification(profileData[0])
+      ? "/onboarding/verify"
+      : roleHomePath(profileData[0].role);
+    navigate(createdTarget, { replace: true });
     void refreshProfile();
   }
 

@@ -12,7 +12,9 @@ import { useTranslation } from "react-i18next";
 import { ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
+  KYC_REQUIRED_FOR_ACTIONS,
   needsKycVerification,
+  roleAccountVerifyPath,
   type KycBlockedAction,
 } from "@/lib/kyc";
 import { Button } from "@/components/ui/button";
@@ -200,7 +202,9 @@ export function KycGateProvider({ children }: { children: ReactNode }) {
 
   /** User is already on the dedicated verify step — no floating banner. */
   const hideReminderOnRoute =
-    pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/") ||
+    pathname.endsWith("/profile/account/verify");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [hourlyReminderOpen, setHourlyReminderOpen] = useState(false);
@@ -280,8 +284,12 @@ export function KycGateProvider({ children }: { children: ReactNode }) {
   const goVerify = useCallback(() => {
     setDialogOpen(false);
     setHourlyReminderOpen(false);
-    navigate("/onboarding/verify");
-  }, [navigate]);
+    navigate(
+      KYC_REQUIRED_FOR_ACTIONS
+        ? "/onboarding/verify"
+        : roleAccountVerifyPath(profile?.role ?? "client"),
+    );
+  }, [navigate, profile?.role]);
 
   const handleHourlyReminderChange = useCallback(
     (open: boolean) => {

@@ -90,7 +90,14 @@ kycRouter.post("/session", requireUser, async (req: Request, res: Response) => {
       return;
     }
 
-    const callbackUrl = `${appOrigin()}/onboarding/verify?return=1`;
+    const source = req.body?.source === "settings" ? "settings" : "onboarding";
+    const callbackPath =
+      source === "settings"
+        ? profile.role === "freelancer"
+          ? "/freelancer/profile/account/verify?return=1"
+          : "/client/profile/account/verify?return=1"
+        : "/onboarding/verify?return=1";
+    const callbackUrl = `${appOrigin()}${callbackPath}`;
     const session = await createDiditSession({
       vendorData: user.id,
       callbackUrl,
@@ -118,7 +125,7 @@ kycRouter.post("/session", requireUser, async (req: Request, res: Response) => {
   }
 });
 
-/** Defer verification — user can browse the app but cannot post requests or go live. */
+/** Defer verification. Used when KYC is required during onboarding. */
 kycRouter.post("/skip", requireUser, async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;
