@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,37 +20,34 @@ export type WhatIsTebnuDialogProps = {
 /** “What is tebnu?” intro modal — shared across landing, feed guest UI, etc. */
 export function WhatIsTebnuDialog({ open, onOpenChange }: WhatIsTebnuDialogProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-2xl border-0 bg-background px-6 pb-6 pt-7 shadow-2xl outline-none ring-0 focus:outline-none">
         <DialogHeader className="space-y-2">
           <DialogTitle className="text-xl font-black tracking-tight">
-            What is tebnu?
+            {t("whatIsTebnu.title")}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            tebnu is a community for getting help and offering help — for any
-            need, big or small.
+            {t("whatIsTebnu.description")}
           </DialogDescription>
         </DialogHeader>
 
         <ul className="mt-4 space-y-2 text-sm text-foreground/90">
-          <li className="flex gap-2">
-            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-            Find help near you (services, one-time tasks, ongoing support).
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-            Offer your skills and connect with people who need them.
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-            Share updates, reviews, and availability on the public board.
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-            Message securely and build trust through community activity.
-          </li>
+          {(
+            [
+              "whatIsTebnu.bulletFind",
+              "whatIsTebnu.bulletOffer",
+              "whatIsTebnu.bulletShare",
+              "whatIsTebnu.bulletMessage",
+            ] as const
+          ).map((key) => (
+            <li key={key} className="flex gap-2">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+              {t(key)}
+            </li>
+          ))}
         </ul>
 
         <div className="mt-6 flex flex-col gap-2">
@@ -85,7 +83,7 @@ export function WhatIsTebnuDialog({ open, onOpenChange }: WhatIsTebnuDialogProps
               navigate("/onboarding");
             }}
           >
-            Register
+            {t("siteNav.register")}
           </Button>
           <Button
             type="button"
@@ -96,7 +94,7 @@ export function WhatIsTebnuDialog({ open, onOpenChange }: WhatIsTebnuDialogProps
               navigate("/login");
             }}
           >
-            Sign in
+            {t("siteNav.signIn")}
           </Button>
         </div>
       </DialogContent>

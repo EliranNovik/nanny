@@ -34,15 +34,19 @@ export function useGooglePlacesPacModalSupport(active = true): void {
   useEffect(() => {
     if (!active) return;
 
-    const handleMouseDown = (event: MouseEvent) => {
+    const keepFocus = (event: Event) => {
       if (isGooglePlacesPacTarget(event.target)) {
         event.preventDefault();
       }
     };
 
-    document.addEventListener("mousedown", handleMouseDown, true);
+    document.addEventListener("pointerdown", keepFocus, true);
+    document.addEventListener("mousedown", keepFocus, true);
+    document.addEventListener("touchstart", keepFocus, true);
     return () => {
-      document.removeEventListener("mousedown", handleMouseDown, true);
+      document.removeEventListener("pointerdown", keepFocus, true);
+      document.removeEventListener("mousedown", keepFocus, true);
+      document.removeEventListener("touchstart", keepFocus, true);
     };
   }, [active]);
 }

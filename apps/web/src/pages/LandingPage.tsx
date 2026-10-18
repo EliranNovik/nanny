@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Truck,
-  ShieldCheck,
   Loader2,
   HelpingHand,
   HeartHandshake,
@@ -33,7 +32,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ContactUsButton } from "@/components/ContactUsButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, usePageSeo } from "@/lib/seo";
@@ -42,6 +41,7 @@ import {
   communityFeedScrollState,
 } from "@/lib/communityFeedNav";
 import {
+  feedCategoryLabel,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
 } from "@/lib/globalFeedPostUi";
@@ -49,14 +49,13 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
-import landingEventImage from "@/assets/landing-event-rooftop.jpg";
 import {
   HIRE_CATEGORY_TILE_UI,
   OTHER_HELP_SUBCATEGORY_UI,
   resolveHelpCategoryIconId,
 } from "@/lib/discoverCategoryTileIcons";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
 import type {
@@ -77,14 +76,74 @@ function landingActivityTypeId(kind: LandingActivityKind): "request_help" | "off
   return kind === "request" ? "request_help" : "offer_service";
 }
 
-function landingActivityTypeLabel(kind: LandingActivityKind): string {
-  return kind === "request" ? "Request" : "Offer";
+function landingActivityTypeLabel(
+  kind: LandingActivityKind,
+  t: (key: string) => string,
+): string {
+  return t(kind === "request" ? "feed.postType.request_help" : "feed.postType.offer_service");
 }
 
-function landingActivityCtaLabel(kind: LandingActivityKind, authorName: string): string {
-  if (kind === "request") return "Offer help";
-  const first = authorName.trim().split(/\s+/)[0] || "user";
-  return `Message ${first}`;
+function landingActivityCtaLabel(
+  kind: LandingActivityKind,
+  authorName: string,
+  t: (key: string, opts?: Record<string, string>) => string,
+): string {
+  if (kind === "request") return t("feed.global.offerHelp");
+  const first = authorName.trim().split(/\s+/)[0] || t("feed.defaultUser");
+  return t("feed.global.messageName", { name: first });
+}
+
+function normalizeDetailToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+}
+
+function landingActivityDetailValue(
+  point: IsolatedFeedDetailRow,
+  t: (key: string, opts?: { defaultValue?: string }) => string,
+  language: string,
+): string {
+  if (point.dateIso) {
+    const parsed = new Date(point.dateIso);
+    if (!Number.isNaN(parsed.getTime())) {
+      return format(parsed, "EEEE, d MMMM, HH:mm", {
+        locale: dateFnsLocaleFor(language),
+      });
+    }
+  }
+
+  const token = normalizeDetailToken(point.token || point.value);
+  const raw = point.value.toLowerCase();
+
+  if (point.kind === "when") {
+    if (token === "later_today") return t("landing.availability.laterToday");
+    if (token === "now" && raw.includes("available")) {
+      return t("landing.availability.now");
+    }
+    if (token === "this_week" && raw.includes("available")) {
+      return t("landing.availability.thisWeek");
+    }
+    return t(`createJob.when.options.${token}`, { defaultValue: point.value });
+  }
+
+  if (point.kind === "duration" || point.kind === "shift") {
+    const durationToken = token === "1_2h" ? "1_2_hours" : token;
+    if (durationToken === "emergency") return t("landing.quickDetails.emergency");
+    if (durationToken === "recurring") return t("landing.quickDetails.recurring");
+    return t(`createJob.timeDuration.${durationToken}`, {
+      defaultValue: point.value,
+    });
+  }
+
+  if (point.kind === "frequency") {
+    return t(`createJob.careFrequency.${token}`, { defaultValue: point.value });
+  }
+
+  return point.value;
 }
 
 const HOW_IT_WORKS_STEPS = [
@@ -214,6 +273,46 @@ function landingMediaBadgePoints(
     .slice(0, 2);
 }
 
+function LandingActivityDescription({ text }: { text: string }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || expanded) return;
+    setCanExpand(el.scrollHeight > el.clientHeight + 1);
+  }, [text, expanded]);
+
+  return (
+    <div>
+      <p
+        ref={textRef}
+        className={cn(
+          "text-base leading-relaxed text-slate-800 dark:text-zinc-300 md:text-sm lg:text-[15px]",
+          !expanded && "line-clamp-2",
+        )}
+      >
+        {text}
+      </p>
+      {canExpand || expanded ? (
+        <button
+          type="button"
+          className="mt-1.5 inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/25"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded((open) => !open);
+          }}
+        >
+          {expanded ? t("common.showLess") : t("landing.activityMore")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function LandingActivityMedia({
   src,
   kind,
@@ -284,7 +383,7 @@ export default function LandingPage() {
     path: "/",
   });
   useEffect(() => {
-    const href = landingEventImage;
+    const href = "/Cozy Bedtime Storytelling Moment.png";
     if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
     const link = document.createElement("link");
     link.rel = "preload";
@@ -300,6 +399,7 @@ export default function LandingPage() {
   const buttonsRef = useRef<HTMLDivElement>(null);
   const mobileHeroButtonsRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
+  const activityRef = useRef<HTMLDivElement>(null);
   const showcaseRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const [heroScrolledPast, setHeroScrolledPast] = useState(false);
@@ -445,21 +545,26 @@ export default function LandingPage() {
             : "opacity-0 translate-y-10 pointer-events-none",
         )}
       >
-        <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-2xl bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:bg-zinc-800/90">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-2xl bg-white/95 p-2 pl-2.5 pr-2 shadow-2xl backdrop-blur-xl dark:bg-zinc-800/90">
           <Button
             onClick={handleSearchingForJob}
-            className="h-12 gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-5 text-sm font-bold text-white shadow-md hover:from-emerald-600 hover:to-green-700"
+            className="h-auto min-h-12 gap-2 whitespace-normal rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-5 py-2 text-sm font-bold leading-tight text-white shadow-md hover:from-emerald-600 hover:to-green-700"
           >
-            <HelpingHand className="h-8 w-8" strokeWidth={2.25} />
-            {t("landing.offerHelp")}
+            <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} />
+            <span>{t("landing.offerHelp")}</span>
           </Button>
           <Button
             onClick={handleHiringHelper}
-            className="h-12 gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 text-sm font-bold text-white shadow-md hover:from-orange-600 hover:to-red-700"
+            className="h-auto min-h-12 gap-2 whitespace-normal rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 py-2 text-sm font-bold leading-tight text-white shadow-md hover:from-orange-600 hover:to-red-700"
           >
-            <HeartHandshake className="h-8 w-8" strokeWidth={2.25} />
-            {t("landing.needHelp")}
+            <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} />
+            <span>{t("landing.needHelp")}</span>
           </Button>
+          <span
+            className="mx-0.5 hidden h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-white/20 sm:block"
+            aria-hidden
+          />
+          <ContactUsButton variant="dock" />
         </div>
       </div>
 
@@ -471,49 +576,39 @@ export default function LandingPage() {
         >
           {/* Mobile — white hero with same post collage as desktop */}
           <div className="relative bg-white dark:bg-background md:hidden">
-            <div className="relative flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(5.75rem,calc(env(safe-area-inset-top,0px)+4.5rem))]">
-              <div className="relative z-10 space-y-4 pb-1 animate-in fade-in slide-in-from-bottom-3 duration-700">
-                <h1 className="max-w-[20rem] text-[2.5rem] font-black leading-[1.05] tracking-tight text-slate-900 dark:text-zinc-50 sm:text-[2.65rem]">
-                  {t("landing.heroTitleBefore")}
-                  <span className="inline-block rotate-[-1deg] rounded-xl bg-orange-50 px-2.5 py-0.5 text-orange-600 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.25)] dark:bg-orange-500/15 dark:text-orange-400">
-                    {t("landing.heroTitleHighlight")}
-                  </span>
-                  <span className="block">{t("landing.heroTitleAfter")}</span>
-                </h1>
-                <p className="max-w-[22rem] text-[1.05rem] font-medium leading-relaxed text-slate-600 dark:text-zinc-400">
-                  {t("landing.heroDescription")}
-                </p>
-              </div>
-
-              <div data-nosnippet>
-                <LandingHeroCollage
-                  embedded
-                  posts={heroPosts}
-                  loading={heroPostsLoading}
-                  className="relative left-1/2 z-0 mt-1 w-screen max-w-[100vw] -translate-x-1/2"
-                />
-              </div>
-
-              <div ref={mobileHeroButtonsRef} className="mt-2 space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <Button
-                    type="button"
-                    onClick={handleHiringHelper}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-sm font-black text-white shadow-md transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
-                  >
-                    <HeartHandshake className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
-                    {t("landing.needHelp")}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSearchingForJob}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 text-sm font-black text-white shadow-md transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98]"
-                  >
-                    <HelpingHand className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
-                    {t("landing.offerHelp")}
-                  </Button>
-                </div>
-              </div>
+            <div data-nosnippet>
+              <LandingHeroCollage
+                embedded
+                posts={heroPosts}
+                loading={heroPostsLoading}
+                className="relative left-1/2 z-0 w-screen max-w-[100vw] -translate-x-1/2"
+                heroActions={
+                  <div ref={mobileHeroButtonsRef} className="flex w-full flex-col gap-3">
+                    <Button
+                      type="button"
+                      onClick={handleHiringHelper}
+                      className="flex h-14 w-full items-center justify-between gap-3 whitespace-normal rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-4 text-left text-lg font-black leading-tight text-white shadow-lg transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
+                    >
+                      <span className="flex min-w-0 items-center justify-start gap-2.5">
+                        <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
+                        <span className="whitespace-pre-line">{t("landing.needHelp")}</span>
+                      </span>
+                      <ChevronRight className="h-6 w-6 shrink-0 rtl:rotate-180" strokeWidth={2.5} aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSearchingForJob}
+                      className="flex h-14 w-full items-center justify-between gap-3 whitespace-normal rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 text-left text-lg font-black leading-tight text-white shadow-lg transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98]"
+                    >
+                      <span className="flex min-w-0 items-center justify-start gap-2.5">
+                        <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
+                        <span className="whitespace-pre-line">{t("landing.offerHelp")}</span>
+                      </span>
+                      <ChevronRight className="h-6 w-6 shrink-0 rtl:rotate-180" strokeWidth={2.5} aria-hidden />
+                    </Button>
+                  </div>
+                }
+              />
             </div>
           </div>
 
@@ -548,17 +643,6 @@ export default function LandingPage() {
                 <p className="mx-auto mt-6 max-w-2xl text-xl font-semibold text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.5)] lg:text-2xl">
                   {t("landing.heroDescription")}
                 </p>
-                <p className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-base font-bold text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] lg:text-lg">
-                  <span>{t("landing.verifiedUsers")}</span>
-                  <span className="text-white/70" aria-hidden>
-                    ·
-                  </span>
-                  <span>{t("landing.localHelpers")}</span>
-                  <span className="text-white/70" aria-hidden>
-                    ·
-                  </span>
-                  <span>{t("landing.fastResponse")}</span>
-                </p>
 
                 <div
                   ref={buttonsRef}
@@ -584,49 +668,7 @@ export default function LandingPage() {
             </div>
 
             <div className="absolute inset-x-0 bottom-0 z-20 flex shadow-[0_-16px_40px_-20px_rgba(15,23,42,0.35)]">
-              <div
-                className="flex min-w-0 flex-1 items-stretch overflow-hidden bg-white dark:bg-zinc-800"
-                aria-label={t("landing.verifiedAria")}
-              >
-                <div className="relative w-28 shrink-0 self-stretch sm:w-32 lg:w-36">
-                  <img
-                    src="/ChatGPT Image Jan 27, 2026, 05_31_05 PM.png"
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
-                  />
-                </div>
-                <div className="min-w-0 flex-1 px-5 py-3.5 lg:px-6 lg:py-4">
-                  <p className="text-base font-bold leading-snug text-slate-900 dark:text-zinc-100 md:text-lg">
-                    {t("landing.verifiedTitleBefore")}{" "}
-                    <span className="inline-flex items-center gap-1.5 text-xl font-black text-emerald-600 dark:text-emerald-400 md:text-2xl">
-                      {t("landing.verifiedDidit")}
-                      <ShieldCheck
-                        className="h-5 w-5 shrink-0 md:h-6 md:w-6"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                    </span>
-                  </p>
-                  <p className="mt-1.5 text-sm font-medium leading-snug text-slate-600 dark:text-zinc-400">
-                    {t("landing.verifiedSubtitle")}
-                  </p>
-                  <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
-                    {[
-                      t("landing.verifiedCheck1"),
-                      t("landing.verifiedCheck2"),
-                    ].map((line) => (
-                      <li
-                        key={line}
-                        className="text-sm font-semibold leading-snug text-slate-500 dark:text-zinc-400"
-                      >
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex min-w-0 flex-1 items-stretch overflow-hidden border-l border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-800">
+              <div className="flex min-w-0 flex-1 items-stretch overflow-hidden bg-white dark:bg-zinc-800">
                 <div className="relative w-44 shrink-0 self-stretch sm:w-52 lg:w-60">
                   <img
                     src="/ChatGPT Image Aug 31, 2026, 08_52_25 AM.png"
@@ -635,9 +677,25 @@ export default function LandingPage() {
                   />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-3.5 lg:px-6 lg:py-4">
-                  <p className="text-base font-bold leading-snug text-slate-900 dark:text-zinc-100 md:text-lg">
-                    {t("landing.postsTitle")}
-                  </p>
+                  <div className="flex items-start justify-between gap-6">
+                    <p className="min-w-0 text-base font-bold leading-snug text-slate-900 dark:text-zinc-100 md:text-lg">
+                      {t("landing.postsTitle")}
+                    </p>
+                    <p className="flex shrink-0 flex-wrap items-center justify-end gap-x-5 text-base font-semibold text-slate-600 dark:text-zinc-300">
+                      <span className="inline-flex items-center gap-1.5">
+                        <BadgeCheck className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
+                        {t("landing.verifiedUsers")}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
+                        {t("landing.localHelpers")}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
+                        {t("landing.fastResponse")}
+                      </span>
+                    </p>
+                  </div>
                   <p className="mt-1.5 text-sm font-medium leading-snug text-slate-500 dark:text-zinc-400">
                     {t("landing.postsSubtitle")}
                   </p>
@@ -655,10 +713,21 @@ export default function LandingPage() {
         </section>
 
         <section
-          className="relative w-full scroll-reveal opacity-0 translate-y-10 pt-24 pb-28 transition-all duration-1000 delay-200 md:pt-32 md:pb-36 lg:pt-40 lg:pb-44"
+          className="relative w-full scroll-reveal opacity-0 translate-y-10 pt-16 pb-28 transition-all duration-1000 delay-200 md:pt-28 md:pb-36 lg:pt-36 lg:pb-44"
           aria-labelledby="how-it-works-heading"
         >
-          <div className="bg-primary px-5 pb-28 pt-16 sm:px-8 sm:pb-32 sm:pt-20 lg:px-12 lg:pb-36">
+          <svg
+            className="block h-14 w-full text-primary md:h-16"
+            viewBox="0 0 375 56"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <path
+              fill="currentColor"
+              d="M0 56V22C70 50 128-4 198 26C268 54 322 8 375 30V56Z"
+            />
+          </svg>
+          <div className="bg-primary px-5 pb-28 pt-8 sm:px-8 sm:pb-32 sm:pt-12 lg:px-12 lg:pb-36">
             <div className="mx-auto max-w-3xl text-center">
               <h2
                 id="how-it-works-heading"
@@ -860,34 +929,53 @@ export default function LandingPage() {
           <Benefits />
         </div>
 
-        {/* Recent Activity — responsive grid */}
+        {/* Recent Activity — horizontal carousel */}
         <div className="w-full pt-20 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 md:pt-28">
-          <div className="mb-10 px-5 sm:px-8 lg:px-12 xl:px-16">
+          <div className="mb-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
             <h2 className="text-2xl font-bold text-black dark:text-zinc-50 md:text-3xl">
               Recent Activity
             </h2>
+            <div className="hidden shrink-0 gap-2 md:flex">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-800/70"
+                onClick={() => scrollLeft(activityRef)}
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-700 dark:text-zinc-200" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-800/70"
+                onClick={() => scrollRight(activityRef)}
+              >
+                <ChevronRight className="h-5 w-5 text-gray-700 dark:text-zinc-200" />
+              </Button>
+            </div>
           </div>
 
           <div
+            ref={activityRef}
             data-nosnippet
-            className="grid w-full grid-cols-1 items-stretch gap-5 px-0 pb-8 sm:grid-cols-2 sm:gap-6 sm:px-8 lg:grid-cols-3 lg:gap-7 lg:px-12 xl:px-16"
+            className="flex w-full snap-x snap-mandatory items-stretch gap-4 overflow-x-auto scroll-smooth overscroll-x-contain px-5 pb-8 scrollbar-hide md:gap-6 md:px-8 lg:gap-7 lg:px-12 xl:px-16"
           >
             {activityLoading ? (
-              <div className="col-span-full flex min-h-[220px] w-full items-center justify-center text-muted-foreground">
+              <div className="flex min-h-[220px] w-full shrink-0 items-center justify-center text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : activityItems.length === 0 ? (
-              <div className="col-span-full px-2 py-10 text-sm font-medium text-slate-500 dark:text-zinc-400">
+              <div className="w-full shrink-0 px-2 py-10 text-sm font-medium text-slate-500 dark:text-zinc-400">
                 No open requests or offers yet — be the first to post on Tebnu.
               </div>
             ) : (
-              activityItems.slice(0, 8).map((item) => {
+              activityItems.slice(0, 12).map((item) => {
                 const typeId = landingActivityTypeId(item.kind);
                 const locationLabel =
                   item.detailPoints.find((point) => point.kind === "location")?.value ?? null;
                 const detailPoints = landingVisibleDetailPoints(item.detailPoints)
                   .filter((point) => point.kind !== "location")
-                  .slice(0, 4);
+                  .slice(0, 2);
                 const mediaBadgePoints = landingMediaBadgePoints(item.detailPoints).filter(
                   (point) => point.kind !== "location",
                 );
@@ -908,7 +996,7 @@ export default function LandingPage() {
                         : communityFeedScrollState(item.id)
                     }
                     className={cn(
-                      "group flex min-h-[320px] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg shadow-slate-900/10 ring-1 ring-slate-100 transition-shadow duration-300 hover:shadow-xl hover:shadow-slate-900/15 dark:bg-zinc-800 dark:shadow-black/30 dark:ring-0 dark:hover:shadow-black/40",
+                      "group flex min-h-[320px] w-[min(84vw,22.5rem)] shrink-0 snap-start flex-col overflow-hidden rounded-[1.75rem] bg-white shadow-[0_22px_44px_-20px_rgba(15,23,42,0.32)] ring-1 ring-slate-100/90 transition-shadow duration-300 hover:shadow-xl hover:shadow-slate-900/15 dark:bg-zinc-800 dark:shadow-black/40 dark:ring-0 dark:hover:shadow-black/50 md:w-[22.5rem] md:shadow-lg md:shadow-slate-900/10 lg:w-[23.5rem]",
                     )}
                   >
                     <div className="flex items-start gap-3 px-4 pt-3.5 pb-5">
@@ -955,7 +1043,7 @@ export default function LandingPage() {
                               globalFeedPostTypeAccentClass(typeId),
                             )}
                           >
-                            {landingActivityTypeLabel(item.kind)}
+                            {landingActivityTypeLabel(item.kind, t)}
                           </span>
                         </div>
                       </div>
@@ -967,17 +1055,17 @@ export default function LandingPage() {
                           categoryId={item.categoryId}
                           customCategory={item.customCategory}
                         />
-                        <span className="min-w-0 truncate">{item.roleLabel}</span>
+                        <span className="min-w-0 truncate">
+                          {feedCategoryLabel(t, item.categoryId, item.customCategory)}
+                        </span>
                       </p>
-                      <p className="line-clamp-4 text-base leading-relaxed text-slate-800 dark:text-zinc-300 md:text-sm lg:text-[15px]">
-                        {item.description}
-                      </p>
+                      <LandingActivityDescription text={item.description} />
                       {postedAgo ? (
                         <time
                           dateTime={item.created_at}
                           className="mt-2 block text-sm font-medium tabular-nums text-slate-500 dark:text-zinc-400 md:text-xs"
                         >
-                          Posted {postedAgo}
+                          {t("landing.postedAgo", { ago: postedAgo })}
                         </time>
                       ) : null}
                       {item.mediaUrl ? (
@@ -997,7 +1085,9 @@ export default function LandingPage() {
                                       kind={point.kind}
                                       className="text-slate-700"
                                     />
-                                    <span className="min-w-0 truncate">{point.value}</span>
+                                    <span className="min-w-0 truncate">
+                                      {landingActivityDetailValue(point, t, i18n.language)}
+                                    </span>
                                   </li>
                                 ))}
                               </ul>
@@ -1018,33 +1108,33 @@ export default function LandingPage() {
                                 kind={point.kind}
                                 className="mt-0.5 h-5 w-5 text-slate-400 md:h-4 md:w-4"
                               />
-                              <span className="min-w-0 line-clamp-2">{point.value}</span>
+                              <span className="min-w-0 line-clamp-2">
+                                {landingActivityDetailValue(point, t, i18n.language)}
+                              </span>
                             </div>
                           ))}
                         </div>
                       ) : null}
                     </div>
 
-                    <div className="mt-auto border-t border-slate-100 px-4 py-3 dark:border-zinc-800">
+                    <div className="mt-auto px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           {item.rateLabel ? (
                             <>
-                              <span className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 md:text-[10px]">
-                                Budget
+                              <span className="block text-xs font-bold uppercase leading-none tracking-widest text-slate-400 dark:text-zinc-500 md:text-[10px]">
+                                {t("createJob.budget.label")}
                               </span>
                               <p
                                 className={cn(
-                                  "truncate text-lg font-bold md:text-base lg:text-lg",
+                                  "mt-0.5 truncate text-lg font-bold leading-none md:text-base lg:text-lg",
                                   globalFeedPostTypeAccentClass(typeId),
                                 )}
                               >
                                 {item.rateLabel}
                               </p>
                             </>
-                          ) : (
-                            <p className="text-base font-medium text-slate-500 dark:text-zinc-400 md:text-sm">Open request</p>
-                          )}
+                          ) : null}
                         </div>
                         <span
                           className={cn(
@@ -1052,7 +1142,7 @@ export default function LandingPage() {
                             globalFeedPrimaryCtaClass(typeId),
                           )}
                         >
-                          {landingActivityCtaLabel(item.kind, item.authorName)}
+                          {landingActivityCtaLabel(item.kind, item.authorName, t)}
                         </span>
                       </div>
                     </div>
@@ -1120,9 +1210,7 @@ export default function LandingPage() {
                 const helperName = helper.full_name?.trim() || "Helper";
                 const reviewerName =
                   review.reviewer?.full_name?.trim() || "Community member";
-                const reviewText =
-                  review.review_text?.trim() ||
-                  "Great experience working together on Tebnu.";
+                const reviewText = review.review_text?.trim() || "";
 
                 return (
                   <article
@@ -1161,12 +1249,26 @@ export default function LandingPage() {
                           </span>
                         </div>
                       </div>
-                      <p className="text-base italic leading-relaxed text-gray-700 dark:text-zinc-300 md:text-lg">
-                        &ldquo;{reviewText}&rdquo;
-                      </p>
-                      <p className="mt-4 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                        Reviewed by {reviewerName.split(" ")[0]}
-                      </p>
+                      {reviewText ? (
+                        <p className="text-base italic leading-relaxed text-gray-700 dark:text-zinc-300 md:text-lg">
+                          &ldquo;{reviewText}&rdquo;
+                        </p>
+                      ) : null}
+                      <div className="mt-4 flex items-center gap-2">
+                        <Avatar className="h-7 w-7 ring-1 ring-slate-200 dark:ring-zinc-700">
+                          <AvatarImage
+                            src={review.reviewer?.photo_url || undefined}
+                            alt=""
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-slate-600 dark:bg-zinc-700 dark:text-zinc-200">
+                            {helperInitials(reviewerName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                          Reviewed by {reviewerName.split(" ")[0]}
+                        </p>
+                      </div>
                     </div>
                   </article>
                 );
@@ -1181,34 +1283,33 @@ export default function LandingPage() {
       {/* Fixed bottom bar - Mobile only, shown when scrolled past */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-[var(--app-safe-bottom,env(safe-area-inset-bottom,0px))] z-40 bg-white/95 p-4 pt-3 pb-3 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-all duration-500 transform dark:bg-zinc-800/90 md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] transition-all duration-500 md:hidden",
           showMobileFixedButtons
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-10 pointer-events-none",
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-full opacity-0",
         )}
       >
-        <div className="mx-auto flex flex-row items-center justify-center gap-2.5 px-1">
+        <div className="flex overflow-hidden rounded-[1.35rem] bg-[linear-gradient(90deg,#10b981_0%,#22c55e_46%,#fb923c_54%,#ea580c_100%)] shadow-lg">
           <Button
             onClick={handleSearchingForJob}
-            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-emerald-500 to-green-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-emerald-500/20 hover:from-emerald-600 hover:to-green-700"
+            className="flex min-h-16 min-w-0 flex-1 items-center justify-start gap-2.5 rounded-none bg-transparent px-4 text-left text-sm font-black leading-tight tracking-tight text-white shadow-none hover:bg-black/10"
           >
-            <HelpingHand className="h-8 w-8" strokeWidth={2.25} />
-            {t("landing.offerHelp")}
+            <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="min-w-0 whitespace-pre-line text-left">{t("landing.offerHelp")}</span>
           </Button>
           <Button
             onClick={handleHiringHelper}
-            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-orange-500 to-red-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-red-700"
+            className="flex min-h-16 min-w-0 flex-1 items-center justify-start gap-2.5 rounded-none bg-transparent px-4 text-left text-sm font-black leading-tight tracking-tight text-white shadow-none hover:bg-black/10"
           >
-            <HeartHandshake className="h-8 w-8" strokeWidth={2.25} />
-            {t("landing.needHelp")}
+            <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="min-w-0 whitespace-pre-line text-left">{t("landing.needHelp")}</span>
           </Button>
         </div>
       </div>
-      {/* WhatsApp Floating Contact Button */}
-      <WhatsAppButton
+      <ContactUsButton
         phoneNumber="972541234567"
         message="Hi Tebnu! I have a question about your services."
-        className="max-md:bottom-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:bottom-28"
+        className={cn(showFixedButtons && "md:hidden")}
       />
     </div>
   );

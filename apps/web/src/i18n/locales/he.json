@@ -44,6 +44,14 @@
     "register": "הרשמה",
     "legalHub": "מידע משפטי"
   },
+  "whatIsTebnu": {
+    "title": "מה זה tebnu?",
+    "description": "tebnu היא קהילה לקבלת עזרה ולהצעת עזרה — לכל צורך, גדול או קטן.",
+    "bulletFind": "מצאו עזרה לידכם (שירותים, משימות חד־פעמיות, ליווי מתמשך).",
+    "bulletOffer": "הציעו את הכישורים שלכם והתחברו למי שצריך אותם.",
+    "bulletShare": "שתפו עדכונים, ביקורות וזמינות בלוח הציבורי.",
+    "bulletMessage": "שלחו הודעות בצורה מאובטחת ובנו אמון דרך פעילות הקהילה."
+  },
   "onboarding": {
     "heroTitle": "הצטרפו לקהילת \u2068Tebnu\u2069.",
     "heroSubtitle": "רשמו פרופיל כדי להתחבר למקומיים אמינים תוך רגע.",
@@ -646,6 +654,8 @@
       "helpersNeededLabel": "נדרשים {{count}} עוזרים"
     },
     "global": {
+      "offerHelp": "להציע עזרה",
+      "messageName": "הודעה ל{{name}}",
       "tebnuMenu": "תפריט Tebnu",
       "myPosts": "הפוסטים שלי",
       "myFavorites": "המועדפים שלי",
@@ -767,18 +777,48 @@
     "heroTitleBefore": "",
     "heroTitleHighlight": "קהילה אחת",
     "heroTitleAfter": "הרבה עוזרים.",
-    "heroDescription": "תבנו הוא אפליקציית עזרה מקומית. מצאו עוזרים אמינים לבית, לילדים, לבישול, לסידורים ועוד — או הציעו את הכישורים שלכם בסביבה.",
+    "heroDescription": "מצאו עזרה בסביבה — או הציעו את הכישורים שלכם.",
     "verifiedUsers": "משתמשים מאומתים",
     "localHelpers": "עוזרים מקומיים",
     "fastResponse": "מענה מהיר",
     "offerHelp": "להציע עזרה",
     "needHelp": "צריך עזרה",
+    "contactUs": "צרו קשר",
+    "contactWhatsApp": "WhatsApp",
+    "contactForm": "טופס יצירת קשר",
+    "activityMore": "עוד",
+    "postedAgo": "פורסם {{ago}}",
+    "availability": {
+      "now": "זמין עכשיו",
+      "laterToday": "זמין בהמשך היום",
+      "thisWeek": "זמין השבוע"
+    },
+    "quickDetails": {
+      "emergency": "עבודה דחופה",
+      "recurring": "קבוע"
+    },
     "verifiedAria": "אימות זהות אופציונלי עם Didit",
     "verifiedTitleBefore": "בדיקת זהות אופציונלית עם",
     "verifiedDidit": "Didit",
     "verifiedSubtitle": "אמתו בחשבון כדי לקבל תג מאומת.",
     "verifiedCheck1": "בדיקות זהות מוצפנות כשבוחרים לאמת",
     "verifiedCheck2": "תג מאומת אחרי אישור Didit",
+    "collage": {
+      "exploreBefore": "גלו את הקהילה שאתם",
+      "exploreHighlight": "אוהבים",
+      "exploreAfter": ".",
+      "eventPosted": "לפני 5 שע׳ · תל אביב",
+      "eventTitle": "ערב חברתי על הגג",
+      "eventSubtitle": "DJ חי · שתייה · תל אביב",
+      "eventAction": "אני מעוניין",
+      "requestPosted": "לפני שעה · תל אביב",
+      "requestTitle": "צריכים מטפלת הערב",
+      "requestSubtitle": "הערב · שני ילדים",
+      "requestBody": "מחפשים בייביסיטר להערב. שני ילדים.",
+      "requestWhen": "הערב",
+      "requestRate": "₪120 לשעה",
+      "requestAction": "להציע עזרה"
+    },
     "postsTitle": "בקשות, הצעות, קהילה ואירועים",
     "postsSubtitle": "כל סוגי הפוסטים בפיד אחד — אפשר להגיב, לשלוח הודעה או לפרסם בעצמכם.",
     "postsCta": "לפיד הפוסטים",

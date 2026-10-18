@@ -8,9 +8,9 @@ import {
   Menu,
   X,
   Home,
+  LogIn,
   MessageCircle,
   GalleryHorizontal,
-  Scale,
   Moon,
   Sun,
 } from "lucide-react";
@@ -47,6 +47,8 @@ export type LandingSiteHeaderProps = {
   hideBackButton?: boolean;
   /** Omit Login / Get started when already on the sign-in screen. */
   hideLoginCta?: boolean;
+  /** Hide only the Sign in control (e.g. already on `/login`). */
+  hideSignInCta?: boolean;
   /** Signed-out only: show Home in the right cluster (e.g. login page). */
   homeLinkRight?: boolean;
   /** Hide Post Feed nav item (e.g. already on `/community/feed`). */
@@ -104,6 +106,7 @@ export function LandingSiteHeader({
   leftLogoTextClassName,
   hideBackButton = false,
   hideLoginCta = false,
+  hideSignInCta = false,
   homeLinkRight = false,
   hidePostFeedLink = false,
   hideDesktopNavLinks = false,
@@ -198,25 +201,22 @@ export function LandingSiteHeader({
 
   const overlayGlassIconClass = publicProfileHeaderGlassIconBtnClass;
 
-  const landingGlassBarClass =
-    "border-0 bg-white/55 shadow-none ring-0 backdrop-blur-xl backdrop-saturate-150 dark:bg-zinc-950/75";
+  const landingSolidBarClass =
+    "border-0 bg-white shadow-none ring-0 backdrop-blur-none dark:bg-background";
 
   const headerBgClass = heroOverlay
-    ? heroOverPhoto
-      ? cn(landingGlassBarClass, "md:bg-transparent md:backdrop-blur-none md:dark:bg-transparent")
-      : landingGlassBarClass
+    ? cn(
+        landingSolidBarClass,
+        heroOverPhoto && "md:bg-transparent md:dark:bg-transparent",
+      )
     : overlayOnHero
     ? "max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:ring-0 md:border-0 md:shadow-none md:ring-0 md:bg-white dark:md:bg-background"
     : isFeedChrome
     ? cn(
-        "border-0 shadow-none ring-0",
-        whiteHeader
-          ? headerScrolled
-            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background dark:backdrop-blur-none"
-            : "bg-white dark:bg-background"
-          : headerScrolled
-            ? "bg-white/85 backdrop-blur-xl backdrop-saturate-150 dark:bg-background dark:backdrop-blur-none"
-            : "bg-white dark:bg-background",
+        "border-0 bg-white shadow-none ring-0 dark:bg-background",
+        "md:bg-white dark:md:bg-background",
+        headerScrolled &&
+          "md:bg-white/85 md:backdrop-blur-xl md:backdrop-saturate-150 dark:md:bg-background dark:md:backdrop-blur-none",
       )
     : cn(
         isLandingGlass
@@ -333,13 +333,13 @@ export function LandingSiteHeader({
       <img
         src={BRAND_LOGO_SRC}
         alt=""
-        className="h-12 w-auto md:h-14 lg:h-16"
+        className="h-10 w-auto sm:h-12 md:h-14 lg:h-16"
         loading="eager"
         decoding="async"
       />
       <span
         className={cn(
-          "-ml-1 text-lg font-black tracking-tight md:-ml-1.5 md:text-xl lg:text-2xl",
+          "hidden -ml-1 text-lg font-black tracking-tight md:inline md:-ml-1.5 md:text-xl lg:text-2xl",
           landingHeaderInkClass,
           heroOverPhoto &&
             "md:text-white md:drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",
@@ -361,7 +361,7 @@ export function LandingSiteHeader({
               type="button"
               onClick={onBrandClick}
               className="fixed top-5 left-8 z-[60] hidden md:block group/logo transition-all duration-300"
-              aria-label="What is Tebnu?"
+              aria-label={t("whatIsTebnu.title")}
             >
               <img
                 src={BRAND_LOGO_SRC}
@@ -396,11 +396,11 @@ export function LandingSiteHeader({
         className={cn(
           "flex items-center px-4 transition-all duration-300 md:px-8 lg:px-12",
           heroOverlay
-            ? "fixed inset-x-0 top-0 z-50 min-h-[52px] w-full max-w-none rounded-none px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
+            ? "fixed inset-x-0 top-0 z-50 min-h-[52px] w-full max-w-none rounded-none rounded-b-[1.75rem] px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:rounded-none md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
             : overlayOnHero
             ? "max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-50 max-md:min-h-16 max-md:w-full max-md:max-w-none max-md:rounded-none max-md:px-3 max-md:py-1.5 max-md:pt-[var(--app-safe-top,env(safe-area-inset-top,0px))] md:relative md:sticky md:top-0 md:z-50 md:min-h-[64px] md:w-full md:max-w-none md:rounded-none md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
             : isFeedChrome
-            ? "relative sticky top-0 z-50 min-h-[52px] w-full max-w-none rounded-none px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
+            ? "relative sticky top-0 z-50 min-h-[52px] w-full max-w-none rounded-none rounded-b-[1.75rem] px-2 py-1.5 pt-[max(0.4rem,env(safe-area-inset-top))] md:min-h-[64px] md:rounded-none md:px-2.5 md:py-1.5 md:pt-[max(0.45rem,env(safe-area-inset-top))] lg:px-3"
             : isLandingGlass
               ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:fixed md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[92%] md:max-w-5xl md:rounded-full md:min-h-[60px] md:py-3"
               : cn(
@@ -422,8 +422,8 @@ export function LandingSiteHeader({
           className,
         )}
       >
-        <div className="flex w-full items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-0 sm:gap-3 md:gap-3">
+        <div className="relative grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 md:flex md:justify-between md:gap-3">
+          <div className="flex min-w-0 items-center justify-start gap-0 sm:gap-3 md:gap-3">
             {onDesktopSidebarToggle ? (
               <button
                 type="button"
@@ -450,10 +450,10 @@ export function LandingSiteHeader({
                   type="button"
                   onClick={onBrandClick}
                   className={cn(
-                    "flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99]",
+                    "hidden shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99] md:flex",
                     overlayOnHero && "max-md:hidden",
                   )}
-                  aria-label="What is Tebnu?"
+                  aria-label={t("whatIsTebnu.title")}
                 >
                   {headerBrandMark}
                 </button>
@@ -461,7 +461,7 @@ export function LandingSiteHeader({
                 <Link
                   to="/"
                   className={cn(
-                    "flex shrink-0 items-center",
+                    "hidden shrink-0 items-center md:flex",
                     overlayOnHero && "max-md:hidden",
                   )}
                   aria-label="Tebnu home"
@@ -495,9 +495,37 @@ export function LandingSiteHeader({
             ) : null}
           </div>
 
+          {!isLandingGlass && !hideBrand ? (
+            onBrandClick ? (
+              <button
+                type="button"
+                onClick={onBrandClick}
+                className={cn(
+                  "flex items-center justify-center rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99] md:hidden",
+                  overlayOnHero && "max-md:hidden",
+                )}
+                aria-label={t("whatIsTebnu.title")}
+              >
+                {headerBrandMark}
+              </button>
+            ) : (
+              <Link
+                to="/"
+                className={cn(
+                  "flex items-center justify-center md:hidden",
+                  overlayOnHero && "max-md:hidden",
+                )}
+                aria-label="Tebnu home"
+              >
+                {headerBrandMark}
+              </Link>
+            )
+          ) : (
+            <span className="md:hidden" aria-hidden />
+          )}
           <div
             className={cn(
-              "flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-8",
+              "hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex md:gap-8",
               !isLandingGlass && !centerContent && user && "md:justify-start md:pl-2",
               (homeLinkRight && !user) && "md:justify-center md:pl-0",
             )}
@@ -569,7 +597,7 @@ export function LandingSiteHeader({
             )}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center justify-end gap-2 md:gap-4">
             <LanguageSwitcher
               variant="compact"
               className="hidden md:block"
@@ -633,7 +661,33 @@ export function LandingSiteHeader({
               </>
             ) : null}
             {!hideLoginCta && !user ? (
-              <div className="flex items-center gap-1.5 md:gap-2">
+              <>
+              {heroOverlay || isFeedChrome ? (
+                <div className="flex overflow-hidden rounded-full bg-orange-600 shadow-sm">
+                  {hideSignInCta ? null : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/login")}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center text-white transition-colors hover:bg-orange-700 md:h-10 md:w-10"
+                        aria-label={t("siteNav.signIn")}
+                      >
+                        <LogIn className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                      </button>
+                      <span className="my-2 w-px shrink-0 bg-white/35" aria-hidden />
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/onboarding")}
+                    className="h-9 px-3 text-sm font-bold text-white transition-colors hover:bg-orange-700 md:h-10 md:px-4"
+                  >
+                    {t("siteNav.register")}
+                  </button>
+                </div>
+              ) : null}
+              <div className={cn("flex items-center gap-1.5 md:gap-2", (heroOverlay || isFeedChrome) && "hidden")}>
+                {hideSignInCta ? null : (
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
@@ -656,6 +710,7 @@ export function LandingSiteHeader({
                 >
                   {t("siteNav.signIn")}
                 </Button>
+                )}
                 <Button
                   onClick={() => navigate("/onboarding")}
                   className={cn(
@@ -681,6 +736,7 @@ export function LandingSiteHeader({
                   {t("siteNav.register")}
                 </Button>
               </div>
+              </>
             ) : user ? (
               <div className={cn(
                 "hidden md:flex items-center gap-6 border-l pl-6",
@@ -774,13 +830,6 @@ export function LandingSiteHeader({
               >
                 <Home className="w-6 h-6 text-primary" /> {t("siteNav.home")}
               </Link>
-              <Link
-                to="/terms"
-                className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Scale className="w-6 h-6 text-primary" /> {t("siteNav.legalHub")}
-              </Link>
               {(user || !hideLoginCta) && (
                 <>
                   <div className="my-2 h-px bg-slate-100 dark:bg-zinc-800" />
@@ -811,6 +860,7 @@ export function LandingSiteHeader({
                       >
                         {t("siteNav.register")}
                       </Button>
+                      {hideSignInCta ? null : (
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -821,6 +871,7 @@ export function LandingSiteHeader({
                       >
                         {t("siteNav.signIn")}
                       </Button>
+                      )}
                     </>
                   )}
                 </>

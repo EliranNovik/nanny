@@ -44,6 +44,14 @@
     "register": "S'inscrire",
     "legalHub": "Mentions légales"
   },
+  "whatIsTebnu": {
+    "title": "Qu’est-ce que tebnu ?",
+    "description": "tebnu est une communauté pour demander et proposer de l’aide — pour tout besoin, grand ou petit.",
+    "bulletFind": "Trouvez de l’aide près de chez vous (services, tâches ponctuelles, soutien régulier).",
+    "bulletOffer": "Proposez vos compétences et connectez-vous à ceux qui en ont besoin.",
+    "bulletShare": "Partagez des actualités, des avis et vos disponibilités sur le tableau public.",
+    "bulletMessage": "Échangez en toute sécurité et construisez la confiance grâce à l’activité de la communauté."
+  },
   "onboarding": {
     "heroTitle": "Rejoignez la communauté Tebnu.",
     "heroSubtitle": "Créez votre profil pour vous connecter immédiatement à des habitants de confiance.",
@@ -646,6 +654,8 @@
       "helpersNeededLabel": "{{count}} aides nécessaires"
     },
     "global": {
+      "offerHelp": "Proposer de l'aide",
+      "messageName": "Écrire à {{name}}",
       "tebnuMenu": "Menu Tebnu",
       "myPosts": "Mes posts",
       "myFavorites": "Mes favoris",
@@ -767,18 +777,48 @@
     "heroTitleBefore": "Une ",
     "heroTitleHighlight": "communauté",
     "heroTitleAfter": "Beaucoup d'entraide.",
-    "heroDescription": "Trouvez de l'aide près de chez vous — ou proposez vos compétences.",
+    "heroDescription": "Trouvez de l’aide près de vous — ou proposez la vôtre.",
     "verifiedUsers": "Membres vérifiés",
     "localHelpers": "Aidants locaux",
     "fastResponse": "Réponse rapide",
     "offerHelp": "Proposer de l'aide",
     "needHelp": "Besoin d'aide",
+    "contactUs": "Nous contacter",
+    "contactWhatsApp": "WhatsApp",
+    "contactForm": "Formulaire",
+    "activityMore": "plus",
+    "postedAgo": "Publié {{ago}}",
+    "availability": {
+      "now": "Disponible maintenant",
+      "laterToday": "Disponible plus tard aujourd’hui",
+      "thisWeek": "Disponible cette semaine"
+    },
+    "quickDetails": {
+      "emergency": "Urgence",
+      "recurring": "Récurrent"
+    },
     "verifiedAria": "Vérification d’identité facultative avec Didit",
     "verifiedTitleBefore": "Contrôle d’identité facultatif avec",
     "verifiedDidit": "Didit",
     "verifiedSubtitle": "Vérifiez dans Compte pour obtenir un badge vérifié.",
     "verifiedCheck1": "Contrôles d’identité chiffrés quand vous choisissez de vous vérifier",
     "verifiedCheck2": "Badge vérifié après l’approbation Didit",
+    "collage": {
+      "exploreBefore": "Explorez la communauté que vous",
+      "exploreHighlight": "aimez",
+      "exploreAfter": ".",
+      "eventPosted": "Il y a 5 h · Tel-Aviv",
+      "eventTitle": "Soirée rooftop",
+      "eventSubtitle": "DJ live · Boissons · Tel-Aviv",
+      "eventAction": "Je suis intéressé",
+      "requestPosted": "Il y a 1 h · Tel-Aviv",
+      "requestTitle": "Besoin d’une nounou ce soir",
+      "requestSubtitle": "Ce soir · Deux enfants",
+      "requestBody": "Recherche d’une nounou ce soir pour deux enfants.",
+      "requestWhen": "Ce soir",
+      "requestRate": "₪120 de l'heure",
+      "requestAction": "Proposer mon aide"
+    },
     "postsTitle": "Demandes, offres, communauté et événements",
     "postsSubtitle": "Tous les types de publications dans un seul fil — répondez, envoyez un message ou publiez le vôtre.",
     "postsCta": "Ouvrir le fil",

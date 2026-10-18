@@ -1,4 +1,5 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +49,7 @@ function Blob({ className }: { className?: string }) {
 
 export function ContactUsContent() {
   const { addToast } = useToast();
+  const location = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -56,6 +58,16 @@ export function ContactUsContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const hash = location.hash.replace(/^#/, "");
+    if (hash !== "contact-form" && hash !== "form") return;
+    const card = document.getElementById("contact-form");
+    card?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const nameField = document.getElementById("contact-name");
+    const timer = window.setTimeout(() => nameField?.focus(), 400);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   function validate(): boolean {
     const next: Record<string, string> = {};
@@ -229,7 +241,10 @@ export function ContactUsContent() {
         </aside>
 
         {/* Form */}
-        <div className="rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-transparent dark:bg-slate-950/70 md:p-8">
+        <div
+          id="contact-form"
+          className="scroll-mt-24 rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-transparent dark:bg-slate-950/70 md:p-8"
+        >
           <h2 className="text-xl font-black text-slate-900 dark:text-white">
             Send us a message
           </h2>

@@ -113,7 +113,18 @@ export default function Benefits() {
 
   return (
     <section className="relative w-full">
-      <div className="bg-emerald-600 px-5 pb-24 pt-16 sm:px-8 md:pb-32 md:pt-20 lg:px-12 lg:pb-36">
+      <svg
+        className="block h-14 w-full text-emerald-600 md:h-16"
+        viewBox="0 0 375 56"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path
+          fill="currentColor"
+          d="M0 56V18C58-6 118 44 192 16C266 -8 318 40 375 12V56Z"
+        />
+      </svg>
+      <div className="bg-emerald-600 px-5 pb-24 pt-8 sm:px-8 md:pb-32 md:pt-12 lg:px-12 lg:pb-36">
         <h2 className="text-center text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
           {t("landing.benefitsTitle")}
         </h2>
@@ -162,9 +173,6 @@ export default function Benefits() {
                 </span>
                 <span className="text-lg font-bold leading-snug text-slate-900 dark:text-zinc-100">
                   {copy.title}
-                </span>
-                <span className="text-[15px] font-medium leading-relaxed text-slate-500 dark:text-zinc-400">
-                  {copy.description}
                 </span>
               </button>
             );

@@ -10,9 +10,8 @@ import {
   LandingSiteHeader,
 } from "@/components/LandingSiteHeader";
 import { AppBootSplashLogo } from "@/components/AppBootSplash";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
-import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import {
   commitPendingProfile,
   readPendingProfile,
@@ -205,7 +204,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     if (authLoading || !user) {
       return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-          <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+          <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
           <main className="flex flex-1 items-center justify-center">
             <AppBootSplashLogo />
           </main>
@@ -226,7 +225,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     });
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
         <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
@@ -238,7 +237,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   if (user) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
         <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
@@ -250,7 +249,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-white dark:bg-background">
-      <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+      <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
       <div className="flex min-h-0 flex-1">
       {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
       <div className="relative hidden min-h-0 shrink-0 flex-col justify-end overflow-hidden rounded-r-[2rem] bg-slate-900 p-16 lg:flex lg:w-1/2">
@@ -277,20 +276,6 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
       <div className="flex flex-col flex-1 relative min-w-0">
         <main className="flex-1 flex flex-col items-center justify-center p-6 pt-8 pb-12 overflow-y-auto">
           <div className="w-full max-w-[380px] animate-fade-in relative z-10 mx-auto">
-            
-            {/* Mobile Branding (Hidden on Desktop) */}
-            <div className="lg:hidden text-center mb-10">
-              <img
-                src={BRAND_LOGO_SRC}
-                alt="MamaLama Logo"
-                className="h-[5rem] w-auto mx-auto mb-5"
-              />
-              <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 font-medium tracking-tight">
-                <Sparkles className="w-4 h-4 text-orange-500" />
-                Find a helper in minutes
-              </p>
-            </div>
-
             <div className="mb-8">
               <h2 className="text-[1.75rem] font-black tracking-tight text-slate-950 dark:text-white">
                 {isSignUp ? "Create an account" : "Welcome back"}

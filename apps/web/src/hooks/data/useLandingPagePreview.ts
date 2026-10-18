@@ -61,7 +61,10 @@ export function useLandingPagePreview() {
   }, []);
 
   const reviews: DiscoverLatestJobReview[] = reviewRows.filter(
-    (r) => r.reviewee?.id && (r.review_text?.trim() || r.rating),
+    (r) =>
+      r.reviewee?.id &&
+      Number(r.rating) >= 4 &&
+      (r.review_text?.trim() || r.rating),
   );
 
   return {

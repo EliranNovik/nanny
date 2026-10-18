@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import {
   ArrowRight,
   Baby,
@@ -92,6 +92,32 @@ export default function OnboardingPage() {
   const [completingSignup, setCompletingSignup] = useState(false);
   const checkInitiatedRef = useRef(false);
   const creatingProfileRef = useRef(false);
+  const fullNameRef = useRef<HTMLInputElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  function focusRegisterField(el: HTMLInputElement | null) {
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+    });
+  }
+
+  function goToRegisterStep(next: number) {
+    const account = role === "freelancer" ? 4 : 3;
+    flushSync(() => {
+      setStep(next);
+    });
+    if (next === 1) {
+      focusRegisterField(fullNameRef.current);
+      return;
+    }
+    if (next === account) {
+      focusRegisterField(emailRef.current);
+    }
+  }
 
   // Optional: `?role=freelancer` for helper signup (links from marketing)
   useEffect(() => {
@@ -100,6 +126,31 @@ export default function OnboardingPage() {
       setRole(roleParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (authLoading || completingSignup || checkingProfile) return;
+    const account = role === "freelancer" ? 4 : 3;
+    const target =
+      step === 1
+        ? fullNameRef.current
+        : step === account
+          ? emailRef.current
+          : null;
+    if (!target) return;
+    const id = window.setTimeout(() => {
+      const active = document.activeElement;
+      if (
+        active &&
+        active !== document.body &&
+        active !== document.documentElement &&
+        active !== target
+      ) {
+        return;
+      }
+      focusRegisterField(target);
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [authLoading, completingSignup, checkingProfile, step, role]);
 
   useEffect(() => {
     if (!user) {
@@ -312,7 +363,7 @@ export default function OnboardingPage() {
     }
 
     setError("");
-    setStep(2);
+    goToRegisterStep(2);
   }
 
   async function applyRegisterLocale(locale: AppLocale) {
@@ -340,15 +391,18 @@ export default function OnboardingPage() {
   }
 
   async function handleLanguageContinue() {
-    await applyRegisterLocale(appLocale);
     const pending = pendingPayload();
     if (pending) savePendingProfile(pending);
 
     if (role === "freelancer" || !user) {
-      setStep(3);
+      // Advance first so the next field can take focus in the same tap
+      // (iOS will not open the keyboard after an await).
+      goToRegisterStep(3);
+      void applyRegisterLocale(appLocale);
       return;
     }
 
+    await applyRegisterLocale(appLocale);
     await createProfile();
   }
 
@@ -362,7 +416,7 @@ export default function OnboardingPage() {
     if (pending) savePendingProfile(pending);
 
     if (!user) {
-      setStep(4);
+      goToRegisterStep(4);
       return;
     }
 
@@ -848,7 +902,12 @@ export default function OnboardingPage() {
               <div className="mx-auto grid max-w-[26rem] grid-cols-2 items-center gap-4 sm:max-w-md">
                 <button
                   type="button"
-                  onClick={() => setRole("client")}
+                  onClick={() => {
+                    setRole("client");
+                    requestAnimationFrame(() =>
+                      focusRegisterField(fullNameRef.current),
+                    );
+                  }}
                   className={cn(
                     "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "client"
@@ -895,7 +954,12 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole("freelancer")}
+                  onClick={() => {
+                    setRole("freelancer");
+                    requestAnimationFrame(() =>
+                      focusRegisterField(fullNameRef.current),
+                    );
+                  }}
                   className={cn(
                     "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "freelancer"
@@ -953,26 +1017,54 @@ export default function OnboardingPage() {
 
             {step === 1 && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">{t("onboarding.fullName")}</Label>
-                  <Input
-                    id="fullName"
-                    placeholder={t("onboarding.fullNamePlaceholder")}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                </div>
+                <FloatingLabelInput
+                  id="fullName"
+                  ref={fullNameRef}
+                  label={t("onboarding.fullName")}
+                  name="name"
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  autoCorrect="off"
+                  autoFocus
+                  enterKeyHint="next"
+                  inputMode="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    if (cityInputRef.current) {
+                      focusRegisterField(cityInputRef.current);
+                      return;
+                    }
+                    const tryFocusCity = (attempt: number) => {
+                      if (cityInputRef.current) {
+                        focusRegisterField(cityInputRef.current);
+                        return;
+                      }
+                      if (attempt >= 20) return;
+                      window.setTimeout(() => tryFocusCity(attempt + 1), 80);
+                    };
+                    tryFocusCity(0);
+                  }}
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="city">{t("onboarding.city")}</Label>
-                  <CreateJobCityAutocomplete
-                    size="compact"
-                    confirmedCity={citySelection?.label ?? ""}
-                    isConfirmed={cityConfirmed}
-                    onPickCity={setCitySelection}
-                    onInvalidateSelection={() => setCitySelection(null)}
-                  />
-                </div>
+                <CreateJobCityAutocomplete
+                  size="compact"
+                  label={t("onboarding.city")}
+                  confirmedCity={citySelection?.label ?? ""}
+                  isConfirmed={cityConfirmed}
+                  onPickCity={setCitySelection}
+                  onInvalidateSelection={() => setCitySelection(null)}
+                  inputRef={cityInputRef}
+                  enterKeyHint="next"
+                  onInputKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    if (!fullName.trim() || !cityConfirmed) return;
+                    e.preventDefault();
+                    void handleNameCitySubmit();
+                  }}
+                />
               </div>
             )}
 
@@ -1139,29 +1231,46 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t("onboarding.email")}</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={t("onboarding.emailPlaceholder")}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
+                <FloatingLabelInput
+                  id="email"
+                  ref={emailRef}
+                  label={t("onboarding.email")}
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoFocus
+                  enterKeyHint="next"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    focusRegisterField(passwordRef.current);
+                  }}
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">{t("onboarding.password")}</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder={t("onboarding.passwordPlaceholder")}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
+                <FloatingLabelInput
+                  id="password"
+                  ref={passwordRef}
+                  label={t("onboarding.password")}
+                  type="password"
+                  name="new-password"
+                  autoComplete="new-password"
+                  enterKeyHint="go"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    void handleRegister();
+                  }}
+                />
               </div>
             )}
 
@@ -1195,7 +1304,7 @@ export default function OnboardingPage() {
                 <Button
                   variant="outline"
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => goToRegisterStep(1)}
                   disabled={loading}
                   className={cn("flex-1", backBtnClass)}
                 >
@@ -1215,7 +1324,7 @@ export default function OnboardingPage() {
                 <Button
                   variant="outline"
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => goToRegisterStep(2)}
                   disabled={loading}
                   className={cn("flex-1", backBtnClass)}
                 >
@@ -1235,7 +1344,7 @@ export default function OnboardingPage() {
                 <Button
                   variant="outline"
                   type="button"
-                  onClick={() => setStep(isHelper ? 3 : 2)}
+                  onClick={() => goToRegisterStep(isHelper ? 3 : 2)}
                   disabled={loading}
                   className={cn("flex-1", backBtnClass)}
                 >

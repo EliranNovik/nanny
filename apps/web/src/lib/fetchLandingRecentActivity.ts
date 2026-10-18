@@ -101,7 +101,7 @@ type CommunityFeedRow = {
   author_is_verified?: boolean | null;
 };
 
-const ACTIVITY_LIMIT = 8;
+const ACTIVITY_LIMIT = 12;
 
 function memberInitials(name: string | null | undefined): string {
   const parts = (name || "Member").trim().split(/\s+/).filter(Boolean);
@@ -217,17 +217,27 @@ function availabilityDetailPoints(
       : "";
   const status = getAvailabilityStatusOption(statusId);
   if (status) {
-    rows.push({ key: "when", kind: "when", value: status.label });
+    rows.push({ key: "when", kind: "when", value: status.label, token: statusId });
   }
   const quickId =
     typeof payload.quick_details === "string" ? payload.quick_details : "";
   const quick = getQuickDetailsOption(quickId);
   if (quick) {
-    rows.push({ key: "duration", kind: "duration", value: quick.label });
+    rows.push({
+      key: "duration",
+      kind: "duration",
+      value: quick.label,
+      token: quickId,
+    });
   } else if (typeof payload.duration_preset === "string") {
     const preset = getDurationPresetLegacy(payload.duration_preset);
     if (preset) {
-      rows.push({ key: "duration", kind: "duration", value: preset.label });
+      rows.push({
+        key: "duration",
+        kind: "duration",
+        value: preset.label,
+        token: payload.duration_preset,
+      });
     }
   }
   const rate = formatPriceHintFromPayload(payload);

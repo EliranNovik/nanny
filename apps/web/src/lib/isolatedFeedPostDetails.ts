@@ -27,6 +27,8 @@ export type IsolatedFeedDetailRow = {
   key: string;
   kind: IsolatedFeedDetailKind;
   value: string;
+  token?: string | null;
+  dateIso?: string | null;
 };
 
 function humanize(value: string): string {
@@ -164,9 +166,28 @@ export function isolatedFeedDetailRows(input: {
   }
   const whenFromRow = row ? formatOpenHelpRequestWhen(row) : null;
   if (whenFromRow) {
-    push({ key: "when", kind: "when", value: whenFromRow });
+    push({
+      key: "when",
+      kind: "when",
+      value: whenFromRow,
+      token: row?.when_timeframe ?? null,
+      dateIso:
+        row?.when_timeframe === "custom" && row.custom_when_at
+          ? row.custom_when_at
+          : null,
+    });
   } else if (whenLabel) {
-    push({ key: "when", kind: "when", value: whenLabel });
+    const metaWhen =
+      typeof metadata?.when_timeframe === "string" ? metadata.when_timeframe : null;
+    const metaCustom =
+      typeof metadata?.custom_when_at === "string" ? metadata.custom_when_at : null;
+    push({
+      key: "when",
+      kind: "when",
+      value: whenLabel,
+      token: metaWhen,
+      dateIso: metaWhen === "custom" && metaCustom ? metaCustom : null,
+    });
   }
 
   if (row?.start_at) {
@@ -182,30 +203,48 @@ export function isolatedFeedDetailRows(input: {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        dateIso: row.start_at,
       });
     }
   }
 
-  const duration =
-    prettyDurationLabel(row?.time_duration) ||
-    prettyDurationLabel(asTrimmedString(metadata?.time_duration));
+  const durationToken =
+    asTrimmedString(row?.time_duration) ||
+    asTrimmedString(metadata?.time_duration);
+  const duration = prettyDurationLabel(durationToken);
   if (duration) {
-    push({ key: "duration", kind: "duration", value: duration });
+    push({
+      key: "duration",
+      kind: "duration",
+      value: duration,
+      token: durationToken,
+    });
   }
 
-  const shift = prettyDurationLabel(row?.shift_hours);
+  const shiftToken = asTrimmedString(row?.shift_hours);
+  const shift = prettyDurationLabel(shiftToken);
   if (shift) {
-    push({ key: "shift", kind: "shift", value: shift });
+    push({ key: "shift", kind: "shift", value: shift, token: shiftToken });
   }
 
   const careType = asTrimmedString(row?.care_type);
   if (careType) {
-    push({ key: "careType", kind: "careType", value: humanize(careType) });
+    push({
+      key: "careType",
+      kind: "careType",
+      value: humanize(careType),
+      token: careType,
+    });
   }
 
   const frequency = asTrimmedString(row?.care_frequency);
   if (frequency) {
-    push({ key: "frequency", kind: "frequency", value: humanize(frequency) });
+    push({
+      key: "frequency",
+      kind: "frequency",
+      value: humanize(frequency),
+      token: frequency,
+    });
   }
 
   for (const extra of serviceDetailRows(
