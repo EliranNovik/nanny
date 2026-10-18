@@ -120,7 +120,6 @@ export function LandingSiteHeader({
   mobileMatchLanding = false,
   fixedOnMobile = false,
   fullBleedTop = false,
-  whiteHeader = false,
   simpleRegisterCta = false,
   hideThemeToggle = false,
   onBrandClick,

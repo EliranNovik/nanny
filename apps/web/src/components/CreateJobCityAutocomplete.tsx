@@ -7,6 +7,7 @@ import {
   type HTMLAttributes,
   type KeyboardEvent,
   type KeyboardEventHandler,
+  type MutableRefObject,
   type Ref,
 } from "react";
 import { createPortal } from "react-dom";
@@ -62,7 +63,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
     ref(value);
     return;
   }
-  ref.current = value;
+  (ref as MutableRefObject<T | null>).current = value;
 }
 
 export function CreateJobCityAutocomplete({
