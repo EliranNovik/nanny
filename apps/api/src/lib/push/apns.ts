@@ -124,14 +124,21 @@ export function getApnsConfigError(): string | null {
   return "APNs is not configured";
 }
 
-function isInvalidTokenReason(status: number, reason: string | undefined): boolean {
+function apnsReason(reason: string | undefined): string {
+  return (reason ?? "").toLowerCase();
+}
+
+/** Token is for the other APNs environment (sandbox vs production). */
+function isEnvMismatchReason(reason: string | undefined): boolean {
+  const r = apnsReason(reason);
+  return r === "baddevicetoken" || r === "badenvironmentkeyintoken";
+}
+
+/** Token is dead or not for this app — safe to delete after the final attempt. */
+function isHardInvalidTokenReason(status: number, reason: string | undefined): boolean {
   if (status === 410) return true;
-  const r = (reason ?? "").toLowerCase();
-  return (
-    r === "baddevicetoken" ||
-    r === "unregistered" ||
-    r === "devicetokennotfortopic"
-  );
+  const r = apnsReason(reason);
+  return r === "unregistered" || r === "devicetokennotfortopic";
 }
 
 async function sendOneApns(
@@ -248,9 +255,11 @@ export async function sendApnsToTokens(
     );
   }
 
-  const host = config.production ? APNS_HOST_PRODUCTION : APNS_HOST_SANDBOX;
+  const preferredHost = config.production ? APNS_HOST_PRODUCTION : APNS_HOST_SANDBOX;
+  const fallbackHost = config.production ? APNS_HOST_SANDBOX : APNS_HOST_PRODUCTION;
   pushLog("APNs send start", {
-    host,
+    host: preferredHost,
+    fallback_host: fallbackHost,
     production: config.production,
     bundle_id: config.bundleId,
     key_id: config.keyId,
@@ -283,12 +292,34 @@ export async function sendApnsToTokens(
 
   // Sequential to keep HTTP/2 client lifecycle simple and avoid stampeding APNs.
   for (const token of tokens) {
-    const result = await sendOneApns(host, jwt, config.bundleId, token, body);
+    let result = await sendOneApns(preferredHost, jwt, config.bundleId, token, body);
+    let usedHost = preferredHost;
+    let retriedOtherEnv = false;
+
+    if (!result.ok && isEnvMismatchReason(result.reason)) {
+      pushWarn("APNs env mismatch — retrying other host", {
+        token: tokenPreview(token),
+        first_host: preferredHost,
+        first_status: result.status,
+        first_reason: result.reason ?? null,
+        fallback_host: fallbackHost,
+      });
+      retriedOtherEnv = true;
+      result = await sendOneApns(fallbackHost, jwt, config.bundleId, token, body);
+      usedHost = fallbackHost;
+    }
+
     if (result.ok) {
       successCount += 1;
-      pushLog("APNs token OK", { token: tokenPreview(token), status: result.status });
+      pushLog("APNs token OK", {
+        token: tokenPreview(token),
+        status: result.status,
+        host: usedHost,
+        retried_other_env: retriedOtherEnv,
+      });
       continue;
     }
+
     failureCount += 1;
     const detail = result.reason ?? `status ${result.status}`;
     errors.push(`${tokenPreview(token)}: ${detail}`);
@@ -296,9 +327,16 @@ export async function sendApnsToTokens(
       token: tokenPreview(token),
       status: result.status,
       reason: result.reason ?? null,
+      host: usedHost,
+      retried_other_env: retriedOtherEnv,
       raw: result.raw ? result.raw.slice(0, 300) : null,
     });
-    if (isInvalidTokenReason(result.status, result.reason)) {
+    // Do not delete on the first BadDeviceToken — that is usually sandbox/prod mix-up.
+    // After the other environment also rejects, or Apple says the token is dead, drop it.
+    if (
+      isHardInvalidTokenReason(result.status, result.reason) ||
+      (retriedOtherEnv && isEnvMismatchReason(result.reason))
+    ) {
       invalidTokens.push(token);
     }
   }

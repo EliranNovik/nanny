@@ -1,5 +1,5 @@
 /** Bumped when push send path changes — search Render logs for this string after deploy. */
-export const PUSH_WORKER_VERSION = "push-apns-v3-2026-08-04";
+export const PUSH_WORKER_VERSION = "push-apns-v4-2026-10-18";
 
 export function pushLog(message: string, meta?: Record<string, unknown>): void {
   if (meta && Object.keys(meta).length > 0) {

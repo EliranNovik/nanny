@@ -66,7 +66,7 @@ iOS uses **native APNs device tokens** from Expo `Notifications.getDevicePushTok
 1. Create an **Apple Push Notifications** Auth Key (`.p8`) in Apple Developer → Keys.
 2. Note **Key ID**, **Team ID**, and keep the `.p8` file.
 3. Bundle ID: **`com.tebnu.app`**.
-4. Set API env vars below. For **Xcode device installs** use sandbox (`APNS_PRODUCTION=false`). For **TestFlight / App Store** use `APNS_PRODUCTION=true`.
+4. Set API env vars below. Prefer **`APNS_PRODUCTION=true`** for TestFlight / App Store. The worker now retries the other APNs host when Apple returns `BadDeviceToken`, so Xcode sandbox tokens still work.
 
 (Optional) You may still upload the APNs key in Firebase Console for other tooling; the API worker talks to Apple directly and does not need Firebase for iOS delivery.
 
@@ -143,9 +143,10 @@ APNS_KEY_ID=XXXXXXXXXX
 APNS_TEAM_ID=XXXXXXXXXX
 APNS_BUNDLE_ID=com.tebnu.app
 APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-# false = Xcode / development installs (api.sandbox.push.apple.com)
-# true  = TestFlight / App Store (api.push.apple.com)
-APNS_PRODUCTION=false
+# true  = prefer TestFlight / App Store (api.push.apple.com)
+# false = prefer Xcode installs (api.sandbox.push.apple.com)
+# The sender retries the other host on BadDeviceToken.
+APNS_PRODUCTION=true
 
 PUSH_CRON_SECRET=your-long-random-secret
 PUSH_CRON_ENABLED=true

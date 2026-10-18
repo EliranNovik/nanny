@@ -36,7 +36,7 @@ APNS_KEY_ID=...
 APNS_TEAM_ID=...
 APNS_BUNDLE_ID=com.tebnu.app
 APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-APNS_PRODUCTION=false   # Xcode installs → sandbox
+APNS_PRODUCTION=true    # prefer TestFlight; sandbox is retried on BadDeviceToken
 ```
 
 See [docs/PUSH_NOTIFICATIONS.md](../../docs/PUSH_NOTIFICATIONS.md).
