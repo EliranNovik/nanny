@@ -32,11 +32,11 @@ function writeEnvelope<T>(key: string, data: T): void {
 }
 
 export function inboxStorageKey(userId: string, role: string): string {
-  return `messages_inbox_${userId}_${role}`;
+  return `messages_inbox_v2_${userId}_${role}`;
 }
 
 export function threadStorageKey(userId: string, conversationId: string): string {
-  return `messages_thread_${userId}_${conversationId}`;
+  return `messages_thread_v2_${userId}_${conversationId}`;
 }
 
 /** @deprecated — reads legacy `messages_${userId}_${role}` inbox cache */
@@ -55,25 +55,11 @@ export function readLegacyInboxCache<T>(userId: string, role: string): T | undef
 }
 
 export function readInboxCache<T>(userId: string, role: string): T | undefined {
-  return (
-    readEnvelope<T>(inboxStorageKey(userId, role), INBOX_TTL_MS) ??
-    readLegacyInboxCache<T>(userId, role)
-  );
+  return readEnvelope<T>(inboxStorageKey(userId, role), INBOX_TTL_MS);
 }
 
 export function writeInboxCache<T>(userId: string, role: string, data: T): void {
   writeEnvelope(inboxStorageKey(userId, role), data);
-  try {
-    localStorage.setItem(
-      `messages_${userId}_${role}`,
-      JSON.stringify({
-        timestamp: Date.now(),
-        data: { conversations: data },
-      }),
-    );
-  } catch {
-    /* ignore */
-  }
 }
 
 export function readThreadCache<T>(

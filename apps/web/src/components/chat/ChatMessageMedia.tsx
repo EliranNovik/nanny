@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { storageImageUrl } from "@/lib/imageTransform";
 
 type ChatMessageMediaProps = {
   src: string;
@@ -40,12 +41,9 @@ function mediaShellClass(isLandscape: boolean | null) {
   );
 }
 
-function mediaObjectClass(isLandscape: boolean | null) {
+function mediaObjectClass() {
   return cn(
-    "h-full w-full transition-opacity duration-300",
-    isLandscape === true
-      ? "object-contain object-center"
-      : "object-cover object-center",
+    "h-full w-full object-contain object-center transition-opacity duration-300",
   );
 }
 
@@ -65,10 +63,14 @@ export function ChatMessageMedia({
 
   const isLandscape = dims ? dims.width > dims.height : null;
 
-  const shellStyle =
-    isLandscape && dims
-      ? ({ aspectRatio: `${dims.width} / ${dims.height}` } as const)
-      : undefined;
+  const shellStyle = dims
+    ? ({
+        aspectRatio: `${dims.width} / ${dims.height}`,
+        width: isLandscape
+          ? `min(100%, 640px, calc(min(48vh, 420px) * ${dims.width / dims.height}))`
+          : `min(100%, 440px, calc(min(52vh, 380px) * ${dims.width / dims.height}))`,
+      } as const)
+    : undefined;
 
   useEffect(() => {
     setLoaded(false);
@@ -101,7 +103,16 @@ export function ChatMessageMedia({
   }, [src, type]);
 
   const shell = mediaShellClass(isLandscape);
-  const objectClass = mediaObjectClass(isLandscape);
+  const objectClass = mediaObjectClass();
+  const displaySrc =
+    type === "image"
+      ? storageImageUrl(src, {
+          width: 1200,
+          quality: 84,
+          resize: "contain",
+          format: "webp",
+        })
+      : src;
 
   if (type === "video") {
     return (
@@ -131,8 +142,8 @@ export function ChatMessageMedia({
           onError={() => setFailed(true)}
         />
         {footer ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-1.5 pt-6">
-            <div className="flex justify-end">{footer}</div>
+          <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full bg-black/65 px-2 py-1 shadow-sm backdrop-blur-sm">
+            {footer}
           </div>
         ) : null}
       </div>
@@ -162,27 +173,14 @@ export function ChatMessageMedia({
         aria-hidden
       />
 
-      {!loaded && !failed ? (
-        <>
-          <img
-            src={src}
-            alt=""
-            aria-hidden
-            decoding="async"
-            className={cn(
-              "absolute inset-0 scale-110 blur-2xl",
-              objectClass,
-            )}
-          />
-          <MediaLoadingOverlay />
-        </>
-      ) : null}
+      {!loaded && !failed ? <MediaLoadingOverlay /> : null}
 
       <img
         ref={imageRef}
-        src={src}
+        src={displaySrc}
         alt={alt || "Attachment"}
         decoding="async"
+        loading="lazy"
         className={cn(
           "absolute inset-0",
           objectClass,
@@ -203,8 +201,8 @@ export function ChatMessageMedia({
       ) : null}
 
       {footer ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-1.5 pt-6">
-          <div className="flex justify-end">{footer}</div>
+        <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full bg-black/65 px-2 py-1 shadow-sm backdrop-blur-sm">
+          {footer}
         </div>
       ) : null}
     </div>

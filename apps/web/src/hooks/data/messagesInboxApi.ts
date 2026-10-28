@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { JobSummaryRow } from "@/lib/chatJobContext";
+import { maskAdminProfile } from "@/lib/adminProfiles";
 
 export type InboxConversation = {
   id: string;
@@ -13,6 +14,8 @@ export type InboxConversation = {
     photo_url: string | null;
     city?: string | null;
     is_verified?: boolean | null;
+    presence_status?: "online" | "busy";
+    is_admin?: boolean | null;
   };
   job_summary?: JobSummaryRow | null;
   last_message?:
@@ -54,6 +57,26 @@ async function attachJobSummaries(
   );
 }
 
+async function loadPresenceByUserIds(userIds: string[]) {
+  if (userIds.length === 0) return new Map<string, "online" | "busy">();
+  const { data } = await supabase
+    .from("freelancer_profiles")
+    .select("user_id, available_now, live_until")
+    .in("user_id", userIds);
+  const active = new Set(
+    (data ?? [])
+      .filter(
+        (row) =>
+          row.available_now === true ||
+          (row.live_until && new Date(row.live_until).getTime() > Date.now()),
+      )
+      .map((row) => row.user_id as string),
+  );
+  return new Map(
+    userIds.map((id) => [id, active.has(id) ? "online" : "busy"] as const),
+  );
+}
+
 async function loadInboxLegacy(userId: string): Promise<InboxConversation[]> {
   const { data: convos } = await supabase
     .from("conversations")
@@ -78,10 +101,13 @@ async function loadInboxLegacy(userId: string): Promise<InboxConversation[]> {
   if (conversationsByUser.size === 0) return [];
 
   const uniqueOtherIds = Array.from(conversationsByUser.keys());
-  const { data: profilesRows } = await supabase
-    .from("profiles")
-    .select("id, full_name, photo_url, city, is_verified")
-    .in("id", uniqueOtherIds);
+  const [{ data: profilesRows }, presenceById] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, full_name, photo_url, city, is_verified, is_admin")
+      .in("id", uniqueOtherIds),
+    loadPresenceByUserIds(uniqueOtherIds),
+  ]);
 
   const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
   const entries = Array.from(conversationsByUser.entries());
@@ -135,12 +161,15 @@ async function loadInboxLegacy(userId: string): Promise<InboxConversation[]> {
         return {
           ...mostRecentConversation,
           other_user_id: otherUserId,
-          other_user_profile: {
+          other_user_profile: maskAdminProfile({
+            id: otherUserId,
             full_name: otherProfile?.full_name || null,
             photo_url: otherProfile?.photo_url || null,
             city: otherProfile?.city || null,
             is_verified: otherProfile?.is_verified ?? null,
-          },
+            presence_status: presenceById.get(otherUserId) ?? "busy",
+            is_admin: otherProfile?.is_admin ?? null,
+          }),
           last_message,
           unread_count: unreadRes.count ?? 0,
         } as InboxConversation;
@@ -178,10 +207,13 @@ export async function fetchMessagesInbox(
         ),
       ),
     ];
-    const { data: profilesRows } = await supabase
-      .from("profiles")
-      .select("id, full_name, photo_url, city, is_verified")
-      .in("id", uniqueOtherIds);
+    const [{ data: profilesRows }, presenceById] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, photo_url, city, is_verified, is_admin")
+        .in("id", uniqueOtherIds),
+      loadPresenceByUserIds(uniqueOtherIds),
+    ]);
 
     const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
 
@@ -199,12 +231,15 @@ export async function fetchMessagesInbox(
         freelancer_id: row.freelancer_id as string,
         created_at: row.created_at as string,
         other_user_id: oid,
-        other_user_profile: {
+        other_user_profile: maskAdminProfile({
+          id: oid,
           full_name: op?.full_name ?? null,
           photo_url: op?.photo_url ?? null,
           city: (op?.city as string | null) ?? null,
           is_verified: (op?.is_verified as boolean | null) ?? null,
-        },
+          presence_status: presenceById.get(oid) ?? "busy",
+          is_admin: op?.is_admin ?? null,
+        }),
         last_message: hasLast
           ? {
               body: (row.last_body as string | null) ?? null,

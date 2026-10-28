@@ -1,8 +1,39 @@
 import * as React from "react";
 
-/** Detects bare http(s) and common `www.` URLs in plain chat text */
-export const CHAT_URL_DETECT_RE =
-  /\b(https?:\/\/[^\s<>()]+[^\s<>().,;:?!'"[\]）]*|(www\.[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\/[^\s<>()]*)?)/gi;
+export const URL_IN_TEXT_RE =
+  /(?:https?:\/\/|www\.)[^\s<>"'{}|\\^`[\]]+/gi;
+export const CHAT_URL_DETECT_RE = URL_IN_TEXT_RE;
+
+export function normalizeChatUrl(raw: string): string {
+  const trimmed = raw.replace(/[),.;!?]+$/g, "").trim();
+  if (!trimmed) return trimmed;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+export function extractFirstChatUrl(text?: string | null): string | null {
+  const match = text?.trim() ? text.match(URL_IN_TEXT_RE) : null;
+  return match?.[0] ? normalizeChatUrl(match[0]) : null;
+}
+
+export function splitTextWithUrls(text: string) {
+  const parts: Array<{ type: "text" | "url"; value: string; href?: string }> = [];
+  const re = new RegExp(URL_IN_TEXT_RE.source, "gi");
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    if (match.index > last) {
+      parts.push({ type: "text", value: text.slice(last, match.index) });
+    }
+    parts.push({
+      type: "url",
+      value: match[0],
+      href: normalizeChatUrl(match[0]),
+    });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+  return parts.length ? parts : [{ type: "text" as const, value: text }];
+}
 
 /** Canonical form for comparing URLs (matches preview list vs linkify targets). */
 export function canonicalChatHref(href: string): string {
@@ -20,7 +51,7 @@ export function previewHrefOmitSet(
 }
 
 export function resolveChatHref(raw: string): string | null {
-  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const withScheme = normalizeChatUrl(raw);
   try {
     const u = new URL(withScheme);
     if (u.protocol !== "http:" && u.protocol !== "https:") return null;
@@ -83,7 +114,7 @@ export function linkifyMessageBody(
 }
 
 /** Unique canonical http(s) URLs from plain text (for previews); cap count. */
-export function extractChatUrlsFromText(body: string, max = 2): string[] {
+export function extractChatUrlsFromText(body: string, max = 1): string[] {
   if (!body) return [];
   const seen = new Set<string>();
   const out: string[] = [];

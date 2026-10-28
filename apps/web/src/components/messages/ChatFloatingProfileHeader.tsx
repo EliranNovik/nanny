@@ -24,6 +24,7 @@ type ChatFloatingProfileHeaderProps = {
   isVerified?: boolean;
   isLive24h?: boolean;
   hasPostedRequest?: boolean;
+  isAdmin?: boolean;
   onNameClick?: () => void;
 };
 
@@ -39,6 +40,7 @@ export function ChatFloatingProfileHeader({
   isVerified = false,
   isLive24h = false,
   hasPostedRequest = false,
+  isAdmin = false,
   onNameClick,
 }: ChatFloatingProfileHeaderProps) {
   return (
@@ -50,7 +52,15 @@ export function ChatFloatingProfileHeader({
     >
       <div className="relative z-10 -mb-[1.625rem]">
         <div className="relative inline-flex shrink-0 rounded-full">
-          {hasPostedRequest ? (
+          {isAdmin ? (
+            <Avatar className="h-16 w-16 bg-white shadow-md ring-1 ring-slate-200">
+              <AvatarImage
+                src={photoUrl || undefined}
+                className="scale-[1.65] object-contain"
+              />
+              <AvatarFallback>TB</AvatarFallback>
+            </Avatar>
+          ) : hasPostedRequest ? (
             <span className="inline-flex shrink-0 rounded-full bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 p-[2.5px] shadow-[0_0_12px_rgba(124,58,237,0.35)] dark:from-violet-300 dark:via-violet-500 dark:to-violet-800">
               <span className="inline-flex rounded-full bg-background p-[2px]">
                 <ChatParticipantProfilePeek
@@ -89,7 +99,7 @@ export function ChatFloatingProfileHeader({
               </Avatar>
             </ChatParticipantProfilePeek>
           )}
-          {isLive24h ? <LiveAvatarDot /> : null}
+          {!isAdmin && isLive24h ? <LiveAvatarDot /> : null}
         </div>
       </div>
       <div

@@ -3,7 +3,7 @@
  * Reduces full refetch + loading spinner when returning to the tab or revisiting the route.
  */
 
-const STORAGE_PREFIX = "publicProfileCache:v1:";
+const STORAGE_PREFIX = "publicProfileCache:v2:";
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 export type PublicProfileCachePayload = {

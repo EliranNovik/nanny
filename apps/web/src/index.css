@@ -372,8 +372,8 @@
 
   [data-messages-page] {
     --messages-bg: #ffffff;
-    --messages-surface: #f5f5f5;
-    --messages-muted: #f8f8f8;
+    --messages-surface: #ffffff;
+    --messages-muted: #ffffff;
     --messages-text: #0f172a;
     --messages-text-muted: rgba(15, 23, 42, 0.55);
     --messages-border: rgba(15, 23, 42, 0.08);
@@ -381,12 +381,35 @@
   }
 
   .dark [data-messages-page] {
-    --messages-bg: hsl(var(--background));
+    --messages-bg: #27272a;
     --messages-surface: hsl(var(--muted));
     --messages-muted: hsl(var(--muted));
     --messages-text: hsl(var(--foreground));
     --messages-text-muted: hsl(var(--muted-foreground));
     --messages-border: hsl(var(--border));
+  }
+
+  @keyframes chat-recording-wave {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
+  .chat-recording-wave-bar {
+    transform-origin: center;
+    animation: chat-recording-wave 720ms ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chat-recording-wave-bar {
+      animation: none;
+    }
   }
 
   [data-messages-page] .messages-inbox-search {
@@ -397,8 +420,13 @@
     margin: 10px 16px 12px;
     padding: 0 12px;
     border-radius: 14px;
-    background: var(--messages-muted);
-    border: 1px solid rgba(15, 23, 42, 0.05);
+    background: #f1f3f5;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .dark [data-messages-page] .messages-inbox-search {
+    background: #3f3f46;
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   @media (min-width: 768px) {
@@ -414,7 +442,10 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 8px;
+    width: calc(100% - 16px);
+    margin: 3px 8px;
+    padding: 11px 10px;
+    border-radius: 16px;
     position: relative;
     cursor: pointer;
   }
@@ -439,26 +470,22 @@
     }
 
     [data-messages-page] .messages-conversation-row {
-      padding: 14px 16px;
+      width: calc(100% - 16px);
+      margin: 3px 8px;
+      padding: 12px 10px;
     }
 
     [data-messages-page] .messages-conversation-row:hover,
     [data-messages-page] .messages-conversation-row:active {
-      background: rgba(0, 0, 0, 0.04);
+      background: rgba(249, 115, 22, 0.07);
     }
 
     [data-messages-page] .messages-conversation-row.is-unread {
-      background: rgba(0, 0, 0, 0.03);
+      background: rgba(249, 115, 22, 0.06);
     }
 
     [data-messages-page] .messages-conversation-row + .messages-conversation-row::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 84px;
-      right: 16px;
-      height: 1px;
-      background: var(--messages-border);
+      content: none;
     }
   }
 
@@ -1133,14 +1160,16 @@
 
 /* Premium chat thread background + desktop scrollbar */
 .chat-screen {
-  background: #fafafa;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(249, 115, 22, 0.045), transparent 38%),
+    #fbfaf8;
 }
 
 .dark .chat-screen {
   background:
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(249, 115, 22, 0.07), transparent 58%),
-    radial-gradient(circle at 100% 0%, rgba(56, 189, 248, 0.05), transparent 42%),
-    linear-gradient(168deg, #15171e 0%, #0e1016 52%, #08090e 100%);
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(249, 115, 22, 0.08), transparent 58%),
+    radial-gradient(circle at 100% 0%, rgba(194, 65, 12, 0.08), transparent 42%),
+    linear-gradient(168deg, #171411 0%, #110f0d 52%, #0b0908 100%);
 }
 
 .chat-scroll {

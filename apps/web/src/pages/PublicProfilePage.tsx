@@ -185,6 +185,7 @@ interface PublicProfile {
   total_ratings?: number;
   languages?: string[];
   created_at: string | null;
+  is_admin?: boolean | null;
 }
 
 /** Mirrors HelpersPage / `get_helpers_near_location` — freelancer or active client-helper. */
@@ -1086,7 +1087,7 @@ export default function PublicProfilePage() {
             supabase
               .from("profiles")
               .select(
-                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, languages, whatsapp_number_e164, telegram_username, average_rating, total_ratings, created_at",
+                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, languages, whatsapp_number_e164, telegram_username, average_rating, total_ratings, created_at, is_admin",
               )
               .eq("id", userId)
               .single(),
@@ -1098,6 +1099,12 @@ export default function PublicProfilePage() {
           ]);
 
         if (profileError) throw profileError;
+        if (profileData.is_admin === true && viewerId !== profileData.id) {
+          if (cancelled) return;
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
 
         const bio =
           (profileData as { bio?: string | null } | null)?.bio ??

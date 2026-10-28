@@ -37,3 +37,16 @@ export const supabase = createClient(
     },
   },
 );
+
+let sharedSessionRequest: ReturnType<typeof supabase.auth.getSession> | null =
+  null;
+
+/** Deduplicates concurrent session reads so Supabase does not contend for its auth storage lock. */
+export function getSupabaseSession() {
+  if (!sharedSessionRequest) {
+    sharedSessionRequest = supabase.auth.getSession().finally(() => {
+      sharedSessionRequest = null;
+    });
+  }
+  return sharedSessionRequest;
+}

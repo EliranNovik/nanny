@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseSession, supabase } from "@/lib/supabase";
 
 interface Profile {
   id: string;
@@ -232,7 +232,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let sessionError = null;
 
       try {
-        const sessionPromise = supabase.auth.getSession();
+        const sessionPromise = getSupabaseSession().catch((error) => ({
+          data: { session: null },
+          error,
+        }));
         const sessionTimeout = new Promise<{
           data: { session: null };
           error: { message: string; code: string };
@@ -600,7 +603,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Verify session is still valid
           const {
             data: { session: retrySession },
-          } = await supabase.auth.getSession();
+          } = await getSupabaseSession();
           if (
             !retrySession ||
             !retrySession.user ||
@@ -763,7 +766,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession();
+        } = await getSupabaseSession();
 
         console.log("[AuthContext] getSession result", {
           hasSession: !!session,

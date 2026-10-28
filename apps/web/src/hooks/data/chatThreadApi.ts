@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { maskAdminProfile } from "@/lib/adminProfiles";
 
 export const CHAT_MESSAGE_PAGE_SIZE = 50;
 
@@ -14,6 +15,12 @@ export type ChatMessage = {
   attachment_type?: string | null;
   attachment_name?: string | null;
   attachment_size?: number | null;
+  reply_to_id?: string | null;
+  reply_preview?: string | null;
+  edited_at?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  is_forwarded?: boolean;
 };
 
 export type ChatConversation = {
@@ -39,6 +46,8 @@ export type ChatProfile = {
   rating_avg?: number;
   rating_count?: number;
   categories?: string[];
+  app_locale?: "en" | "he" | "ru" | "fr" | null;
+  is_admin?: boolean | null;
 };
 
 const JOB_SELECT =
@@ -113,24 +122,26 @@ async function loadOtherProfile(otherId: string): Promise<ChatProfile | null> {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram, categories",
+      "id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram, categories, app_locale, is_admin",
     )
     .eq("id", otherId)
     .single();
   if (!profile) return null;
-  if (profile.role !== "freelancer") return profile as ChatProfile;
+  if (profile.role !== "freelancer") {
+    return maskAdminProfile(profile as ChatProfile);
+  }
   const { data: freelancerData } = await supabase
     .from("freelancer_profiles")
     .select("bio, rating_avg, rating_count")
     .eq("user_id", otherId)
     .single();
-  if (!freelancerData) return profile as ChatProfile;
-  return {
+  if (!freelancerData) return maskAdminProfile(profile as ChatProfile);
+  return maskAdminProfile({
     ...profile,
     bio: freelancerData.bio,
     rating_avg: freelancerData.rating_avg,
     rating_count: freelancerData.rating_count,
-  } as ChatProfile;
+  } as ChatProfile);
 }
 
 export async function fetchOlderChatMessages(

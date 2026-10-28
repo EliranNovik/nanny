@@ -6,6 +6,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
+import type { ReactNode, TouchEvent } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
@@ -33,7 +34,6 @@ import {
   Send,
   Loader2,
   Clock,
-  File,
   MapPin,
   Baby,
   FileText,
@@ -69,6 +69,7 @@ import {
 import {
   fetchOlderChatMessages,
 } from "@/hooks/data/chatThreadApi";
+import { useMessagesInbox } from "@/hooks/data/useMessagesInbox";
 import { queryKeys } from "@/hooks/data/keys";
 import { readThreadCache, writeThreadCache } from "@/lib/messagesCache";
 import { useJobRequestsRealtime } from "@/hooks/useJobRequestsRealtime";
@@ -87,6 +88,9 @@ import {
 import { getTelegramLink, getWhatsAppLink } from "@/lib/socialContactLinks";
 import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { ChatVoiceMessage } from "@/components/chat/ChatVoiceMessage";
+import { ChatDocumentPreview } from "@/components/chat/ChatDocumentPreview";
+import { ChatSharedContactCard } from "@/components/chat/ChatSharedContactCard";
 import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
 import {
   ChatBubbleMeta,
@@ -98,6 +102,7 @@ import {
   chatBubbleBodyTextCn,
   chatBubbleInnerMetaWrapCn,
   chatBubbleLinkCn,
+  chatSentBubbleLinkCn,
   chatMessageColumnCn,
   chatMediaMessageColumnCn,
   chatReceivedBubbleCn,
@@ -118,12 +123,16 @@ import { trackEvent } from "@/lib/analytics";
 import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
 import { bidirectionalTextProps } from "@/lib/textDirection";
 import { TranslatableChatMessage } from "@/components/translate/TranslateTextControl";
-import { bodyHasNonPreviewText } from "@/lib/chatBodyPreviewText";
 import {
   extractChatUrlsFromText,
   linkifyMessageBody,
   previewHrefOmitSet,
 } from "@/lib/linkifyMessageBody";
+import {
+  chatContactPreview,
+  formatChatContactMessage,
+  parseChatContactMessage,
+} from "@/lib/chatSharePayloads";
 
 interface Message {
   id: string;
@@ -137,6 +146,60 @@ interface Message {
   attachment_type?: string | null;
   attachment_name?: string | null;
   attachment_size?: number | null;
+  reply_to_id?: string | null;
+  reply_preview?: string | null;
+  edited_at?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  is_forwarded?: boolean;
+}
+
+type MessageReaction = {
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+function CollapsibleChatMessage({
+  text,
+  textClassName,
+  content,
+  meta,
+}: {
+  text: string;
+  textClassName: string;
+  content: ReactNode;
+  meta: ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 360 || text.split("\n").length > 7;
+
+  return (
+    <div className="min-w-0 max-w-full">
+      <p
+        {...bidirectionalTextProps(
+          text,
+          cn(
+            textClassName,
+            isLong && !expanded && "max-h-36 overflow-hidden",
+          ),
+        )}
+      >
+        {content}
+      </p>
+      {isLong ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-1 block text-[13px] font-bold leading-5 text-sky-500 underline decoration-sky-500/70 underline-offset-2 hover:text-sky-600 dark:text-sky-400 dark:decoration-sky-400/70 dark:hover:text-sky-300"
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
+      ) : null}
+      <div className="flex justify-end">{meta}</div>
+    </div>
+  );
 }
 
 interface Conversation {
@@ -163,6 +226,8 @@ interface Profile {
   rating_count?: number;
   categories?: string[];
   is_verified?: boolean | null;
+  app_locale?: "en" | "he" | "ru" | "fr" | null;
+  is_admin?: boolean | null;
 }
 
 interface Job {
@@ -317,6 +382,48 @@ export default function ChatPage({
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [actionMessage, setActionMessage] = useState<Message | null>(null);
+  const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+  const [forwardConversationIds, setForwardConversationIds] = useState<
+    Set<string>
+  >(new Set());
+  const [forwarding, setForwarding] = useState(false);
+  const [shareContactOpen, setShareContactOpen] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactSearchResults, setContactSearchResults] = useState<
+    Array<{ id: string; full_name: string | null; photo_url: string | null }>
+  >([]);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  const forwardInboxQuery = useMessagesInbox(
+    user?.id,
+    currentUserProfile?.role,
+    false,
+  );
+
+  useEffect(() => {
+    if (!shareContactOpen || contactSearch.trim().length < 2) {
+      setContactSearchResults([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void supabase
+        .from("profiles")
+        .select("id, full_name, photo_url")
+        .ilike("full_name", `%${contactSearch.trim()}%`)
+        .or("is_admin.eq.false,is_admin.is.null")
+        .neq("id", user?.id ?? "")
+        .limit(20)
+        .then(({ data }) => {
+          if (!cancelled) setContactSearchResults(data ?? []);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [contactSearch, shareContactOpen, user?.id]);
 
   const clearMatchUrlParams = useCallback(() => {
     const n = new URLSearchParams(searchParams);
@@ -481,6 +588,64 @@ export default function ChatPage({
       }
     }
   });
+
+  const messageIdsKey = useMemo(
+    () =>
+      messages
+        .map((message) => message.id)
+        .filter((id) => !id.startsWith("temp-"))
+        .sort()
+        .join(","),
+    [messages],
+  );
+
+  useEffect(() => {
+    const messageIds = messageIdsKey ? messageIdsKey.split(",") : [];
+    if (messageIds.length === 0) {
+      setReactions([]);
+      return;
+    }
+
+    let cancelled = false;
+    void supabase
+      .from("message_reactions")
+      .select("message_id, user_id, emoji, created_at")
+      .in("message_id", messageIds)
+      .then(({ data, error }) => {
+        if (!cancelled && !error) {
+          setReactions((data ?? []) as MessageReaction[]);
+        }
+      });
+
+    const channel = supabase
+      .channel(`message-reactions:${conversationId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "message_reactions" },
+        (payload) => {
+          const next = (payload.new ?? payload.old) as Partial<MessageReaction>;
+          if (!next.message_id || !messageIds.includes(next.message_id)) return;
+          setReactions((current) => {
+            const withoutRow = current.filter(
+              (reaction) =>
+                !(
+                  reaction.message_id === next.message_id &&
+                  reaction.user_id === next.user_id
+                ),
+            );
+            return payload.eventType === "DELETE" || !payload.new
+              ? withoutRow
+              : [...withoutRow, payload.new as MessageReaction];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [conversationId, messageIdsKey]);
 
   usePaymentsRealtime({
     conversationIds: realtimeConvoIds,
@@ -1255,8 +1420,11 @@ export default function ChatPage({
     setSelectedFile(null);
   }
 
-  function getFileType(fileName: string): string {
-    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  function getFileType(file: File): string {
+    if (file.type.startsWith("audio/")) return "audio";
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
     if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
       return "image";
     }
@@ -1264,6 +1432,144 @@ export default function ChatPage({
       return "video";
     }
     return "file";
+  }
+
+  function messagePreview(message: Message): string {
+    if (message.is_deleted) return "This message was deleted";
+    const contactPreview = chatContactPreview(message.body);
+    if (contactPreview) return contactPreview;
+    if (message.body?.trim()) return message.body.trim().slice(0, 180);
+    if (message.attachment_type === "image") return "Photo";
+    if (message.attachment_type === "video") return "Video";
+    if (
+      message.attachment_type === "audio" ||
+      message.attachment_type?.startsWith("audio/")
+    ) {
+      return "Voice message";
+    }
+    return message.attachment_name || "Attachment";
+  }
+
+  async function setMessageReaction(message: Message, emoji: string) {
+    if (!user?.id) return;
+    const existing = reactions.find(
+      (reaction) =>
+        reaction.message_id === message.id && reaction.user_id === user.id,
+    );
+    const request =
+      existing?.emoji === emoji
+        ? supabase
+            .from("message_reactions")
+            .delete()
+            .eq("message_id", message.id)
+            .eq("user_id", user.id)
+        : supabase.from("message_reactions").upsert(
+            { message_id: message.id, user_id: user.id, emoji },
+            { onConflict: "message_id,user_id" },
+          );
+    const { error } = await request;
+    if (error) {
+      addToast({
+        title: "Reaction failed",
+        description: error.message,
+        variant: "error",
+      });
+    }
+  }
+
+  async function editMessage(message: Message) {
+    const body = window.prompt("Edit message", message.body ?? "");
+    if (body === null || body.trim() === message.body?.trim()) return;
+    const { error } = await supabase.rpc("edit_own_message", {
+      p_message_id: message.id,
+      p_body: body.trim(),
+    });
+    if (error) {
+      addToast({
+        title: "Message could not be edited",
+        description: error.message.replace(/_/g, " "),
+        variant: "error",
+      });
+    }
+    setActionMessage(null);
+  }
+
+  async function deleteMessage(
+    message: Message,
+    scope: "me" | "everyone",
+  ) {
+    const { error } =
+      scope === "everyone"
+        ? await supabase.rpc("delete_own_message_for_everyone", {
+            p_message_id: message.id,
+          })
+        : await supabase.from("messages").delete().eq("id", message.id);
+    if (error) {
+      addToast({
+        title: "Message could not be deleted",
+        description: error.message,
+        variant: "error",
+      });
+    } else if (scope === "me") {
+      setMessages((current) =>
+        current.filter((item) => item.id !== message.id),
+      );
+    }
+    setActionMessage(null);
+  }
+
+  async function forwardSelectedMessage() {
+    if (
+      !forwardMessage ||
+      !user?.id ||
+      forwardConversationIds.size === 0 ||
+      forwarding
+    ) {
+      return;
+    }
+    setForwarding(true);
+    const rows = [...forwardConversationIds].map((targetConversationId) => ({
+      conversation_id: targetConversationId,
+      sender_id: user.id,
+      body: forwardMessage.body,
+      attachment_url: forwardMessage.attachment_url ?? null,
+      attachment_type: forwardMessage.attachment_type ?? null,
+      attachment_name: forwardMessage.attachment_name ?? null,
+      attachment_size: forwardMessage.attachment_size ?? null,
+      is_forwarded: true,
+    }));
+    const { error } = await supabase.from("messages").insert(rows);
+    setForwarding(false);
+    if (error) {
+      addToast({
+        title: "Message could not be forwarded",
+        description: error.message,
+        variant: "error",
+      });
+      return;
+    }
+    addToast({
+      title: "Message forwarded",
+      description: `Sent to ${rows.length} chat${rows.length === 1 ? "" : "s"}.`,
+      variant: "success",
+    });
+    setForwardMessage(null);
+    setForwardConversationIds(new Set());
+  }
+
+  function sendSharedContact(
+    profile: { id: string; full_name: string | null },
+  ) {
+    setNewMessage(formatChatContactMessage(profile.full_name || "User", profile.id));
+    setShareContactOpen(false);
+    setContactSearch("");
+    window.setTimeout(() => {
+      const composer =
+        window.matchMedia("(min-width: 1024px)").matches
+          ? desktopComposerRef.current
+          : mobileComposerRef.current;
+      composer?.form?.requestSubmit();
+    }, 0);
   }
 
   async function handleSend(e: React.FormEvent) {
@@ -1285,6 +1591,7 @@ export default function ChatPage({
     let attachmentType: string | null = null;
     let attachmentName: string | null = null;
     let attachmentSize: number | null = null;
+    const replyTarget = replyingTo;
 
     // Upload file if selected
     if (selectedFile) {
@@ -1296,7 +1603,7 @@ export default function ChatPage({
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("chat-attachments")
           .upload(fileName, selectedFile, {
-            cacheControl: "3600",
+            cacheControl: "31536000",
             upsert: false,
           });
 
@@ -1328,7 +1635,7 @@ export default function ChatPage({
           .getPublicUrl(uploadData.path);
 
         attachmentUrl = urlData.publicUrl;
-        attachmentType = getFileType(selectedFile.name);
+        attachmentType = getFileType(selectedFile);
         attachmentName = selectedFile.name;
         attachmentSize = selectedFile.size;
       } catch (error: any) {
@@ -1356,6 +1663,8 @@ export default function ChatPage({
       attachment_type: attachmentType,
       attachment_name: attachmentName,
       attachment_size: attachmentSize,
+      reply_to_id: replyTarget?.id ?? null,
+      reply_preview: replyTarget ? messagePreview(replyTarget) : null,
     };
 
     patchChatThreadMessages(queryClient, threadKey, (prev) => [
@@ -1364,6 +1673,7 @@ export default function ChatPage({
     ]);
     setMessages((prev) => [...prev, optimisticMessage]);
     setNewMessage("");
+    setReplyingTo(null);
     setSelectedFile(null);
 
     stickToBottomRef.current = true;
@@ -1385,6 +1695,8 @@ export default function ChatPage({
         attachment_type: attachmentType,
         attachment_name: attachmentName,
         attachment_size: attachmentSize,
+        reply_to_id: replyTarget?.id ?? null,
+        reply_preview: replyTarget ? messagePreview(replyTarget) : null,
       })
       .select()
       .single();
@@ -1393,6 +1705,7 @@ export default function ChatPage({
       // Remove optimistic message and restore input
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       setNewMessage(body || "");
+      setReplyingTo(replyTarget);
       setSelectedFile(selectedFile);
       console.error("Error sending message:", error);
     } else if (data) {
@@ -1433,35 +1746,185 @@ export default function ChatPage({
     variant: "bubble" | "media" = "bubble",
   ) {
     return (
-      <ChatBubbleMeta
-        timeLabel={formatTime(msg.created_at)}
-        isOwn={isOwn}
-        receiptStatus={isOwn ? getChatReadReceiptStatus(msg) : null}
-        variant={variant}
-        className={variant === "bubble" ? chatBubbleInnerMetaWrapCn : undefined}
-      />
+      <>
+        {msg.edited_at ? (
+          <span className="mr-1 text-[10px] opacity-70">edited</span>
+        ) : null}
+        <ChatBubbleMeta
+          timeLabel={formatTime(msg.created_at)}
+          isOwn={isOwn}
+          receiptStatus={isOwn ? getChatReadReceiptStatus(msg) : null}
+          variant={variant}
+          className={variant === "bubble" ? chatBubbleInnerMetaWrapCn : undefined}
+        />
+      </>
     );
+  }
+
+  function messageAnnotations(
+    msg: Message,
+    isOwn: boolean,
+    embedded = false,
+  ) {
+    if (!msg.is_forwarded && !msg.reply_preview) return null;
+    const original = msg.reply_to_id
+      ? messages.find((message) => message.id === msg.reply_to_id)
+      : null;
+    const originalSender =
+      original?.sender_id === user?.id
+        ? "You"
+        : otherUser?.full_name || "Original message";
+    return (
+      <div
+        className={cn(
+          "relative z-0 w-fit min-w-[10rem] max-w-[min(75vw,22rem)] text-xs",
+          msg.reply_preview && !embedded && "-mb-1.5",
+          embedded &&
+            "-mx-1.5 mb-2 w-[calc(100%+0.75rem)] min-w-0 max-w-none",
+        )}
+      >
+        {msg.is_forwarded ? (
+          <p
+            className={cn(
+              "mb-1 font-semibold italic",
+              isOwn ? "text-orange-100" : "text-muted-foreground",
+            )}
+          >
+            ↪ Forwarded
+          </p>
+        ) : null}
+        {msg.reply_preview ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (!msg.reply_to_id) return;
+              document
+                .getElementById(`message-${msg.reply_to_id}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className={cn(
+              "block w-full rounded-t-xl rounded-b-md border-l-4 px-2.5 pb-3 pt-2 text-left shadow-sm",
+              isOwn
+                ? embedded
+                  ? "border-white/70 bg-black/15 text-white shadow-none"
+                  : "border-orange-200 bg-orange-800 text-white"
+                : "border-orange-500 bg-zinc-200 text-foreground dark:bg-zinc-700 dark:text-white",
+            )}
+          >
+            <span
+              className={cn(
+                "mb-0.5 block truncate font-bold",
+                isOwn
+                  ? "text-orange-100"
+                  : "text-orange-700 dark:text-orange-300",
+              )}
+            >
+              {originalSender}
+            </span>
+            <span className="block truncate opacity-80">
+              {msg.reply_preview}
+            </span>
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  function messageReactionChips(msg: Message) {
+    const rows = reactions.filter((reaction) => reaction.message_id === msg.id);
+    if (rows.length === 0) return null;
+    const grouped = new Map<string, MessageReaction[]>();
+    rows.forEach((reaction) => {
+      grouped.set(reaction.emoji, [
+        ...(grouped.get(reaction.emoji) ?? []),
+        reaction,
+      ]);
+    });
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        {[...grouped.entries()].map(([emoji, emojiRows]) => (
+          <button
+            key={emoji}
+            type="button"
+            onClick={() => void setMessageReaction(msg, emoji)}
+            className={cn(
+              "rounded-full border bg-background px-2 py-0.5 text-xs shadow-sm",
+              emojiRows.some((reaction) => reaction.user_id === user?.id)
+                ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
+                : "border-border",
+            )}
+            title={`${emojiRows.length} reaction${emojiRows.length === 1 ? "" : "s"}`}
+          >
+            {emoji} {emojiRows.length}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function messageActionsButton(msg: Message) {
+    return (
+      <div className="hidden shrink-0 items-center gap-1 self-center transition md:flex md:opacity-0 md:group-hover/message:opacity-100">
+        <button
+          type="button"
+          onClick={() => setReplyingTo(msg)}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background/95 text-base text-muted-foreground shadow-sm transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/30"
+          aria-label="Reply to message"
+          title="Reply"
+        >
+          ↩
+        </button>
+        <button
+          type="button"
+          onClick={() => setActionMessage(msg)}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background/95 text-base text-muted-foreground shadow-sm transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/30"
+          aria-label="Open reactions and message actions"
+          title="React and more"
+        >
+          ☺
+        </button>
+      </div>
+    );
+  }
+
+  function mobileReplyGesture(msg: Message) {
+    return {
+      onTouchStart: (event: TouchEvent<HTMLDivElement>) => {
+        event.currentTarget.dataset.replyTouchX = String(
+          event.touches[0]?.clientX ?? 0,
+        );
+      },
+      onTouchEnd: (event: TouchEvent<HTMLDivElement>) => {
+        const start = Number(event.currentTarget.dataset.replyTouchX ?? 0);
+        const end = event.changedTouches[0]?.clientX ?? start;
+        delete event.currentTarget.dataset.replyTouchX;
+        if (window.innerWidth < 768 && end - start > 55) {
+          setReplyingTo(msg);
+        }
+      },
+    };
   }
 
   function renderBubbleBodyText(
     text: string,
     msg: Message,
     isOwn: boolean,
-    omitHrefs?: Set<string>,
+    _omitHrefs?: Set<string>,
   ) {
+    const textClassName = cn(
+      chatBubbleBodyTextCn,
+      isOwn ? "text-white" : chatReceivedMessageTextCn,
+    );
     return (
-      <p
-        {...bidirectionalTextProps(
+      <CollapsibleChatMessage
+        text={text}
+        textClassName={textClassName}
+        content={linkifyMessageBody(
           text,
-          cn(
-            chatBubbleBodyTextCn,
-            isOwn ? "text-white" : chatReceivedMessageTextCn,
-          ),
+          isOwn ? chatSentBubbleLinkCn : chatBubbleLinkCn,
         )}
-      >
-        {linkifyMessageBody(text, chatBubbleLinkCn, omitHrefs)}
-        {bubbleMeta(msg, isOwn)}
-      </p>
+        meta={bubbleMeta(msg, isOwn)}
+      />
     );
   }
 
@@ -2391,19 +2854,26 @@ export default function ChatPage({
                 userId={otherUser?.id}
                 profile={peekProfile}
                 displayName={
-                  conversation?.job_id === null
-                    ? currentUserProfile?.is_admin
-                      ? otherUser?.full_name || "User"
-                      : "Support"
-                    : otherUser?.full_name || "User"
+                  otherUser?.full_name || "User"
                 }
                 initials={otherInitials}
                 photoUrl={otherUser?.photo_url}
                 isVerified={Boolean(otherUser?.is_verified)}
-                isLive24h={chatAvatarStatus.isLive24h}
-                hasPostedRequest={chatAvatarStatus.hasPostedRequest}
-                onNameClick={() =>
-                  !hideBackButton && setShowContactPanel(!showContactPanel)
+                isLive24h={
+                  otherUser?.is_admin ? false : chatAvatarStatus.isLive24h
+                }
+                hasPostedRequest={
+                  otherUser?.is_admin
+                    ? false
+                    : chatAvatarStatus.hasPostedRequest
+                }
+                isAdmin={otherUser?.is_admin === true}
+                onNameClick={
+                  otherUser?.is_admin
+                    ? undefined
+                    : () =>
+                        !hideBackButton &&
+                        setShowContactPanel(!showContactPanel)
                 }
               />
 
@@ -2484,7 +2954,7 @@ export default function ChatPage({
         >
           <div className="min-w-0 max-w-full">
             {/* Clearance for fixed composer + safe area (tight gap above input bar) */}
-            <div className="min-w-0 max-w-full space-y-4 px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
+            <div className="min-w-0 max-w-full space-y-2.5 px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2513,11 +2983,21 @@ export default function ChatPage({
               ) : null}
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
+                const contactPayload = !msg.attachment_url
+                  ? parseChatContactMessage(msg.body)
+                  : null;
+                const nextMessage = messages[index + 1];
+                const showReceivedAvatar =
+                  !isOwn &&
+                  (!nextMessage ||
+                    nextMessage.sender_id !== msg.sender_id ||
+                    shouldShowDateHeader(index + 1));
                 const matchIntro = msg.body
                   ? parseMatchIntroBody(msg.body)
                   : null;
 
                 if (
+                  !msg.is_deleted &&
                   !matchIntro &&
                   !msg.attachment_url &&
                   isLikelySystemMessage(msg.body)
@@ -2525,7 +3005,7 @@ export default function ChatPage({
                   return (
                     <div
                       key={msg.id}
-                      className="space-y-4 chat-scroll-reveal chat-scroll-reveal--center"
+                      className="space-y-2.5 chat-scroll-reveal chat-scroll-reveal--center"
                     >
                       {shouldShowDateHeader(index) ? (
                         <ChatDateSeparator label={formatDate(msg.created_at)} />
@@ -2544,18 +3024,134 @@ export default function ChatPage({
                   );
                 }
 
-                const linkPreviewUrls = msg.body
-                  ? extractChatUrlsFromText(msg.body, 2)
-                  : [];
+                if (msg.is_deleted) {
+                  return (
+                    <div
+                      key={msg.id}
+                      id={`message-${msg.id}`}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setActionMessage(msg);
+                      }}
+                      {...mobileReplyGesture(msg)}
+                      className={cn(
+                        "flex w-full",
+                        isOwn ? "justify-end" : "justify-start",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[82%] rounded-2xl border px-3 py-2 text-sm italic",
+                          isOwn
+                            ? "border-orange-700 bg-orange-700 text-white/85"
+                            : "border-border bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {isOwn
+                          ? "You deleted this message"
+                          : "This message was deleted"}
+                        {bubbleMeta(msg, isOwn)}
+                      </div>
+                    </div>
+                  );
+                }
 
-                const isMedia = msg.attachment_url && (msg.attachment_type === "image" || msg.attachment_type === "video");
+                if (contactPayload) {
+                  return (
+                    <div
+                      key={msg.id}
+                      id={`message-${msg.id}`}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setActionMessage(msg);
+                      }}
+                      {...mobileReplyGesture(msg)}
+                      className={cn(
+                        "group/message min-w-0 max-w-full space-y-2.5 chat-scroll-reveal",
+                        isOwn
+                          ? "chat-scroll-reveal--sent"
+                          : "chat-scroll-reveal--received",
+                      )}
+                    >
+                      {shouldShowDateHeader(index) ? (
+                        <ChatDateSeparator label={formatDate(msg.created_at)} />
+                      ) : null}
+                      <div
+                        className={cn(
+                          "flex w-full min-w-0 max-w-full items-end gap-2",
+                          isOwn ? "flex-row-reverse" : "flex-row",
+                        )}
+                      >
+                        {!isOwn &&
+                          (showReceivedAvatar ? (
+                            <Avatar
+                              className={cn(
+                                "mb-1 hidden h-8 w-8 shrink-0 md:flex",
+                                otherUser?.is_admin &&
+                                  "h-10 w-10 bg-white ring-1 ring-slate-200",
+                              )}
+                            >
+                              <AvatarImage
+                                src={otherUser?.photo_url || undefined}
+                                className={cn(
+                                  otherUser?.is_admin &&
+                                    "scale-[1.65] object-contain",
+                                )}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary">
+                                {otherInitials}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <span className="hidden h-8 w-8 shrink-0 md:block" />
+                          ))}
+                        <div className={chatMessageColumnCn(isOwn)}>
+                          <div
+                            className={cn(
+                              isOwn
+                                ? chatSentBubbleCn
+                                : chatReceivedBubbleCn,
+                            )}
+                          >
+                            {messageAnnotations(msg, isOwn, true)}
+                            <ChatSharedContactCard
+                              contact={contactPayload}
+                              viewerId={user?.id}
+                              isOwn={isOwn}
+                              footer={bubbleMeta(msg, isOwn, "media")}
+                            />
+                          </div>
+                          {messageReactionChips(msg)}
+                        </div>
+                        {messageActionsButton(msg)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const linkPreviewUrls =
+                  msg.body && !msg.body.trimStart().startsWith("📍")
+                    ? extractChatUrlsFromText(msg.body, 1)
+                    : [];
+
+                const isMedia =
+                  msg.attachment_url &&
+                  (msg.attachment_type === "image" ||
+                    msg.attachment_type?.startsWith("image/") ||
+                    msg.attachment_type === "video" ||
+                    msg.attachment_type?.startsWith("video/") ||
+                    msg.attachment_type === "audio" ||
+                    msg.attachment_type?.startsWith("audio/"));
+                const isDocumentOnly =
+                  Boolean(msg.attachment_url) && !isMedia && !msg.body;
 
                 if (isMedia && msg.attachment_url) {
                   return (
                     <div
                       key={msg.id}
+                      id={`message-${msg.id}`}
                       className={cn(
-                        "min-w-0 max-w-full space-y-4 chat-scroll-reveal md:space-y-3",
+                        "group/message min-w-0 max-w-full space-y-2.5 chat-scroll-reveal",
                         isOwn
                           ? "chat-scroll-reveal--sent"
                           : "chat-scroll-reveal--received",
@@ -2571,25 +3167,43 @@ export default function ChatPage({
                           isOwn ? "flex-row-reverse" : "flex-row",
                         )}
                       >
-                        {!isOwn && (
-                          <Avatar className="hidden h-9 w-9 shrink-0 mb-1 md:flex md:h-8 md:w-8">
-                            <AvatarImage
-                              src={otherUser?.photo_url || undefined}
+                        {!isOwn &&
+                          (showReceivedAvatar ? (
+                            <Avatar
+                              className={cn(
+                                "mb-1 hidden h-8 w-8 shrink-0 md:flex",
+                                otherUser?.is_admin &&
+                                  "h-10 w-10 bg-white ring-1 ring-slate-200",
+                              )}
+                            >
+                              <AvatarImage
+                                src={otherUser?.photo_url || undefined}
+                                className={cn(
+                                  otherUser?.is_admin &&
+                                    "scale-[1.65] object-contain",
+                                )}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary md:text-[10px]">
+                                {otherInitials}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <span
+                              className="hidden h-8 w-8 shrink-0 md:block"
+                              aria-hidden
                             />
-                            <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary md:text-[10px]">
-                              {otherInitials}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
+                          ))}
 
                         <div className={chatMediaMessageColumnCn(isOwn)}>
+                          {messageAnnotations(msg, isOwn)}
                           <div
                             className={cn(
                               "flex w-full min-w-0 max-w-full",
                               isOwn ? "justify-end" : "justify-start",
                             )}
                           >
-                            {msg.attachment_type === "image" ? (
+                            {msg.attachment_type === "image" ||
+                            msg.attachment_type?.startsWith("image/") ? (
                               <ChatMessageMedia
                                 src={msg.attachment_url}
                                 alt={msg.attachment_name || "Attachment"}
@@ -2600,6 +3214,13 @@ export default function ChatPage({
                                   setSelectedImage(msg);
                                   setIsImageModalOpen(true);
                                 }}
+                              />
+                            ) : msg.attachment_type === "audio" ||
+                              msg.attachment_type?.startsWith("audio/") ? (
+                              <ChatVoiceMessage
+                                src={msg.attachment_url}
+                                isOwn={isOwn}
+                                footer={bubbleMeta(msg, isOwn, "media")}
                               />
                             ) : (
                               <ChatMessageMedia
@@ -2625,11 +3246,7 @@ export default function ChatPage({
                                   isOwn ? "items-end" : "items-start",
                                 )}
                               >
-                                {msg.body &&
-                                  bodyHasNonPreviewText(
-                                    msg.body,
-                                    linkPreviewUrls,
-                                  ) && (
+                                {msg.body && (
                                     <div
                                       className={cn(
                                         "relative min-w-0 w-fit transition-all duration-300",
@@ -2691,7 +3308,9 @@ export default function ChatPage({
                             ) : null}
                           </div>
                           )}
+                          {messageReactionChips(msg)}
                         </div>
+                        {messageActionsButton(msg)}
                       </div>
                     </div>
                   );
@@ -2700,8 +3319,14 @@ export default function ChatPage({
                 return (
                   <div
                     key={msg.id}
+                    id={`message-${msg.id}`}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setActionMessage(msg);
+                    }}
+                    {...mobileReplyGesture(msg)}
                     className={cn(
-                      "min-w-0 max-w-full space-y-4 chat-scroll-reveal md:space-y-3",
+                      "group/message min-w-0 max-w-full space-y-2.5 chat-scroll-reveal",
                       isOwn
                         ? "chat-scroll-reveal--sent"
                         : "chat-scroll-reveal--received",
@@ -2717,16 +3342,32 @@ export default function ChatPage({
                         isOwn ? "flex-row-reverse" : "flex-row",
                       )}
                     >
-                      {!isOwn && (
-                        <Avatar className="hidden h-9 w-9 shrink-0 mb-1 md:flex md:h-8 md:w-8">
-                          <AvatarImage
-                            src={otherUser?.photo_url || undefined}
+                      {!isOwn &&
+                        (showReceivedAvatar ? (
+                          <Avatar
+                            className={cn(
+                              "mb-1 hidden h-8 w-8 shrink-0 md:flex",
+                              otherUser?.is_admin &&
+                                "h-10 w-10 bg-white ring-1 ring-slate-200",
+                            )}
+                          >
+                            <AvatarImage
+                              src={otherUser?.photo_url || undefined}
+                              className={cn(
+                                otherUser?.is_admin &&
+                                  "scale-[1.65] object-contain",
+                              )}
+                            />
+                            <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary md:text-[10px]">
+                              {otherInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <span
+                            className="hidden h-8 w-8 shrink-0 md:block"
+                            aria-hidden
                           />
-                          <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary md:text-[10px]">
-                            {otherInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
+                        ))}
 
                       <div className={chatMessageColumnCn(isOwn)}>
                         <div
@@ -2742,47 +3383,28 @@ export default function ChatPage({
                               isOwn ? "items-end" : "items-start",
                             )}
                           >
+                            {messageAnnotations(msg, isOwn)}
                             {msg.attachment_url && (
-                              <div
-                                className={cn(
-                                  "min-w-0 w-fit transition-all duration-300",
-                                  isOwn
-                                    ? chatSentBubbleCn
-                                    : chatReceivedBubbleCn,
-                                )}
-                              >
-                                <a
-                                  href={msg.attachment_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={cn(
-                                    "flex items-center gap-2 rounded-lg border border-dashed p-2 transition-colors md:p-1.5",
-                                    isOwn
-                                      ? "border-white/35 bg-black/15 text-white hover:bg-black/25"
-                                      : "border-blue-500/25 bg-white/80 hover:bg-white dark:bg-zinc-700 dark:hover:bg-zinc-700/90",
-                                  )}
-                                >
-                                  <File
-                                    className={cn(
-                                      "h-5 w-5 shrink-0 md:h-4 md:w-4",
-                                      isOwn
-                                        ? "text-white/90"
-                                        : "text-blue-600 dark:text-blue-400",
-                                    )}
-                                  />
-                                  <span
-                                    className={cn(
-                                      "max-w-[min(12rem,55vw)] truncate text-xl font-medium underline underline-offset-2 md:max-w-[180px] md:text-base",
-                                      isOwn
-                                        ? "text-white decoration-white/35 hover:text-white"
-                                        : "text-blue-600 decoration-blue-600/40 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300",
-                                    )}
-                                  >
-                                    {msg.attachment_name || "Download File"}
-                                  </span>
-                                </a>
-                              </div>
+                              <ChatDocumentPreview
+                                url={msg.attachment_url}
+                                name={msg.attachment_name}
+                                size={msg.attachment_size}
+                                isOwn={isOwn}
+                                footer={
+                                  isDocumentOnly
+                                    ? bubbleMeta(msg, isOwn, "media")
+                                    : undefined
+                                }
+                              />
                             )}
+
+                            <div className="w-full min-w-0 max-w-full">
+                              <ChatLinkPreviewCards
+                                urls={linkPreviewUrls}
+                                variant={isOwn ? "sent" : "received"}
+                                embedded={false}
+                              />
+                            </div>
 
                             {msg.body && matchIntro ? (
                               <div
@@ -2813,11 +3435,7 @@ export default function ChatPage({
                                   {bubbleMeta(msg, isOwn)}
                                 </div>
                               </div>
-                            ) : bodyHasNonPreviewText(
-                                  msg.body || "",
-                                  linkPreviewUrls,
-                                ) &&
-                                msg.body ? (
+                            ) : msg.body ? (
                               <div
                                 className={cn(
                                   "relative min-w-0 w-fit transition-all duration-300",
@@ -2844,13 +3462,6 @@ export default function ChatPage({
                               </div>
                             ) : null}
 
-                            <div className="w-full min-w-0 max-w-full">
-                              <ChatLinkPreviewCards
-                                urls={linkPreviewUrls}
-                                variant={isOwn ? "sent" : "received"}
-                                embedded={false}
-                              />
-                            </div>
                           </div>
                         ) : (
                           <div
@@ -2859,22 +3470,25 @@ export default function ChatPage({
                               isOwn
                                 ? chatSentBubbleCn
                                 : chatReceivedBubbleCn,
+                              isDocumentOnly &&
+                                "!border-0 !bg-transparent !p-0 !shadow-none",
                             )}
                           >
+                            {messageAnnotations(msg, isOwn, true)}
                             {/* Attachment Display */}
                             {msg.attachment_url && (
                               <div className="mb-2">
-                                <a
-                                  href={msg.attachment_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
-                                >
-                                  <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
-                                  <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[180px] md:text-base">
-                                    {msg.attachment_name || "Download File"}
-                                  </span>
-                                </a>
+                                <ChatDocumentPreview
+                                  url={msg.attachment_url}
+                                  name={msg.attachment_name}
+                                  size={msg.attachment_size}
+                                  isOwn={isOwn}
+                                  footer={
+                                    isDocumentOnly
+                                      ? bubbleMeta(msg, isOwn, "media")
+                                      : undefined
+                                  }
+                                />
                               </div>
                             )}
 
@@ -2914,13 +3528,15 @@ export default function ChatPage({
                                   )
                                 }
                               />
-                            ) : (
+                            ) : isDocumentOnly ? null : (
                               bubbleMeta(msg, isOwn)
                             )}
                           </div>
                         )}
                         </div>
+                        {messageReactionChips(msg)}
                       </div>
+                      {messageActionsButton(msg)}
                     </div>
                   </div>
                 );
@@ -2969,8 +3585,291 @@ export default function ChatPage({
           desktopComposerRef={desktopComposerRef}
           hideBackButton={hideBackButton}
           mobileView={mobileView}
+          replyPreview={replyingTo ? messagePreview(replyingTo) : null}
+          onCancelReply={() => setReplyingTo(null)}
+          onVoiceRecorded={(file, sendImmediately) => {
+            setSelectedFile(file);
+            focusComposer();
+            if (sendImmediately) {
+              window.setTimeout(() => {
+                const composer =
+                  window.matchMedia("(min-width: 1024px)").matches
+                    ? desktopComposerRef.current
+                    : mobileComposerRef.current;
+                composer?.form?.requestSubmit();
+              }, 0);
+            }
+          }}
+          currentLocale={
+            ((currentUserProfile as { app_locale?: string } | null)
+              ?.app_locale as string | undefined) ?? undefined
+          }
+          recipientLocale={otherUser?.app_locale ?? undefined}
+          onShareContact={() => setShareContactOpen(true)}
         />
       </div>
+
+      <Dialog
+        open={Boolean(actionMessage)}
+        onOpenChange={(open) => !open && setActionMessage(null)}
+      >
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Message actions</DialogTitle>
+            <DialogDescription className="line-clamp-2">
+              {actionMessage ? messagePreview(actionMessage) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {actionMessage ? (
+            <div className="space-y-3">
+              <div className="flex justify-center gap-2">
+                {["❤️", "👍", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      void setMessageReaction(actionMessage, emoji);
+                      setActionMessage(null);
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border bg-background text-xl hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setReplyingTo(actionMessage);
+                    setActionMessage(null);
+                    focusComposer();
+                  }}
+                >
+                  Reply
+                </Button>
+                {!parseChatContactMessage(actionMessage.body) ? (
+                  <Button
+                    variant="outline"
+                    disabled={!actionMessage.body}
+                    onClick={() => {
+                      void navigator.clipboard.writeText(
+                        actionMessage.body ?? "",
+                      );
+                      setActionMessage(null);
+                    }}
+                  >
+                    Copy
+                  </Button>
+                ) : null}
+                {!actionMessage.is_deleted ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setForwardMessage(actionMessage);
+                      setForwardConversationIds(new Set());
+                      setActionMessage(null);
+                    }}
+                  >
+                    Forward
+                  </Button>
+                ) : null}
+                {actionMessage.sender_id === user?.id &&
+                !actionMessage.is_deleted &&
+                actionMessage.body ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => void editMessage(actionMessage)}
+                  >
+                    Edit
+                  </Button>
+                ) : null}
+                {actionMessage.sender_id === user?.id ? (
+                  <Button
+                    variant="outline"
+                    className="text-red-600"
+                    onClick={() =>
+                      void deleteMessage(actionMessage, "everyone")
+                    }
+                  >
+                    Delete for everyone
+                  </Button>
+                ) : null}
+                {actionMessage.sender_id === user?.id ? (
+                  <Button
+                    variant="outline"
+                    className="text-red-600"
+                    onClick={() => void deleteMessage(actionMessage, "me")}
+                  >
+                    Delete for me
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-center text-xs text-muted-foreground">
+                Use the button beside any message to open these actions.
+              </p>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(forwardMessage)}
+        onOpenChange={(open) => {
+          if (!open && !forwarding) {
+            setForwardMessage(null);
+            setForwardConversationIds(new Set());
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Forward message</DialogTitle>
+            <DialogDescription>
+              Select one or more chats. Forwarded copies retain the original
+              text or attachment.
+            </DialogDescription>
+          </DialogHeader>
+          {forwardMessage ? (
+            <div className="rounded-xl border-l-4 border-orange-500 bg-orange-50 px-3 py-2 text-sm dark:bg-orange-950/25">
+              <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                ↪ Forwarded message
+              </p>
+              <p className="mt-1 line-clamp-2 text-foreground">
+                {messagePreview(forwardMessage)}
+              </p>
+            </div>
+          ) : null}
+          <div className="max-h-[min(52vh,26rem)] space-y-1 overflow-y-auto">
+            {(forwardInboxQuery.data ?? [])
+              .filter((conversationItem) => conversationItem.id !== conversationId)
+              .map((conversationItem) => {
+                const selected = forwardConversationIds.has(conversationItem.id);
+                const name =
+                  conversationItem.other_user_profile?.full_name || "User";
+                return (
+                  <button
+                    key={conversationItem.id}
+                    type="button"
+                    onClick={() =>
+                      setForwardConversationIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(conversationItem.id)) {
+                          next.delete(conversationItem.id);
+                        } else {
+                          next.add(conversationItem.id);
+                        }
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border p-2.5 text-left",
+                      selected
+                        ? "border-orange-500 bg-orange-50 dark:bg-orange-950/25"
+                        : "border-transparent hover:bg-muted/60",
+                    )}
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={
+                          conversationItem.other_user_profile?.photo_url ??
+                          undefined
+                        }
+                      />
+                      <AvatarFallback>
+                        {name.slice(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 flex-1 truncate font-semibold">
+                      {name}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-full border text-xs",
+                        selected
+                          ? "border-orange-500 bg-orange-500 text-white"
+                          : "border-muted-foreground/35",
+                      )}
+                    >
+                      {selected ? "✓" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            {!forwardInboxQuery.isPending &&
+            (forwardInboxQuery.data ?? []).filter(
+              (conversationItem) => conversationItem.id !== conversationId,
+            ).length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No other chats are available.
+              </p>
+            ) : null}
+          </div>
+          <Button
+            onClick={() => void forwardSelectedMessage()}
+            disabled={forwardConversationIds.size === 0 || forwarding}
+            className="bg-orange-600 text-white hover:bg-orange-700"
+          >
+            {forwarding
+              ? "Forwarding…"
+              : `Forward${forwardConversationIds.size ? ` (${forwardConversationIds.size})` : ""}`}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shareContactOpen} onOpenChange={setShareContactOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Share contact</DialogTitle>
+            <DialogDescription>
+              Choose someone from your chats or search Tebnu profiles.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={contactSearch}
+            onChange={(event) => setContactSearch(event.target.value)}
+            placeholder="Search profiles"
+          />
+          <div className="max-h-[min(55vh,28rem)] space-y-1 overflow-y-auto">
+            {(contactSearch.trim().length >= 2
+              ? contactSearchResults
+              : (forwardInboxQuery.data ?? []).flatMap((conversationItem) => {
+                  const id = conversationItem.other_user_id;
+                  if (!id || id === user?.id) return [];
+                  return [
+                    {
+                      id,
+                      full_name:
+                        conversationItem.other_user_profile?.full_name ?? null,
+                      photo_url:
+                        conversationItem.other_user_profile?.photo_url ?? null,
+                    },
+                  ];
+                })
+            ).map((profileItem) => {
+              const name = profileItem.full_name || "User";
+              return (
+                <button
+                  key={profileItem.id}
+                  type="button"
+                  onClick={() => sendSharedContact(profileItem)}
+                  className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left hover:bg-muted"
+                >
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage src={profileItem.photo_url ?? undefined} />
+                    <AvatarFallback>
+                      {name.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0 flex-1 truncate font-semibold">
+                    {name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Overlay for mobile contact panel */}
       {!hideBackButton && showContactPanel && (

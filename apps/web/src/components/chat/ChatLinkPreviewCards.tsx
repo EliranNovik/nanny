@@ -1,12 +1,47 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Link2 } from "lucide-react";
 import {
   fetchChatLinkPreview,
   type ChatLinkPreviewApiPayload,
 } from "@/lib/chatLinkPreviewApi";
 
-const sessionPreviewCache = new Map<string, ChatLinkPreviewApiPayload>();
+const CACHE_KEY = "chatLinkPreviews:v6";
+const sessionPreviewCache = new Map<
+  string,
+  ChatLinkPreviewApiPayload | null
+>();
+let cacheWriteTimer: number | null = null;
+const measuredImageAspects = new Map<string, number>();
+
+if (typeof window !== "undefined") {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CACHE_KEY) || "[]") as Array<
+      [string, ChatLinkPreviewApiPayload | null]
+    >;
+    saved.slice(-300).forEach(([url, preview]) => {
+      if (preview) sessionPreviewCache.set(url, preview);
+    });
+  } catch {
+    // Ignore malformed or unavailable storage.
+  }
+}
+
+function persistPreviewCache() {
+  if (typeof window === "undefined") return;
+  if (cacheWriteTimer !== null) window.clearTimeout(cacheWriteTimer);
+  cacheWriteTimer = window.setTimeout(() => {
+    try {
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify([...sessionPreviewCache.entries()].slice(-300)),
+      );
+    } catch {
+      // Cache persistence is an optional optimization.
+    }
+  }, 800);
+}
 
 type Props = {
   urls: string[];
@@ -63,19 +98,22 @@ function ChatLinkPreviewTile({
   embedded: boolean;
 }) {
   const [hideImage, setHideImage] = useState(false);
-  const [data, setData] = useState<ChatLinkPreviewApiPayload | null>(() =>
-    sessionPreviewCache.get(url) ?? null,
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageAspect, setImageAspect] = useState(1.6);
+  const [data, setData] = useState<ChatLinkPreviewApiPayload | null>(
+    () => sessionPreviewCache.get(url) ?? null,
   );
   const [loading, setLoading] = useState(!sessionPreviewCache.has(url));
 
   useEffect(() => {
     setHideImage(false);
+    setImageLoaded(false);
   }, [url]);
 
   useEffect(() => {
     let cancelled = false;
     const cached = sessionPreviewCache.get(url);
-    if (cached) {
+    if (cached !== undefined) {
       setData(cached);
       setLoading(false);
       return undefined;
@@ -87,8 +125,11 @@ function ChatLinkPreviewTile({
       if (cancelled) return;
       if (res) {
         sessionPreviewCache.set(url, res);
+        persistPreviewCache();
         setData(res);
-      } else setData(null);
+      } else {
+        setData(null);
+      }
       setLoading(false);
     })();
 
@@ -117,6 +158,15 @@ function ChatLinkPreviewTile({
     })();
   const description = data?.description;
   const href = data?.url ?? url;
+  const titleIsRtl = /[\u0590-\u08ff]/.test(title);
+  const isTebnuPreview = (() => {
+    try {
+      const host = new URL(href).hostname.replace(/^www\./, "");
+      return host === "tebnu.com" || host.endsWith(".tebnu.com");
+    } catch {
+      return false;
+    }
+  })();
 
   const proxiedImg =
     data?.imageToken && data.imageToken.length > 0
@@ -129,6 +179,22 @@ function ChatLinkPreviewTile({
       : data?.image && !hideImage
         ? data.image
         : null;
+  const hostname = (() => {
+    try {
+      return new URL(href).hostname.replace(/^www\./, "");
+    } catch {
+      return site;
+    }
+  })();
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`;
+  const faviconOnly =
+    !imageSrc || imageSrc.includes("google.com/s2/favicons");
+  const displayedImage = faviconOnly ? faviconUrl : imageSrc;
+
+  useEffect(() => {
+    if (!displayedImage || faviconOnly) return;
+    setImageAspect(measuredImageAspects.get(displayedImage) ?? 1.6);
+  }, [displayedImage, faviconOnly]);
 
   const tileShell = embedded
     ? variant === "sent"
@@ -164,7 +230,7 @@ function ChatLinkPreviewTile({
 
   if (loading) {
     return (
-      <div className={cn("min-w-0 max-w-full overflow-hidden rounded-xl", tileShell)}>
+      <div className={cn("w-[min(100%,24rem)] min-w-0 max-w-full overflow-hidden rounded-2xl", tileShell)}>
         <div className="h-[7rem] w-full animate-pulse bg-black/25 dark:bg-white/15 md:h-[6rem]" />
         <div className="space-y-2 p-3">
           <div className="h-2 w-16 animate-pulse rounded bg-black/25 dark:bg-white/20 md:h-1.5" />
@@ -197,12 +263,15 @@ function ChatLinkPreviewTile({
   );
 
   const noImageHeader = (
-    <div className="flex items-center gap-2 border-b border-black/10 px-2.5 py-2 dark:border-white/10">
-      <span
-        className={cn("min-w-0 flex-1 truncate rounded-full px-2 py-0.5", badgeClass)}
-        title={href}
-      >
-        {shortLinkBadge(href)}
+    <div className="flex items-center gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10">
+      <span className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+        variant === "sent" ? "bg-white/15 text-white" : "bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400",
+      )}>
+        <Link2 className="h-4 w-4" aria-hidden />
+      </span>
+      <span className={cn("min-w-0 flex-1 truncate text-xs font-semibold", footerText)}>
+        {site}
       </span>
       <Button size="sm" className={openButtonClass} asChild>
         <a href={href} target="_blank" rel="noopener noreferrer">
@@ -214,40 +283,95 @@ function ChatLinkPreviewTile({
 
   return (
     <div
+      role="link"
+      tabIndex={0}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("a")) return;
+        window.open(href, "_blank", "noopener,noreferrer");
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          window.open(href, "_blank", "noopener,noreferrer");
+        }
+      }}
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-xl bg-white dark:bg-zinc-950",
+        "w-[min(100%,24rem)] min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-opacity hover:opacity-[0.88] active:opacity-[0.88] dark:bg-zinc-950",
         embedded ? cn("bg-transparent", tileShell) : tileShell,
       )}
     >
-      {imageSrc ? (
-        <div className="relative min-h-[7rem] min-w-0 max-w-full overflow-hidden bg-muted/80 dark:bg-zinc-900/60 md:min-h-[6rem]">
+      {displayedImage ? (
+        <div
+          className={cn(
+            "relative min-w-0 max-w-full overflow-hidden",
+            faviconOnly
+              ? variant === "sent"
+                ? "h-[72px] bg-black/15"
+                : "h-[72px] bg-muted"
+              : isTebnuPreview
+                ? "bg-white p-2"
+                : "bg-black/10",
+          )}
+          style={faviconOnly ? undefined : { aspectRatio: imageAspect }}
+        >
+          {!imageLoaded ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <span
+                className={cn(
+                  "h-5 w-5 animate-spin rounded-full border-2 border-transparent",
+                  variant === "sent"
+                    ? "border-t-white/85"
+                    : "border-t-orange-500",
+                )}
+              />
+            </div>
+          ) : null}
           <img
-            src={imageSrc}
+            src={displayedImage}
             alt=""
             referrerPolicy="no-referrer"
-            className="max-h-44 min-h-[7rem] w-full min-w-0 max-w-full object-cover md:max-h-36 md:min-h-[6rem]"
+            className={cn(
+              "h-full w-full min-w-0 max-w-full",
+              faviconOnly
+                ? "object-contain p-4"
+                : isTebnuPreview
+                  ? "rounded-lg bg-white object-contain object-center"
+                  : "object-cover",
+              imageLoaded ? "opacity-100" : "opacity-0",
+            )}
             loading="lazy"
-            onError={() => setHideImage(true)}
+            onLoad={(event) => {
+              setImageLoaded(true);
+              if (!faviconOnly) {
+                const measured =
+                  event.currentTarget.naturalWidth /
+                  event.currentTarget.naturalHeight;
+                const clamped = Math.max(0.8, Math.min(2, measured || 1.6));
+                measuredImageAspects.set(displayedImage, clamped);
+                setImageAspect(clamped);
+              }
+            }}
+            onError={() => {
+              setHideImage(true);
+              setImageLoaded(false);
+            }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-          {overlayBar}
+          {!faviconOnly && !isTebnuPreview ? (
+            <>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+              {overlayBar}
+            </>
+          ) : null}
         </div>
       ) : (
         noImageHeader
       )}
 
-      <div className="min-w-0 max-w-full space-y-0.5 px-3 pb-2.5 pt-2">
-        <span className={cn("text-[10px] font-bold uppercase tracking-wider", mutedFooter)}>
-          {site}
-          {data && !data.ok && data.error ? (
-            <span className="ml-1 normal-case font-normal text-amber-300/95 dark:text-amber-400/90">
-              · preview limited
-            </span>
-          ) : null}
-        </span>
+      <div className="min-w-0 max-w-full space-y-[5px] px-3.5 pb-3.5 pt-3">
         <p
+          dir="auto"
           className={cn(
-            "text-[14px] font-semibold leading-snug line-clamp-2 md:text-[13px]",
+            "line-clamp-2 text-[15px] font-bold leading-5",
             footerText,
           )}
         >
@@ -255,14 +379,24 @@ function ChatLinkPreviewTile({
         </p>
         {description ? (
           <p
+            dir="auto"
             className={cn(
-              "text-[11.5px] leading-relaxed line-clamp-3 md:text-[11px]",
+              "line-clamp-2 text-[13px] font-medium leading-[18px]",
               mutedFooter,
             )}
           >
             {description}
           </p>
         ) : null}
+        <p
+          className={cn(
+            "mt-0.5 truncate text-[12px] font-semibold lowercase",
+            mutedFooter,
+            titleIsRtl && "text-right",
+          )}
+        >
+          {hostname}
+        </p>
       </div>
     </div>
   );

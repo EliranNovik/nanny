@@ -53,9 +53,13 @@ export async function fetchRankedHelperStack(opts: {
   if (ids.length) {
     const { data: profs, error: pe } = await supabase
       .from("profiles")
-      .select("id, categories")
+      .select("id, categories, is_admin")
       .in("id", ids);
     if (!pe && profs) {
+      const adminIds = new Set(
+        profs.filter((p) => p.is_admin === true).map((p) => p.id),
+      );
+      rows = rows.filter((row) => !adminIds.has(row.id));
       catMap = new Map(
         profs.map((p: { id: string; categories: string[] | null }) => [
           p.id,

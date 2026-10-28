@@ -13,6 +13,7 @@ export type { InboxConversation };
 export function useMessagesInbox(
   userId: string | undefined,
   role: string | undefined,
+  realtime = true,
 ) {
   const queryClient = useQueryClient();
   const inboxKey = queryKeys.messagesInbox(userId, role);
@@ -37,7 +38,7 @@ export function useMessagesInbox(
   });
 
   useEffect(() => {
-    if (!userId || !role) return;
+    if (!userId || !role || !realtime) return;
 
     const channel = supabase
       .channel(`messages-inbox-${userId}`)
@@ -71,7 +72,7 @@ export function useMessagesInbox(
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [userId, role, queryClient, inboxKey]);
+  }, [userId, role, realtime, queryClient, inboxKey]);
 
   return query;
 }

@@ -35,6 +35,7 @@ import {
   X,
   Bookmark,
   Check,
+  BadgeCheck,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -63,15 +64,8 @@ import {
   MessagesInboxFloatingHeader,
 } from "@/components/messages/MessagesInboxFloatingHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
-import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
-
-/** City for inbox row: job location first, else other user profile city */
-function inboxRowLocation(convo: Conversation): string | null {
-  const profile = convo.other_user_profile;
-  const job = convo.job_summary;
-  const loc = (job?.location_city || profile?.city || "").trim();
-  return loc || null;
-}
+import { chatContactPreview } from "@/lib/chatSharePayloads";
+import { maskAdminProfile } from "@/lib/adminProfiles";
 
 function trimPreviewNoise(body: string | null | undefined): string {
   if (!body) return "";
@@ -152,7 +146,7 @@ export default function MessagesPage() {
         .select("id, full_name, photo_url, role")
         .ilike("full_name", `%${userSearchQuery}%`)
         .neq("id", user?.id || "")
-        .eq("is_admin", false)
+        .or("is_admin.eq.false,is_admin.is.null")
         .limit(10);
       if (!cancelled && data) {
         setUserSearchResults(data);
@@ -248,7 +242,12 @@ export default function MessagesPage() {
         : new Date(c.created_at).getTime();
       rows.push({ kind: "chat", key: `chat-${c.id}`, sortAt, conversation: c });
     }
-    rows.sort((x, y) => y.sortAt - x.sortAt);
+    rows.sort((x, y) => {
+      const xHasMessage = Boolean(x.conversation.last_message);
+      const yHasMessage = Boolean(y.conversation.last_message);
+      if (xHasMessage !== yHasMessage) return xHasMessage ? -1 : 1;
+      return y.sortAt - x.sortAt;
+    });
     return rows;
   }, [conversations, hiddenChatUserIds]);
 
@@ -263,9 +262,8 @@ export default function MessagesPage() {
       }
       if (!q) return true;
       const name = convo.other_user_profile?.full_name?.toLowerCase() ?? "";
-      const loc = inboxRowLocation(convo)?.toLowerCase() ?? "";
       const preview = trimPreviewNoise(convo.last_message?.body).toLowerCase();
-      return name.includes(q) || loc.includes(q) || preview.includes(q);
+      return name.includes(q) || preview.includes(q);
     });
   }, [
     chatInboxRows,
@@ -282,10 +280,10 @@ export default function MessagesPage() {
 
   const contactFilterChipClass = (active: boolean) =>
     cn(
-      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+      "inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-white px-3.5 py-2 text-[13px] font-semibold transition-colors dark:bg-zinc-900",
       active
-        ? "bg-primary/10 text-foreground dark:bg-primary/15"
-        : "bg-muted/30 text-muted-foreground hover:bg-muted/45 hover:text-foreground dark:bg-zinc-900/60 dark:hover:text-foreground",
+        ? "border-orange-500 text-orange-700 dark:border-orange-500 dark:text-orange-400"
+        : "border-orange-200 text-orange-600 hover:border-orange-400 hover:text-orange-700 dark:border-orange-900/70 dark:text-orange-400 dark:hover:border-orange-600",
     );
 
   const activityInboxRows = useMemo((): Extract<InboxRow, { kind: "activity" }>[] => {
@@ -323,6 +321,7 @@ export default function MessagesPage() {
       photo_url: string | null;
       city?: string | null;
       is_verified?: boolean | null;
+      is_admin?: boolean | null;
     };
   } | null>(null);
 
@@ -370,18 +369,20 @@ export default function MessagesPage() {
         convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, photo_url, city, is_verified")
+        .select("id, full_name, photo_url, city, is_verified, is_admin")
         .eq("id", otherId)
         .single();
       if (!cancelled) {
         setDirectChatHeader({
           otherUserId: otherId,
-          other_user_profile: {
+          other_user_profile: maskAdminProfile({
+            id: otherId,
             full_name: p?.full_name ?? null,
             photo_url: p?.photo_url ?? null,
             city: p?.city ?? null,
             is_verified: p?.is_verified ?? null,
-          },
+            is_admin: p?.is_admin ?? null,
+          }),
         });
       }
     })();
@@ -654,12 +655,12 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:gap-3 md:bg-orange-50/40 md:p-3 dark:md:bg-[#0c0a09]"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
-          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background md:w-80 lg:w-96",
+          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)] md:w-80 md:rounded-3xl md:border md:border-orange-100/70 md:shadow-sm dark:md:border-orange-900/25 lg:w-96",
           "md:flex",
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
@@ -931,17 +932,13 @@ export default function MessagesPage() {
                       .toUpperCase() || "?";
 
                   const isActive = conversationId === convo.id;
-                  const locationLabel = feedLocationDisplayLabel(
-                    t,
-                    inboxRowLocation(convo),
-                  );
-
                   return (
                     <div
                       key={row.key}
                       className={cn(
-                        "messages-conversation-row border-l-2 border-transparent md:bg-transparent",
-                        isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
+                        "messages-conversation-row border border-transparent",
+                        isActive &&
+                          "border-orange-200/80 bg-orange-50/90 dark:border-orange-900/40 dark:bg-orange-950/25",
                         convo.unread_count > 0 && !isActive && "is-unread",
                       )}
                       onClick={() =>
@@ -964,23 +961,48 @@ export default function MessagesPage() {
                       }
                     >
                       <div className="relative shrink-0">
-                        <Avatar className="h-14 w-14 flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]">
+                        <Avatar
+                          className={cn(
+                            "h-14 w-14 flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]",
+                            convo.other_user_profile?.is_admin &&
+                              "bg-white ring-1 ring-slate-200",
+                          )}
+                        >
                           <AvatarImage
                             src={
                               convo.other_user_profile?.photo_url ||
                               undefined
                             }
+                            className={cn(
+                              convo.other_user_profile?.is_admin &&
+                                "scale-[1.65] object-contain",
+                            )}
                           />
                           <AvatarFallback className={cn("text-lg font-bold", inboxAvatarFallbackClass(convo.other_user_id))}>
                             {initials}
                           </AvatarFallback>
                         </Avatar>
+                        {convo.other_user_profile?.is_admin !== true ? (
+                        <span
+                          className={cn(
+                            "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white shadow-sm dark:border-zinc-900",
+                            convo.other_user_profile?.presence_status === "online"
+                              ? "bg-emerald-500"
+                              : "bg-orange-500",
+                          )}
+                          aria-label={
+                            convo.other_user_profile?.presence_status === "online"
+                              ? "Online"
+                              : "Busy"
+                          }
+                        />
+                        ) : null}
                       </div>
                       <div className="relative min-w-0 flex-1">
                         <div className="min-w-0 max-w-full">
                           <p
                             className={cn(
-                              "flex min-w-0 items-baseline gap-x-1.5 text-[17px] font-semibold leading-snug text-foreground md:text-base",
+                              "flex min-w-0 items-center gap-x-1.5 text-[17px] font-bold leading-snug text-foreground md:text-base",
                               convo.unread_count > 0 && "text-foreground",
                             )}
                           >
@@ -988,16 +1010,17 @@ export default function MessagesPage() {
                               {convo.other_user_profile?.full_name ||
                                 t("messagesPage.user")}
                             </span>
-                            {locationLabel ? (
-                              <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-[15px]">
-                                · {locationLabel}
-                              </span>
+                            {convo.other_user_profile?.is_verified ? (
+                              <BadgeCheck
+                                className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                                aria-label={t("messagesPage.verified")}
+                              />
                             ) : null}
                           </p>
                           {convo.last_message && (
                             <p
                               className={cn(
-                                "mt-1 truncate text-[15px] leading-snug text-[var(--messages-text-muted,rgba(15,23,42,0.55))] md:text-base",
+                                "mt-1 truncate text-[14px] leading-snug text-[var(--messages-text-muted,rgba(15,23,42,0.55))] md:text-sm",
                                 convo.unread_count > 0 &&
                                   "font-semibold text-[var(--messages-text,#0f172a)]",
                               )}
@@ -1005,14 +1028,20 @@ export default function MessagesPage() {
                               {convo.last_message.sender_id === user?.id
                                 ? t("messagesPage.youPrefix")
                                 : ""}
-                              {convo.last_message.attachment_type
+                              {convo.last_message.attachment_type === "deleted"
+                                ? t("messagesPage.messageDeleted", {
+                                    defaultValue: "This message was deleted",
+                                  })
+                                : convo.last_message.attachment_type
                                 ? convo.last_message.attachment_type ===
                                   "image"
                                   ? t("messagesPage.photo")
                                   : convo.last_message.attachment_name ||
                                     t("messagesPage.file")
                                 : trimPreviewNoise(
-                                    convo.last_message.body,
+                                    chatContactPreview(
+                                      convo.last_message.body,
+                                    ) ?? convo.last_message.body,
                                   )}
                             </p>
                           )}
@@ -1034,7 +1063,13 @@ export default function MessagesPage() {
                       </div>
                       <div className="flex shrink-0 flex-col items-end justify-center gap-1 self-center">
                         {convo.last_message ? (
-                          <span className="whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
+                          <span
+                            className={cn(
+                              "whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground",
+                              convo.unread_count > 0 &&
+                                "font-semibold text-orange-600 dark:text-orange-400",
+                            )}
+                          >
                             {formatTime(convo.last_message.created_at)}
                           </span>
                         ) : null}
@@ -1164,7 +1199,7 @@ export default function MessagesPage() {
       {/* Chat Area - Right Side */}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-hidden",
+          "flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-3xl md:border md:border-orange-100/70 md:bg-white md:shadow-sm dark:md:border-orange-900/25 dark:md:bg-zinc-950",
           mobileView === "chat" ? "flex" : "hidden md:flex",
         )}
       >
@@ -1191,8 +1226,17 @@ export default function MessagesPage() {
                   initials={otherInitials}
                   photoUrl={otherUserProfile?.photo_url}
                   isVerified={Boolean(otherUserProfile?.is_verified)}
-                  isLive24h={chatAvatarStatus.isLive24h}
-                  hasPostedRequest={chatAvatarStatus.hasPostedRequest}
+                  isLive24h={
+                    otherUserProfile?.is_admin === true
+                      ? false
+                      : chatAvatarStatus.isLive24h
+                  }
+                  hasPostedRequest={
+                    otherUserProfile?.is_admin === true
+                      ? false
+                      : chatAvatarStatus.hasPostedRequest
+                  }
+                  isAdmin={otherUserProfile?.is_admin === true}
                   preview={
                     otherUserProfile
                       ? {

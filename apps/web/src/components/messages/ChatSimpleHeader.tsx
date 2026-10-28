@@ -27,6 +27,7 @@ type ChatSimpleHeaderProps = {
   isVerified?: boolean;
   isLive24h?: boolean;
   hasPostedRequest?: boolean;
+  isAdmin?: boolean;
   onBack?: () => void;
   showBackButton?: boolean;
   className?: string;
@@ -42,14 +43,13 @@ export function ChatSimpleHeader({
   isVerified = false,
   isLive24h = false,
   hasPostedRequest = false,
+  isAdmin = false,
   onBack,
   showBackButton = false,
   className,
 }: ChatSimpleHeaderProps) {
   const { t } = useTranslation();
-  const statusLine = isLive24h
-    ? t("messagesPage.liveNow")
-    : preview?.city?.trim() || t("messagesPage.activeRecently");
+  const statusLine = isAdmin ? "" : isLive24h ? "Online" : "Busy";
 
   return (
     <header
@@ -75,7 +75,15 @@ export function ChatSimpleHeader({
 
       <div className="flex min-w-0 flex-1 items-center justify-start gap-3">
         <div className="relative inline-flex shrink-0 rounded-full">
-          {hasPostedRequest ? (
+          {isAdmin ? (
+            <Avatar className="h-14 w-14 bg-white shadow-sm ring-1 ring-slate-200">
+              <AvatarImage
+                src={photoUrl || undefined}
+                className="scale-[1.65] object-contain"
+              />
+              <AvatarFallback>TB</AvatarFallback>
+            </Avatar>
+          ) : hasPostedRequest ? (
             <span
               className="inline-flex shrink-0 rounded-full bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 p-[2px] dark:from-violet-300 dark:via-violet-500 dark:to-violet-800"
               aria-hidden
@@ -117,7 +125,14 @@ export function ChatSimpleHeader({
               </Avatar>
             </ChatParticipantProfilePeek>
           )}
-          {isLive24h ? <LiveAvatarDot /> : null}
+          {!isAdmin && isLive24h ? (
+            <LiveAvatarDot />
+          ) : !isAdmin ? (
+            <span
+              className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white bg-orange-500 shadow-sm dark:border-[#14161d]"
+              aria-label="Busy"
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0">
@@ -127,14 +142,16 @@ export function ChatSimpleHeader({
             </h2>
             {isVerified ? (
               <BadgeCheck
-                className="h-5 w-5 shrink-0 text-sky-400"
+                className="h-5 w-5 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
                 aria-label={t("messagesPage.verified")}
               />
             ) : null}
           </div>
-          <p className="truncate text-sm text-muted-foreground dark:text-slate-400">
-            {statusLine}
-          </p>
+          {statusLine ? (
+            <p className="truncate text-sm text-muted-foreground dark:text-slate-400">
+              {statusLine}
+            </p>
+          ) : null}
         </div>
       </div>
     </header>

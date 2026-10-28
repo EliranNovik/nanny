@@ -106,7 +106,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             location_lng,
             average_rating,
             total_ratings,
-            is_verified
+            is_verified,
+            is_admin
           )
         `,
         )
@@ -160,6 +161,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               average_rating?: number | null;
               total_ratings?: number | null;
               is_verified?: boolean | null;
+              is_admin?: boolean | null;
             }[]
           | {
               id: string;
@@ -171,6 +173,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               average_rating?: number | null;
               total_ratings?: number | null;
               is_verified?: boolean | null;
+              is_admin?: boolean | null;
             }
           | null;
       }[]) {
@@ -178,6 +181,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         const prof = Array.isArray(profRaw) ? profRaw[0] : profRaw;
         const authorId = String(prof?.id ?? row.user_id ?? "").trim();
         if (!authorId) continue;
+        if (prof?.is_admin === true) continue;
 
         if (excludeUserId && authorId === excludeUserId) {
           continue;
