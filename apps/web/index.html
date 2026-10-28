@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-W9PHLD7Q');</script>
-    <!-- End Google Tag Manager -->
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/brand-mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -28,7 +21,12 @@
     <meta property="og:site_name" content="Tebnu" />
     <meta property="og:title" content="Tebnu - Your Helper for Home &amp; Life" />
     <meta property="og:description" content="Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
-    <meta property="og:image" content="https://www.tebnu.com/brand-mark.png" />
+    <meta property="og:image" content="https://www.tebnu.com/ChatGPT%20Image%20Aug%2023,%202026%20at%2011_08_39%20AM.png" />
+    <meta property="og:image:secure_url" content="https://www.tebnu.com/ChatGPT%20Image%20Aug%2023,%202026%20at%2011_08_39%20AM.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1536" />
+    <meta property="og:image:height" content="864" />
+    <meta property="og:image:alt" content="Tebnu local help community" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="he_IL" />
     <meta property="og:locale:alternate" content="fr_FR" />
@@ -36,7 +34,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Tebnu - Your Helper for Home &amp; Life" />
     <meta name="twitter:description" content="Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby." />
-    <meta name="twitter:image" content="https://www.tebnu.com/brand-mark.png" />
+    <meta name="twitter:image" content="https://www.tebnu.com/ChatGPT%20Image%20Aug%2023,%202026%20at%2011_08_39%20AM.png" />
+    <meta name="twitter:image:alt" content="Tebnu local help community" />
 
     <script type="application/ld+json">
     {
@@ -82,13 +81,15 @@
     <title>Tebnu - Your Helper for Home & Life</title>
   </head>
   <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W9PHLD7Q"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
     <div id="root">
-      <!-- Replaced on React mount; shows the same logo as AppBootSplash until the bundle runs. -->
+      <!-- Replaced on React mount; mobile keeps the logo splash. Desktop skips it so landing paints immediately. -->
+      <style>
+        @media (min-width: 768px) {
+          #boot-splash { display: none !important; }
+        }
+      </style>
       <div
+        id="boot-splash"
         style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:24px;box-sizing:border-box;"
       >
         <img

@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
+import { globalProfilePostShareUrl } from "@/lib/profilePostShare";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -148,7 +149,7 @@ function OwnAvailabilityPostCard({
   );
 
   const sharePost = useCallback(async () => {
-    const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
+    const url = globalProfilePostShareUrl(post.id);
     const title = post.title;
     const text =
       [post.note, post.body].find((t) => t && String(t).trim()) || title;

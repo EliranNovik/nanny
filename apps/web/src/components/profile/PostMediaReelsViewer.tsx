@@ -965,6 +965,8 @@ export function PostMediaReelsViewer({
       postId,
       authorName: slide.authorName,
       caption: slide.caption,
+      title: slide.title,
+      body: slide.description,
       mediaUrl: slide.mediaUrl,
       mediaType: slide.mediaType,
     });

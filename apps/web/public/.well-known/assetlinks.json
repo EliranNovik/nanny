@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tebnu.app",
+      "sha256_cert_fingerprints": [
+        "CB:E1:23:0A:AD:F0:C5:D9:82:EF:84:21:3A:A3:84:E2:77:57:78:49:81:32:15:2A:DB:11:ED:D8:95:E0:23:22"
+      ]
+    }
+  }
+]

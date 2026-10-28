@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "W9D3988J2Z.com.tebnu.app",
+        "components": [
+          {
+            "/": "/profile/*",
+            "comment": "Public Tebnu profiles"
+          },
+          {
+            "/": "/posts/*",
+            "comment": "Tebnu posts and offers"
+          },
+          {
+            "/": "/requests/*",
+            "comment": "Tebnu help requests"
+          }
+        ]
+      }
+    ]
+  }
+}

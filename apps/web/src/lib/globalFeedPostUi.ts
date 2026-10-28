@@ -1,5 +1,9 @@
 import type { TFunction } from "i18next";
 import { format, parseISO } from "date-fns";
+import en from "@/i18n/locales/en.json";
+import fr from "@/i18n/locales/fr.json";
+import he from "@/i18n/locales/he.json";
+import ru from "@/i18n/locales/ru.json";
 import { haversineDistanceKm } from "@/lib/geo";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
@@ -12,6 +16,11 @@ import {
   isServiceCategoryId,
   otherHelpSubcategoryLabel,
 } from "@/lib/serviceCategories";
+import {
+  listingCityPart,
+  listingWhenLabel,
+  localizedListingTitle,
+} from "@/lib/localizedListingCopy";
 import {
   requestPostAccentTextClass,
   requestPostBadgeMobileClass,
@@ -254,22 +263,38 @@ export function feedPostTitle(
 ): string | null {
   const typeId = feedPostTypeId(post);
   const isHelpRequest = typeId === "request_help" || post.source === "job_request";
-  const customCategory = feedPostCustomCategory(post);
   const trimmedCategory = categoryLabel?.trim() || "";
+  const isOffer = typeId === "offer_service";
 
-  // Other-help subcategories must use the subcategory label, not generic "Other".
-  if (trimmedCategory && customCategory) {
-    if (isHelpRequest) {
-      return t("feed.global.categoryHelpTitle", { category: trimmedCategory });
-    }
-    if (typeId === "offer_service") return trimmedCategory;
+  if (isHelpRequest || isOffer) {
+    const timeframe =
+      typeof post.post_metadata?.timeframe === "string"
+        ? post.post_metadata.timeframe
+        : null;
+    const customWhen =
+      typeof post.post_metadata?.custom_when === "string"
+        ? post.post_metadata.custom_when
+        : null;
+    const location = feedLocationDisplayLabel(
+      t,
+      listingCityPart(feedPostLocationAddress(post)),
+    );
+    const rebuilt = localizedListingTitle(t, {
+      kind: isOffer ? "offer" : "request",
+      categoryLabel: trimmedCategory,
+      when: isHelpRequest ? listingWhenLabel(t, timeframe, customWhen) : "",
+      location,
+    });
+    if (rebuilt) return rebuilt;
   }
-
-  if (generatedCopy?.title?.trim()) return generatedCopy.title.trim();
 
   if (post.source === "post" && post.post_type_id === "event") {
     const name = post.post_metadata?.event_name;
     if (typeof name === "string" && name.trim()) return name.trim();
+  }
+
+  if (generatedCopy?.title?.trim() && !isHelpRequest && !isOffer) {
+    return generatedCopy.title.trim();
   }
 
   if (isHelpRequest && trimmedCategory) {
@@ -408,6 +433,186 @@ function feedLocationSlug(part: string): string {
     .replace(/^_|_$/g, "");
 }
 
+function foldLocationPart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[''`ʼʹ׳]/g, "")
+    .replace(/[-–—־]/g, " ")
+    .replace(/[^a-z0-9\u0400-\u04ff\u0590-\u05ff]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+type LocationAliasHit =
+  | { kind: "country" }
+  | { kind: "city"; slug: string }
+  | { kind: "district"; slug: string };
+
+type LocationAlias = { folded: string; hit: LocationAliasHit };
+
+const CITY_NAME_EXTRAS: Record<string, readonly string[]> = {
+  tel_aviv: [
+    "Tel Aviv-Yafo",
+    "Tel Aviv Yafo",
+    "Tel-Aviv-Yafo",
+    "Tel Aviv Jaffa",
+    "תל אביב-יפו",
+    "תל אביב יפו",
+    "Тель-Авив-Яффо",
+    "Тель Авив Яффо",
+  ],
+  beer_sheva: ["Beersheba", "Be'er Sheva", "Beer Sheba", "Beersheva"],
+  netanya: ["Natanya", "Nétanya"],
+  rishon_lezion: ["Rishon Lezion", "Rishon Le Zion", "Rishon-LeZion"],
+  petah_tikva: ["Petach Tikva", "Petah Tiqwa", "Petah-Tikva"],
+  raanana: ["Raanana"],
+};
+
+const DISTRICT_NAME_EXTRAS: Record<string, readonly string[]> = {
+  central: [
+    "Central District of Israel",
+    "Center District",
+    "Centre District",
+    "District Centre",
+    "District Center",
+    "District of Central Israel",
+    "Центральный округ Израиля",
+    "Округ Центр",
+    "המרכז",
+  ],
+  north: [
+    "North District",
+    "District North",
+    "District du Nord",
+    "Северный округ Израиля",
+    "הצפון",
+  ],
+  south: [
+    "South District",
+    "District South",
+    "District du Sud",
+    "Южный округ Израиля",
+    "הדרום",
+  ],
+  haifa: ["District of Haifa", "District de Haïfa"],
+  jerusalem: ["District of Jerusalem", "District de Jérusalem"],
+  tel_aviv: [
+    "Tel Aviv-Yafo District",
+    "Tel Aviv Yafo District",
+    "District de Tel Aviv",
+    "District de Tel-Aviv",
+  ],
+  judea_samaria: ["Judea and Samaria Area", "West Bank", "מחוז יהודה ושומרון"],
+};
+
+const COUNTRY_NAME_EXTRAS = [
+  "State of Israel",
+  "מדינת ישראל",
+  "Государство Израиль",
+  "État d'Israël",
+];
+
+const CITY_TRAILING_OK = new Set(["yafo", "jaffa", "yaffo", "יפו", "яффо"]);
+
+const LOCATION_BUNDLES = [en, fr, he, ru].map((bundle) => bundle.feed.location);
+
+let locationAliases: LocationAlias[] | null = null;
+
+function locationAliasTable(): LocationAlias[] {
+  if (locationAliases) return locationAliases;
+
+  const aliases: LocationAlias[] = [];
+  const push = (label: string | null | undefined, hit: LocationAliasHit) => {
+    const folded = label ? foldLocationPart(label) : "";
+    if (!folded) return;
+    aliases.push({ folded, hit });
+  };
+
+  for (const bundle of LOCATION_BUNDLES) {
+    push(bundle.countryIsrael, { kind: "country" });
+  }
+  for (const extra of COUNTRY_NAME_EXTRAS) {
+    push(extra, { kind: "country" });
+  }
+
+  const citySlugs = new Set<string>();
+  for (const bundle of LOCATION_BUNDLES) {
+    for (const slug of Object.keys(bundle.cities)) {
+      citySlugs.add(slug);
+    }
+  }
+  for (const slug of citySlugs) {
+    for (const bundle of LOCATION_BUNDLES) {
+      const label = bundle.cities[slug as keyof typeof bundle.cities];
+      push(label, { kind: "city", slug });
+    }
+    for (const extra of CITY_NAME_EXTRAS[slug] ?? []) {
+      push(extra, { kind: "city", slug });
+    }
+    push(slug.replace(/_/g, " "), { kind: "city", slug });
+  }
+
+  const districtSlugs = new Set<string>();
+  for (const bundle of LOCATION_BUNDLES) {
+    for (const slug of Object.keys(bundle.districts ?? {})) {
+      districtSlugs.add(slug);
+    }
+  }
+  for (const slug of districtSlugs) {
+    for (const bundle of LOCATION_BUNDLES) {
+      const districts = bundle.districts as Record<string, string> | undefined;
+      push(districts?.[slug], { kind: "district", slug });
+    }
+    for (const extra of DISTRICT_NAME_EXTRAS[slug] ?? []) {
+      push(extra, { kind: "district", slug });
+    }
+    push(slug.replace(/_/g, " "), { kind: "district", slug });
+  }
+
+  aliases.sort((a, b) => b.folded.length - a.folded.length);
+  locationAliases = aliases;
+  return aliases;
+}
+
+function resolveLocationPart(part: string): LocationAliasHit | null {
+  const folded = foldLocationPart(part);
+  if (!folded) return null;
+
+  const aliases = locationAliasTable();
+  const exact = aliases.find((entry) => entry.folded === folded);
+  if (exact) return exact.hit;
+
+  for (const entry of aliases) {
+    if (!folded.startsWith(`${entry.folded} `)) continue;
+    const rest = folded.slice(entry.folded.length).trim();
+    if (entry.hit.kind === "district") return entry.hit;
+    if (entry.hit.kind === "city" && CITY_TRAILING_OK.has(rest)) return entry.hit;
+  }
+  return null;
+}
+
+function translateLocationPart(t: TFunction, part: string): string {
+  const hit = resolveLocationPart(part);
+  if (hit?.kind === "country") return t("feed.location.countryIsrael");
+  if (hit?.kind === "city") {
+    return t(`feed.location.cities.${hit.slug}`, { defaultValue: part });
+  }
+  if (hit?.kind === "district") {
+    return t(`feed.location.districts.${hit.slug}`, { defaultValue: part });
+  }
+
+  const slug = feedLocationSlug(part);
+  if (slug) {
+    const city = t(`feed.location.cities.${slug}`, { defaultValue: "" });
+    if (city) return city;
+    if (/^israel$/i.test(part)) return t("feed.location.countryIsrael");
+  }
+  return part;
+}
+
 export function feedRateTypeLabel(t: TFunction, rateType?: string | null): string {
   return rateType === "per_hour"
     ? t("feed.budget.perHour")
@@ -419,7 +624,6 @@ export function feedLocationDisplayLabel(
   location?: string | null,
 ): string {
   if (!location?.trim()) return "";
-  const localizedCountry = t("feed.location.countryIsrael");
   const parts = location
     .trim()
     .split(",")
@@ -427,14 +631,7 @@ export function feedLocationDisplayLabel(
     .filter(Boolean);
   if (parts.length === 0) return location.trim();
 
-  return parts
-    .map((part) => {
-      if (/^israel$/i.test(part)) return localizedCountry;
-      const slug = feedLocationSlug(part);
-      if (!slug) return part;
-      return t(`feed.location.cities.${slug}`, { defaultValue: part });
-    })
-    .join(", ");
+  return parts.map((part) => translateLocationPart(t, part)).join(", ");
 }
 
 function feedEventDateTimeLabel(

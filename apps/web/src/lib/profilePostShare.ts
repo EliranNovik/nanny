@@ -7,6 +7,7 @@ import {
 import { formatShareMessageText } from "@/lib/shareLandingMeta";
 
 export const GLOBAL_POSTS_PATH = "/community/feed";
+export const TEBNU_PUBLIC_ORIGIN = "https://www.tebnu.com";
 
 const DEFAULT_CAPTION_MAX = 140;
 
@@ -45,9 +46,7 @@ export function globalProfilePostFeedPath(postId: string): string {
 
 /** Canonical share URL for a profile post (matches mobile app). */
 export function globalProfilePostShareUrl(postId: string): string {
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${globalProfilePostSharePath(postId)}`;
+  return `${TEBNU_PUBLIC_ORIGIN}${globalProfilePostSharePath(postId)}`;
 }
 
 /** Plain-text caption trimmed for share sheets and link previews. */
@@ -79,14 +78,29 @@ export type ProfilePostSharePayload = {
   files?: File[];
 };
 
-async function imageFileForShare(mediaUrl: string): Promise<File | null> {
+function shareImageFilename(title: string, mimeType: string): string {
+  const base =
+    title
+      .normalize("NFKD")
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 70) || "tebnu-post";
+  const ext = mimeType.includes("png") ? "png" : "jpg";
+  return `${base}.${ext}`;
+}
+
+async function imageFileForShare(
+  mediaUrl: string,
+  title: string,
+): Promise<File | null> {
   try {
     const res = await fetch(mediaUrl);
     if (!res.ok) return null;
     const blob = await res.blob();
     if (!blob.type.startsWith("image/")) return null;
-    const ext = blob.type.includes("png") ? "png" : "jpg";
-    return new File([blob], `post.${ext}`, { type: blob.type || "image/jpeg" });
+    return new File([blob], shareImageFilename(title, blob.type), {
+      type: blob.type || "image/jpeg",
+    });
   } catch {
     return null;
   }
@@ -115,7 +129,7 @@ export async function buildProfilePostSharePayload(
   const payload: ProfilePostSharePayload = { url, title, text };
 
   if (input.mediaType === "image" && input.mediaUrl) {
-    const file = await imageFileForShare(input.mediaUrl);
+    const file = await imageFileForShare(input.mediaUrl, title);
     if (file && navigator.canShare?.({ files: [file] })) {
       payload.files = [file];
     }

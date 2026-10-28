@@ -19,6 +19,7 @@ import {
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { listingUserNotes } from "@/lib/localizedListingCopy";
 import { globalJobRequestFeedPath } from "@/lib/jobRequestShare";
 import {
   globalProfilePostFeedPath,
@@ -327,7 +328,13 @@ function mapProfilePost(row: ProfilePostRow, profile?: ProfileRow): LandingActiv
     row.custom_category;
   const name = profile?.full_name ?? "Member";
   const description =
-    clampText(generated?.short_text ?? row.caption) ||
+    clampText(
+      listingUserNotes(
+        row.caption,
+        generated?.short_text,
+        generated?.title,
+      ),
+    ) ||
     (kind === "request" ? "Looking for help nearby." : "Offering help nearby.");
 
   const media = profilePostMedia(row.storage_path, row.media_type);

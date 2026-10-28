@@ -13,6 +13,17 @@ import {
 } from "@/lib/serviceCategories";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
 import { requestPostWhenNowBadgeClass } from "@/lib/requestPostTheme";
+import type { TFunction } from "i18next";
+import {
+  joinListingLeadAndNotes,
+  listingCityPart,
+  listingDurationLabel,
+  listingWhenLabel,
+  localizedListingBody,
+  localizedListingTitle,
+} from "@/lib/localizedListingCopy";
+import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
+import { postServiceCategoryLabel } from "@/lib/serviceCategories";
 
 export function prettyDurationLabel(label: string | null | undefined): string | null {
   if (!label) return null;
@@ -136,16 +147,35 @@ export function serviceCategoryTitle(serviceType: string | null | undefined): st
   return s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Help request";
 }
 
-export function openHelpRequestTitle(job: {
-  service_type?: string | null;
-  location_city?: string | null;
-  when_timeframe?: string | null;
-  ai_generated_copy?: unknown;
-  notes?: string | null;
-}): string {
-  const generated = parseGeneratedPostCopy(job.ai_generated_copy);
-  if (generated?.title) return generated.title;
+export function openHelpRequestTitle(
+  job: {
+    service_type?: string | null;
+    location_city?: string | null;
+    when_timeframe?: string | null;
+    custom_when_at?: string | null;
+    service_details?: Record<string, unknown> | null;
+    ai_generated_copy?: unknown;
+    notes?: string | null;
+  },
+  t?: TFunction,
+): string {
+  if (t) {
+    const customCategory =
+      typeof job.service_details?.other_type === "string"
+        ? job.service_details.other_type
+        : typeof job.service_details?.custom_category === "string"
+          ? job.service_details.custom_category
+          : null;
+    const rebuilt = localizedListingTitle(t, {
+      kind: "request",
+      categoryLabel: postServiceCategoryLabel(job.service_type, customCategory),
+      when: listingWhenLabel(t, job.when_timeframe, job.custom_when_at),
+      location: feedLocationDisplayLabel(t, listingCityPart(job.location_city)),
+    });
+    if (rebuilt) return rebuilt;
+  }
 
+  const generated = parseGeneratedPostCopy(job.ai_generated_copy);
   const service = serviceCategoryTitle(job.service_type ?? null).toLowerCase();
   const city = (job.location_city || "").trim();
   const when = job.when_timeframe as RequestHelpTimeframe | null | undefined;
@@ -155,18 +185,50 @@ export function openHelpRequestTitle(job: {
   if (when === "tomorrow" && city) return `Need ${service} help tomorrow in ${city}`;
   if (when === "this_week" && city) return `Need ${service} this week in ${city}`;
   if (city) return `Need ${service} in ${city}`;
-  return serviceCategoryTitle(job.service_type ?? null);
+  return generated?.title?.trim() || serviceCategoryTitle(job.service_type ?? null);
 }
 
-export function openHelpRequestDescription(job: {
-  notes?: string | null;
-  service_details?: Record<string, unknown> | null;
-  ai_generated_copy?: unknown;
-}): string | null {
-  const generated = parseGeneratedPostCopy(job.ai_generated_copy);
-  if (generated?.short_text) return generated.short_text;
+export function openHelpRequestDescription(
+  job: {
+    notes?: string | null;
+    service_details?: Record<string, unknown> | null;
+    ai_generated_copy?: unknown;
+    service_type?: string | null;
+    location_city?: string | null;
+    when_timeframe?: string | null;
+    custom_when_at?: string | null;
+    time_duration?: string | null;
+    budget_min?: number | null;
+    budget_max?: number | null;
+    budget_rate_type?: string | null;
+  },
+  t?: TFunction,
+): string | null {
+  const notes = job.notes?.trim() || null;
+  if (t) {
+    const customCategory =
+      typeof job.service_details?.other_type === "string"
+        ? job.service_details.other_type
+        : typeof job.service_details?.custom_category === "string"
+          ? job.service_details.custom_category
+          : null;
+    const budget = formatOpenHelpRequestBudget(job);
+    return (
+      joinListingLeadAndNotes(
+        localizedListingBody(t, {
+          kind: "request",
+          categoryId: job.service_type,
+          categoryLabel: postServiceCategoryLabel(job.service_type, customCategory),
+          when: listingWhenLabel(t, job.when_timeframe, job.custom_when_at),
+          location: feedLocationDisplayLabel(t, listingCityPart(job.location_city)),
+          duration: listingDurationLabel(t, job.time_duration),
+          budget,
+        }),
+        notes,
+      ) || notes
+    );
+  }
 
-  const notes = job.notes?.trim();
   if (notes) return notes;
 
   const sd = job.service_details;

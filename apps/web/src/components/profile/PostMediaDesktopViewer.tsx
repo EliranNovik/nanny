@@ -288,6 +288,8 @@ export function PostMediaDesktopViewer({
         postId,
         authorName: slide.authorName,
         caption: slide.caption,
+        title: slide.title,
+        body: slide.text,
         mediaUrl: slide.mediaUrl,
         mediaType: slide.mediaType,
       });

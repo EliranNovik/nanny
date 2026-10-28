@@ -32,7 +32,7 @@ import {
 } from "@/components/jobs/jobCardSharedClasses";
 import { discoverRequestCardCarouselShellClass } from "@/components/discover/discoverRequestCarouselCardShared";
 import { DiscoverRequestHeroPlaceholder } from "@/components/discover/DiscoverRequestHeroWaves";
-import { feedWhenExpiredOnLabel } from "@/lib/globalFeedPostUi";
+import { feedLocationDisplayLabel, feedWhenExpiredOnLabel } from "@/lib/globalFeedPostUi";
 import {
   categoryIconCircleClass,
   formatOpenHelpRequestBudget,
@@ -451,8 +451,8 @@ export function DiscoverOpenHelpRequestCard({
   layout = "default",
 }: Props) {
   const { t } = useTranslation();
-  const title = openHelpRequestTitle(row);
-  const description = openHelpRequestDescription(row);
+  const title = openHelpRequestTitle(row, t);
+  const description = openHelpRequestDescription(row, t);
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
@@ -501,7 +501,7 @@ export function DiscoverOpenHelpRequestCard({
   };
 
   if (layout === "carousel") {
-    const city = (row.location_city || "").trim();
+    const city = feedLocationDisplayLabel(t, row.location_city);
     const when = postedLabel ? compactPostedLabel(postedLabel) : "";
     const metaLine = [city, when].filter(Boolean).join(" · ");
     const photoSrc = resolveClientPhotoUrl(row.client_photo_url);
@@ -809,7 +809,7 @@ export function DiscoverMyOpenRequestCard({
   layout?: "default" | "carousel";
 }) {
   const { t, i18n } = useTranslation();
-  const description = openHelpRequestDescription(row);
+  const description = openHelpRequestDescription(row, t);
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
@@ -822,7 +822,7 @@ export function DiscoverMyOpenRequestCard({
   const heroImageUrl = jobAttachmentImageUrls({
     service_details: row.service_details ?? undefined,
   })[0] ?? null;
-  const requestTitle = openHelpRequestDescription(row) || openHelpRequestTitle(row);
+  const requestTitle = openHelpRequestDescription(row, t) || openHelpRequestTitle(row, t);
   const expired = isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at);
 
   const articleProps = {
@@ -1040,7 +1040,7 @@ export function DiscoverMyOpenRequestCard({
               {row.location_city ? (
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin className={discoverMyRequestMetaIconClass} aria-hidden />
-                  {row.location_city}
+                  {feedLocationDisplayLabel(t, row.location_city)}
                 </span>
               ) : null}
               {detailLine ? (
@@ -1138,7 +1138,7 @@ export function DiscoverMyLiveHelpCard({
   categoryIconTone?: "green" | "orange";
 }) {
   const { t } = useTranslation();
-  const description = openHelpRequestDescription(row);
+  const description = openHelpRequestDescription(row, t);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
   const photoSrc = resolveClientPhotoUrl(otherPartyPhotoUrl);
@@ -1229,7 +1229,9 @@ export function DiscoverMyLiveHelpCard({
               {row.location_city ? (
                 <span className="inline-flex min-w-0 max-w-full items-center gap-1">
                   <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span className="truncate">{row.location_city}</span>
+                  <span className="truncate">
+                    {feedLocationDisplayLabel(t, row.location_city)}
+                  </span>
                 </span>
               ) : null}
               <span className="inline-flex min-w-0 items-center gap-1">
@@ -1274,7 +1276,7 @@ export function DiscoverMyLiveHelpCard({
             {row.location_city ? (
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                {row.location_city}
+                {feedLocationDisplayLabel(t, row.location_city)}
               </span>
             ) : null}
             <span className="inline-flex items-center gap-1.5">

@@ -42,10 +42,10 @@ import {
 } from "@/lib/communityFeedNav";
 import {
   feedCategoryLabel,
+  feedLocationDisplayLabel,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
 } from "@/lib/globalFeedPostUi";
-import { useTheme } from "@/context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
 import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
@@ -394,13 +394,28 @@ export default function LandingPage() {
   }, []);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { theme } = useTheme();
-  const isDarkTheme = theme === "dark";
+  const isDarkTheme = false;
+  useEffect(() => {
+    const root = document.documentElement;
+    const restoreDark = root.classList.contains("dark");
+    const previousColorScheme = root.style.colorScheme;
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    return () => {
+      if (restoreDark) root.classList.add("dark");
+      root.style.colorScheme = previousColorScheme;
+    };
+  }, []);
   const buttonsRef = useRef<HTMLDivElement>(null);
   const mobileHeroButtonsRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
-  const showcaseRef = useRef<HTMLDivElement>(null);
+  const showcaseSwipeRef = useRef({
+    startX: 0,
+    pointerId: null as number | null,
+    dragged: false,
+  });
+  const showcaseWheelLockRef = useRef(false);
   const heroRef = useRef<HTMLElement>(null);
   const [heroScrolledPast, setHeroScrolledPast] = useState(false);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
@@ -431,6 +446,54 @@ export default function LandingPage() {
     };
   };
   const activeExperience = experienceCopy(showcaseCategories[activeCategoryIndex].id);
+
+  function stepShowcase(direction: -1 | 1) {
+    setActiveCategoryIndex(
+      (index) =>
+        (index + direction + showcaseCategories.length) %
+        showcaseCategories.length,
+    );
+  }
+
+  function onShowcasePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("button")) return;
+    showcaseSwipeRef.current = {
+      startX: event.clientX,
+      pointerId: event.pointerId,
+      dragged: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onShowcasePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const swipe = showcaseSwipeRef.current;
+    if (swipe.pointerId !== event.pointerId) return;
+    if (Math.abs(event.clientX - swipe.startX) > 12) swipe.dragged = true;
+  }
+
+  function onShowcasePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const swipe = showcaseSwipeRef.current;
+    if (swipe.pointerId !== event.pointerId) return;
+    const dx = event.clientX - swipe.startX;
+    const dragged = swipe.dragged;
+    showcaseSwipeRef.current = { startX: 0, pointerId: null, dragged: false };
+    if (!dragged || Math.abs(dx) < 48) return;
+    event.preventDefault();
+    stepShowcase(dx < 0 ? 1 : -1);
+  }
+
+  function onShowcaseWheel(event: React.WheelEvent<HTMLDivElement>) {
+    if (Math.abs(event.deltaX) < 24 || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) {
+      return;
+    }
+    event.preventDefault();
+    if (showcaseWheelLockRef.current) return;
+    showcaseWheelLockRef.current = true;
+    stepShowcase(event.deltaX > 0 ? 1 : -1);
+    window.setTimeout(() => {
+      showcaseWheelLockRef.current = false;
+    }, 420);
+  }
 
   const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -531,6 +594,7 @@ export default function LandingPage() {
         hideBackButtonMobile
         heroOverlay
         heroOverlayScrolled={heroScrolledPast}
+        hideThemeToggle
         onBrandClick={() => setAboutOpen(true)}
       />
 
@@ -768,7 +832,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Interactive Job Category Showcase — equal cards, horizontal scroll */}
+        {/* Interactive Job Category Showcase — centered 3-up carousel */}
         <section className="w-full scroll-reveal pt-32 pb-24 opacity-0 transition-all delay-300 duration-1000 translate-y-10 md:pt-40">
           <div className="mb-10 space-y-4 px-5 text-center sm:px-8 lg:px-12 xl:px-16">
             <h2 className="text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-zinc-50 md:text-6xl">
@@ -783,97 +847,167 @@ export default function LandingPage() {
 
           <div className="relative flex w-full flex-col items-center">
             <div className="relative w-full">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Scroll categories left"
-                className="absolute left-3 top-1/2 z-30 h-9 w-9 -translate-y-1/2 rounded-full border-0 bg-white/55 text-slate-900 shadow-none ring-0 backdrop-blur-xl backdrop-saturate-150 transition-all hover:bg-white/70 active:scale-95 dark:bg-zinc-800/70 dark:text-zinc-100 dark:hover:bg-zinc-700/80 sm:left-6 sm:h-10 sm:w-10 md:left-8 md:h-12 md:w-12 lg:left-10"
-                onClick={() => scrollLeft(showcaseRef)}
-              >
-                <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
-              </Button>
+              <div className="relative mx-auto w-full max-w-[90rem] px-4 sm:px-8">
+                <div
+                  className="flex cursor-grab items-center justify-center gap-3 select-none touch-pan-y active:cursor-grabbing sm:gap-4 md:gap-5 lg:gap-6"
+                  onPointerDown={onShowcasePointerDown}
+                  onPointerMove={onShowcasePointerMove}
+                  onPointerUp={onShowcasePointerUp}
+                  onPointerCancel={onShowcasePointerUp}
+                  onWheel={onShowcaseWheel}
+                >
+                  {(() => {
+                    const count = showcaseCategories.length;
+                    const slots = [
+                      {
+                        idx: (activeCategoryIndex - 1 + count) % count,
+                        role: "left" as const,
+                      },
+                      { idx: activeCategoryIndex, role: "center" as const },
+                      {
+                        idx: (activeCategoryIndex + 1) % count,
+                        role: "right" as const,
+                      },
+                    ];
+                    return slots.map(({ idx, role }) => {
+                      const cat = showcaseCategories[idx];
+                      const isCenter = role === "center";
+                      const copy = experienceCopy(cat.id);
+                      return (
+                        <div
+                          key={`${role}-${cat.id}`}
+                          role={isCenter ? undefined : "button"}
+                          tabIndex={isCenter ? undefined : 0}
+                          onClick={
+                            isCenter
+                              ? undefined
+                              : () => {
+                                  if (showcaseSwipeRef.current.dragged) return;
+                                  setActiveCategoryIndex(idx);
+                                }
+                          }
+                          onKeyDown={
+                            isCenter
+                              ? undefined
+                              : (event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    setActiveCategoryIndex(idx);
+                                  }
+                                }
+                          }
+                          className={cn(
+                            "group relative overflow-hidden rounded-[1.75rem] bg-slate-100 text-left shadow-[0_24px_48px_-16px_rgba(0,0,0,0.28)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                            isCenter
+                              ? "z-20 w-[min(72vw,28rem)] sm:w-[30rem] md:w-[32rem] lg:w-[34rem]"
+                              : "z-10 w-[min(28vw,15rem)] cursor-pointer sm:w-[16.5rem] md:w-[18rem] lg:w-[20rem]",
+                          )}
+                        >
+                          <div className="relative aspect-[4/3] w-full">
+                            {cat.id === "special_video" ? (
+                              <video
+                                autoPlay={isCenter}
+                                loop
+                                muted
+                                playsInline
+                                ref={(el) => {
+                                  if (!el) return;
+                                  if (isCenter) void el.play();
+                                  else el.pause();
+                                }}
+                                className="h-full w-full object-cover object-center"
+                              >
+                                <source
+                                  src="/videos/promo-video.mp4"
+                                  type="video/mp4"
+                                />
+                              </video>
+                            ) : (
+                              <img
+                                src={cat.image}
+                                alt={copy.title}
+                                className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                              />
+                            )}
 
-              <div
-                ref={showcaseRef}
-                className="flex w-full snap-x snap-mandatory items-center gap-5 overflow-x-auto scroll-smooth overscroll-x-contain py-3 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
-              >
-                {showcaseCategories.map((cat, idx) => {
-                  const isActive = idx === activeCategoryIndex;
-                  const copy = experienceCopy(cat.id);
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={(e) => {
-                        setActiveCategoryIndex(idx);
-                        e.currentTarget.scrollIntoView({
-                          behavior: "smooth",
-                          inline: "center",
-                          block: "nearest",
-                        });
-                      }}
-                      className={cn(
-                        "group relative shrink-0 snap-start overflow-hidden rounded-[1.75rem] bg-slate-100 text-left shadow-[0_24px_48px_-16px_rgba(0,0,0,0.28)] transition-all duration-500",
-                        isActive
-                          ? "w-[min(90vw,32rem)] sm:w-[30rem] md:w-[32rem] md:ring-2 md:ring-primary md:ring-offset-2 lg:w-[34rem]"
-                          : "w-[min(86vw,28rem)] sm:w-[26rem] md:w-[28rem] lg:w-[30rem]",
-                      )}
-                    >
-                      <div className="relative aspect-[4/3] w-full">
-                        {cat.id === "special_video" ? (
-                          <video
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            className="h-full w-full object-cover object-center"
-                          >
-                            <source
-                              src="/videos/promo-video.mp4"
-                              type="video/mp4"
-                            />
-                          </video>
-                        ) : (
-                          <img
-                            src={cat.image}
-                            alt={copy.title}
-                            className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-                          />
-                        )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+                            {!isCenter ? (
+                              <div className="absolute inset-0 z-[12] bg-white/55 dark:bg-zinc-200/45" />
+                            ) : null}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
-
-                        <div className="absolute inset-x-4 bottom-4 z-20 sm:inset-x-6 sm:bottom-6">
-                          <div className="mb-1.5 flex items-center gap-2.5">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 p-3 text-white backdrop-blur-md">
-                              {React.cloneElement(
-                                cat.icon as React.ReactElement,
-                                { className: "h-full w-full text-white" },
-                              )}
+                            <div className="absolute inset-x-3 bottom-3 z-20 sm:inset-x-5 sm:bottom-5">
+                              <div className="mb-1.5 flex items-center gap-2.5">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 p-2.5 text-white backdrop-blur-md md:h-14 md:w-14 md:p-3">
+                                  {React.cloneElement(
+                                    cat.icon as React.ReactElement,
+                                    { className: "h-full w-full text-white" },
+                                  )}
+                                </div>
+                                <h3 className="text-lg font-black uppercase leading-none tracking-tighter text-white drop-shadow-md md:text-3xl">
+                                  {copy.title}
+                                </h3>
+                              </div>
+                              {isCenter ? (
+                                <p className="line-clamp-2 max-w-[70%] text-sm font-medium leading-snug text-white/90 drop-shadow-sm md:text-base">
+                                  {copy.blurb}
+                                </p>
+                              ) : null}
                             </div>
-                            <h3 className="text-2xl font-black uppercase leading-none tracking-tighter text-white drop-shadow-md md:text-3xl">
-                              {copy.title}
-                            </h3>
-                          </div>
-                          <p className="line-clamp-2 text-sm font-medium leading-snug text-white/90 drop-shadow-sm md:text-base">
-                            {copy.blurb}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Scroll categories right"
-                className="absolute right-3 top-1/2 z-30 h-9 w-9 -translate-y-1/2 rounded-full border-0 bg-white/55 text-slate-900 shadow-none ring-0 backdrop-blur-xl backdrop-saturate-150 transition-all hover:bg-white/70 active:scale-95 dark:bg-zinc-800/70 dark:text-zinc-100 dark:hover:bg-zinc-700/80 sm:right-6 sm:h-10 sm:w-10 md:right-8 md:h-12 md:w-12 lg:right-10"
-                onClick={() => scrollRight(showcaseRef)}
-              >
-                <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
-              </Button>
+                            {isCenter ? (
+                              <Button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleHiringHelper();
+                                }}
+                                className="absolute bottom-3 right-3 z-30 h-10 rounded-full bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:bg-primary/90 sm:bottom-5 sm:right-5 sm:h-11 sm:px-5"
+                              >
+                                {copy.cta}
+                              </Button>
+                            ) : null}
+
+                            {role === "left" ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Previous category"
+                                className="absolute right-2 top-1/2 z-30 h-10 w-10 -translate-y-1/2 rounded-full border-0 bg-white text-slate-900 shadow-lg shadow-slate-900/15 ring-1 ring-black/5 hover:scale-105 hover:bg-white active:scale-95 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-white/10 md:h-12 md:w-12"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setActiveCategoryIndex(
+                                    (index) =>
+                                      (index - 1 + showcaseCategories.length) %
+                                      showcaseCategories.length,
+                                  );
+                                }}
+                              >
+                                <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+                              </Button>
+                            ) : null}
+                            {role === "right" ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Next category"
+                                className="absolute left-2 top-1/2 z-30 h-10 w-10 -translate-y-1/2 rounded-full border-0 bg-white text-slate-900 shadow-lg shadow-slate-900/15 ring-1 ring-black/5 hover:scale-105 hover:bg-white active:scale-95 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-white/10 md:h-12 md:w-12"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setActiveCategoryIndex(
+                                    (index) =>
+                                      (index + 1) % showcaseCategories.length,
+                                  );
+                                }}
+                              >
+                                <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             </div>
 
             {/* Details Revealed Below Active Card */}
@@ -910,15 +1044,6 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-center border-t border-slate-200/50 pt-8 dark:border-zinc-800 sm:justify-start">
-                  <Button
-                    onClick={handleHiringHelper}
-                    size="lg"
-                    className="h-14 w-full rounded-2xl bg-primary px-10 text-lg font-bold text-white shadow-xl shadow-primary/20 transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 sm:w-auto"
-                  >
-                    {activeExperience.cta}
-                  </Button>
-                </div>
               </div>
             </div>
           </div>
@@ -929,7 +1054,8 @@ export default function LandingPage() {
           <Benefits />
         </div>
 
-        {/* Recent Activity — horizontal carousel */}
+        {/* Recent Activity is temporarily hidden from the landing page. */}
+        {false && (
         <div className="w-full pt-20 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 md:pt-28">
           <div className="mb-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
             <h2 className="text-2xl font-bold text-black dark:text-zinc-50 md:text-3xl">
@@ -971,8 +1097,10 @@ export default function LandingPage() {
             ) : (
               activityItems.slice(0, 12).map((item) => {
                 const typeId = landingActivityTypeId(item.kind);
-                const locationLabel =
-                  item.detailPoints.find((point) => point.kind === "location")?.value ?? null;
+                const locationLabel = feedLocationDisplayLabel(
+                  t,
+                  item.detailPoints.find((point) => point.kind === "location")?.value ?? null,
+                );
                 const detailPoints = landingVisibleDetailPoints(item.detailPoints)
                   .filter((point) => point.kind !== "location")
                   .slice(0, 2);
@@ -1164,6 +1292,7 @@ export default function LandingPage() {
             </div>
           ) : null}
         </div>
+        )}
 
         {/* About our helpers — full-width horizontal scroll on large screens */}
         <div className="w-full pt-32 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 md:pt-40">

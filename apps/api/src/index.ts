@@ -14,6 +14,7 @@ import {
 } from "./routes/linkPreview";
 import { ogProfilePostRouter } from "./routes/ogProfilePost";
 import { ogJobRequestRouter } from "./routes/ogJobRequest";
+import { ogPublicProfileRouter } from "./routes/ogPublicProfile";
 import { postsRouter } from "./routes/posts";
 import { contactRouter } from "./routes/contact";
 import { translateRouter } from "./routes/translate";
@@ -51,6 +52,7 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 // Public Open Graph HTML for shared profile posts and help requests
 app.use("/api/og", ogProfilePostRouter);
 app.use("/api/og", ogJobRequestRouter);
+app.use("/api/og", ogPublicProfileRouter);
 app.use("/api/contact", contactRouter);
 
 // Translation + push queue workers — cron secret only (no user JWT)

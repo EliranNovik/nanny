@@ -139,6 +139,7 @@ import {
 import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
 import {
   feedPostDescription,
+  feedLocationDisplayLabel,
   feedPostLocationAddress,
   feedPostLocationLine,
   feedPostPickupRoute,
@@ -163,6 +164,14 @@ import {
   shouldShowPostTypeCategorySubtitle,
   type ViewerLocation,
 } from "@/lib/globalFeedPostUi";
+import {
+  joinListingLeadAndNotes,
+  listingCityPart,
+  listingDurationLabel,
+  listingUserNotes,
+  listingWhenLabel,
+  localizedListingBody,
+} from "@/lib/localizedListingCopy";
 import {
   REQUEST_HELP_WHEN_OPTIONS,
   isRequestHelpWhenExpired,
@@ -415,39 +424,10 @@ function feedWhenLabel(
   return feedWhenDisplayLabel(t, metadata, createdAt, language);
 }
 
-function feedLocationSlug(part: string): string {
-  return part
-    .trim()
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "");
-}
-
 function feedRateTypeLabel(t: TFunction, rateType?: string | null): string {
   return rateType === "per_hour"
     ? t("feed.budget.perHour")
     : t("feed.budget.fixedPrice");
-}
-
-function feedLocationLabel(t: TFunction, location?: string | null): string {
-  if (!location?.trim()) return "";
-  const localizedCountry = t("feed.location.countryIsrael");
-  const parts = location
-    .trim()
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return location.trim();
-
-  return parts
-    .map((part) => {
-      if (/^israel$/i.test(part)) return localizedCountry;
-      const slug = feedLocationSlug(part);
-      if (!slug) return part;
-      return t(`feed.location.cities.${slug}`, { defaultValue: part });
-    })
-    .join(", ");
 }
 
 /** Renders the official Discover-home icon for a service category (cleaning → Sparkles, nanny → Baby, etc.). */
@@ -677,6 +657,19 @@ type CommentsPostPreview = {
 };
 
 function feedPostPreviewText(post: FeedPost): string | null {
+  const isListing =
+    post.source === "job_request" ||
+    post.post_type_id === "request_help" ||
+    post.post_type_id === "offer_service";
+  if (isListing) {
+    const notes = listingUserNotes(
+      post.caption,
+      post.ai_generated_copy?.short_text,
+      post.ai_generated_copy?.title,
+      post.source === "job_request" ? post.row?.notes : null,
+    );
+    return notes || null;
+  }
   const caption = post.caption?.trim();
   if (caption) return caption;
   if (post.source === "post" || post.source === "job_request") {
@@ -2414,7 +2407,7 @@ export function ComposeModal({
                     postLocation.lng != null ? (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{feedLocationLabel(t, postLocation.address)}</span>
+                        <span>{feedLocationDisplayLabel(t, postLocation.address)}</span>
                       </div>
                     ) : null}
                     {timeframe ? (
@@ -2469,7 +2462,7 @@ export function ComposeModal({
                     postLocation.lng != null ? (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{feedLocationLabel(t, postLocation.address)}</span>
+                        <span>{feedLocationDisplayLabel(t, postLocation.address)}</span>
                       </div>
                     ) : null}
                   </div>
@@ -4431,8 +4424,18 @@ function PostCard({
     post.source === "post" || post.source === "job_request"
       ? post.ai_generated_copy ?? null
       : null;
-  const captionSource =
-    post.caption != null && post.caption.trim().length > 0
+  const isGeneratedListing =
+    post.source === "job_request" ||
+    post.post_type_id === "request_help" ||
+    post.post_type_id === "offer_service";
+  const captionSource = isGeneratedListing
+    ? listingUserNotes(
+        post.caption,
+        generatedCopy?.short_text,
+        generatedCopy?.title,
+        post.source === "job_request" ? post.row?.notes : null,
+      )
+    : post.caption != null && post.caption.trim().length > 0
       ? post.caption
       : generatedCopy?.short_text?.trim()
         ? generatedCopy.short_text
@@ -4497,7 +4500,7 @@ function PostCard({
   const postLocationRaw = useMemo(() => {
     const address = feedPostLocationAddress(post);
     if (!address) return null;
-    return feedLocationLabel(t, address);
+    return feedLocationDisplayLabel(t, address);
   }, [post, t]);
 
   const postLocationLine = useMemo(() => {
@@ -4505,14 +4508,62 @@ function PostCard({
     return feedPostLocationLine(t, postLocationRaw, viewerLocation, post);
   }, [post, postLocationRaw, t, viewerLocation]);
 
+  const listingLead = useMemo(() => {
+    if (!isGeneratedListing) return "";
+    const timeframe =
+      typeof post.post_metadata?.timeframe === "string"
+        ? post.post_metadata.timeframe
+        : null;
+    const customWhen =
+      typeof post.post_metadata?.custom_when === "string"
+        ? post.post_metadata.custom_when
+        : null;
+    const durationRaw =
+      typeof post.post_metadata?.time_duration === "string"
+        ? post.post_metadata.time_duration
+        : null;
+    const budgetVal =
+      typeof post.post_metadata?.budget === "number"
+        ? post.post_metadata.budget
+        : null;
+    const rateType =
+      typeof post.post_metadata?.rate_type === "string"
+        ? post.post_metadata.rate_type
+        : null;
+    const budget =
+      budgetVal != null
+        ? `₪${budgetVal}${rateType === "per_hour" ? "/hr" : ""}`
+        : null;
+    return localizedListingBody(t, {
+      kind: postTypeId === "offer_service" ? "offer" : "request",
+      categoryId: serviceCategoryMeta?.id ?? null,
+      categoryLabel: serviceCategoryMeta?.label ?? "",
+      when:
+        postTypeId === "offer_service"
+          ? ""
+          : listingWhenLabel(t, timeframe, customWhen),
+      location: feedLocationDisplayLabel(
+        t,
+        listingCityPart(feedPostLocationAddress(post)),
+      ),
+      duration: listingDurationLabel(t, durationRaw),
+      budget,
+    });
+  }, [isGeneratedListing, post, postTypeId, serviceCategoryMeta, t]);
+
   const postTitle = useMemo(
     () => feedPostTitle(t, post, generatedCopy, serviceCategoryMeta?.label),
     [generatedCopy, post, serviceCategoryMeta?.label, t],
   );
 
   const postDescription = useMemo(
-    () => feedPostDescription(generatedCopy, effectiveCaption, postTitle),
-    [effectiveCaption, generatedCopy, postTitle],
+    () =>
+      feedPostDescription(
+        isGeneratedListing ? null : generatedCopy,
+        effectiveCaption,
+        postTitle,
+      ),
+    [effectiveCaption, generatedCopy, isGeneratedListing, postTitle],
   );
 
   async function handleShare() {
@@ -4609,21 +4660,30 @@ function PostCard({
   const postTranslation = useContentTranslation({
     contentKind: translateContentKind,
     contentId: post.id,
-    title: postTitle,
-    body: globalTextOnlyBody || postDescription || effectiveCaption || null,
+    title: isGeneratedListing ? null : postTitle,
+    body: effectiveCaption || null,
     enabled: post.source === "post" || post.source === "job_request",
     precomputed:
-      post.source === "post"
+      post.source === "post" && (!isGeneratedListing || Boolean(effectiveCaption.trim()))
         ? precomputedFromProfilePostOverlay(post.translation_overlay)
         : null,
   });
-  const displayPostTitle = postTranslation.displayTitle ?? postTitle;
-  const displayTextOnlyBody =
+  const displayPostTitle = isGeneratedListing
+    ? postTitle
+    : postTranslation.displayTitle ?? postTitle;
+  const translatedNotes =
     postTranslation.displayBody ??
     (globalTextOnlyBody || effectiveCaption || postDescription);
-  const displayPostDescription =
-    postTranslation.displayBody ??
-    (effectiveCaption.trim() ? effectiveCaption : postDescription);
+  const displayTextOnlyBody = isGeneratedListing
+    ? joinListingLeadAndNotes(listingLead, translatedNotes)
+    : translatedNotes;
+  const displayPostDescription = isGeneratedListing
+    ? joinListingLeadAndNotes(
+        listingLead,
+        postTranslation.displayBody ?? (effectiveCaption.trim() ? effectiveCaption : null),
+      )
+    : postTranslation.displayBody ??
+      (effectiveCaption.trim() ? effectiveCaption : postDescription);
   const displayPostTitleLayout = useMemo(
     () => (displayPostTitle ? bidirectionalTextProps(displayPostTitle) : null),
     [displayPostTitle],
@@ -4676,7 +4736,7 @@ function PostCard({
       source: post.source,
       postTypeId,
       metadata: meta,
-      caption: post.caption,
+      caption: effectiveCaption || post.caption,
       row: post.source === "job_request" ? post.row : undefined,
       locationLine: postLocationLine,
       whenLabel,
@@ -4694,6 +4754,7 @@ function PostCard({
     whenLabel,
     pickupRoute,
     t,
+    effectiveCaption,
   ]);
 
   const isGlobalTextOnlyCard =
@@ -5433,7 +5494,11 @@ function PostCard({
         className={cn(
           headerRowClass,
           headerPadX,
-          isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
+          isProfile
+            ? "pt-3 pb-1.5"
+            : isGlobalFeed
+              ? "pt-4 pb-0"
+              : "pt-4 pb-2",
           isVideoHeaderOverlay && "hidden",
         )}
       >
@@ -5987,7 +6052,7 @@ function PostCard({
             >
               <div
                 className={cn(
-                  "w-full p-4",
+                  "w-full px-4 pb-4 pt-0",
                   isGlobalFeed ? "max-md:rounded-none md:rounded-xl" : "rounded-xl",
                   globalFeedContentLayout?.className,
                 )}
@@ -6049,7 +6114,11 @@ function PostCard({
                 <div
                   className={cn(
                     cardPadX,
-                    hasMedia ? "pt-2.5" : "pt-2",
+                    isGlobalFeed
+                      ? "pt-0"
+                      : hasMedia
+                        ? "pt-2.5"
+                        : "pt-2",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6246,7 +6315,7 @@ function PostCard({
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
+                    <span>{feedLocationDisplayLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
                 {post.post_metadata.timeframe ? (
@@ -6319,7 +6388,7 @@ function PostCard({
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
+                    <span>{feedLocationDisplayLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
               </div>
@@ -6353,7 +6422,7 @@ function PostCard({
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
+                    <span>{feedLocationDisplayLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
                 {eventHelpersNeeded != null ? (

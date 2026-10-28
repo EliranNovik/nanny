@@ -164,6 +164,7 @@ function FeedMainContent({
           onAddStory={openCompose}
           viewer={profile}
           viewerUserId={user?.id ?? null}
+          hideProfileStrip
           commentedFilterActive={commentedFilterActive}
           onCommentedFilterChange={onCommentedFilterChange}
           acceptedFilterActive={acceptedFilterActive}

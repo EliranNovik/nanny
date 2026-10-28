@@ -11,6 +11,7 @@ import {
   LogIn,
   MessageCircle,
   GalleryHorizontal,
+  Scale,
   Moon,
   Sun,
 } from "lucide-react";
@@ -573,6 +574,9 @@ export function LandingSiteHeader({
                   <Link to="/contact" className={navLinkClass}>
                     {t("siteNav.contact")}
                   </Link>
+                  <Link to="/terms" className={navLinkClass}>
+                    {t("siteNav.legalHub")}
+                  </Link>
                   {postFeedLinkDesktop}
                 </div>
               </div>
@@ -584,6 +588,9 @@ export function LandingSiteHeader({
                 </Link>
                 <Link to="/contact" className={dynamicNavLinkClass}>
                   {t("siteNav.contact")}
+                </Link>
+                <Link to="/terms" className={dynamicNavLinkClass}>
+                  {t("siteNav.legalHub")}
                 </Link>
                 {postFeedLinkDesktop}
                 {!homeLinkRight ? (
@@ -820,6 +827,13 @@ export function LandingSiteHeader({
                 onClick={() => setIsMenuOpen(false)}
               >
                 <MessageCircle className="w-6 h-6 text-primary" /> {t("siteNav.contact")}
+              </Link>
+              <Link
+                to="/terms"
+                className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Scale className="w-6 h-6 text-primary" /> {t("siteNav.legalHub")}
               </Link>
               {postFeedLinkMobile}
               <Link

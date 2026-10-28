@@ -24,6 +24,7 @@ import { IncomingRequestToastListener } from "@/components/IncomingRequestToastL
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
+import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DocumentLocaleSync } from "@/components/i18n/DocumentLocaleSync";
 
@@ -111,6 +112,8 @@ import { KycRestrictedRoute } from "@/components/KycRestrictedRoute";
 import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { LegalAcceptanceGate } from "@/components/LegalAcceptanceGate";
+import { AnalyticsConsent } from "@/components/AnalyticsConsent";
 
 // Protected route wrapper
 function ProtectedRoute({
@@ -132,7 +135,7 @@ function ProtectedRoute({
 
   void skipKycGate;
 
-  return <>{children}</>;
+  return <LegalAcceptanceGate>{children}</LegalAcceptanceGate>;
 }
 
 // Protected admin route wrapper
@@ -186,8 +189,10 @@ function RedirectJobConfirmedToLive() {
 function RootRoute() {
   const { user, loading } = useAuth();
   const navigationType = useNavigationType();
+  const isDesktop = useIsMinMd();
 
   if (loading && !user) {
+    if (isDesktop) return <LandingPage />;
     return <AppBootSplash />;
   }
 
@@ -730,6 +735,7 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <AppSafeAreaSync />
             <DocumentLocaleSync />
+            <AnalyticsConsent />
             <ToastProvider>
               <AuthProvider>
                 <GuestAuthPromptProvider>

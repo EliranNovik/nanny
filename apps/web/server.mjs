@@ -90,6 +90,20 @@ app.get("/requests/:id", (req, res, next) => {
   );
 });
 
+app.get("/profile/:id", (req, res, next) => {
+  const profileId = parseShareId(req.params.id);
+  if (!profileId) {
+    next();
+    return;
+  }
+  void maybeServeOg(
+    req,
+    res,
+    next,
+    `/api/og/profile/${encodeURIComponent(profileId)}`,
+  );
+});
+
 app.get("/community/feed", (req, res, next) => {
   const postId = parseShareId(req.query.post);
   const requestId = parseShareId(req.query.request);

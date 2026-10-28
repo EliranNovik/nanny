@@ -16,6 +16,7 @@ import {
 } from "@/lib/favoriteToLikedTabFlight";
 import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
 import type { User } from "@supabase/supabase-js";
+import { globalProfilePostShareUrl } from "@/lib/profilePostShare";
 
 /** e.g. `2d 5h 14m ago` — days / hours / minutes only, no seconds */
 export function formatPostedAgo(iso: string): string {
@@ -162,7 +163,7 @@ export function CommunityPostCard({
   const overlayAuthorOnImage = Boolean(plain && imageUrls.length === 1);
 
   const sharePost = useCallback(async () => {
-    const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
+    const url = globalProfilePostShareUrl(post.id);
     const title = post.title;
     const text =
       [post.note, post.body].find((t) => t && String(t).trim()) || title;

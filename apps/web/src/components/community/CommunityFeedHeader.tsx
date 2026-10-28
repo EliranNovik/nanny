@@ -135,6 +135,8 @@ type CommunityFeedHeaderProps = {
   onOtherSubFilterChange?: (id: string | null) => void;
   /** Hide type chips on md+ (they live in the guest left sidebar). */
   hidePostTypeTabsOnDesktop?: boolean;
+  /** Hide the horizontal profile/poster cards above the feed filters. */
+  hideProfileStrip?: boolean;
 };
 
 export function CommunityFeedHeader({
@@ -160,6 +162,7 @@ export function CommunityFeedHeader({
   otherSubFilter = null,
   onOtherSubFilterChange,
   hidePostTypeTabsOnDesktop = false,
+  hideProfileStrip = false,
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -334,6 +337,7 @@ export function CommunityFeedHeader({
 
   return (
     <div className={cn("space-y-3", className)}>
+      {!hideProfileStrip ? (
       <div className="relative">
       <div
         ref={isGlobalVariant ? posterStripRef : undefined}
@@ -620,6 +624,7 @@ export function CommunityFeedHeader({
         </>
       ) : null}
       </div>
+      ) : null}
 
       <div
         className={cn(

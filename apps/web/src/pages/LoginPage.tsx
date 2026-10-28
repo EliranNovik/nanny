@@ -17,13 +17,23 @@ import {
   readPendingProfile,
 } from "@/lib/pendingProfile";
 import { needsKycVerification, roleHomePath } from "@/lib/kyc";
+import {
+  hasPendingLegalAcceptance,
+  markPendingLegalAcceptance,
+  recordLegalAcceptance,
+} from "@/lib/legalAcceptance";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function LoginPage({ oauthCallback = false }: { oauthCallback?: boolean }) {
+  const { t } = useTranslation();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmAge, setConfirmAge] = useState(false);
+  const [acceptLegal, setAcceptLegal] = useState(false);
   const [pendingProfileResolved, setPendingProfileResolved] = useState(false);
   const [pendingProfileCommitted, setPendingProfileCommitted] = useState(false);
   const {
@@ -80,6 +90,13 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
       handlePendingProfile();
     }
   }, [user, profile, authLoading, refreshProfile]);
+
+  useEffect(() => {
+    if (!user || !profile || !hasPendingLegalAcceptance()) return;
+    void recordLegalAcceptance(user.id).then((ok) => {
+      if (ok) void refreshProfile();
+    });
+  }, [user, profile, refreshProfile]);
 
   // Redirect if already logged in (wait for auth + pending profile handling)
   useEffect(() => {
@@ -141,9 +158,14 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (isSignUp && (!confirmAge || !acceptLegal)) {
+      setError(t("legalAcceptance.required"));
+      return;
+    }
     setLoading(true);
     console.log("[LoginPage] handleSubmit called", { isSignUp, email });
 
+    if (isSignUp) markPendingLegalAcceptance();
     const { error } = isSignUp
       ? await signUp(email, password)
       : await signIn(email, password);
@@ -186,6 +208,11 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
 
   async function handleGoogleLogin() {
     setError("");
+    if (isSignUp && (!confirmAge || !acceptLegal)) {
+      setError(t("legalAcceptance.required"));
+      return;
+    }
+    if (isSignUp) markPendingLegalAcceptance();
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -331,6 +358,39 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
                   disabled={loading}
                 />
               </div>
+
+              {isSignUp ? (
+                <div className="space-y-3 rounded-xl border border-slate-200 p-3 text-sm dark:border-white/10">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 accent-orange-600"
+                      checked={confirmAge}
+                      onChange={(event) => setConfirmAge(event.target.checked)}
+                    />
+                    <span>{t("legalAcceptance.age")}</span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 accent-orange-600"
+                      checked={acceptLegal}
+                      onChange={(event) => setAcceptLegal(event.target.checked)}
+                    />
+                    <span>
+                      {t("legalAcceptance.agreeBefore")}{" "}
+                      <Link to="/terms" target="_blank" className="font-bold text-primary underline">
+                        {t("legalHub.documents.terms")}
+                      </Link>{" "}
+                      {t("legalAcceptance.and")}{" "}
+                      <Link to="/privacy" target="_blank" className="font-bold text-primary underline">
+                        {t("legalHub.documents.privacy")}
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                </div>
+              ) : null}
 
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="font-semibold text-slate-700 dark:text-slate-300">

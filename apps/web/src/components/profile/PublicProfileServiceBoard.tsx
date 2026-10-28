@@ -45,8 +45,14 @@ function serviceBoardThumbUrl(post: PublicProfileServiceBoardPost): string {
 export function serviceBoardPostPreview(
   post: PublicProfileServiceBoardPost,
 ): string {
-  const fromAi = post.ai_generated_copy?.short_text?.trim();
   const fromCaption = post.caption?.trim();
+  const fromAi = post.ai_generated_copy?.short_text?.trim();
+  const isListing =
+    post.post_type_id === "request_help" || post.post_type_id === "offer_service";
+  if (isListing) {
+    if (fromCaption && fromCaption !== fromAi) return fromCaption;
+    return "View post";
+  }
   return fromAi || fromCaption || "View post";
 }
 

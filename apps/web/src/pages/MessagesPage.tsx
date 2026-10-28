@@ -63,6 +63,7 @@ import {
   MessagesInboxFloatingHeader,
 } from "@/components/messages/MessagesInboxFloatingHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
+import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
 
 /** City for inbox row: job location first, else other user profile city */
 function inboxRowLocation(convo: Conversation): string | null {
@@ -930,7 +931,10 @@ export default function MessagesPage() {
                       .toUpperCase() || "?";
 
                   const isActive = conversationId === convo.id;
-                  const locationLabel = inboxRowLocation(convo);
+                  const locationLabel = feedLocationDisplayLabel(
+                    t,
+                    inboxRowLocation(convo),
+                  );
 
                   return (
                     <div

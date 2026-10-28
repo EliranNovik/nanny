@@ -6,7 +6,10 @@ import {
   LandingSiteHeader,
 } from "@/components/LandingSiteHeader";
 import { Footer } from "@/components/Footer";
-import { legalContent } from "@/data/legalContent";
+import {
+  revisedLegalContent as legalContent,
+  type LegalLocale,
+} from "@/data/legalContentRevised";
 import { useAuth } from "@/context/AuthContext";
 import { usePageSeo } from "@/lib/seo";
 import { FileText, Shield, Cookie, Scale, Globe, ChevronRight } from "lucide-react";
@@ -14,13 +17,13 @@ import { FileText, Shield, Cookie, Scale, Globe, ChevronRight } from "lucide-rea
 type DocType = "terms" | "disclaimer" | "privacy" | "cookies";
 
 const DOCS_CONFIG: { id: DocType; path: string; icon: React.ComponentType<any>; labelKey: string }[] = [
-  { id: "terms", path: "/terms", icon: FileText, labelKey: "Rules of Service" },
-  { id: "disclaimer", path: "/disclaimer", icon: Scale, labelKey: "Disclaimer" },
-  { id: "privacy", path: "/privacy", icon: Shield, labelKey: "Privacy Policy" },
-  { id: "cookies", path: "/cookies", icon: Cookie, labelKey: "Cookie Policy" },
+  { id: "terms", path: "/terms", icon: FileText, labelKey: "legalHub.documents.terms" },
+  { id: "disclaimer", path: "/disclaimer", icon: Scale, labelKey: "legalHub.documents.disclaimer" },
+  { id: "privacy", path: "/privacy", icon: Shield, labelKey: "legalHub.documents.privacy" },
+  { id: "cookies", path: "/cookies", icon: Cookie, labelKey: "legalHub.documents.cookies" },
 ];
 
-const LANG_LABELS: Record<string, string> = {
+const LANG_LABELS: Record<LegalLocale, string> = {
   en: "English",
   ru: "Русский",
   he: "עברית",
@@ -29,7 +32,7 @@ const LANG_LABELS: Record<string, string> = {
 
 export default function LegalPage() {
   const { user } = useAuth();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -43,7 +46,7 @@ export default function LegalPage() {
   const [activeTab, setActiveTab] = useState<DocType>(defaultDoc);
 
   // Local language override to view terms in other languages
-  const [docLang, setDocLang] = useState<string>("en");
+  const [docLang, setDocLang] = useState<LegalLocale>("en");
 
   // Sync activeTab when URL path changes
   useEffect(() => {
@@ -57,7 +60,7 @@ export default function LegalPage() {
   useEffect(() => {
     const appLang = i18n.language?.split("-")[0] || "en";
     if (["en", "ru", "he", "fr"].includes(appLang)) {
-      setDocLang(appLang);
+      setDocLang(appLang as LegalLocale);
     } else {
       setDocLang("en");
     }
@@ -71,25 +74,10 @@ export default function LegalPage() {
     }
   };
 
-  const legalSeo =
-    {
-      terms: {
-        title: "Rules of Service",
-        description: "Terms that govern using the Tebnu platform.",
-      },
-      privacy: {
-        title: "Privacy Policy",
-        description: "How Tebnu collects, uses, and protects your information.",
-      },
-      cookies: {
-        title: "Cookie Policy",
-        description: "How Tebnu uses cookies and similar technologies.",
-      },
-      disclaimer: {
-        title: "Disclaimer",
-        description: "Legal disclaimers for the Tebnu platform.",
-      },
-    }[activeTab];
+  const legalSeo = {
+    title: t(`legalHub.documents.${activeTab}`),
+    description: t(`legalHub.seo.${activeTab}`),
+  };
 
   usePageSeo({
     title: legalSeo.title,
@@ -103,27 +91,10 @@ export default function LegalPage() {
 
   const isRtl = docLang === "he";
 
-  // Page level titles/ui in current UI language
-  const uiLang = i18n.language?.split("-")[0] || "en";
   const uiTexts = {
-    title: {
-      en: "Legal Hub",
-      ru: "Правовой центр",
-      he: "מרכז מידע משפטי",
-      fr: "Espace Légal",
-    }[uiLang] || "Legal Hub",
-    subtitle: {
-      en: "Terms, conditions, and disclaimers governing the use of the Tebnu platform.",
-      ru: "Правила, условия и дисклеймеры, регулирующие использование платформы Tebnu.",
-      he: "תנאי שימוש, תקנון וכתבי ויתור המסדירים את השימוש בפלטפורמת Tebnu.",
-      fr: "Termes, conditions et avis de non-responsabilité régissant l'utilisation de la plateforme Tebnu.",
-    }[uiLang] || "Terms, conditions, and disclaimers governing the use of the Tebnu platform.",
-    langSelectorLabel: {
-      en: "Document Language:",
-      ru: "Язык документа:",
-      he: "שפת המסמך:",
-      fr: "Langue du document :",
-    }[uiLang] || "Document Language:",
+    title: t("legalHub.title"),
+    subtitle: t("legalHub.subtitle"),
+    langSelectorLabel: t("legalHub.documentLanguage"),
   };
 
   return (
@@ -165,7 +136,7 @@ export default function LegalPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="w-5 h-5" />
-                      <span>{item.labelKey}</span>
+                      <span>{t(item.labelKey)}</span>
                     </div>
                     <ChevronRight className={`w-4 h-4 transition-transform ${isActive ? "translate-x-1" : "opacity-30"}`} />
                   </button>
@@ -188,7 +159,7 @@ export default function LegalPage() {
                       }`}
                   >
                     <Icon className="w-4 h-4" />
-                    <span>{item.labelKey}</span>
+                    <span>{t(item.labelKey)}</span>
                   </button>
                 );
               })}
@@ -201,7 +172,7 @@ export default function LegalPage() {
                 <span>{uiTexts.langSelectorLabel}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {Object.keys(LANG_LABELS).map((langCode) => {
+                {(Object.keys(LANG_LABELS) as LegalLocale[]).map((langCode) => {
                   const isCurrent = docLang === langCode;
                   return (
                     <button

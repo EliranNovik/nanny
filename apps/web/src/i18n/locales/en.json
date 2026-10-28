@@ -44,6 +44,121 @@
     "register": "Register",
     "legalHub": "Legal Hub"
   },
+  "legalHub": {
+    "title": "Legal Hub",
+    "subtitle": "Terms, privacy information, disclaimers, and technology policies for Tebnu.",
+    "documentLanguage": "Document language:",
+    "documents": {
+      "terms": "Terms of Service",
+      "disclaimer": "Disclaimer",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookie & SDK Policy"
+    },
+    "seo": {
+      "terms": "Terms governing use of the Tebnu platform.",
+      "disclaimer": "Important limits and safety information for Tebnu.",
+      "privacy": "How Tebnu collects, uses, shares, and protects information.",
+      "cookies": "How Tebnu uses cookies, storage, analytics, and mobile SDKs."
+    }
+  },
+  "footer": {
+    "description": "A community marketplace for finding and offering local help.",
+    "product": "Product",
+    "hireHelper": "Find help",
+    "beHelper": "Offer help",
+    "safety": "Safety information",
+    "company": "Company",
+    "official": "Official",
+    "optionalVerification": "Optional identity verification",
+    "rights": "All rights reserved."
+  },
+  "legalAcceptance": {
+    "title": "Review our updated terms",
+    "description": "Before continuing, confirm your age and accept the current legal documents.",
+    "age": "I confirm that I am at least 18 years old.",
+    "agreeBefore": "I have read and agree to the",
+    "and": "and acknowledge the",
+    "continue": "Accept and continue",
+    "required": "You must confirm that you are 18+ and accept the Terms and Privacy Policy.",
+    "accountSettings": "Account settings"
+  },
+  "analyticsConsent": {
+    "title": "Analytics choice",
+    "body": "We use essential storage to run Tebnu. With your permission, we also load Google analytics tools to understand and improve the service.",
+    "learnMore": "Learn more",
+    "accept": "Allow analytics",
+    "reject": "Essential only",
+    "settings": "Cookie settings"
+  },
+  "publicProfileFeatures": {
+    "availability": "Availability",
+    "availableNowUntil": "Available now · until {{time}}",
+    "availableAt": "Available {{when}} at {{time}}",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "byArrangement": "Available by arrangement",
+    "noHours": "No hours set",
+    "unavailable": "Unavailable",
+    "flexible": "Flexible hours",
+    "bookAhead": "Book {{count}}h ahead",
+    "since": "Since {{date}}",
+    "memberSince": "Member since {{date}}",
+    "hourlyRate": "Hourly rate",
+    "rateSingle": "₪{{rate}}/hr",
+    "rateRange": "₪{{min}}–{{max}}/hr"
+  },
+  "contactPage": {
+    "seoTitle": "Contact",
+    "seoDescription": "Get in touch with the Tebnu team at info@tebnu.com.",
+    "badge": "We’re here for you",
+    "title": "Contact us",
+    "intro": "Questions, worries, or a rough day with the app—tell us. Tebnu is built for real families and helpers; we read what you send and answer with care, not scripts.",
+    "peopleFirstTitle": "People first",
+    "peopleFirstBody": "We don’t route you through endless bots. Share what’s going on—we’ll take it seriously and reply in plain language.",
+    "emailLabel": "Email",
+    "replyLabel": "Typical reply",
+    "replyValue": "Within 1 business day, often sooner",
+    "formTitle": "Send us a message",
+    "formSubtitle": "This sends your message directly to the Tebnu team at {{email}}.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "How we should address you",
+    "emailFieldLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "phoneLabel": "Phone",
+    "optional": "(optional)",
+    "phonePlaceholder": "+972 …",
+    "topicLabel": "Topic",
+    "topicPlaceholder": "Choose a topic",
+    "messageLabel": "Your message",
+    "messagePlaceholder": "What’s on your mind? The more context you share, the better we can help.",
+    "submit": "Submit",
+    "sending": "Sending…",
+    "formFooter": "Your message is sent directly to {{email}}. You can also email us there from any device.",
+    "topics": {
+      "general": "General question",
+      "account": "Account & profile",
+      "helpers": "Finding helpers or offering help",
+      "feedback": "Feedback & ideas",
+      "safety": "Safety or concern",
+      "other": "Something else"
+    },
+    "errors": {
+      "name": "Please add your name.",
+      "emailRequired": "We need an email so we can reply.",
+      "emailInvalid": "That doesn’t look like a valid email.",
+      "messageRequired": "Tell us a little about how we can help.",
+      "messageShort": "A few more words help us understand (at least 15 characters)."
+    },
+    "toastSuccessTitle": "Thank you for reaching out",
+    "toastSuccessBody": "Your message was sent to the Tebnu team.",
+    "toastErrorTitle": "Couldn’t send your message",
+    "toastErrorWithMessage": "{{message}} You can also email {{email}}.",
+    "toastErrorFallback": "Please email us directly at {{email}}.",
+    "successTitle": "We’ve got your note",
+    "successBody": "Thanks for trusting us with your question. Our team will get back to you as soon as we can—usually within one business day.",
+    "successEmailLead": "Need to add more detail? Email us directly at",
+    "sendAnother": "Send another message"
+  },
   "whatIsTebnu": {
     "title": "What is tebnu?",
     "description": "tebnu is a community for getting help and offering help — for any need, big or small.",
@@ -134,18 +249,18 @@
       },
       "reminder": {
         "title": "Verify your identity",
-        "body": "Complete verification to post requests, go live, and share posts. You can finish this anytime.",
+        "body": "Optional identity verification can add a badge to your profile. You can complete it anytime.",
         "verify": "Verify",
         "dismiss": "Dismiss verification reminder",
         "requiredTitle": "Verification required",
         "verifyNow": "Verify now",
         "notNow": "Not now",
         "hourlyTitle": "Reminder: verify your identity",
-        "hourlyBody": "You still need to complete identity verification to post requests, go live, and share posts. It only takes a few minutes.",
+        "hourlyBody": "Optional identity verification can add a badge to your profile. It usually takes only a few minutes.",
         "remindLater": "Remind me later",
-        "blockedGoLive": "Verify your identity before going live. You can complete verification anytime from your account.",
-        "blockedShare": "Verify your identity before sharing a post. You can complete verification anytime from your account.",
-        "blockedRequest": "Verify your identity before posting a request. You can complete verification anytime from your account."
+        "blockedGoLive": "Identity verification is optional and available from your account.",
+        "blockedShare": "Identity verification is optional and available from your account.",
+        "blockedRequest": "Identity verification is optional and available from your account."
       }
     }
   },
@@ -572,6 +687,15 @@
     },
     "location": {
       "countryIsrael": "Israel",
+      "districts": {
+        "central": "Central District",
+        "north": "Northern District",
+        "south": "Southern District",
+        "haifa": "Haifa District",
+        "jerusalem": "Jerusalem District",
+        "tel_aviv": "Tel Aviv District",
+        "judea_samaria": "Judea and Samaria"
+      },
       "cities": {
         "netanya": "Netanya",
         "tel_aviv": "Tel Aviv",
@@ -678,6 +802,29 @@
       "signInToSaveProfile": "Sign in to save profiles",
       "viewProfile": "View {{name}}'s profile",
       "showFullRoute": "Show full route"
+    },
+    "generatedCopy": {
+      "requestTitleWhenIn": "Need {{category}} {{when}} in {{location}}",
+      "requestTitleWhen": "Need {{category}} {{when}}",
+      "requestTitleIn": "Need {{category}} in {{location}}",
+      "requestTitle": "Need {{category}}",
+      "offerTitleIn": "Offering {{category}} in {{location}}",
+      "offerTitle": "Offering {{category}}",
+      "whenPart": " {{when}}",
+      "locationPart": " in {{location}}",
+      "durationPart": " Duration: {{duration}}.",
+      "budgetPart": " Budget: {{budget}}.",
+      "ratePart": " From {{rate}}.",
+      "requestLooking": {
+        "cleaning": "Looking for a reliable cleaner{{when}}{{location}}.",
+        "cooking": "Looking for someone to cook{{when}}{{location}}.",
+        "nanny": "Looking for a responsible babysitter{{when}}{{location}}.",
+        "pickup_delivery": "Looking for help with pickup and delivery{{when}}{{location}}.",
+        "technical_help": "Looking for technical help{{when}}{{location}}.",
+        "other_help": "Looking for someone available to help{{when}}{{location}}.",
+        "default": "Looking for {{category}}{{when}}{{location}}."
+      },
+      "offerBody": "I'm offering {{category}} services{{location}}."
     },
     "sidePanel": {
       "ariaLabel": "Posts from your favorites and popular posts",
@@ -870,17 +1017,17 @@
       "special_video": {
         "title": "Experience Tebnu",
         "phrase": "See How We Make Life Simpler",
-        "blurb": "Post a request, get matched, and chat with verified helpers nearby.",
-        "details": "Watch how easy it is to connect with trusted helpers in your neighborhood. Fast, secure, and seamless.",
-        "bullets": ["Instant Matching", "Secure Direct Chat", "Verified Profiles", "Easy Management"],
+        "blurb": "Post a request, get matched, and chat with local helpers nearby.",
+        "details": "Watch how easy it is to connect with helpers in your neighborhood. Identity verification is optional and clearly marked.",
+        "bullets": ["Instant Matching", "Secure Direct Chat", "Optional ID Badge", "Easy Management"],
         "cta": "Get Started Now"
       },
       "childcare": {
         "title": "Childcare",
         "phrase": "Trusted Care for Your Little Ones",
         "blurb": "Nannies and babysitters for everyday care or a last-minute sitter.",
-        "details": "Meet verified nannies and babysitters who feel right for your family. From nannies to emergency sitters.",
-        "bullets": ["Vetted & Background Checked", "CPR Certified Options", "Flexible Scheduling", "Real-time Availability"],
+        "details": "Meet nannies and babysitters who may fit your family. Check identity badges, qualifications and references yourself.",
+        "bullets": ["Optional ID Badge", "Check Qualifications", "Flexible Scheduling", "Real-time Availability"],
         "cta": "Hire a Nanny"
       },
       "cleaning": {
@@ -888,7 +1035,7 @@
         "phrase": "A pristine retreat, every single time.",
         "blurb": "Housekeepers for a deep clean or regular upkeep at home.",
         "details": "Our cleaning professionals are dedicated to making your home shine. From deep cleans to regular upkeep, we handle the dust so you can handle the rest.",
-        "bullets": ["Vetted housekeepers", "Environmentally friendly options", "Same-day availability available"],
+        "bullets": ["Local housekeepers", "Environmentally friendly options", "Same-day availability available"],
         "cta": "Find a Housekeeper"
       },
       "cooking": {
@@ -927,14 +1074,14 @@
       },
       "trust": {
         "title": "Trust powered by AI",
-        "description": "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
-        "explanation": "Before anyone can hire or start helping, they complete a Didit ID check and a live selfie match. You always know who you are meeting, and fake profiles never make it onto the platform.",
-        "imageAlt": "ID card scan for verified signup"
+        "description": "Optional identity verification earns a clearly marked badge.",
+        "explanation": "Users may choose a Didit document and live-selfie check. The badge confirms that check only; it is not a background, qualification, reference or safety check.",
+        "imageAlt": "Optional identity verification"
       },
       "reviews": {
         "title": "Real reviews",
-        "description": "Ratings come only from real people after they helped together.",
-        "explanation": "Stars are not bought and not left by strangers. Only people who actually helped together can rate — so the score you see is earned from real time spent helping.",
+        "description": "Community ratings can help inform your own checks.",
+        "explanation": "Reviews reflect user opinions and are not a guarantee. Read the details, ask questions and verify suitability yourself.",
         "imageAlt": "People who leave reviews after real help"
       },
       "language": {

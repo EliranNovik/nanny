@@ -913,6 +913,7 @@ function DiscoverRealtimeStripDetailDialog({
   work,
   variant,
 }: StripDetailDialogProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -1318,7 +1319,9 @@ function DiscoverRealtimeStripDetailDialog({
           {hire ? (
             <div className={gSheetRowListClass}>
               {hire.locationLine ? (
-                <GSheetRow icon={MapPin}>{hire.locationLine}</GSheetRow>
+                <GSheetRow icon={MapPin}>
+                  {feedLocationDisplayLabel(t, hire.locationLine)}
+                </GSheetRow>
               ) : null}
               {hire.can_start_in_label ? (
                 <GSheetRow icon={Clock} hint="Availability">

@@ -43,7 +43,7 @@ export function mapOpenHelpRequestToFeedPost(
   author?: ProfileSnippet,
 ): JobRequestFeedPost {
   const generatedCopy = parseGeneratedPostCopy(row.ai_generated_copy);
-  const caption = generatedCopy?.short_text ?? row.notes ?? null;
+  const caption = row.notes?.trim() || null;
 
   return {
     id: row.id,

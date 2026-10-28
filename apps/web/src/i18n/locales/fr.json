@@ -44,6 +44,121 @@
     "register": "S'inscrire",
     "legalHub": "Mentions légales"
   },
+  "legalHub": {
+    "title": "Espace juridique",
+    "subtitle": "Conditions, confidentialité, avertissements et politiques technologiques de Tebnu.",
+    "documentLanguage": "Langue du document :",
+    "documents": {
+      "terms": "Conditions d’utilisation",
+      "disclaimer": "Avertissement",
+      "privacy": "Politique de confidentialité",
+      "cookies": "Politique cookies et SDK"
+    },
+    "seo": {
+      "terms": "Conditions régissant l’utilisation de la plateforme Tebnu.",
+      "disclaimer": "Limites importantes et informations de sécurité Tebnu.",
+      "privacy": "Comment Tebnu collecte, utilise, partage et protège les données.",
+      "cookies": "Comment Tebnu utilise cookies, stockage, analytique et SDK."
+    }
+  },
+  "footer": {
+    "description": "Une place de marché communautaire pour trouver et proposer de l’aide locale.",
+    "product": "Produit",
+    "hireHelper": "Trouver de l’aide",
+    "beHelper": "Proposer de l’aide",
+    "safety": "Informations de sécurité",
+    "company": "Entreprise",
+    "official": "Officiel",
+    "optionalVerification": "Vérification d’identité facultative",
+    "rights": "Tous droits réservés."
+  },
+  "legalAcceptance": {
+    "title": "Consultez nos conditions mises à jour",
+    "description": "Avant de continuer, confirmez votre âge et acceptez les documents actuels.",
+    "age": "Je confirme avoir au moins 18 ans.",
+    "agreeBefore": "J’ai lu et j’accepte les",
+    "and": "et je reconnais la",
+    "continue": "Accepter et continuer",
+    "required": "Vous devez confirmer avoir 18 ans ou plus et accepter les Conditions et la Politique de confidentialité.",
+    "accountSettings": "Réglages du compte"
+  },
+  "analyticsConsent": {
+    "title": "Choix analytique",
+    "body": "Nous utilisons un stockage essentiel au fonctionnement de Tebnu. Avec votre accord, nous chargeons aussi les outils Google pour comprendre et améliorer le service.",
+    "learnMore": "En savoir plus",
+    "accept": "Autoriser l’analytique",
+    "reject": "Essentiel uniquement",
+    "settings": "Réglages cookies"
+  },
+  "publicProfileFeatures": {
+    "availability": "Disponibilité",
+    "availableNowUntil": "Disponible maintenant · jusqu’à {{time}}",
+    "availableAt": "Disponible {{when}} à {{time}}",
+    "today": "aujourd’hui",
+    "tomorrow": "demain",
+    "byArrangement": "Disponible sur arrangement",
+    "noHours": "Aucun horaire défini",
+    "unavailable": "Indisponible",
+    "flexible": "Horaires flexibles",
+    "bookAhead": "Réserver {{count}} h à l’avance",
+    "since": "Depuis {{date}}",
+    "memberSince": "Membre depuis {{date}}",
+    "hourlyRate": "Tarif horaire",
+    "rateSingle": "₪{{rate}}/h",
+    "rateRange": "₪{{min}}–{{max}}/h"
+  },
+  "contactPage": {
+    "seoTitle": "Contact",
+    "seoDescription": "Contactez l’équipe Tebnu à info@tebnu.com.",
+    "badge": "Nous sommes là",
+    "title": "Nous contacter",
+    "intro": "Une question, une inquiétude ou une journée difficile avec l’app — dites-le-nous. Tebnu est fait pour de vraies familles et de vrais aidants ; nous lisons vos messages et répondons avec soin, pas avec des scripts.",
+    "peopleFirstTitle": "Les personnes d’abord",
+    "peopleFirstBody": "Pas de robots à n’en plus finir. Racontez-nous ce qui se passe — nous le prenons au sérieux et répondons simplement.",
+    "emailLabel": "E-mail",
+    "replyLabel": "Délai habituel",
+    "replyValue": "Sous 1 jour ouvré, souvent plus vite",
+    "formTitle": "Envoyez-nous un message",
+    "formSubtitle": "Votre message arrive directement à l’équipe Tebnu à {{email}}.",
+    "nameLabel": "Votre nom",
+    "namePlaceholder": "Comment vous appeler",
+    "emailFieldLabel": "E-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "phoneLabel": "Téléphone",
+    "optional": "(facultatif)",
+    "phonePlaceholder": "+972 …",
+    "topicLabel": "Sujet",
+    "topicPlaceholder": "Choisissez un sujet",
+    "messageLabel": "Votre message",
+    "messagePlaceholder": "Qu’avez-vous en tête ? Plus vous donnez de contexte, mieux nous pourrons vous aider.",
+    "submit": "Envoyer",
+    "sending": "Envoi…",
+    "formFooter": "Votre message est envoyé directement à {{email}}. Vous pouvez aussi nous écrire à cette adresse depuis n’importe quel appareil.",
+    "topics": {
+      "general": "Question générale",
+      "account": "Compte et profil",
+      "helpers": "Trouver ou proposer de l’aide",
+      "feedback": "Avis et idées",
+      "safety": "Sécurité ou signalement",
+      "other": "Autre chose"
+    },
+    "errors": {
+      "name": "Ajoutez votre nom.",
+      "emailRequired": "Nous avons besoin d’un e-mail pour vous répondre.",
+      "emailInvalid": "Cette adresse e-mail ne semble pas valide.",
+      "messageRequired": "Dites-nous comment nous pouvons vous aider.",
+      "messageShort": "Quelques mots de plus nous aident (au moins 15 caractères)."
+    },
+    "toastSuccessTitle": "Merci de nous avoir écrits",
+    "toastSuccessBody": "Votre message a bien été envoyé à l’équipe Tebnu.",
+    "toastErrorTitle": "Impossible d’envoyer le message",
+    "toastErrorWithMessage": "{{message}} Vous pouvez aussi écrire à {{email}}.",
+    "toastErrorFallback": "Écrivez-nous directement à {{email}}.",
+    "successTitle": "Nous avons bien reçu votre message",
+    "successBody": "Merci de nous faire confiance. Notre équipe vous répondra dès que possible — en général sous un jour ouvré.",
+    "successEmailLead": "Besoin d’ajouter un détail ? Écrivez-nous directement à",
+    "sendAnother": "Envoyer un autre message"
+  },
   "whatIsTebnu": {
     "title": "Qu’est-ce que tebnu ?",
     "description": "tebnu est une communauté pour demander et proposer de l’aide — pour tout besoin, grand ou petit.",
@@ -572,6 +687,15 @@
     },
     "location": {
       "countryIsrael": "Israël",
+      "districts": {
+        "central": "District centre",
+        "north": "District nord",
+        "south": "District sud",
+        "haifa": "District de Haïfa",
+        "jerusalem": "District de Jérusalem",
+        "tel_aviv": "District de Tel-Aviv",
+        "judea_samaria": "Judée-Samarie"
+      },
       "cities": {
         "netanya": "Netanya",
         "tel_aviv": "Tel-Aviv",
@@ -668,6 +792,29 @@
       "signInToSaveProfile": "Connectez-vous pour enregistrer des profils",
       "viewProfile": "Voir le profil de {{name}}",
       "showFullRoute": "Afficher l'itinéraire complet"
+    },
+    "generatedCopy": {
+      "requestTitleWhenIn": "Besoin de {{category}} {{when}} à {{location}}",
+      "requestTitleWhen": "Besoin de {{category}} {{when}}",
+      "requestTitleIn": "Besoin de {{category}} à {{location}}",
+      "requestTitle": "Besoin de {{category}}",
+      "offerTitleIn": "Propose {{category}} à {{location}}",
+      "offerTitle": "Propose {{category}}",
+      "whenPart": " {{when}}",
+      "locationPart": " à {{location}}",
+      "durationPart": " Durée : {{duration}}.",
+      "budgetPart": " Budget : {{budget}}.",
+      "ratePart": " À partir de {{rate}}.",
+      "requestLooking": {
+        "cleaning": "Cherche un.e aide ménagère fiable{{when}}{{location}}.",
+        "cooking": "Cherche quelqu’un pour cuisiner{{when}}{{location}}.",
+        "nanny": "Cherche une baby-sitter responsable{{when}}{{location}}.",
+        "pickup_delivery": "Cherche de l’aide pour courses et livraison{{when}}{{location}}.",
+        "technical_help": "Cherche de l’aide technique{{when}}{{location}}.",
+        "other_help": "Cherche quelqu’un de disponible{{when}}{{location}}.",
+        "default": "Cherche {{category}}{{when}}{{location}}."
+      },
+      "offerBody": "Je propose des services de {{category}}{{location}}."
     },
     "sidePanel": {
       "ariaLabel": "Publications des favoris et publications populaires",
@@ -860,17 +1007,17 @@
       "special_video": {
         "title": "Découvrir Tebnu",
         "phrase": "Voir comme la vie devient plus simple",
-        "blurb": "Publiez une demande, trouvez un aidant vérifié près de chez vous.",
-        "details": "Regardez comme il est facile de trouver des aidants de confiance près de chez vous. Rapide, sûr et fluide.",
-        "bullets": ["Mise en relation instantanée", "Chat direct sécurisé", "Profils vérifiés", "Gestion simple"],
+        "blurb": "Publiez une demande et trouvez un aidant local près de chez vous.",
+        "details": "Trouvez facilement des aidants du quartier. La vérification d’identité est facultative et clairement signalée.",
+        "bullets": ["Mise en relation instantanée", "Chat direct sécurisé", "Badge ID facultatif", "Gestion simple"],
         "cta": "Commencer"
       },
       "childcare": {
         "title": "Garde d'enfants",
         "phrase": "Une présence de confiance pour vos enfants",
         "blurb": "Nounous et baby-sitters pour le quotidien ou en urgence.",
-        "details": "Rencontrez des nounous et baby-sitters vérifiées, adaptées à votre famille. De la nounou régulière au dépannage.",
-        "bullets": ["Profils contrôlés", "Options certifiées premiers secours", "Horaires flexibles", "Disponibilité en temps réel"],
+        "details": "Rencontrez des nounous et baby-sitters susceptibles de convenir. Vérifiez vous-même badges, qualifications et références.",
+        "bullets": ["Badge ID facultatif", "Vérifier les qualifications", "Horaires flexibles", "Disponibilité en temps réel"],
         "cta": "Trouver une nounou"
       },
       "cleaning": {
@@ -878,7 +1025,7 @@
         "phrase": "Une maison impeccable, à chaque fois.",
         "blurb": "Aide-ménagères pour un grand ménage ou l'entretien régulier.",
         "details": "Nos professionnels du ménage font briller votre intérieur. Grand ménage ou entretien régulier.",
-        "bullets": ["Aide-ménagères vérifiées", "Options écologiques", "Disponible le jour même"],
+        "bullets": ["Aide-ménagères locales", "Options écologiques", "Disponible le jour même"],
         "cta": "Trouver une aide-ménagère"
       },
       "cooking": {
@@ -917,14 +1064,14 @@
       },
       "trust": {
         "title": "La confiance, vérifiée",
-        "description": "Chaque aidant est vérifié par pièce d'identité et selfie.",
-        "explanation": "Avant d'embaucher ou d'aider, chacun passe un contrôle Didit et un selfie en direct. Vous savez toujours qui vous rencontrez.",
-        "imageAlt": "Scan de pièce d'identité à l'inscription"
+        "description": "La vérification d’identité facultative donne un badge clair.",
+        "explanation": "Un utilisateur peut choisir le contrôle de document et selfie en direct de Didit. Le badge confirme seulement ce contrôle, pas les antécédents, qualifications, références ou la sécurité.",
+        "imageAlt": "Vérification d’identité facultative"
       },
       "reviews": {
         "title": "Vrais avis",
-        "description": "Les notes viennent uniquement de personnes qui se sont vraiment aidées.",
-        "explanation": "Les étoiles ne s'achètent pas. Seules les personnes qui ont réellement collaboré peuvent noter.",
+        "description": "Les notes de la communauté peuvent éclairer vos propres vérifications.",
+        "explanation": "Les avis reflètent l’opinion des utilisateurs et ne sont pas une garantie. Lisez les détails, posez des questions et vérifiez vous-même.",
         "imageAlt": "Des personnes qui laissent un avis après une vraie aide"
       },
       "language": {

@@ -33,6 +33,11 @@ interface Profile {
   kyc_session_id?: string | null;
   kyc_verified_at?: string | null;
   is_verified?: boolean | null;
+  legal_terms_version?: string | null;
+  legal_terms_accepted_at?: string | null;
+  privacy_version?: string | null;
+  privacy_accepted_at?: string | null;
+  age_18_confirmed_at?: string | null;
 }
 
 interface AuthContextType {

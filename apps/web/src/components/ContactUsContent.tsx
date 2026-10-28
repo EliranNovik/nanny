@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,14 +27,25 @@ import { apiPublicPost } from "@/lib/api";
 
 const SUPPORT_EMAIL = "info@tebnu.com";
 
-const TOPICS = [
-  { value: "general", label: "General question" },
-  { value: "account", label: "Account & profile" },
-  { value: "helpers", label: "Finding helpers or offering help" },
-  { value: "feedback", label: "Feedback & ideas" },
-  { value: "safety", label: "Safety or concern" },
-  { value: "other", label: "Something else" },
+const TOPIC_VALUES = [
+  "general",
+  "account",
+  "helpers",
+  "feedback",
+  "safety",
+  "other",
 ] as const;
+
+type TopicValue = (typeof TOPIC_VALUES)[number];
+
+const TOPIC_API_LABELS: Record<TopicValue, string> = {
+  general: "General question",
+  account: "Account & profile",
+  helpers: "Finding helpers or offering help",
+  feedback: "Feedback & ideas",
+  safety: "Safety or concern",
+  other: "Something else",
+};
 
 function Blob({ className }: { className?: string }) {
   return (
@@ -48,6 +60,7 @@ function Blob({ className }: { className?: string }) {
 }
 
 export function ContactUsContent() {
+  const { t } = useTranslation();
   const { addToast } = useToast();
   const location = useLocation();
   const [name, setName] = useState("");
@@ -71,16 +84,14 @@ export function ContactUsContent() {
 
   function validate(): boolean {
     const next: Record<string, string> = {};
-    if (!name.trim()) next.name = "Please add your name.";
+    if (!name.trim()) next.name = t("contactPage.errors.name");
     const em = email.trim();
-    if (!em) next.email = "We need an email so we can reply.";
+    if (!em) next.email = t("contactPage.errors.emailRequired");
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))
-      next.email = "That doesn’t look like a valid email.";
-    if (!message.trim())
-      next.message = "Tell us a little about how we can help.";
+      next.email = t("contactPage.errors.emailInvalid");
+    if (!message.trim()) next.message = t("contactPage.errors.messageRequired");
     else if (message.trim().length < 15)
-      next.message =
-        "A few more words help us understand (at least 15 characters).";
+      next.message = t("contactPage.errors.messageShort");
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -90,7 +101,10 @@ export function ContactUsContent() {
     if (!validate()) return;
 
     setSubmitting(true);
-    const topicLabel = TOPICS.find((t) => t.value === topic)?.label ?? topic;
+    const topicValue = TOPIC_VALUES.includes(topic as TopicValue)
+      ? (topic as TopicValue)
+      : "other";
+    const topicLabel = TOPIC_API_LABELS[topicValue];
 
     try {
       await apiPublicPost("/api/contact", {
@@ -103,17 +117,20 @@ export function ContactUsContent() {
       });
       setSubmitted(true);
       addToast({
-        title: "Thank you for reaching out",
-        description: "Your message was sent to the Tebnu team.",
+        title: t("contactPage.toastSuccessTitle"),
+        description: t("contactPage.toastSuccessBody"),
         variant: "success",
       });
     } catch (err) {
       addToast({
-        title: "Couldn’t send your message",
+        title: t("contactPage.toastErrorTitle"),
         description:
           err instanceof Error
-            ? `${err.message} You can also email ${SUPPORT_EMAIL}.`
-            : `Please email us directly at ${SUPPORT_EMAIL}.`,
+            ? t("contactPage.toastErrorWithMessage", {
+                message: err.message,
+                email: SUPPORT_EMAIL,
+              })
+            : t("contactPage.toastErrorFallback", { email: SUPPORT_EMAIL }),
         variant: "error",
       });
     } finally {
@@ -130,14 +147,13 @@ export function ContactUsContent() {
             <CheckCircle2 className="h-9 w-9" strokeWidth={2} />
           </div>
           <h2 className="mt-6 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            We’ve got your note
+            {t("contactPage.successTitle")}
           </h2>
           <p className="mt-3 text-base leading-relaxed text-slate-600 dark:text-slate-300">
-            Thanks for trusting us with your question. Our team will get back
-            to you as soon as we can—usually within one business day.
+            {t("contactPage.successBody")}
           </p>
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            Need to add more detail? Email us directly at{" "}
+            {t("contactPage.successEmailLead")}{" "}
             <a
               className="font-bold text-primary underline-offset-4 hover:underline"
               href={`mailto:${SUPPORT_EMAIL}`}
@@ -156,7 +172,7 @@ export function ContactUsContent() {
               setFieldErrors({});
             }}
           >
-            Send another message
+            {t("contactPage.sendAnother")}
           </Button>
         </div>
       </div>
@@ -165,28 +181,24 @@ export function ContactUsContent() {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-12 pb-4">
-      {/* Intro */}
       <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/60 p-8 shadow-lg backdrop-blur-sm dark:border-transparent dark:bg-slate-950/40 md:p-10">
         <Blob className="-right-20 -top-20 h-64 w-64 bg-gradient-to-br from-orange-400/80 to-rose-500/60" />
         <Blob className="-bottom-16 -left-12 h-48 w-48 bg-gradient-to-tr from-primary/40 to-amber-300/50" />
         <div className="relative max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-700 dark:border-transparent dark:bg-orange-500/15 dark:text-orange-300">
             <MessageCircle className="h-3.5 w-3.5" />
-            We’re here for you
+            {t("contactPage.badge")}
           </div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">
-            Contact us
+            {t("contactPage.title")}
           </h1>
           <p className="text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-            Questions, worries, or a rough day with the app—tell us. Tebnu is
-            built for real families and helpers; we read what you send and
-            answer with care, not scripts.
+            {t("contactPage.intro")}
           </p>
         </div>
       </section>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
-        {/* Care strip + contact info */}
         <aside className="space-y-6">
           <div className="rounded-[1.75rem] border border-slate-200/80 bg-gradient-to-br from-orange-50/90 to-white p-6 shadow-md dark:border-transparent dark:from-orange-950/30 dark:to-slate-950/50">
             <div className="flex gap-4">
@@ -195,11 +207,10 @@ export function ContactUsContent() {
               </div>
               <div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                  People first
+                  {t("contactPage.peopleFirstTitle")}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  We don’t route you through endless bots. Share what’s going
-                  on—we’ll take it seriously and reply in plain language.
+                  {t("contactPage.peopleFirstBody")}
                 </p>
               </div>
             </div>
@@ -213,7 +224,7 @@ export function ContactUsContent() {
               />
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Email
+                  {t("contactPage.emailLabel")}
                 </p>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
@@ -230,37 +241,36 @@ export function ContactUsContent() {
               />
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Typical reply
+                  {t("contactPage.replyLabel")}
                 </p>
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Within 1 business day, often sooner
+                  {t("contactPage.replyValue")}
                 </p>
               </div>
             </div>
           </div>
         </aside>
 
-        {/* Form */}
         <div
           id="contact-form"
           className="scroll-mt-24 rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-transparent dark:bg-slate-950/70 md:p-8"
         >
           <h2 className="text-xl font-black text-slate-900 dark:text-white">
-            Send us a message
+            {t("contactPage.formTitle")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            This sends your message directly to the Tebnu team at {SUPPORT_EMAIL}.
+            {t("contactPage.formSubtitle", { email: SUPPORT_EMAIL })}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-1">
-                <Label htmlFor="contact-name">Your name</Label>
+                <Label htmlFor="contact-name">{t("contactPage.nameLabel")}</Label>
                 <Input
                   id="contact-name"
                   name="name"
                   autoComplete="name"
-                  placeholder="How we should address you"
+                  placeholder={t("contactPage.namePlaceholder")}
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
@@ -281,13 +291,15 @@ export function ContactUsContent() {
                 )}
               </div>
               <div className="space-y-2 sm:col-span-1">
-                <Label htmlFor="contact-email">Email</Label>
+                <Label htmlFor="contact-email">
+                  {t("contactPage.emailFieldLabel")}
+                </Label>
                 <Input
                   id="contact-email"
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder={t("contactPage.emailPlaceholder")}
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -311,9 +323,9 @@ export function ContactUsContent() {
 
             <div className="space-y-2">
               <Label htmlFor="contact-phone">
-                Phone{" "}
+                {t("contactPage.phoneLabel")}{" "}
                 <span className="font-normal text-muted-foreground">
-                  (optional)
+                  {t("contactPage.optional")}
                 </span>
               </Label>
               <Input
@@ -321,7 +333,7 @@ export function ContactUsContent() {
                 name="phone"
                 type="tel"
                 autoComplete="tel"
-                placeholder="+972 …"
+                placeholder={t("contactPage.phonePlaceholder")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="dark:border-transparent"
@@ -329,18 +341,18 @@ export function ContactUsContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact-topic">Topic</Label>
+              <Label htmlFor="contact-topic">{t("contactPage.topicLabel")}</Label>
               <Select value={topic} onValueChange={setTopic}>
                 <SelectTrigger
                   id="contact-topic"
                   className="h-11 rounded-lg border-2 dark:border-transparent"
                 >
-                  <SelectValue placeholder="Choose a topic" />
+                  <SelectValue placeholder={t("contactPage.topicPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOPICS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {TOPIC_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`contactPage.topics.${value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -348,12 +360,14 @@ export function ContactUsContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact-message">Your message</Label>
+              <Label htmlFor="contact-message">
+                {t("contactPage.messageLabel")}
+              </Label>
               <Textarea
                 id="contact-message"
                 name="message"
                 rows={6}
-                placeholder="What’s on your mind? The more context you share, the better we can help."
+                placeholder={t("contactPage.messagePlaceholder")}
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
@@ -382,18 +396,17 @@ export function ContactUsContent() {
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Sending…
+                  {t("contactPage.sending")}
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-5 w-5" />
-                  Submit
+                  {t("contactPage.submit")}
                 </>
               )}
             </Button>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Your message is sent directly to {SUPPORT_EMAIL}. You can also
-              email us there from any device.
+              {t("contactPage.formFooter", { email: SUPPORT_EMAIL })}
             </p>
           </form>
         </div>

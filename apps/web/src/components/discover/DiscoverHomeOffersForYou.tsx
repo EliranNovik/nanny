@@ -10,7 +10,11 @@ import { fetchDiscoverOffersForYou } from "@/lib/fetchDiscoverOffersForYou";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import { isolatedOfferPostPath } from "@/lib/profilePostShare";
 import { haversineDistanceKm } from "@/lib/geo";
-import type { ViewerLocation } from "@/lib/globalFeedPostUi";
+import { feedCategoryLabel, feedLocationDisplayLabel, type ViewerLocation } from "@/lib/globalFeedPostUi";
+import {
+  listingCityPart,
+  localizedListingTitle,
+} from "@/lib/localizedListingCopy";
 import { requestHeroWaveToneClass } from "@/components/discover/DiscoverRequestHeroWaves";
 import {
   HIRE_CATEGORY_TILE_UI,
@@ -128,13 +132,22 @@ export function DiscoverHomeOffersForYou({
             const km = hasCoords
               ? haversineDistanceKm(viewerLat, viewerLng, offer.locationLat!, offer.locationLng!)
               : null;
-            const locationLine = offer.locationLabel
+            const localizedLocation = feedLocationDisplayLabel(
+              t,
+              listingCityPart(offer.locationLabel),
+            );
+            const offerTitle = localizedListingTitle(t, {
+              kind: "offer",
+              categoryLabel: feedCategoryLabel(t, offer.categoryId, offer.customCategory),
+              location: localizedLocation,
+            }) || offer.title;
+            const locationLine = localizedLocation
               ? km != null
                 ? t("discover.offerLocationFromYou", {
-                    location: offer.locationLabel,
+                    location: localizedLocation,
                     km: km.toFixed(1),
                   })
-                : offer.locationLabel
+                : localizedLocation
               : null;
             const timeAgo = formatDistanceToNow(new Date(offer.createdAt), {
               addSuffix: true,
@@ -185,10 +198,12 @@ export function DiscoverHomeOffersForYou({
                       customCategory={offer.customCategory}
                       className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5"
                     />
-                    <span className="truncate">{offer.categoryLabel}</span>
+                    <span className="truncate">
+                      {feedCategoryLabel(t, offer.categoryId, offer.customCategory)}
+                    </span>
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
-                    {offer.title}
+                    {offerTitle}
                   </p>
                   {locationLine ? (
                     <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">

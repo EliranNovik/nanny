@@ -24,6 +24,8 @@ import {
   Medal,
   Trophy,
   Crown,
+  MoreHorizontal,
+  Share2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
@@ -32,13 +34,16 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { isFreelancerLiveWindowActive } from "@/lib/freelancerLiveWindow";
 import { applyPageSeo } from "@/lib/seo";
+import { useTranslation } from "react-i18next";
+import { feedLocationDisplayLabel } from "@/lib/globalFeedPostUi";
+import type { TFunction } from "i18next";
 
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
   publicProfileMediaUrl,
 } from "@/lib/publicProfileMedia";
-import { avatarUrl, mediaUrl } from "@/lib/imageTransform";
+import { mediaUrl } from "@/lib/imageTransform";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
@@ -77,6 +82,14 @@ import {
 } from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { OwnProfileRecentPostersCarousel } from "@/components/profile/OwnProfileRecentPostersCarousel";
+import {
+  AnimatedProfileRing,
+  AvailabilityCard,
+  HourlyRateCard,
+  MemberSinceBadge,
+  type PublicAvailability,
+  type PublicRate,
+} from "@/components/profile/PublicProfileAppFeatures";
 import { FREELANCER_LANGUAGES } from "@/hooks/useFreelancerProfileForm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,11 +139,14 @@ function jobServiceLabel(serviceType: string | undefined): string {
     : serviceType.replace(/_/g, " ");
 }
 
-function formatProfileLocationLabel(city: string | null | undefined): string | null {
-  const trimmed = city?.trim();
-  if (!trimmed) return null;
+function formatProfileLocationLabel(
+  t: TFunction,
+  city: string | null | undefined,
+): string | null {
+  const localized = feedLocationDisplayLabel(t, city);
+  if (!localized) return null;
 
-  const parts = trimmed
+  const parts = localized
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
@@ -138,7 +154,7 @@ function formatProfileLocationLabel(city: string | null | undefined): string | n
   if (!cityPart) return null;
 
   const countryPart =
-    parts.length > 1 ? parts.slice(1).join(", ") : "Israel";
+    parts.length > 1 ? parts[parts.length - 1] : t("feed.location.countryIsrael");
 
   return `${cityPart.toUpperCase()}, ${countryPart.toUpperCase()}`;
 }
@@ -168,6 +184,7 @@ interface PublicProfile {
   average_rating?: number;
   total_ratings?: number;
   languages?: string[];
+  created_at: string | null;
 }
 
 /** Mirrors HelpersPage / `get_helpers_near_location` — freelancer or active client-helper. */
@@ -726,6 +743,7 @@ function ProfileBioHeader({
 }
 
 export default function PublicProfilePage() {
+  const { t } = useTranslation();
   const { userId } = useParams();
   const { user: currentUser, profile: currentProfile } = useAuth();
   const { addToast } = useToast();
@@ -763,6 +781,9 @@ export default function PublicProfilePage() {
   const [openingChat, setOpeningChat] = useState(false);
   const [profileFavorited, setProfileFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [publicAvailability, setPublicAvailability] =
+    useState<PublicAvailability | null>(null);
+  const [publicRate, setPublicRate] = useState<PublicRate | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -988,6 +1009,45 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     if (!userId) {
+      setPublicAvailability(null);
+      setPublicRate(null);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      supabase
+        .from("profiles")
+        .select("availability")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("freelancer_profiles")
+        .select("hourly_rate_min, hourly_rate_max, show_rates")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]).then(([availabilityResult, rateResult]) => {
+      if (cancelled) return;
+      if (!availabilityResult.error) {
+        setPublicAvailability(
+          (availabilityResult.data?.availability as PublicAvailability | null) ??
+            null,
+        );
+      } else {
+        setPublicAvailability(null);
+      }
+      if (!rateResult.error) {
+        setPublicRate((rateResult.data as PublicRate | null) ?? null);
+      } else {
+        setPublicRate(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
       setLoading(false);
       return;
     }
@@ -1026,7 +1086,7 @@ export default function PublicProfilePage() {
             supabase
               .from("profiles")
               .select(
-                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, languages, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, languages, whatsapp_number_e164, telegram_username, average_rating, total_ratings, created_at",
               )
               .eq("id", userId)
               .single(),
@@ -1066,6 +1126,9 @@ export default function PublicProfilePage() {
           live_can_start_in: freelancerData?.live_can_start_in ?? null,
           available_now: freelancerData?.available_now ?? null,
         });
+        // Render the profile and start its high-priority photo request immediately.
+        // Reviews, posts, jobs, and other secondary data continue loading below.
+        setLoading(false);
 
         const runHelperRpcs = canActAsHelperOnPublicProfile(nextProfile);
 
@@ -1445,6 +1508,27 @@ export default function PublicProfilePage() {
 
   const isOwnProfile = currentUser?.id === userId;
 
+  async function sharePublicProfile() {
+    if (!userId || !profile) return;
+    const url = `https://www.tebnu.com/profile/${encodeURIComponent(userId)}`;
+    const title = `${profile.full_name || "Tebnu member"} on Tebnu`;
+    const categories = (profile.categories ?? [])
+      .map((category) => category.replace(/_/g, " "))
+      .join(" · ");
+    const text = [profile.bio?.trim(), categories].filter(Boolean).join("\n\n");
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title, text: text || title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      addToast({ title: "Profile link copied", variant: "success" });
+    } catch (error) {
+      if ((error as { name?: string })?.name === "AbortError") return;
+      addToast({ title: "Could not share profile", variant: "error" });
+    }
+  }
+
   const ownProfileEditPath = useMemo(() => {
     if (currentProfile?.role === "freelancer") return "/freelancer/profile";
     if (currentProfile?.role === "client") return "/client/profile";
@@ -1511,7 +1595,7 @@ export default function PublicProfilePage() {
     .join("")
     .slice(0, 2);
 
-  const profileLocationLabel = formatProfileLocationLabel(profile?.city);
+  const profileLocationLabel = formatProfileLocationLabel(t, profile?.city);
 
   const showHelperBadges = canActAsHelperOnPublicProfile(profile);
   const isLiveNow = showHelperBadges
@@ -1712,7 +1796,7 @@ export default function PublicProfilePage() {
             {title}
           </p>
           <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
-            {job.location_city || "Anywhere"}
+            {feedLocationDisplayLabel(t, job.location_city) || "Anywhere"}
           </p>
           <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
             {authorName ? `${authorName} • ${timeAgo}` : timeAgo}
@@ -1789,26 +1873,18 @@ export default function PublicProfilePage() {
         <div className="app-desktop-shell px-4">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
-            <div className="hidden md:block h-32 w-32 shrink-0 lg:h-40 lg:w-40">
+            <div className="hidden h-[119px] w-[119px] shrink-0 md:block">
               <button
                 type="button"
-                className="relative block h-full w-full overflow-hidden rounded-full ring-4 ring-white shadow-xl transition hover:scale-[1.02] active:scale-[0.98] dark:ring-zinc-900 bg-muted"
+                className="relative block h-full w-full rounded-full transition hover:scale-[1.02] active:scale-[0.98]"
                 onClick={() => profile?.photo_url && setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })}
                 aria-label="View profile photo full screen"
               >
-                {/* Initials as fallback/underlay */}
-                <div className="absolute inset-0 flex items-center justify-center text-4xl font-black uppercase tracking-tight text-primary/30">
-                  {photoInitials}
-                </div>
-
-                {profile?.photo_url && (
-                  <img
-                    src={avatarUrl.lg(profile.photo_url)}
-                    alt={profile.full_name ?? "Profile"}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    {...{ fetchpriority: "high" }}
-                  />
-                )}
+                <AnimatedProfileRing
+                  photoUrl={profile.photo_url}
+                  name={profile.full_name ?? "Profile"}
+                  helper={showHelperBadges}
+                />
                 {profileLiveNowDot}
               </button>
             </div>
@@ -1816,6 +1892,10 @@ export default function PublicProfilePage() {
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-start justify-between gap-6 flex-wrap">
                 <div className="min-w-0">
+                  <MemberSinceBadge
+                    createdAt={profile.created_at}
+                    helper={showHelperBadges}
+                  />
                   <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <h1 className="truncate text-[2rem] font-black leading-tight tracking-tight text-slate-900 dark:text-white">
@@ -1850,6 +1930,9 @@ export default function PublicProfilePage() {
                     variant="desktop"
                     profileEditPath={isOwnProfile ? ownProfileEditPath : null}
                   />
+                  <div className="mt-3 max-w-2xl">
+                    <AvailabilityCard value={publicAvailability} />
+                  </div>
                   {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
                     <div className={cn("mt-2.5", profileCategoryScrollRowClass)}>
@@ -1949,6 +2032,27 @@ export default function PublicProfilePage() {
                   {!isOwnProfile && currentUser && profile.categories && profile.categories.length > 0 && (
                     <ProfileKnockMenu variant="contact" targetUserId={userId!} targetRole={profile.role} categories={profile.categories} viewerId={currentUser.id} viewerRole={currentProfile?.role ?? null} viewerName={currentProfile?.full_name ?? null} />
                   )}
+                  <details className="group relative">
+                    <summary
+                      className="flex h-12 w-12 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-all hover:scale-105 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 [&::-webkit-details-marker]:hidden"
+                      aria-label="Profile actions"
+                    >
+                      <MoreHorizontal className="h-6 w-6" aria-hidden />
+                    </summary>
+                    <div className="absolute right-0 top-[calc(100%+0.4rem)] z-[80] min-w-48 overflow-hidden rounded-2xl border border-border/80 bg-card p-1.5 shadow-xl">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          void sharePublicProfile();
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-foreground transition-colors hover:bg-muted"
+                      >
+                        <Share2 className="h-5 w-5 text-primary" aria-hidden />
+                        Share profile
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>
@@ -2042,6 +2146,7 @@ export default function PublicProfilePage() {
                 src={mediaUrl.hero(profile.photo_url)}
                 alt={profile.full_name ?? "Profile"}
                 className="absolute inset-0 h-full w-full object-cover"
+                decoding="async"
                 {...{ fetchpriority: "high" }}
               />
             )}
@@ -2138,6 +2243,20 @@ export default function PublicProfilePage() {
         </div>
 
         <div className="px-5 pb-4 pt-4">
+          <div className="-mt-16 mb-4 flex items-end gap-4">
+            <AnimatedProfileRing
+              photoUrl={profile.photo_url}
+              name={profile.full_name ?? "Profile"}
+              helper={showHelperBadges}
+              className="z-20"
+            />
+            <div className="pb-1">
+              <MemberSinceBadge
+                createdAt={profile.created_at}
+                helper={showHelperBadges}
+              />
+            </div>
+          </div>
           {helperBadgesRow}
 
           <ProfileBioHeader
@@ -2152,6 +2271,9 @@ export default function PublicProfilePage() {
             variant="mobile"
             profileEditPath={isOwnProfile ? ownProfileEditPath : null}
           />
+          <div className="mt-4">
+            <AvailabilityCard value={publicAvailability} />
+          </div>
 
           {/* Connect Actions */}
           {!isOwnProfile && (
@@ -2301,6 +2423,7 @@ export default function PublicProfilePage() {
           </TabsContent>
 
           <TabsContent value="about" className="m-0 px-5 py-8 focus-visible:outline-none space-y-12">
+            <HourlyRateCard rate={publicRate} />
             <section className={profileSidebarPanelClass}>
               <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
               <ProfileBioHeader
@@ -2475,6 +2598,8 @@ export default function PublicProfilePage() {
             )}
             {profileMediaTab === "posts" && <ProfilePostsFeed {...profilePostsFeedProps} />}
             {profileMediaTab === "about" && (
+              <div className="space-y-4">
+              <HourlyRateCard rate={publicRate} />
               <div className={cn(profileSidebarPanelClass, "rounded-[2.5rem] p-10")}>
                 <div className="max-w-2xl">
                   <h2 className="text-[11px] font-black uppercase tracking-[.25em] text-slate-400 mb-6">Introduction</h2>
@@ -2514,6 +2639,7 @@ export default function PublicProfilePage() {
                     onSave={() => void saveLanguages(languagesDraft)}
                   />
                 </div>
+              </div>
               </div>
             )}
           </div>

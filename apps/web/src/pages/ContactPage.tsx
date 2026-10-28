@@ -5,11 +5,13 @@ import {
 import { ContactUsContent } from "@/components/ContactUsContent";
 import { Footer } from "@/components/Footer";
 import { usePageSeo } from "@/lib/seo";
+import { useTranslation } from "react-i18next";
 
 export default function ContactPage() {
+  const { t } = useTranslation();
   usePageSeo({
-    title: "Contact",
-    description: "Get in touch with the Tebnu team at info@tebnu.com.",
+    title: t("contactPage.seoTitle"),
+    description: t("contactPage.seoDescription"),
     path: "/contact",
   });
   return (

@@ -4,7 +4,9 @@ const QUERY = "(min-width: 768px)";
 
 /** True when viewport matches Tailwind `md` breakpoint (≥768px). */
 export function useIsMinMd() {
-  const [isMinMd, setIsMinMd] = useState(false);
+  const [isMinMd, setIsMinMd] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(QUERY).matches : false,
+  );
 
   useEffect(() => {
     const mq = window.matchMedia(QUERY);

@@ -1,5 +1,6 @@
 import {
   GLOBAL_POSTS_PATH,
+  TEBNU_PUBLIC_ORIGIN,
   parseProfilePostShareId,
   shortenPostCaption,
 } from "@/lib/profilePostShare";
@@ -39,8 +40,7 @@ export function globalJobRequestFeedPath(jobId: string): string {
 
 /** Canonical share URL for a help request (matches mobile app). */
 export function globalJobRequestShareUrl(jobId: string): string {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${globalJobRequestSharePath(jobId)}`;
+  return `${TEBNU_PUBLIC_ORIGIN}${globalJobRequestSharePath(jobId)}`;
 }
 
 export function parseJobRequestShareId(raw: string | null | undefined): string | null {
