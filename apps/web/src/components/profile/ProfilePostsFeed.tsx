@@ -659,8 +659,9 @@ type CommentsPostPreview = {
 function feedPostPreviewText(post: FeedPost): string | null {
   const isListing =
     post.source === "job_request" ||
-    post.post_type_id === "request_help" ||
-    post.post_type_id === "offer_service";
+    (post.source === "post" &&
+      (post.post_type_id === "request_help" ||
+        post.post_type_id === "offer_service"));
   if (isListing) {
     const notes = listingUserNotes(
       post.caption,
@@ -672,7 +673,7 @@ function feedPostPreviewText(post: FeedPost): string | null {
   }
   const caption = post.caption?.trim();
   if (caption) return caption;
-  if (post.source === "post" || post.source === "job_request") {
+  if (post.source === "post") {
     const generated = post.ai_generated_copy;
     if (generated?.short_text?.trim()) return generated.short_text.trim();
     if (generated?.feed_preview?.trim()) return generated.feed_preview.trim();
@@ -4426,8 +4427,9 @@ function PostCard({
       : null;
   const isGeneratedListing =
     post.source === "job_request" ||
-    post.post_type_id === "request_help" ||
-    post.post_type_id === "offer_service";
+    (post.source === "post" &&
+      (post.post_type_id === "request_help" ||
+        post.post_type_id === "offer_service"));
   const captionSource = isGeneratedListing
     ? listingUserNotes(
         post.caption,
@@ -4508,27 +4510,29 @@ function PostCard({
     return feedPostLocationLine(t, postLocationRaw, viewerLocation, post);
   }, [post, postLocationRaw, t, viewerLocation]);
 
+  const listingMetadata =
+    post.source === "availability" ? null : post.post_metadata;
   const listingLead = useMemo(() => {
     if (!isGeneratedListing) return "";
     const timeframe =
-      typeof post.post_metadata?.timeframe === "string"
-        ? post.post_metadata.timeframe
+      typeof listingMetadata?.timeframe === "string"
+        ? listingMetadata.timeframe
         : null;
     const customWhen =
-      typeof post.post_metadata?.custom_when === "string"
-        ? post.post_metadata.custom_when
+      typeof listingMetadata?.custom_when === "string"
+        ? listingMetadata.custom_when
         : null;
     const durationRaw =
-      typeof post.post_metadata?.time_duration === "string"
-        ? post.post_metadata.time_duration
+      typeof listingMetadata?.time_duration === "string"
+        ? listingMetadata.time_duration
         : null;
     const budgetVal =
-      typeof post.post_metadata?.budget === "number"
-        ? post.post_metadata.budget
+      typeof listingMetadata?.budget === "number"
+        ? listingMetadata.budget
         : null;
     const rateType =
-      typeof post.post_metadata?.rate_type === "string"
-        ? post.post_metadata.rate_type
+      typeof listingMetadata?.rate_type === "string"
+        ? listingMetadata.rate_type
         : null;
     const budget =
       budgetVal != null
@@ -4549,7 +4553,13 @@ function PostCard({
       duration: listingDurationLabel(t, durationRaw),
       budget,
     });
-  }, [isGeneratedListing, post, postTypeId, serviceCategoryMeta, t]);
+  }, [
+    isGeneratedListing,
+    listingMetadata,
+    postTypeId,
+    serviceCategoryMeta,
+    t,
+  ]);
 
   const postTitle = useMemo(
     () => feedPostTitle(t, post, generatedCopy, serviceCategoryMeta?.label),
