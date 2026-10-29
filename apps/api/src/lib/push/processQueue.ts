@@ -12,8 +12,108 @@ type QueueRow = {
   title: string;
   body: string;
   data: Record<string, unknown> | null;
+  dedupe_key: string | null;
   attempts: number;
 };
+
+function nonEmptyString(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function isHttpUrl(v: string | null | undefined): v is string {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+const COMMENT_TABLE_BY_PARENT_KEY: [string, string][] = [
+  ["post_id", "profile_post_comments"],
+  ["job_request_id", "job_request_comments"],
+  ["community_post_id", "community_post_comments"],
+];
+
+async function lookupCommentAuthor(data: Record<string, unknown>): Promise<string | null> {
+  const commentId = nonEmptyString(data.comment_id);
+  if (!commentId) return null;
+  const entry = COMMENT_TABLE_BY_PARENT_KEY.find(([key]) => nonEmptyString(data[key]));
+  if (!entry) return null;
+  const { data: row } = await supabaseAdmin
+    .from(entry[1])
+    .select("author_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  return nonEmptyString((row as { author_id?: unknown } | null)?.author_id);
+}
+
+async function lookupJobClient(jobId: string | null): Promise<string | null> {
+  if (!jobId) return null;
+  const { data: row } = await supabaseAdmin
+    .from("job_requests")
+    .select("client_id")
+    .eq("id", jobId)
+    .maybeSingle();
+  return nonEmptyString((row as { client_id?: unknown } | null)?.client_id);
+}
+
+/** Person the push is "from" — drives the iOS communication-style avatar. */
+async function resolveActorId(row: QueueRow): Promise<string | null> {
+  const data = row.data ?? {};
+  const direct =
+    nonEmptyString(data.actor_id) ??
+    nonEmptyString(data.sender_id) ??
+    nonEmptyString(data.author_id) ??
+    nonEmptyString(data.freelancer_id) ??
+    nonEmptyString(data.client_id);
+  if (direct) return direct;
+
+  const type = nonEmptyString(data.type);
+  if (type === "comment") return lookupCommentAuthor(data);
+  if (type === "like") {
+    // dedupe_key: profile_like:<post>:<user> / job_like:<job>:<user>
+    const parts = (row.dedupe_key ?? "").split(":");
+    return parts.length >= 3 ? nonEmptyString(parts[parts.length - 1]) : null;
+  }
+  if (type === "new_match" || type === "new_request") {
+    return lookupJobClient(nonEmptyString(data.job_id));
+  }
+  return null;
+}
+
+/**
+ * Ensures every push carries `actor_photo_url` (+ `actor_id`) so the iOS
+ * Notification Service Extension can render the sender avatar with the app badge.
+ * Falls back to the recipient's own photo for system pushes (e.g. post expiry).
+ */
+async function withActorPhoto(
+  row: QueueRow,
+  photoCache: Map<string, string | null>,
+): Promise<Record<string, unknown>> {
+  const data = { ...(row.data ?? {}) };
+  if (isHttpUrl(nonEmptyString(data.actor_photo_url))) return data;
+
+  try {
+    const actorId = (await resolveActorId(row)) ?? row.user_id;
+    let photo = photoCache.get(actorId);
+    if (photo === undefined) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("photo_url")
+        .eq("id", actorId)
+        .maybeSingle();
+      const raw = nonEmptyString((profile as { photo_url?: unknown } | null)?.photo_url);
+      photo = isHttpUrl(raw) ? raw : null;
+      photoCache.set(actorId, photo);
+    }
+    if (photo) {
+      data.actor_photo_url = photo;
+      if (!nonEmptyString(data.actor_id)) data.actor_id = actorId;
+    }
+  } catch (err: unknown) {
+    pushWarn("Actor photo lookup failed", {
+      queue_id: row.id,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+  return data;
+}
 
 type DeviceTokenRow = {
   token: string;
@@ -66,7 +166,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
 
   const { data: rows, error } = await supabaseAdmin
     .from("push_notification_queue")
-    .select("id, user_id, title, body, data, attempts")
+    .select("id, user_id, title, body, data, dedupe_key, attempts")
     .eq("status", "pending")
     .lte("scheduled_for", now)
     .order("scheduled_for", { ascending: true })
@@ -86,6 +186,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  const photoCache = new Map<string, string | null>();
 
   for (const row of queueRows) {
     pushLog("Queue row start", {
@@ -159,7 +260,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       continue;
     }
 
-    const data = stringifyData(row.data);
+    const data = stringifyData(await withActorPhoto(row, photoCache));
     const payload = { title: row.title, body: row.body, data };
     const invalidTokens: string[] = [];
     let successCount = 0;
