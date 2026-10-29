@@ -136,6 +136,12 @@ export async function sendFcmToTokens(
         ...(imageUrl ? { imageUrl } : {}),
       },
     },
+    apns: {
+      payload: {
+        aps: { mutableContent: true, sound: "default" },
+      },
+      ...(imageUrl ? { fcmOptions: { imageUrl } } : {}),
+    },
   };
 
   const response = await admin.messaging().sendEachForMulticast(message);

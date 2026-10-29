@@ -281,6 +281,8 @@ export async function sendApnsToTokens(
       },
       sound: "default",
       badge: 1,
+      // Lets the Notification Service Extension swap in actor_photo_url / image (communication-style avatar).
+      "mutable-content": 1,
     },
     ...(payload.data ?? {}),
   };
