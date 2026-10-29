@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
+import { NewRequestAlertsToggle } from "@/components/profile/NewRequestAlertsToggle";
 import {
   ServiceCategoriesPicker,
   serviceLabelsForIds,
@@ -126,6 +127,8 @@ export default function ClientProfileServicesPage() {
               </p>
             </div>
 
+            <NewRequestAlertsToggle available={ctx.isAvailableForJobs} />
+
             <div
               className={cn(
                 "rounded-2xl border border-border/40 bg-card/30 px-4 py-5 sm:px-6",
@@ -181,6 +184,11 @@ export default function ClientProfileServicesPage() {
                 onCheckedChange={ctx.setIsAvailableForJobs}
               />
             </div>
+
+            <NewRequestAlertsToggle
+              available={ctx.isAvailableForJobs}
+              className="-mt-3"
+            />
 
             <div>
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">

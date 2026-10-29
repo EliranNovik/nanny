@@ -10,6 +10,29 @@ import { queryKeys } from "@/hooks/data/keys";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { useJobRequestFavoriteIds } from "@/hooks/data/useJobRequestFavoriteIds";
 import { DiscoverOpenHelpRequestCard } from "@/components/discover/DiscoverOpenHelpRequestCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const REPORT_REASONS = [
+  ["spam", "Spam or misleading"],
+  ["harassment", "Harassment or bullying"],
+  ["hate_speech", "Hate speech"],
+  ["nudity", "Nudity or sexual content"],
+  ["violence", "Violence or threats"],
+  ["misinformation", "False information"],
+  ["scam", "Scam or fraud"],
+  ["copyright", "Copyright violation"],
+  ["other", "Other"],
+] as const;
 
 function canActAsHelper(
   profile: { role?: string; is_available_for_jobs?: boolean } | null | undefined,
@@ -33,6 +56,10 @@ export function OpenHelpRequestFeedCard({ row, className }: Props) {
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(user?.id);
   const saved = savedJobIds.has(row.id);
@@ -117,16 +144,97 @@ export function OpenHelpRequestFeedCard({ row, className }: Props) {
     }
   }, [user?.id, row.id, saved, queryClient, addToast, openGuestAuthPrompt]);
 
+  const handleReport = async () => {
+    if (!user?.id || !reportReason || reportSubmitting) return;
+    setReportSubmitting(true);
+    const { error } = await supabase.from("profile_post_reports").insert({
+      job_request_id: row.id,
+      reporter_id: user.id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    });
+    setReportSubmitting(false);
+    if (error) {
+      addToast({
+        title: error.code === "23505" ? "Already reported" : "Report failed",
+        description: error.code === "23505"
+          ? "You have already reported this request."
+          : error.message,
+        variant: "error",
+      });
+      if (error.code === "23505") setReportOpen(false);
+      return;
+    }
+    addToast({ title: "Report sent", description: "Thanks for helping keep Tebnu safe." });
+    setReportOpen(false);
+    setReportReason("");
+    setReportDetails("");
+  };
+
   return (
-    <DiscoverOpenHelpRequestCard
-      row={row}
-      className={className}
-      saved={saved}
-      saveBusy={saving}
-      onToggleSave={() => void handleToggleSave()}
-      accepted={accepted}
-      accepting={accepting}
-      onAccept={() => void handleAccept()}
-    />
+    <>
+      <DiscoverOpenHelpRequestCard
+        row={row}
+        className={className}
+        saved={saved}
+        saveBusy={saving}
+        onToggleSave={() => void handleToggleSave()}
+        onReport={
+          user?.id && user.id !== row.client_id
+            ? () => setReportOpen(true)
+            : undefined
+        }
+        accepted={accepted}
+        accepting={accepting}
+        onAccept={() => void handleAccept()}
+      />
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report request</DialogTitle>
+            <DialogDescription>
+              Tell us why this help request should be reviewed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              {REPORT_REASONS.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setReportReason(value)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                    reportReason === value
+                      ? "border-orange-500 bg-orange-500/10 font-semibold text-orange-600 dark:text-orange-400"
+                      : "border-border hover:bg-muted",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value)}
+              placeholder="Additional details (optional)"
+              className="min-h-20 resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReportOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleReport()}
+              disabled={!reportReason || reportSubmitting}
+            >
+              {reportSubmitting ? "Sending…" : "Submit report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

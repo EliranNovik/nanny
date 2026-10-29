@@ -846,6 +846,10 @@
     "recentActivity": "פעילות אחרונה",
     "publicGallery": "גלריה ציבורית",
     "servicesArea": "שירותים ואזור",
+    "notifyNewRequests": "התראות על בקשות חדשות",
+    "notifyNewRequestsHint": "קבל התראה כשמישהו מפרסם בקשה באחת מהקטגוריות שלך בתוך אזור השירות שלך.",
+    "notifyNewRequestsNeedsAvailable": "הפעל «זמין לבקשות עזרה» כדי לקבל התראות על בקשות חדשות.",
+    "notifyNewRequestsSaveError": "לא ניתן לעדכן את הגדרת ההתראות",
     "appearance": "מראה",
     "theme": {
       "title": "ערכת נושא",

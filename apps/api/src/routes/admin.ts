@@ -14,14 +14,35 @@ adminRouter.get("/dashboard", async (_req: Request, res: Response): Promise<void
       .from("job_requests")
       .select(`
         *,
-        client:profiles!job_requests_client_id_fkey(id, full_name, photo_url),
-        freelancer:profiles!job_requests_selected_freelancer_id_fkey(id, full_name, photo_url)
+        client:profiles!job_requests_client_id_fkey(id, full_name, photo_url, is_verified),
+        freelancer:profiles!job_requests_selected_freelancer_id_fkey(id, full_name, photo_url, is_verified)
       `)
       .order("created_at", { ascending: false });
 
     if (jobsErr) throw jobsErr;
 
-    console.log("[AdminDashboard] Fetched jobs sample row:", JSON.stringify(jobs?.[0] || {}, null, 2));
+    const { data: cancellations, error: cancellationsErr } = await supabaseAdmin
+      .from("job_match_cancellations")
+      .select("id, job_id, client_id, freelancer_id, cancelled_by, cancelled_by_role, reason, note, matched_at, created_at")
+      .order("created_at", { ascending: false });
+
+    if (cancellationsErr) throw cancellationsErr;
+
+    const cancellationsByJob = new Map<string, any[]>();
+    for (const cancellation of cancellations || []) {
+      const existing = cancellationsByJob.get(cancellation.job_id) || [];
+      existing.push(cancellation);
+      cancellationsByJob.set(cancellation.job_id, existing);
+    }
+
+    const jobsWithCancellations = (jobs || []).map((job) => {
+      const jobCancellations = cancellationsByJob.get(job.id) || [];
+      return {
+        ...job,
+        latest_cancellation: jobCancellations[0] || null,
+        cancellation_count: jobCancellations.length,
+      };
+    });
 
     // 2. Fetch Users
     const { data: users, error: usersErr } = await supabaseAdmin
@@ -72,23 +93,23 @@ adminRouter.get("/dashboard", async (_req: Request, res: Response): Promise<void
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-    const totalJobs = jobs?.length || 0;
-    const activeJobs = jobs?.filter(j => ["locked", "active"].includes(j.status)).length || 0;
-    const completedJobs = jobs?.filter(j => j.status === "completed").length || 0;
-    const requestedJobs = jobs?.filter(j => ["notifying", "confirmations_closed"].includes(j.status)).length || 0;
+    const totalJobs = jobsWithCancellations.length;
+    const activeJobs = jobsWithCancellations.filter(j => ["locked", "active"].includes(j.status)).length;
+    const completedJobs = jobsWithCancellations.filter(j => j.status === "completed").length;
+    const requestedJobs = jobsWithCancellations.filter(j => ["notifying", "confirmations_closed"].includes(j.status)).length;
 
     const totalUsers = users?.filter(u => !u.is_admin).length || 0;
     const totalClients = users?.filter(u => u.role === "client" && !u.is_admin).length || 0;
     const totalFreelancers = users?.filter(u => u.role === "freelancer" && !u.is_admin).length || 0;
 
-    const jobsThisWeek = jobs?.filter(j => new Date(j.created_at) >= weekAgo).length || 0;
-    const jobsLastWeek = jobs?.filter(j => {
+    const jobsThisWeek = jobsWithCancellations.filter(j => new Date(j.created_at) >= weekAgo).length;
+    const jobsLastWeek = jobsWithCancellations.filter(j => {
       const d = new Date(j.created_at);
       return d >= twoWeeksAgo && d < weekAgo;
     }).length || 0;
 
     res.json({
-      jobs: jobs || [],
+      jobs: jobsWithCancellations,
       users: users || [],
       reports: reports || [],
       statistics: {
@@ -397,10 +418,68 @@ adminRouter.get("/posts", async (req: Request, res: Response): Promise<void> => 
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json({ success: true, posts: data || [] });
+    const posts = data || [];
+    const postIds = posts.map((post: any) => post.id);
+    let reports: any[] = [];
+    if (postIds.length > 0) {
+      const reportResult = await supabaseAdmin
+        .from("profile_post_reports")
+        .select(`
+          id, post_id, job_request_id, reporter_id, reason, details, status, created_at, resolved_at, resolved_by,
+          reporter:profiles!profile_post_reports_reporter_id_fkey(id, full_name, photo_url)
+        `)
+        .in("post_id", postIds)
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+      if (reportResult.error && reportResult.error.code !== "PGRST205") {
+        throw reportResult.error;
+      }
+      reports = reportResult.data || [];
+    }
+
+    const reportsByPost = new Map<string, any[]>();
+    for (const report of reports) {
+      const current = reportsByPost.get(report.post_id) || [];
+      current.push(report);
+      reportsByPost.set(report.post_id, current);
+    }
+
+    res.json({
+      success: true,
+      posts: posts.map((post: any) => {
+        const postReports = reportsByPost.get(post.id) || [];
+        return { ...post, report_count: postReports.length, reports: postReports };
+      }),
+    });
   } catch (err: any) {
     console.error("[AdminRouter] GET /posts failure:", err);
     res.status(500).json({ error: `Failed to fetch posts: ${err.message || err}` });
+  }
+});
+
+adminRouter.patch("/reports/:id", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { status } = req.body as { status?: string };
+  if (!status || !["resolved", "dismissed"].includes(status)) {
+    res.status(400).json({ error: "Status must be resolved or dismissed." });
+    return;
+  }
+  try {
+    const adminId = (req as any).user?.id;
+    const { data, error } = await supabaseAdmin
+      .from("profile_post_reports")
+      .update({
+        status,
+        resolved_at: new Date().toISOString(),
+        resolved_by: adminId || null,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, report: data });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to close report: ${err.message || err}` });
   }
 });
 

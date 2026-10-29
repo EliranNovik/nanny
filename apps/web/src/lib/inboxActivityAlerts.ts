@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { loadDismissedActivityIds } from "@/lib/inboxDismissedActivity";
+import { isolatedOpenRequestPath } from "@/lib/jobRequestShare";
 
 export interface NotificationAlert {
   id: string;
@@ -215,7 +216,7 @@ export async function fetchInboxActivityAlerts(
           type: "job_request",
           title: `New ${job.care_type || job.service_type || "job"} request`,
           description: job.location_city ? `Location: ${job.location_city}` : "Open to review",
-          link: buildJobsUrl("freelancer", "requests"),
+          link: isolatedOpenRequestPath(String(job.id || n.job_id)),
           created_at: n.created_at,
         });
       }

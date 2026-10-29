@@ -2129,6 +2129,8 @@ export function ComposeModal({
             category: requestHelpCategory,
             customCategory: savedCustomCategory,
             locationAddress: requestIsPickup ? pickupFrom.address : postLocation.address,
+            locationLat: postLocation.lat,
+            locationLng: postLocation.lng,
             timeframe,
             customWhenDate,
             customWhenTime,

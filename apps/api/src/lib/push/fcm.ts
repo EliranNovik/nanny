@@ -116,11 +116,15 @@ export async function sendFcmToTokens(
     data[key] = typeof value === "string" ? value : JSON.stringify(value);
   }
 
+  const rawImage = data.image?.trim();
+  const imageUrl = rawImage && /^https?:\/\//i.test(rawImage) ? rawImage : undefined;
+
   const message: admin.messaging.MulticastMessage = {
     tokens,
     notification: {
       title: payload.title,
       body: payload.body,
+      ...(imageUrl ? { imageUrl } : {}),
     },
     data,
     // Android / web FCM only — native iOS APNs tokens are sent via apns.ts, not FCM.
@@ -129,6 +133,7 @@ export async function sendFcmToTokens(
       notification: {
         channelId: "tebnu_default",
         sound: "default",
+        ...(imageUrl ? { imageUrl } : {}),
       },
     },
   };

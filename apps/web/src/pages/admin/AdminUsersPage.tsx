@@ -3,9 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Users, Search, Download, Shield, Settings, Trash, LogOut } from "lucide-react";
-import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { Users, Search, Download, Shield, Settings, Trash, LogOut, MoreVertical, BadgeCheck } from "lucide-react";
+import { apiPost, apiPatch } from "@/lib/api";
+import { getAdminData, getCachedAdminData, invalidateAdminData } from "@/lib/adminDataCache";
+import { useProgressiveList } from "@/hooks/useProgressiveList";
 import { format } from "date-fns";
+import { adminCityLabel } from "@/lib/adminCityLabel";
+import { LEGAL_VERSION } from "@/data/legalContentRevised";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 interface UserProfile {
   id: string;
@@ -19,11 +24,26 @@ interface UserProfile {
   is_verified?: boolean | null;
   kyc_status?: string | null;
   is_available_for_jobs?: boolean | null;
+  whatsapp_number_e164?: string | null;
+  telegram_username?: string | null;
+  legal_terms_accepted_at?: string | null;
+  privacy_accepted_at?: string | null;
+  legal_terms_version?: string | null;
+  privacy_version?: string | null;
+  age_18_confirmed_at?: string | null;
 }
 
+type UserJob = {
+  status: string;
+  client_id: string;
+  selected_freelancer_id: string | null;
+};
+
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedDashboard = getCachedAdminData<{ users: UserProfile[]; jobs: UserJob[] }>("dashboard");
+  const [users, setUsers] = useState<UserProfile[]>(cachedDashboard?.users || []);
+  const [jobs, setJobs] = useState<UserJob[]>(cachedDashboard?.jobs || []);
+  const [loading, setLoading] = useState(!cachedDashboard);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [verificationFilter, setVerificationFilter] = useState("all");
@@ -38,25 +58,39 @@ export default function AdminUsersPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [agreementSigned, setAgreementSigned] = useState(false);
   const [role, setRole] = useState<"client" | "freelancer">("client");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [kycStatus, setKycStatus] = useState("");
   const [isAvailable, setIsAvailable] = useState(false);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    const closeActionMenus = (event: PointerEvent) => {
+      const target = event.target as Node;
+      document
+        .querySelectorAll<HTMLDetailsElement>("details[data-admin-user-actions][open]")
+        .forEach((menu) => {
+          if (!menu.contains(target)) menu.removeAttribute("open");
+        });
+    };
+    document.addEventListener("pointerdown", closeActionMenus);
+    return () => document.removeEventListener("pointerdown", closeActionMenus);
+  }, []);
+
   async function fetchUsers() {
-    setLoading(true);
+    if (!getCachedAdminData("dashboard")) setLoading(true);
     try {
-      const data = await apiGet<{ users: UserProfile[] }>("/api/admin/dashboard");
+      const data = await getAdminData<{ users: UserProfile[]; jobs: UserJob[] }>("dashboard", "/api/admin/dashboard");
       setUsers(data.users);
+      setJobs(data.jobs);
     } catch (error) {
       console.error("Error loading users registry:", error);
     } finally {
@@ -69,6 +103,9 @@ export default function AdminUsersPage() {
     setFullName(user.full_name || "");
     setPhone(user.phone || "");
     setCity(user.city || "");
+    setWhatsapp(user.whatsapp_number_e164 || "");
+    setTelegram(user.telegram_username || "");
+    setAgreementSigned(!!user.legal_terms_accepted_at && !!user.privacy_accepted_at);
     setRole(user.role === "admin" ? "client" : user.role);
     setIsAdmin(!!user.is_admin);
     setIsVerified(!!user.is_verified);
@@ -85,6 +122,19 @@ export default function AdminUsersPage() {
         full_name: fullName || null,
         phone: phone || null,
         city: city || null,
+        whatsapp_number_e164: whatsapp.trim() || null,
+        telegram_username: telegram.trim().replace(/^@/, "") || null,
+        legal_terms_accepted_at: agreementSigned
+          ? selectedUser.legal_terms_accepted_at || new Date().toISOString()
+          : null,
+        privacy_accepted_at: agreementSigned
+          ? selectedUser.privacy_accepted_at || new Date().toISOString()
+          : null,
+        legal_terms_version: agreementSigned ? LEGAL_VERSION : null,
+        privacy_version: agreementSigned ? LEGAL_VERSION : null,
+        age_18_confirmed_at: agreementSigned
+          ? selectedUser.age_18_confirmed_at || new Date().toISOString()
+          : null,
         role: isAdmin ? "admin" as any : role,
         is_admin: isAdmin,
         is_verified: isVerified,
@@ -94,6 +144,7 @@ export default function AdminUsersPage() {
 
       await apiPatch(`/api/admin/users/${selectedUser.id}`, updates);
       setIsSettingsOpen(false);
+      invalidateAdminData("dashboard");
       fetchUsers();
     } catch (err: any) {
       alert(`Failed to save settings: ${err.message || err}`);
@@ -117,6 +168,7 @@ export default function AdminUsersPage() {
         { action }
       );
       if (res.success) {
+        invalidateAdminData("dashboard");
         fetchUsers();
       }
     } catch (err: any) {
@@ -126,13 +178,15 @@ export default function AdminUsersPage() {
   }
 
   // Filters logic
+  const normalizedSearch = search.trim().toLowerCase();
   const filteredUsers = users
     .filter((u) => {
       const matchesSearch =
-        (u.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
-        (u.phone || "").toLowerCase().includes(search.toLowerCase()) ||
-        (u.city || "").toLowerCase().includes(search.toLowerCase()) ||
-        u.id.includes(search);
+        !normalizedSearch ||
+        (u.full_name || "").toLowerCase().includes(normalizedSearch) ||
+        (u.phone || "").toLowerCase().includes(normalizedSearch) ||
+        (u.city || "").toLowerCase().includes(normalizedSearch) ||
+        u.id.toLowerCase().includes(normalizedSearch);
 
       const matchesRole =
         roleFilter === "all" ||
@@ -150,9 +204,11 @@ export default function AdminUsersPage() {
       return matchesSearch && matchesRole && matchesVerification && matchesKyc;
     });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const {
+    visibleItems: paginatedUsers,
+    hasMore,
+    sentinelRef,
+  } = useProgressiveList(filteredUsers, 30);
 
   const exportCSV = () => {
     if (filteredUsers.length === 0) return;
@@ -182,24 +238,17 @@ export default function AdminUsersPage() {
   };
 
   if (loading && users.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="w-8 h-8 border-4 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminPageSkeleton columns={10} />;
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-10">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
+      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
               <Users className="h-8 w-8 text-indigo-500" /> Users Registry
             </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-              Audit profiles, configure security parameters, and manage access privileges
-            </p>
           </div>
 
           <button
@@ -211,14 +260,14 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Filter controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 p-4 rounded-2xl shadow-xs">
+        <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-0">
           <div className="relative col-span-1 lg:col-span-2">
             <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
-              placeholder="Search by name, phone, city or ID..."
+              placeholder="Search by name, phone, city or UID..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             />
           </div>
@@ -226,7 +275,7 @@ export default function AdminUsersPage() {
           <div>
             <select
               value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setRoleFilter(e.target.value)}
               className="w-full px-3 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             >
               <option value="all">All Roles</option>
@@ -239,7 +288,7 @@ export default function AdminUsersPage() {
           <div>
             <select
               value={verificationFilter}
-              onChange={(e) => { setVerificationFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setVerificationFilter(e.target.value)}
               className="w-full px-3 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             >
               <option value="all">All Verification</option>
@@ -251,7 +300,7 @@ export default function AdminUsersPage() {
           <div>
             <select
               value={kycFilter}
-              onChange={(e) => { setKycFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setKycFilter(e.target.value)}
               className="w-full px-3 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             >
               <option value="all">All KYC Statuses</option>
@@ -263,31 +312,38 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Registry Header (Desktop) */}
-        {paginatedUsers.length > 0 && (
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-            <div className="col-span-4">Participant</div>
-            <div className="col-span-2">Role</div>
-            <div className="col-span-2">Location</div>
-            <div className="col-span-1">KYC Status</div>
-            <div className="col-span-1">Onboarded</div>
-            <div className="col-span-2 text-right">Operations</div>
-          </div>
-        )}
+        <div className="admin-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
+          <div className="admin-table-scroll overflow-auto">
+          {/* Registry Header (Desktop) */}
+          {paginatedUsers.length > 0 && (
+            <div className="admin-users-grid admin-users-header hidden md:min-w-[1690px] md:grid gap-4 bg-zinc-50 px-6 py-3 text-xs font-bold text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400 uppercase tracking-wider">
+              <div>Participant</div>
+              <div>Role</div>
+              <div>Location</div>
+              <div>WhatsApp</div>
+              <div>Telegram</div>
+              <div>Agreement signed</div>
+              <div>Completed as client</div>
+              <div>Completed as freelancer</div>
+              <div>KYC Status</div>
+              <div>Onboarded</div>
+              <div aria-label="Actions" />
+            </div>
+          )}
 
-        {/* Registry Rows (Card List style) */}
+        {/* Registry Rows */}
         {paginatedUsers.length === 0 ? (
-          <Card className="text-center py-16 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs">
+          <Card className="border-0 bg-transparent py-16 text-center shadow-none">
             <CardContent>
               <p className="text-zinc-500 dark:text-zinc-400 font-medium">No users found matching query.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {paginatedUsers.map((u) => (
               <div
                 key={u.id}
-                className="flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 md:px-6 md:py-4 shadow-xs hover:shadow-md transition-all duration-300"
+                className="admin-users-grid flex flex-col md:min-w-[1690px] md:grid gap-3 items-start md:items-center px-4 py-3 md:px-6 md:py-2.5 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
               >
                 {/* Column 1: Participant */}
                 <div className="col-span-4 flex items-center gap-3 w-full min-w-0">
@@ -301,9 +357,7 @@ export default function AdminUsersPage() {
                     <span className="font-semibold text-sm tracking-tight flex items-center gap-1.5 text-zinc-900 dark:text-zinc-50">
                       {u.full_name || "Anonymous"}
                       {u.is_verified && (
-                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-1.5 py-0 text-[9px] uppercase tracking-wide">
-                          Verified
-                        </Badge>
+                        <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white" aria-label="Verified" />
                       )}
                     </span>
                     <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate">{u.phone || "No phone listed"}</span>
@@ -333,8 +387,14 @@ export default function AdminUsersPage() {
                 {/* Column 3: Location */}
                 <div className="col-span-2 flex items-center md:block text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-sm font-medium">
                   <span className="md:hidden text-xs font-bold text-zinc-400 uppercase mr-2">Location:</span>
-                  {u.city || "N/A"}
+                  {adminCityLabel(u.city)}
                 </div>
+
+                <div className="whitespace-nowrap text-sm">{u.whatsapp_number_e164 || "—"}</div>
+                <div className="whitespace-nowrap text-sm">{u.telegram_username ? `@${u.telegram_username.replace(/^@/, "")}` : "—"}</div>
+                <div className="whitespace-nowrap text-sm font-semibold">{u.legal_terms_accepted_at && u.privacy_accepted_at ? "Yes" : "No"}</div>
+                <div className="whitespace-nowrap text-sm">{jobs.filter((job) => job.status === "completed" && job.client_id === u.id).length}</div>
+                <div className="whitespace-nowrap text-sm">{jobs.filter((job) => job.status === "completed" && job.selected_freelancer_id === u.id).length}</div>
 
                 {/* Column 4: KYC Status */}
                 <div className="col-span-1 flex items-center md:block">
@@ -355,64 +415,53 @@ export default function AdminUsersPage() {
                 </div>
 
                 {/* Column 6: Operations */}
-                <div className="col-span-2 flex items-center justify-start md:justify-end gap-2 w-full md:w-auto">
-                  <button
-                    onClick={() => handleOpenSettings(u)}
-                    className="px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 rounded-xl transition-all flex items-center gap-1 shadow-xs"
-                  >
-                    <Settings className="h-3 w-3" /> Settings
-                  </button>
-                  {!u.is_admin && (
-                    <>
+                <div className="col-span-2 flex w-full items-center justify-start md:w-auto md:justify-end">
+                  <details className="relative" data-admin-user-actions>
+                    <summary className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden">
+                      <MoreVertical className="h-5 w-5" />
+                    </summary>
+                    <div className="absolute right-0 top-0 z-50 w-48 overflow-hidden rounded-xl bg-white p-1.5 shadow-xl ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
                       <button
-                        onClick={() => handleUserAction(u.id, "disconnect")}
-                        className="px-3 py-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 border border-amber-200/60 hover:border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 dark:border-amber-900/30 dark:hover:bg-amber-950/20 rounded-xl transition-all flex items-center gap-1 shadow-xs"
-                        title="Disconnect profile, wipe operational logs"
+                        onClick={(event) => {
+                          handleOpenSettings(u);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-700"
                       >
-                        <LogOut className="h-3 w-3" /> Disconnect
+                        <Settings className="h-4 w-4" /> Settings
                       </button>
-                      <button
-                        onClick={() => handleUserAction(u.id, "delete")}
-                        className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200/60 hover:border-red-300 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 dark:hover:bg-red-950/20 rounded-xl transition-all flex items-center gap-1 shadow-xs"
-                        title="Permanently remove user"
-                      >
-                        <Trash className="h-3 w-3" /> Delete
-                      </button>
-                    </>
-                  )}
+                      {!u.is_admin && (
+                        <>
+                          <button
+                            onClick={() => void handleUserAction(u.id, "disconnect")}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                          >
+                            <LogOut className="h-4 w-4" /> Disconnect
+                          </button>
+                          <button
+                            onClick={() => void handleUserAction(u.id, "delete")}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          >
+                            <Trash className="h-4 w-4" /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </details>
                 </div>
               </div>
             ))}
+            <div ref={sentinelRef} className="h-1" aria-hidden />
+            {hasMore && <p className="py-3 text-center text-xs text-zinc-400">Loading more…</p>}
           </div>
         )}
-
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-10">
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-xs font-semibold border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-xs font-semibold border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
-            >
-              Next
-            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* User Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-xl border border-border/40 bg-card p-6">
+        <DialogContent className="admin-drawer-content max-w-md overflow-y-auto p-6">
           <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
             <Settings className="h-5 w-5 text-indigo-500" /> User Settings Configuration
           </DialogTitle>
@@ -472,6 +521,29 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">WhatsApp</label>
+                    <input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="+972…"
+                      className="w-full mt-1 px-3 py-2 text-sm bg-background border border-border rounded-lg focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Telegram</label>
+                    <input
+                      type="text"
+                      value={telegram}
+                      onChange={(e) => setTelegram(e.target.value)}
+                      placeholder="@username"
+                      className="w-full mt-1 px-3 py-2 text-sm bg-background border border-border rounded-lg focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Role</label>
                     <select
                       value={role}
@@ -500,6 +572,19 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Agreement Signed</span>
+                    <button
+                      type="button"
+                      onClick={() => setAgreementSigned(!agreementSigned)}
+                      className={`h-5 w-9 rounded-full transition-colors focus:outline-none relative flex items-center ${
+                        agreementSigned ? "bg-emerald-500 justify-end" : "bg-zinc-200 justify-start"
+                      }`}
+                    >
+                      <span className="h-4 w-4 bg-white rounded-full shadow-sm mx-0.5" />
+                    </button>
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Administrator Credentials</span>
                     <button

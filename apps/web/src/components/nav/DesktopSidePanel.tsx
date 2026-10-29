@@ -61,6 +61,7 @@ export function DesktopSidePanel({
   const { user, profile, signOut } = useAuth();
   const { unreadMessages } = useUnreadCounts();
   const { pathname } = useLocation();
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
   const navigate = useNavigate();
   const mountedRef = useRef(false);
   const [savedProfilesOpen, setSavedProfilesOpen] = useState(true);
@@ -179,8 +180,8 @@ export function DesktopSidePanel({
     },
   ];
 
-  const savedProfilesEnabled = Boolean(user?.id);
-  const savedPostsEnabled = Boolean(user?.id);
+  const savedProfilesEnabled = Boolean(user?.id) && !isAdminPage;
+  const savedPostsEnabled = Boolean(user?.id) && !isAdminPage;
 
   const savedProfilesShort = useMemo(() => savedProfiles.slice(0, 8), [savedProfiles]);
   const savedPostsShort = useMemo(() => savedPosts.slice(0, 8), [savedPosts]);
@@ -301,7 +302,9 @@ export function DesktopSidePanel({
       <aside
         className={cn(
           "app-desktop-side-panel hidden !w-[96px] flex-col items-center md:flex",
-          "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+          isAdminPage
+            ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
+            : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain px-1.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -376,7 +379,7 @@ export function DesktopSidePanel({
                     className={cn(
                       "relative flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
                       "text-muted-foreground hover:text-foreground hover:opacity-90",
-                      active && "text-foreground",
+                      active && "rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm hover:text-white",
                     )}
                     aria-label={it.label}
                   >
@@ -390,7 +393,7 @@ export function DesktopSidePanel({
             </nav>
           )}
 
-          <div className="mt-auto flex w-full flex-col items-center gap-1 py-2">
+          <div className={cn("mt-auto w-full flex-col items-center gap-1 py-2", isAdminPage ? "hidden" : "flex")}>
             <button
               type="button"
               onClick={() => openSaved("profiles")}
@@ -442,7 +445,9 @@ export function DesktopSidePanel({
     <aside
       className={cn(
         "app-desktop-side-panel hidden md:flex flex-col",
-        "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+        isAdminPage
+          ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
+          : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
       )}
     >
       {/* Independent scroll: panel content scrolls without moving the page */}
@@ -496,7 +501,7 @@ export function DesktopSidePanel({
                   {it.id === "messages" && unreadMessages > 0 && (
                     <Badge
                       variant="destructive"
-                      className="ms-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
+                      className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
                     >
                       {unreadMessages > 9 ? "9+" : unreadMessages}
                     </Badge>
@@ -524,7 +529,7 @@ export function DesktopSidePanel({
                       className={cn(
                         "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
                         "text-muted-foreground hover:text-foreground",
-                        active && "text-foreground",
+                        active && "rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm hover:text-white",
                       )}
                       title={it.label}
                     >
@@ -539,7 +544,7 @@ export function DesktopSidePanel({
             </div>
           )}
 
-          <div className="mt-auto pt-4">
+          <div className={cn("mt-auto pt-4", isAdminPage && "hidden")}>
               {/* Saved profiles */}
               <button
                 type="button"

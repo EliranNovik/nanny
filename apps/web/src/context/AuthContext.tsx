@@ -27,6 +27,8 @@ interface Profile {
   share_telegram?: boolean;
   categories?: string[];
   is_available_for_jobs?: boolean;
+  /** New-request push alerts; null/undefined means on. */
+  notify_new_requests?: boolean | null;
   average_rating?: number;
   total_ratings?: number;
   kyc_status?: string | null;

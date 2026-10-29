@@ -13,7 +13,8 @@ import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import { getCityFromLocation } from "@/lib/location";
+import { getLocationDataFromGps } from "@/lib/location";
+import { jobRequestCoordinates } from "@/lib/createJobFromRequestHelpCompose";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -280,6 +281,9 @@ interface JobData {
   location_city: string;
   /** Set when city comes from Places/GPS/profile — required to leave step 3 */
   location_city_confirmed: boolean;
+  /** Pin for the chosen city; sent so helper alerts can use service radius right away. */
+  location_lat?: number | null;
+  location_lng?: number | null;
   time_duration: string;
   budget_amount: string;
   budget_rate_type: "per_hour" | "fixed";
@@ -377,6 +381,10 @@ export default function CreateJobPage() {
               typeof savedJobData.location_city_confirmed === "boolean"
                 ? savedJobData.location_city_confirmed
                 : !!loc,
+            location_lat:
+              typeof savedJobData.location_lat === "number" ? savedJobData.location_lat : null,
+            location_lng:
+              typeof savedJobData.location_lng === "number" ? savedJobData.location_lng : null,
             time_duration: savedJobData.time_duration || "",
             budget_amount: savedJobData.budget_amount || "",
             budget_rate_type:
@@ -492,6 +500,8 @@ export default function CreateJobPage() {
         ...prev,
         location_city: profile.city!,
         location_city_confirmed: true,
+        location_lat: profile.location_lat ?? null,
+        location_lng: profile.location_lng ?? null,
       }));
       setSavedLocationShown(true);
     }
@@ -583,6 +593,8 @@ export default function CreateJobPage() {
       ...prev,
       location_city: selection.label.trim(),
       location_city_confirmed: true,
+      location_lat: selection.lat,
+      location_lng: selection.lng,
     }));
   }, []);
 
@@ -591,6 +603,8 @@ export default function CreateJobPage() {
       ...prev,
       location_city: "",
       location_city_confirmed: false,
+      location_lat: null,
+      location_lng: null,
     }));
   }, []);
 
@@ -670,11 +684,13 @@ export default function CreateJobPage() {
   async function handleGetLocation() {
     setGettingLocation(true);
     try {
-      const cityName = await getCityFromLocation();
+      const { city: cityName, lat, lng } = await getLocationDataFromGps();
       setJobData((prev) => ({
         ...prev,
         location_city: cityName,
         location_city_confirmed: true,
+        location_lat: lat,
+        location_lng: lng,
       }));
       addToast({
         title: t("createJob.toast.locationFound"),
@@ -780,7 +796,16 @@ export default function CreateJobPage() {
         ? computeJobStartAtFromWhen(whenTimeframe, customWhenAtIso)
         : undefined;
 
-      const { location_city_confirmed: _confirmed, ...restJobData } = jobData;
+      const {
+        location_city_confirmed: _confirmed,
+        location_lat: _lat,
+        location_lng: _lng,
+        ...restJobData
+      } = jobData;
+      const coords = jobRequestCoordinates(
+        { lat: restJobData.service_details.from_lat, lng: restJobData.service_details.from_lng },
+        { lat: jobData.location_lat, lng: jobData.location_lng },
+      );
       const serviceDetails = {
         ...restJobData.service_details,
         ...(uploadedImages.length > 0 ? { images: uploadedImages } : {}),
@@ -791,6 +816,7 @@ export default function CreateJobPage() {
         care_frequency: restJobData.care_frequency,
         time_duration: restJobData.time_duration,
         location_city: restJobData.location_city,
+        ...coords,
         service_details: serviceDetails,
         when_timeframe: whenTimeframe || undefined,
         custom_when_at: customWhenAtIso ?? undefined,
@@ -1224,6 +1250,8 @@ export default function CreateJobPage() {
                           ...prev,
                           location_city: "",
                           location_city_confirmed: false,
+                          location_lat: null,
+                          location_lng: null,
                         }));
                       }}
                     >

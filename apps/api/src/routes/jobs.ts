@@ -116,6 +116,8 @@ const CreateJobSchema = z.object({
 
   // Common fields
   location_city: z.string().min(1).max(200),
+  location_lat: z.number().min(-90).max(90).optional().nullable(),
+  location_lng: z.number().min(-180).max(180).optional().nullable(),
   start_at: z.string().datetime().optional(),
   when_timeframe: z.enum(VALID_WHEN_TIMEFRAMES).optional(),
   custom_when_at: z.string().datetime().optional(),
@@ -127,6 +129,30 @@ const CreateJobSchema = z.object({
   notes: z.string().max(2000).optional().nullable(),
   confirm_window_seconds: z.number().int().min(30).max(180).default(90),
 });
+
+function finiteCoord(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+/** Pickup point from service_details, else the client's profile pin. */
+async function resolveJobCoordinates(
+  clientId: string,
+  serviceDetails: Record<string, unknown> | undefined,
+): Promise<{ lat: number; lng: number } | null> {
+  const fromLat = finiteCoord(serviceDetails?.from_lat);
+  const fromLng = finiteCoord(serviceDetails?.from_lng);
+  if (fromLat != null && fromLng != null) return { lat: fromLat, lng: fromLng };
+
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("location_lat, location_lng")
+    .eq("id", clientId)
+    .maybeSingle();
+  const lat = finiteCoord(data?.location_lat);
+  const lng = finiteCoord(data?.location_lng);
+  return lat != null && lng != null ? { lat, lng } : null;
+}
 
 /** Values must match DB job_requests_time_duration_check and CreateJobPage TIME_DURATIONS. */
 function timeDurationFromCommunityPayload(payload: unknown): string {
@@ -253,6 +279,27 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
   const j = job as any;
+
+  // Helper alerts (new_request pushes) are distance-based and need a pin.
+  if (j.location_lat == null || j.location_lng == null) {
+    try {
+      const coords = await resolveJobCoordinates(user.id, payload.service_details);
+      if (coords) {
+        const { error: coordErr } = await supabaseAdmin
+          .from("job_requests")
+          .update({ location_lat: coords.lat, location_lng: coords.lng })
+          .eq("id", j.id);
+        if (coordErr) {
+          console.error("[JobsAPI] Failed to set job coordinates:", coordErr);
+        } else {
+          j.location_lat = coords.lat;
+          j.location_lng = coords.lng;
+        }
+      }
+    } catch (coordErr) {
+      console.error("[JobsAPI] Coordinate lookup failed:", coordErr);
+    }
+  }
 
   try {
     const generatedCopy = generatePostText(buildPostTextInputFromJob(j as Record<string, unknown>));
@@ -979,14 +1026,29 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
     return;
   }
 
-  const job = await getJobForClient(jobId, user.id);
+  const { data: callerProfile } = await supabaseAdmin
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const job = callerProfile?.is_admin
+    ? (
+        await supabaseAdmin
+          .from("job_requests")
+          .select(JOB_SAFE_FIELDS)
+          .eq("id", jobId)
+          .maybeSingle()
+      ).data
+    : await getJobForClient(jobId, user.id);
   if (!job) {
     res.status(404).json({ error: "Not found" });
     return;
   }
 
   const jobRow = job as unknown as Record<string, unknown>;
-  const clientId = user.id;
+  const clientId =
+    typeof jobRow.client_id === "string" ? jobRow.client_id : user.id;
   const serviceType =
     typeof jobRow.service_type === "string" ? jobRow.service_type.trim() : "";
 

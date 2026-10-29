@@ -846,6 +846,10 @@
     "recentActivity": "Activité récente",
     "publicGallery": "Galerie publique",
     "servicesArea": "Services et zone",
+    "notifyNewRequests": "M'avertir des nouvelles demandes",
+    "notifyNewRequestsHint": "Recevez une notification quand quelqu'un publie une demande dans l'une de vos catégories, dans votre zone de service.",
+    "notifyNewRequestsNeedsAvailable": "Activez « Disponible pour les demandes d'aide » pour être averti des nouvelles demandes.",
+    "notifyNewRequestsSaveError": "Impossible de mettre à jour le paramètre de notification",
     "appearance": "Apparence",
     "theme": {
       "title": "Thème",

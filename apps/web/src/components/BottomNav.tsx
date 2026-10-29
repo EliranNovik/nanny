@@ -227,6 +227,8 @@ export function BottomNav() {
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [adminAccountMenuOpen, setAdminAccountMenuOpen] = useState(false);
+  const adminAccountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuPanelRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
@@ -245,6 +247,7 @@ export function BottomNav() {
         : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
+  const isAdminPage = pathnameNorm === "/admin" || pathnameNorm.startsWith("/admin/");
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const isCommunityFeedPage = pathnameNorm === "/community/feed";
@@ -424,6 +427,17 @@ export function BottomNav() {
       document.removeEventListener("pointerdown", onPointerDown);
     };
   }, [plusMenuOpen]);
+
+  useEffect(() => {
+    if (!adminAccountMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!adminAccountMenuRef.current?.contains(event.target as Node)) {
+        setAdminAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [adminAccountMenuOpen]);
 
   useEffect(() => {
     if (!viewerId) return;
@@ -970,8 +984,10 @@ export function BottomNav() {
       data-desktop-header-strip=""
       className={cn(
         "hidden md:block fixed inset-x-0 top-0 z-50 w-full border-0 shadow-none",
-        signedInAppHeaderBgClass,
-        signedInDesktopHeaderGlassClass,
+        isAdminPage
+          ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
+          : signedInAppHeaderBgClass,
+        !isAdminPage && signedInDesktopHeaderGlassClass,
       )}
     >
       <div
@@ -981,7 +997,7 @@ export function BottomNav() {
             (desktopSidePanelCollapsed ? "md:ps-24" : "md:ps-[220px]"),
         )}
       >
-        {showDesktopBrandChrome ? (
+        {showDesktopBrandChrome && !isAdminPage ? (
           <div className="flex shrink-0 items-center gap-1 ps-2 sm:ps-3">
             <button
               type="button"
@@ -1017,7 +1033,7 @@ export function BottomNav() {
                 }}
                 variant="header"
               />
-            ) : !showCommunityFeedHeaderLeft ? (
+            ) : !showCommunityFeedHeaderLeft && !isAdminPage ? (
               <button
                 type="button"
                 onClick={handleHeaderBack}
@@ -1040,7 +1056,7 @@ export function BottomNav() {
                   />
                 </div>
               )}
-              {DesktopCreateButton}
+              {!isAdminPage && DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch />
               </div>
@@ -1048,7 +1064,7 @@ export function BottomNav() {
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-0.5">
-            <LanguageSwitcher />
+            {!isAdminPage && <LanguageSwitcher />}
             {isOwnPublicProfilePage ? (
               <OwnPublicProfileHeaderMenuBtn className={signedInHeaderIconBtnClass} />
             ) : (
@@ -1067,6 +1083,48 @@ export function BottomNav() {
                 ) : null}
               </button>
             )}
+            {isAdminPage ? (
+              <div ref={adminAccountMenuRef} className="relative ms-2">
+                <button
+                  type="button"
+                  onClick={() => setAdminAccountMenuOpen((open) => !open)}
+                  className="flex items-center gap-3 rounded-full bg-white px-2.5 py-1 dark:bg-zinc-800"
+                  aria-haspopup="menu"
+                  aria-expanded={adminAccountMenuOpen}
+                >
+                  <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-zinc-200 dark:ring-zinc-700">
+                    <img src="/Tebnu mobile logo.png" alt="" className="h-10 w-10 scale-125 object-contain" />
+                  </span>
+                  <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Admin</span>
+                  <ChevronDown className="me-1 h-4 w-4 text-zinc-500" />
+                </button>
+                {adminAccountMenuOpen && (
+                  <div className="absolute right-0 top-full z-[100] mt-2 w-64 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900" role="menu">
+                    <div className="border-b border-zinc-100 px-3 py-2.5 dark:border-zinc-800">
+                      <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Current account</p>
+                      <p className="mt-1 truncate text-sm font-semibold">{profile?.full_name || "Admin"}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={async () => {
+                        setAdminAccountMenuOpen(false);
+                        await signOut();
+                        navigate("/login");
+                      }}
+                      className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    >
+                      <UsersRound className="h-4 w-4" />
+                      Switch account
+                    </button>
+                    <p className="px-3 pb-2 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      Choose another account saved by your browser on the sign-in screen.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : null}
             {/*
              * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
              * desktop, so the header no longer renders a duplicate avatar button.

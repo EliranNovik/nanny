@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
+import { NewRequestAlertsToggle } from "@/components/profile/NewRequestAlertsToggle";
+import { useAuth } from "@/context/AuthContext";
 import {
   ServiceCategoriesPicker,
   serviceLabelsForIds,
@@ -30,6 +32,8 @@ function summarizeArea(r: LocationRadiusValue): string {
 
 export default function FreelancerProfileServicesPage() {
   const ctx = useOutletContext<FreelancerProfileFormContext>();
+  const { profile } = useAuth();
+  const availableForRequests = profile?.is_available_for_jobs !== false;
   const [editing, setEditing] = useState(false);
   const snapshotRef = useRef<Snapshot | null>(null);
 
@@ -102,6 +106,8 @@ export default function FreelancerProfileServicesPage() {
             </div>
           )}
         </div>
+
+        <NewRequestAlertsToggle available={availableForRequests} />
 
         {!editing ? (
           <div className="space-y-2">

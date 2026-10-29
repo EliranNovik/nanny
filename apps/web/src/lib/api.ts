@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { getSupabaseSession, supabase } from "./supabase";
 
 /** In dev, route local API calls through the Vite proxy (same-origin). */
 function resolveApiBase(): string {
@@ -20,7 +20,7 @@ const base = resolveApiBase();
 
 async function authHeader(): Promise<Record<string, string>> {
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await getSupabaseSession();
 
     if (error) {
       console.error("[authHeader] Error getting session:", error);

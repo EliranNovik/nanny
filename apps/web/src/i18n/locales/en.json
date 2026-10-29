@@ -856,6 +856,10 @@
     "recentActivity": "Recent activity",
     "publicGallery": "Public profile gallery",
     "servicesArea": "Services & area",
+    "notifyNewRequests": "Notify me about new requests",
+    "notifyNewRequestsHint": "Get a notification when someone posts a request in one of your categories inside your service area.",
+    "notifyNewRequestsNeedsAvailable": "Turn on Available for help requests to get notified about new requests.",
+    "notifyNewRequestsSaveError": "Couldn't update notification setting",
     "appearance": "Appearance",
     "theme": {
       "title": "Theme",

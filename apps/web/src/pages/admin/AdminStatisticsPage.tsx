@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Briefcase, TrendingUp, Sparkles, UserCheck } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { getAdminData, getCachedAdminData } from "@/lib/adminDataCache";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 interface Metrics {
   totalUsers: number;
@@ -35,26 +36,32 @@ interface WeeklyJob {
   jobsCreated: number;
 }
 
+type StatisticsPayload = {
+  metrics: Metrics;
+  postTypesStats: PostTypeStat[];
+  weeklySignups: WeeklySignup[];
+  weeklyJobs: WeeklyJob[];
+};
+
 export default function AdminStatisticsPage() {
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [postTypes, setPostTypes] = useState<PostTypeStat[]>([]);
-  const [weeklySignups, setWeeklySignups] = useState<WeeklySignup[]>([]);
-  const [weeklyJobs, setWeeklyJobs] = useState<WeeklyJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedAdminData<StatisticsPayload>("statistics");
+  const [metrics, setMetrics] = useState<Metrics | null>(cached?.metrics || null);
+  const [postTypes, setPostTypes] = useState<PostTypeStat[]>(cached?.postTypesStats || []);
+  const [weeklySignups, setWeeklySignups] = useState<WeeklySignup[]>(cached?.weeklySignups || []);
+  const [weeklyJobs, setWeeklyJobs] = useState<WeeklyJob[]>(cached?.weeklyJobs || []);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     fetchStatistics();
   }, []);
 
   async function fetchStatistics() {
-    setLoading(true);
+    if (!getCachedAdminData("statistics")) setLoading(true);
     try {
-      const data = await apiGet<{
-        metrics: Metrics;
-        postTypesStats: PostTypeStat[];
-        weeklySignups: WeeklySignup[];
-        weeklyJobs: WeeklyJob[];
-      }>("/api/admin/statistics");
+      const data = await getAdminData<StatisticsPayload>(
+        "statistics",
+        "/api/admin/statistics",
+      );
 
       setMetrics(data.metrics);
       setPostTypes(data.postTypesStats);
@@ -68,106 +75,145 @@ export default function AdminStatisticsPage() {
   }
 
   if (loading || !metrics) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="w-8 h-8 border-4 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminPageSkeleton summaryCards={4} columns={5} />;
   }
 
-  // Helpers for SVG Line Chart (Signups Growth)
-  const maxWeeklySignup = Math.max(...weeklySignups.map(w => w.clients + w.freelancers), 1);
-  const signupPoints = weeklySignups.map((w, idx) => {
-    const x = (idx / (weeklySignups.length - 1)) * 340 + 30;
-    const total = w.clients + w.freelancers;
-    const y = 160 - (total / maxWeeklySignup) * 110;
-    return `${x},${y}`;
-  }).join(" ");
-
-  // Helpers for SVG Bar Chart (Jobs Created)
-  const maxWeeklyJobs = Math.max(...weeklyJobs.map(w => w.jobsCreated), 1);
-
-  // Helpers for User Donut Chart
   const totalProfiles = metrics.totalClients + metrics.totalFreelancers;
   const clientPct = totalProfiles > 0 ? (metrics.totalClients / totalProfiles) * 100 : 0;
   const freelancerPct = totalProfiles > 0 ? (metrics.totalFreelancers / totalProfiles) * 100 : 0;
-  
-  // SVG Donut calculation (radius 40, circumference 2 * pi * r = 251.2)
+  const maxWeeklySignup = Math.max(...weeklySignups.map((w) => w.clients + w.freelancers), 1);
+  const signupPoints = weeklySignups.map((w, idx) => {
+    const x = (idx / (weeklySignups.length - 1)) * 340 + 30;
+    const y = 160 - ((w.clients + w.freelancers) / maxWeeklySignup) * 110;
+    return `${x},${y}`;
+  }).join(" ");
+  const maxWeeklyJobs = Math.max(...weeklyJobs.map((w) => w.jobsCreated), 1);
   const circ = 251.2;
   const clientOffset = circ - (clientPct / 100) * circ;
   const freelancerOffset = circ - (freelancerPct / 100) * circ;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-10">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
+      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
             <BarChart3 className="h-8 w-8 text-indigo-500" /> Platform Insights & Analytics
           </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-            Realtime aggregations on user demographics, community engagement, and contracts conversion velocity
-          </p>
         </div>
 
         {/* Top metrics row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs hover:shadow-md transition-all duration-300 rounded-2xl p-2">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Total Active Users (30d)</CardDescription>
-              <UserCheck className="h-4 w-4 text-emerald-500" />
+        <div className="grid shrink-0 grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-emerald-500 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
+              <CardTitle className="text-sm font-medium">Total Active Users (30d)</CardTitle>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <UserCheck className="h-6 w-6" />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">{metrics.activeUsersCount}</div>
-              <div className="flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CardContent className="px-5 pb-5">
+              <div className="text-3xl font-extrabold tracking-tight">{metrics.activeUsersCount}</div>
+              <div className="mt-1 text-xs font-medium text-muted-foreground">
                 <span>{metrics.activityRate}% activity rate of platform</span>
               </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(metrics.activityRate, 100)}%` }} />
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs hover:shadow-md transition-all duration-300 rounded-2xl p-2">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Verified Accounts</CardDescription>
-              <Users className="h-4 w-4 text-indigo-500" />
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-violet-500 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
+              <CardTitle className="text-sm font-medium">Verified Accounts</CardTitle>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+                <Users className="h-6 w-6" />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">{metrics.verifiedUsers}</div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-bold">
+            <CardContent className="px-5 pb-5">
+              <div className="text-3xl font-extrabold tracking-tight">{metrics.verifiedUsers}</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
                 {Math.round((metrics.verifiedUsers / metrics.totalUsers) * 100)}% of users verified
               </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="h-full rounded-full bg-violet-500" style={{ width: `${metrics.totalUsers ? Math.min((metrics.verifiedUsers / metrics.totalUsers) * 100, 100) : 0}%` }} />
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs hover:shadow-md transition-all duration-300 rounded-2xl p-2">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Matched Assignments</CardDescription>
-              <Briefcase className="h-4 w-4 text-blue-500" />
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-sky-500 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
+              <CardTitle className="text-sm font-medium">Matched Assignments</CardTitle>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400">
+                <Briefcase className="h-6 w-6" />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">{metrics.activeJobs}</div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-bold">
+            <CardContent className="px-5 pb-5">
+              <div className="text-3xl font-extrabold tracking-tight">{metrics.activeJobs}</div>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
                 Locked & in active execution
               </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="h-full rounded-full bg-sky-500" style={{ width: `${metrics.totalJobs ? Math.min((metrics.activeJobs / metrics.totalJobs) * 100, 100) : 0}%` }} />
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs hover:shadow-md transition-all duration-300 rounded-2xl p-2">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Contract Completion</CardDescription>
-              <TrendingUp className="h-4 w-4 text-purple-500" />
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-orange-500 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
+              <CardTitle className="text-sm font-medium">Contract Completion</CardTitle>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                <TrendingUp className="h-6 w-6" />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardContent className="px-5 pb-5">
+              <div className="text-3xl font-extrabold tracking-tight">
                 {metrics.totalJobs > 0 ? `${Math.round((metrics.completedJobs / metrics.totalJobs) * 100)}%` : "N/A"}
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-bold">
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
                 {metrics.completedJobs} of {metrics.totalJobs} jobs resolved
               </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="h-full rounded-full bg-orange-500" style={{ width: `${metrics.totalJobs ? Math.min((metrics.completedJobs / metrics.totalJobs) * 100, 100) : 0}%` }} />
+              </div>
             </CardContent>
           </Card>
         </div>
 
+        <div className="admin-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
+          <div className="border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+            <h2 className="text-lg font-bold">Detailed analytics</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Weekly activity, registrations and community content</p>
+          </div>
+          <div className="admin-table-scroll overflow-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-zinc-50 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800">
+                <tr><th className="px-6 py-3">Period / category</th><th className="px-6 py-3">Clients</th><th className="px-6 py-3">Helpers</th><th className="px-6 py-3">Jobs</th><th className="px-6 py-3">Posts</th></tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {weeklySignups.map((week, index) => (
+                  <tr key={`week-${week.weekLabel}`}>
+                    <td className="px-6 py-3 font-semibold">{week.weekLabel}</td>
+                    <td className="px-6 py-3">{week.clients}</td>
+                    <td className="px-6 py-3">{week.freelancers}</td>
+                    <td className="px-6 py-3">{weeklyJobs[index]?.jobsCreated ?? 0}</td>
+                    <td className="px-6 py-3 text-zinc-400">—</td>
+                  </tr>
+                ))}
+                {postTypes.map((postType) => (
+                  <tr key={`post-${postType.name}`}>
+                    <td className="px-6 py-3 font-semibold">{postType.emoji} {postType.name}</td>
+                    <td className="px-6 py-3 text-zinc-400">—</td>
+                    <td className="px-6 py-3 text-zinc-400">—</td>
+                    <td className="px-6 py-3 text-zinc-400">—</td>
+                    <td className="px-6 py-3">{postType.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="hidden grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Chart 1: Signups growth */}
           <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs lg:col-span-2 rounded-2xl">
             <CardHeader>
@@ -305,7 +351,7 @@ export default function AdminStatisticsPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="hidden grid-cols-1 md:grid-cols-2 gap-6">
           {/* Post categories list */}
           <Card className="border border-zinc-200 dark:border-zinc-800 bg-white sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900 shadow-xs rounded-2xl">
             <CardHeader>

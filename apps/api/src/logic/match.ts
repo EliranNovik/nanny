@@ -48,7 +48,8 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
   // For MVP, city match only. Later add geo radius.
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, city, role, is_available_for_jobs, categories, freelancer_profiles!inner(*)")
+    // `*` so this keeps working before migration 142 adds notify_new_requests.
+    .select("*, freelancer_profiles!inner(*)")
     .or("role.eq.freelancer,is_available_for_jobs.eq.true")
     .eq("city", job.location_city)
     .limit(limit);
@@ -72,6 +73,10 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
 
     if (row.id === job.client_id) {
       console.log("[Match] Skipping", row.id, "- user is the client");
+      return false;
+    }
+
+    if (row.notify_new_requests === false) {
       return false;
     }
 

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
-import { BadgeCheck, Clock, Heart, MessageSquare, Share2 } from "lucide-react";
+import { BadgeCheck, Clock, Flag, Heart, MessageSquare, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,16 @@ import {
 import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
 import type { User } from "@supabase/supabase-js";
 import { globalProfilePostShareUrl } from "@/lib/profilePostShare";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 
 /** e.g. `2d 5h 14m ago` — days / hours / minutes only, no seconds */
 export function formatPostedAgo(iso: string): string {
@@ -57,6 +67,18 @@ export function PostTimeLeftBadge({ expiresAtIso }: { expiresAtIso: string }) {
     </div>
   );
 }
+
+const POST_REPORT_REASONS = [
+  ["spam", "Spam or misleading"],
+  ["harassment", "Harassment or bullying"],
+  ["hate_speech", "Hate speech"],
+  ["nudity", "Nudity or sexual content"],
+  ["violence", "Violence or threats"],
+  ["misinformation", "False information"],
+  ["scam", "Scam or fraud"],
+  ["copyright", "Copyright violation"],
+  ["other", "Other"],
+] as const;
 
 type PostViewerProfile = {
   role: "client" | "freelancer" | "admin";
@@ -140,6 +162,10 @@ export function CommunityPostCard({
   const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(
     null,
   );
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const imageUrls = useMemo(
     () =>
       post.images
@@ -147,6 +173,33 @@ export function CommunityPostCard({
         .filter((u): u is string => Boolean(u)),
     [post.images],
   );
+
+  const submitReport = async () => {
+    if (!user?.id || !reportReason || reportSubmitting) return;
+    setReportSubmitting(true);
+    const { error } = await supabase.from("profile_post_reports").insert({
+      post_id: post.id,
+      reporter_id: user.id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    });
+    setReportSubmitting(false);
+    if (error) {
+      addToast({
+        title: error.code === "23505" ? "Already reported" : "Report failed",
+        description: error.code === "23505"
+          ? "You have already reported this post."
+          : error.message,
+        variant: "error",
+      });
+      if (error.code === "23505") setReportOpen(false);
+      return;
+    }
+    addToast({ title: "Report sent", description: "Thanks for helping keep Tebnu safe." });
+    setReportOpen(false);
+    setReportReason("");
+    setReportDetails("");
+  };
 
   /** Public grid: pull Hire / Chat / Comments up against the post image */
   const tightenIconRowToImage = Boolean(
@@ -533,6 +586,18 @@ export function CommunityPostCard({
                         aria-label="Share"
                       >
                         <Share2 className="h-5 w-5" aria-hidden />
+                      </Button>
+                    )}
+                    {!isMine && user && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-transparent hover:text-red-500"
+                        onClick={() => setReportOpen(true)}
+                        aria-label="Report post"
+                      >
+                        <Flag className="h-5 w-5" aria-hidden />
                       </Button>
                     )}
                   </div>
@@ -947,6 +1012,58 @@ export function CommunityPostCard({
           </div>
         </CardContent>
       </Card>
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report post</DialogTitle>
+            <DialogDescription>
+              Tell us why this post should be reviewed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              {POST_REPORT_REASONS.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setReportReason(value)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                    reportReason === value
+                      ? "border-orange-500 bg-orange-500/10 font-semibold text-orange-600 dark:text-orange-400"
+                      : "border-border hover:bg-muted",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value)}
+              placeholder="Additional details (optional)"
+              className="min-h-20 resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setReportOpen(false)}
+              disabled={reportSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void submitReport()}
+              disabled={!reportReason || reportSubmitting}
+            >
+              {reportSubmitting ? "Sending…" : "Submit report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ImageLightboxModal
         images={imageUrls}
         initialIndex={imageLightboxIndex ?? 0}

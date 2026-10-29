@@ -1,17 +1,26 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Briefcase, Search, ArrowUpDown, Download } from "lucide-react";
-import { apiGet } from "@/lib/api";
-import { getJobStageBadge } from "@/lib/jobStages";
+import { Briefcase, Search, ArrowUpDown, Download, Eye, MoreVertical } from "lucide-react";
+import { getAdminData, getCachedAdminData } from "@/lib/adminDataCache";
 import { JobDetailsDialog } from "@/components/admin/JobDetailsDialog";
+import { useProgressiveList } from "@/hooks/useProgressiveList";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
+import { postServiceCategoryLabel } from "@/lib/serviceCategories";
+import { adminCityLabel } from "@/lib/adminCityLabel";
+import { format } from "date-fns";
 
 interface Job {
   id: string;
   status: string;
   stage: string | null;
   care_type: string | null;
+  service_type?: string | null;
+  service_details?: {
+    other_type?: string | null;
+    custom_category?: string | null;
+    subcategory?: string | null;
+  } | null;
   children_count: number;
   children_age_group: string;
   location_city: string;
@@ -39,26 +48,35 @@ interface Job {
   };
 }
 
+function jobCategory(job: Job): string {
+  const detail =
+    job.service_details?.other_type ||
+    job.service_details?.custom_category ||
+    job.service_details?.subcategory;
+  return postServiceCategoryLabel(job.service_type || job.care_type, detail);
+}
+
 export default function AdminActiveJobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedJobs = getCachedAdminData<{ jobs: Job[] }>("dashboard")?.jobs;
+  const [jobs, setJobs] = useState<Job[]>(() =>
+    (cachedJobs || []).filter((j) => j.status === "locked" || j.status === "active"),
+  );
+  const [loading, setLoading] = useState(!cachedJobs);
   const [search, setSearch] = useState("");
   const [careTypeFilter, setCareTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"created_at" | "budget">("created_at");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
 
   useEffect(() => {
     fetchJobs();
   }, []);
 
   async function fetchJobs() {
-    setLoading(true);
+    if (!getCachedAdminData("dashboard")) setLoading(true);
     try {
-      const data = await apiGet<{ jobs: Job[] }>("/api/admin/dashboard");
+      const data = await getAdminData<{ jobs: Job[] }>("dashboard", "/api/admin/dashboard");
       // Filter for active/locked jobs
       const active = data.jobs.filter((j) => j.status === "locked" || j.status === "active");
       setJobs(active);
@@ -71,7 +89,7 @@ export default function AdminActiveJobsPage() {
 
   // Get unique cities and categories for filtering
   const cities = Array.from(new Set(jobs.map((j) => j.location_city).filter((c): c is string => !!c)));
-  const careTypes = Array.from(new Set(jobs.map((j) => j.care_type).filter((t): t is string => !!t)));
+  const careTypes = Array.from(new Set(jobs.map(jobCategory))).sort();
 
   // Filter & Sort
   const filteredJobs = jobs
@@ -82,7 +100,7 @@ export default function AdminActiveJobsPage() {
         j.id.includes(search) ||
         (j.location_city || "").toLowerCase().includes(search.toLowerCase());
       
-      const matchesCareType = careTypeFilter === "all" || j.care_type === careTypeFilter;
+      const matchesCareType = careTypeFilter === "all" || jobCategory(j) === careTypeFilter;
       const matchesCity = cityFilter === "all" || j.location_city === cityFilter;
 
       return matchesSearch && matchesCareType && matchesCity;
@@ -97,9 +115,11 @@ export default function AdminActiveJobsPage() {
       }
     });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-  const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const {
+    visibleItems: paginatedJobs,
+    hasMore,
+    sentinelRef,
+  } = useProgressiveList(filteredJobs, 24);
 
   const handleOpenJob = (job: Job) => {
     setSelectedJob(job);
@@ -109,15 +129,14 @@ export default function AdminActiveJobsPage() {
   const exportCSV = () => {
     if (filteredJobs.length === 0) return;
     const csvRows = [
-      ["Job ID", "Client Name", "Freelancer Name", "Care Type", "City", "Stage", "Budget Max/hr", "Created At"],
+      ["Job ID", "Client", "Freelancer", "Category", "Location", "Status", "Created"],
       ...filteredJobs.map((j) => [
         j.id,
         j.client?.full_name || "N/A",
         j.freelancer?.full_name || "Unassigned",
-        j.care_type,
-        j.location_city,
-        j.stage || "N/A",
-        j.budget_max || "N/A",
+        jobCategory(j),
+        adminCityLabel(j.location_city),
+        "In process",
         j.created_at
       ])
     ];
@@ -133,24 +152,17 @@ export default function AdminActiveJobsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="w-8 h-8 border-4 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminPageSkeleton columns={6} />;
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-10">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
+      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
               <Briefcase className="h-8 w-8 text-emerald-500" /> Active Jobs Dashboard
             </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-              Monitor active work assignments and match execution pipelines
-            </p>
           </div>
 
           <button
@@ -162,14 +174,14 @@ export default function AdminActiveJobsPage() {
         </div>
 
         {/* Filter controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 p-4 rounded-2xl shadow-xs">
+        <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-0">
           <div className="relative col-span-1 lg:col-span-2">
             <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
               placeholder="Search by client, helper, city or ID..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             />
           </div>
@@ -177,13 +189,13 @@ export default function AdminActiveJobsPage() {
           <div>
             <select
               value={careTypeFilter}
-              onChange={(e) => { setCareTypeFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setCareTypeFilter(e.target.value)}
               className="w-full px-3 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             >
-              <option value="all">All Care Categories</option>
+              <option value="all">All Categories</option>
               {careTypes.map((type) => (
-                <option key={type} value={type} className="capitalize">
-                  {type.replace("_", " ")}
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>
@@ -192,7 +204,7 @@ export default function AdminActiveJobsPage() {
           <div>
             <select
               value={cityFilter}
-              onChange={(e) => { setCityFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => setCityFilter(e.target.value)}
               className="w-full px-3 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
             >
               <option value="all">All Cities</option>
@@ -222,17 +234,19 @@ export default function AdminActiveJobsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm text-zinc-600 dark:text-zinc-300">
+          <div className="admin-table-panel bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden">
+            <div className="admin-table-scroll overflow-auto">
+              <table className="w-full min-w-[1180px] border-collapse text-left text-sm text-zinc-600 dark:text-zinc-300">
                 <thead className="bg-zinc-50/75 dark:bg-zinc-950/75 border-b border-zinc-200 dark:border-zinc-800/80 text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">
                   <tr>
-                    <th className="px-6 py-4">ID / Status</th>
-                    <th className="px-6 py-4">Care Category</th>
                     <th className="px-6 py-4">Client</th>
-                    <th className="px-6 py-4">Helper</th>
+                    <th className="px-6 py-4">Freelancer</th>
+                    <th className="px-6 py-4">Category</th>
                     <th className="px-6 py-4">Location</th>
-                    <th className="px-6 py-4 text-right">Budget / Stage</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Cancelled reason</th>
+                    <th className="px-6 py-4">Created</th>
+                    <th className="px-6 py-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-250/10 dark:divide-zinc-800/80">
@@ -242,23 +256,6 @@ export default function AdminActiveJobsPage() {
                       onClick={() => handleOpenJob(job)}
                       className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors cursor-pointer"
                     >
-                      {/* ID & Status */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] font-mono text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">
-                            ID: {job.id.substring(0, 8)}
-                          </span>
-                          <Badge variant={job.status === "active" ? "default" : "secondary"} className="rounded-full font-semibold text-[10px] px-2 py-0.5 w-max">
-                            {job.status}
-                          </Badge>
-                        </div>
-                      </td>
-
-                      {/* Care Type */}
-                      <td className="px-6 py-4 whitespace-nowrap font-bold text-zinc-900 dark:text-zinc-50 capitalize group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                        {job.care_type?.replace("_", " ") || "N/A"}
-                      </td>
-
                       {/* Client */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
@@ -274,7 +271,7 @@ export default function AdminActiveJobsPage() {
                         </div>
                       </td>
 
-                      {/* Helper */}
+                      {/* Freelancer */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <Avatar className="h-7 w-7 border border-zinc-200 dark:border-zinc-800">
@@ -289,52 +286,49 @@ export default function AdminActiveJobsPage() {
                         </div>
                       </td>
 
-                      {/* Location */}
-                      <td className="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-400 text-sm font-medium">
-                        {job.location_city}
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-zinc-900 dark:text-zinc-50">
+                        {jobCategory(job)}
                       </td>
 
-                      {/* Budget & Stage */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex flex-col items-end gap-1.5">
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">
-                            {job.budget_max ? `$${job.budget_max}/hr` : "No rate spec"}
-                          </span>
-                          {job.stage && (
-                            <Badge variant={getJobStageBadge(job.stage).variant} className="text-[9px] font-bold rounded-md px-1.5 py-0.5">
-                              {getJobStageBadge(job.stage).label}
-                            </Badge>
-                          )}
-                        </div>
+                      {/* Location */}
+                      <td className="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-400 text-sm font-medium">
+                        {adminCityLabel(job.location_city)}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap font-semibold">In process</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-zinc-400">—</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-zinc-500">
+                        {format(new Date(job.created_at), "MMM d, yyyy")}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(event) => event.stopPropagation()}>
+                        <details className="relative inline-block text-left">
+                          <summary
+                            className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden"
+                            aria-label="Job actions"
+                          >
+                            <MoreVertical className="h-5 w-5" />
+                          </summary>
+                          <div className="absolute right-0 z-30 mt-2 w-40 overflow-hidden rounded-xl bg-white p-1.5 shadow-xl ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                handleOpenJob(job);
+                                event.currentTarget.closest("details")?.removeAttribute("open");
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                            >
+                              <Eye className="h-4 w-4" /> View
+                            </button>
+                          </div>
+                        </details>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <div ref={sentinelRef} className="h-1" aria-hidden />
+              {hasMore && <p className="py-3 text-center text-xs text-zinc-400">Loading more…</p>}
             </div>
-          </div>
-        )}
-
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-10">
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-xs font-semibold border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-xs font-semibold border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
-            >
-              Next
-            </button>
           </div>
         )}
       </div>

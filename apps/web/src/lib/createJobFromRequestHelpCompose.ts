@@ -11,6 +11,8 @@ export type RequestHelpComposeJobInput = {
   category: string;
   customCategory?: string | null;
   locationAddress: string;
+  locationLat?: number | null;
+  locationLng?: number | null;
   timeframe: RequestHelpTimeframe;
   customWhenDate?: Date | null;
   customWhenTime?: string;
@@ -28,6 +30,25 @@ export type RequestHelpComposeJobInput = {
     to_lng?: number;
   } | null;
 };
+
+type MaybeCoords = { lat?: number | null; lng?: number | null } | null | undefined;
+
+/**
+ * First complete lat/lng pair as `location_lat`/`location_lng` for POST /api/jobs.
+ * Without it the API back-fills later and same-city helpers outside their radius may get alerted.
+ */
+export function jobRequestCoordinates(
+  ...candidates: MaybeCoords[]
+): { location_lat: number; location_lng: number } | Record<string, never> {
+  for (const c of candidates) {
+    const lat = c?.lat;
+    const lng = c?.lng;
+    if (typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)) {
+      return { location_lat: lat, location_lng: lng };
+    }
+  }
+  return {};
+}
 
 export async function createJobRequestFromRequestHelpCompose(
   input: RequestHelpComposeJobInput,
@@ -52,6 +73,10 @@ export async function createJobRequestFromRequestHelpCompose(
     care_frequency: "one_time" as const,
     time_duration: "1_2_hours" as const,
     location_city: input.locationAddress.trim(),
+    ...jobRequestCoordinates(
+      input.pickup ? { lat: input.pickup.from_lat, lng: input.pickup.from_lng } : null,
+      { lat: input.locationLat, lng: input.locationLng },
+    ),
     when_timeframe: input.timeframe,
     custom_when_at: customWhenAtIso ?? undefined,
     start_at: startAt,

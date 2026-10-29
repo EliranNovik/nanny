@@ -142,7 +142,7 @@ function ProtectedRoute({
 function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
   const { profile, user, loading } = useAuth();
 
-  if (loading) {
+  if (loading && (!user || !profile)) {
     return <AppBootSplash />;
   }
 
@@ -184,6 +184,12 @@ function RoleRedirect() {
 function RedirectJobConfirmedToLive() {
   const { jobId } = useParams<{ jobId: string }>();
   return <Navigate to={`/client/jobs/${jobId}/live`} replace />;
+}
+
+/** Mobile push deep link `/jobs/<id>/open` (new_request / new_match). */
+function RedirectJobOpenToRequest() {
+  const { jobId } = useParams<{ jobId: string }>();
+  return <Navigate to={`/open-requests/${encodeURIComponent(jobId ?? "")}`} replace />;
 }
 
 function RootRoute() {
@@ -257,10 +263,13 @@ function KeepAlivePages() {
 function PageLayoutWithHeader() {
   const { pathname } = useLocation();
   const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
+  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const shouldHideDesktopFooter =
     pathname === "/messages" ||
     pathname.startsWith("/messages/") ||
-    pathname.startsWith("/chat/");
+    pathname.startsWith("/chat/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/");
   const shouldShowMobileFooter =
     pathname === "/community/feed" ||
     pathname === "/client/home" ||
@@ -274,13 +283,19 @@ function PageLayoutWithHeader() {
   );
 
   return (
-    <div className="app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content min-h-[100dvh] min-h-[-webkit-fill-available]">
-      <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
+    <div className={cn(
+      "app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content",
+      isAdminPath
+        ? "min-h-[100dvh] md:h-[100dvh] md:min-h-0 md:overflow-hidden"
+        : "min-h-[100dvh] min-h-[-webkit-fill-available]",
+    )}>
+      <div className={isAdminPath ? "min-h-[100dvh] md:h-full md:min-h-0 md:overflow-hidden" : "min-h-[100dvh] min-h-[-webkit-fill-available]"}>
         <DesktopSidePanel collapsed={desktopSidePanelCollapsed} />
         {/* On desktop, leave room for the fixed left panel */}
         <div
           className={cn(
             "min-w-0 app-mobile-scroll-top-clearance",
+            isAdminPath && "md:h-full md:min-h-0 md:overflow-hidden",
             desktopSidePanelCollapsed ? "md:ps-[96px]" : "app-side-panel-offset",
           )}
         >
@@ -600,6 +615,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/jobs/:jobId/open" element={<RedirectJobOpenToRequest />} />
         <Route
           path="/jobs/:jobId/details"
           element={

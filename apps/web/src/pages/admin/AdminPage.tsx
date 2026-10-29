@@ -1,35 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   Briefcase,
   Users,
   BarChart3,
   MessageSquare,
   CheckCircle2,
-  Clock,
+  Eye,
+  Loader2,
+  MessageCircle,
+  MoreVertical,
+  BadgeCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getJobStageBadge } from "@/lib/jobStages";
 import { apiGet, apiPost } from "@/lib/api";
+import { postServiceCategoryLabel } from "@/lib/serviceCategories";
+import { findOrCreateDirectConversation } from "@/lib/findOrCreateDirectConversation";
+import { adminCityLabel } from "@/lib/adminCityLabel";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
+import { adminJobBudget } from "@/lib/adminJobPresentation";
 
 interface Job {
   id: string;
   status: string;
   stage: string | null;
   care_type: string;
+  service_type?: string | null;
+  service_details?: {
+    other_type?: string | null;
+    custom_category?: string | null;
+    subcategory?: string | null;
+  } | null;
   children_count: number;
   children_age_group: string;
   location_city: string;
@@ -41,17 +56,27 @@ interface Job {
   languages_pref?: string[];
   budget_min?: number | null;
   budget_max?: number | null;
+  budget_rate_type?: string | null;
   shift_hours?: string | null;
   confirm_starts_at?: string | null;
   confirm_ends_at?: string | null;
   notes?: string | null;
+  latest_cancellation?: {
+    client_id: string;
+    freelancer_id: string;
+    reason: string;
+    cancelled_by_role: "client" | "helper";
+    created_at: string;
+  } | null;
   client?: {
     full_name: string | null;
     photo_url: string | null;
+    is_verified?: boolean | null;
   };
   freelancer?: {
     full_name: string | null;
     photo_url: string | null;
+    is_verified?: boolean | null;
   };
 }
 
@@ -59,10 +84,15 @@ interface UserProfile {
   id: string;
   role: "client" | "freelancer";
   is_admin?: boolean;
+  is_verified?: boolean | null;
   full_name: string | null;
   city: string | null;
   phone: string | null;
   photo_url: string | null;
+  whatsapp_number_e164?: string | null;
+  telegram_username?: string | null;
+  legal_terms_accepted_at?: string | null;
+  privacy_accepted_at?: string | null;
   created_at: string;
 }
 
@@ -91,17 +121,138 @@ interface Statistics {
   jobsLastWeek: number;
 }
 
+type AdminDashboardPayload = {
+  jobs: Job[];
+  users: UserProfile[];
+  reports: ReportConversation[];
+  statistics: Statistics;
+};
+
+const ADMIN_DASHBOARD_CACHE_KEY = "admin-dashboard:v2";
+const ADMIN_DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
+
+function readAdminDashboardCache(): {
+  savedAt: number;
+  data: AdminDashboardPayload;
+} | null {
+  try {
+    const parsed = JSON.parse(
+      sessionStorage.getItem(ADMIN_DASHBOARD_CACHE_KEY) || "null",
+    );
+    if (!parsed?.savedAt || !parsed?.data) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeAdminDashboardCache(data: AdminDashboardPayload) {
+  try {
+    sessionStorage.setItem(
+      ADMIN_DASHBOARD_CACHE_KEY,
+      JSON.stringify({ savedAt: Date.now(), data }),
+    );
+  } catch {
+    // Cache is an optional performance enhancement.
+  }
+}
+
+function getAdminJobStatus(job: Job): "In process" | "Cancelled" | "Completed" {
+  if (job.status === "completed") return "Completed";
+  if (
+    job.status === "cancelled" ||
+    (job.status === "ready" && job.latest_cancellation)
+  ) {
+    return "Cancelled";
+  }
+  return "In process";
+}
+
+function getAdminJobCategory(job: Job): string {
+  const category = job.service_type || job.care_type;
+  const detail =
+    job.service_details?.other_type ||
+    job.service_details?.custom_category ||
+    job.service_details?.subcategory;
+  return postServiceCategoryLabel(category, detail);
+}
+
+const CANCELLATION_REASON_LABELS: Record<string, string> = {
+  helper_no_show: "Helper didn't show up",
+  helper_unresponsive: "Helper stopped responding",
+  helper_not_good_enough: "Helper wasn't good enough",
+  helper_unprofessional: "Helper was unprofessional",
+  price_disagreement: "Price disagreement",
+  schedule_changed: "Client schedule changed",
+  client_unresponsive: "Client stopped responding",
+  job_not_as_described: "Job wasn't as described",
+  schedule_conflict: "Helper schedule conflict",
+  personal_emergency: "Personal emergency",
+  other: "Other reason",
+};
+
+function getCancellationReason(job: Job): string {
+  const reason = job.latest_cancellation?.reason;
+  return reason ? CANCELLATION_REASON_LABELS[reason] || reason.replace(/_/g, " ") : "—";
+}
+
 export default function AdminPage() {
   const { profile, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const initialDashboardCache = readAdminDashboardCache();
   const [activeTab, setActiveTab] = useState("jobs");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [reports, setReports] = useState<ReportConversation[]>([]);
-  const [statistics, setStatistics] = useState<Statistics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [jobsDateFrom, setJobsDateFrom] = useState("");
+  const [jobsDateTo, setJobsDateTo] = useState("");
+  const [jobsCategory, setJobsCategory] = useState("all");
+  const [jobsStatus, setJobsStatus] = useState("all");
+  const [jobs, setJobs] = useState<Job[]>(() => initialDashboardCache?.data.jobs || []);
+  const [users, setUsers] = useState<UserProfile[]>(() => initialDashboardCache?.data.users || []);
+  const [reports, setReports] = useState<ReportConversation[]>(() => initialDashboardCache?.data.reports || []);
+  const [statistics, setStatistics] = useState<Statistics | null>(
+    () => initialDashboardCache?.data.statistics || null,
+  );
+  const [loading, setLoading] = useState(!initialDashboardCache);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [messagingTargetId, setMessagingTargetId] = useState<string | null>(null);
+  const fetchInFlightRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+
+  const applyDashboardData = useCallback((data: AdminDashboardPayload) => {
+    setJobs(data.jobs);
+    setUsers(data.users);
+    setReports(data.reports);
+    setStatistics(data.statistics);
+  }, []);
+
+  const fetchAllData = useCallback(
+    async (options: { silent?: boolean; force?: boolean } = {}) => {
+      if (!user || fetchInFlightRef.current) return;
+      if (
+        !options.force &&
+        Date.now() - lastFetchAtRef.current < 30 * 1000
+      ) {
+        return;
+      }
+
+      fetchInFlightRef.current = true;
+      if (!options.silent) setLoading(true);
+      try {
+        const data = await apiGet<AdminDashboardPayload>(
+          "/api/admin/dashboard",
+        );
+        applyDashboardData(data);
+        writeAdminDashboardCache(data);
+        lastFetchAtRef.current = Date.now();
+      } catch (error) {
+        console.error("Error fetching admin data:", error);
+      } finally {
+        fetchInFlightRef.current = false;
+        setLoading(false);
+      }
+    },
+    [applyDashboardData, user],
+  );
 
   useEffect(() => {
     // Wait for auth to finish loading before checking
@@ -117,37 +268,73 @@ export default function AdminPage() {
 
     // Only fetch data if we have a user and confirmed admin access
     if (user && profile.is_admin) {
-      fetchAllData();
+      const cached = readAdminDashboardCache();
+      if (cached) {
+        applyDashboardData(cached.data);
+        lastFetchAtRef.current = cached.savedAt;
+        setLoading(false);
+        if (Date.now() - cached.savedAt > ADMIN_DASHBOARD_CACHE_TTL) {
+          void fetchAllData({ silent: true, force: true });
+        }
+      } else {
+        void fetchAllData();
+      }
     }
-  }, [profile, authLoading, navigate, user]);
+  }, [
+    profile,
+    authLoading,
+    navigate,
+    user,
+    applyDashboardData,
+    fetchAllData,
+  ]);
 
-  async function fetchAllData() {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      const data = await apiGet<{
-        jobs: Job[];
-        users: UserProfile[];
-        reports: ReportConversation[];
-        statistics: Statistics;
-      }>("/api/admin/dashboard");
-
-      setJobs(data.jobs);
-      setUsers(data.users);
-      setReports(data.reports);
-      setStatistics(data.statistics);
-    } catch (error) {
-      console.error("Error fetching admin data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (!user || !profile?.is_admin) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void fetchAllData({ silent: true, force: true });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [fetchAllData, profile?.is_admin, user]);
 
   const openJobModal = (job: Job) => {
     setSelectedJob(job);
     setIsJobModalOpen(true);
   };
+
+  const messageJobParticipant = async (targetId: string) => {
+    if (!user?.id || messagingTargetId) return;
+    setMessagingTargetId(targetId);
+    try {
+      const result = await findOrCreateDirectConversation({
+        clientId: user.id,
+        freelancerId: targetId,
+      });
+      navigate(`/messages?conversation=${result.conversationId}`);
+    } catch (error) {
+      console.error("Unable to open participant conversation:", error);
+      window.alert("Unable to open this conversation.");
+    } finally {
+      setMessagingTargetId(null);
+    }
+  };
+
+  const overviewCategories = Array.from(
+    new Set(jobs.map(getAdminJobCategory).filter(Boolean)),
+  ).sort();
+  const overviewJobs = jobs.filter((job) => {
+    const createdDate = job.created_at.slice(0, 10);
+    return (
+      (!jobsDateFrom || createdDate >= jobsDateFrom) &&
+      (!jobsDateTo || createdDate <= jobsDateTo) &&
+      (jobsCategory === "all" || getAdminJobCategory(job) === jobsCategory) &&
+      (jobsStatus === "all" || getAdminJobStatus(job) === jobsStatus)
+    );
+  });
 
   async function handleUserAction(userId: string, action: "disconnect" | "delete") {
     const confirmationText =
@@ -164,7 +351,7 @@ export default function AdminPage() {
         { action }
       );
       if (res.success) {
-        fetchAllData();
+        void fetchAllData({ force: true });
       }
     } catch (err: any) {
       alert(`Administrative action failed: ${err.message || err}`);
@@ -174,100 +361,87 @@ export default function AdminPage() {
 
 
 
-  const activeJobs = jobs.filter(
-    (j) => j.status === "locked" || j.status === "active",
-  );
-  const requestedJobs = jobs.filter(
-    (j) => j.status === "notifying" || j.status === "confirmations_closed",
-  );
-  const completedJobs = jobs.filter((j) => j.status === "completed");
-
   // Show loading while auth is loading or data is loading
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  if ((authLoading && (!user || !profile)) || loading) {
+    return <AdminPageSkeleton summaryCards={4} columns={8} />;
   }
 
   return (
-    <div className="min-h-screen bg-background pb-6 md:pb-8">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="admin-page admin-overview-page admin-overview-workspace min-h-screen bg-zinc-100 pb-6 dark:bg-zinc-950 md:pb-8">
+      <div className="admin-overview-content w-full px-4 py-6 lg:px-6 xl:px-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage jobs, users, and reports
-          </p>
         </div>
 
         {/* Statistics Cards */}
         {statistics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Jobs
-                </CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <div className="admin-kpi-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <Card className="relative rounded-2xl">
+              <CardHeader className="absolute right-0 top-0 p-5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+                  <Briefcase className="h-6 w-6" />
+                </span>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.totalJobs}</div>
-                <p className="text-xs text-muted-foreground">
+              <CardContent className="px-5 pb-5 pt-8">
+                <div className="text-5xl font-black tracking-tight">{statistics.totalJobs}</div>
+                <CardTitle className="mt-2 text-base font-bold">Total Jobs</CardTitle>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
                   {statistics.jobsThisWeek} this week
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Active Jobs
-                </CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <Card className="relative rounded-2xl">
+              <CardHeader className="absolute right-0 top-0 p-5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <CheckCircle2 className="h-6 w-6" />
+                </span>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-5 pb-5 pt-8">
+                <div className="text-5xl font-black tracking-tight">
                   {statistics.activeJobs}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <CardTitle className="mt-2 text-base font-bold">Active Jobs</CardTitle>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
                   Currently in progress
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Users
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+            <Card className="relative rounded-2xl">
+              <CardHeader className="absolute right-0 top-0 p-5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400">
+                  <Users className="h-6 w-6" />
+                </span>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-5 pb-5 pt-8">
+                <div className="text-5xl font-black tracking-tight">
                   {statistics.totalUsers}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <CardTitle className="mt-2 text-base font-bold">Total Users</CardTitle>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
                   {statistics.totalClients} clients,{" "}
                   {statistics.totalFreelancers} freelancers
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Reports</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <Card className="relative rounded-2xl">
+              <CardHeader className="absolute right-0 top-0 p-5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+                  <MessageSquare className="h-6 w-6" />
+                </span>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reports.length}</div>
-                <p className="text-xs text-muted-foreground">User reports</p>
+              <CardContent className="px-5 pb-5 pt-8">
+                <div className="text-5xl font-black tracking-tight">{reports.length}</div>
+                <CardTitle className="mt-2 text-base font-bold">Reports</CardTitle>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">User reports</p>
               </CardContent>
             </Card>
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="admin-overview-tabs w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="jobs">
               <Briefcase className="w-4 h-4 mr-2" />
@@ -292,199 +466,193 @@ export default function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="jobs" className="space-y-4 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Active Jobs */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    Active Jobs ({activeJobs.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {activeJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No active jobs
-                    </p>
-                  ) : (
-                    activeJobs.map((job) => (
-                      <Card
-                        key={job.id}
-                        className="p-3 cursor-pointer hover:bg-muted/50"
-                        onClick={() => openJobModal(job)}
-                      >
-                          <div className="flex items-start gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage
-                                src={job.client?.photo_url || undefined}
-                              />
-                              <AvatarFallback>
-                                {job.client?.full_name?.[0] || "?"}
-                              </AvatarFallback>
+          <TabsContent value="jobs" className="admin-overview-tab mt-6">
+            <div className="admin-overview-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-6 py-3 dark:border-zinc-800">
+                <h2 className="text-lg font-bold">Jobs overview</h2>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <input
+                    type="date"
+                    value={jobsDateFrom}
+                    onChange={(event) => setJobsDateFrom(event.target.value)}
+                    aria-label="Jobs from date"
+                    className="h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                  <input
+                    type="date"
+                    value={jobsDateTo}
+                    onChange={(event) => setJobsDateTo(event.target.value)}
+                    aria-label="Jobs to date"
+                    className="h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                  <select
+                    value={jobsCategory}
+                    onChange={(event) => setJobsCategory(event.target.value)}
+                    aria-label="Filter jobs by category"
+                    className="h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-800"
+                  >
+                    <option value="all">All categories</option>
+                    {overviewCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                  <select
+                    value={jobsStatus}
+                    onChange={(event) => setJobsStatus(event.target.value)}
+                    aria-label="Filter jobs by status"
+                    className="h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-800"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="In process">In process</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="admin-overview-table-scroll overflow-auto">
+                <table className="w-full min-w-[1180px] text-left">
+                  <thead className="bg-zinc-50 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60">
+                    <tr>
+                      <th className="px-6 py-3">Client</th>
+                      <th className="px-6 py-3">Freelancer</th>
+                      <th className="px-6 py-3">Category</th>
+                      <th className="px-6 py-3">Location</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3">Cancelled reason</th>
+                      <th className="px-6 py-3">Created</th>
+                      <th className="px-6 py-3 text-right">Budget</th>
+                      <th className="px-6 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {overviewJobs.map((job) => {
+                      const freelancerId =
+                        job.selected_freelancer_id ||
+                        job.latest_cancellation?.freelancer_id ||
+                        null;
+                      const freelancer =
+                        job.freelancer ||
+                        users.find((candidate) => candidate.id === freelancerId);
+                      return (
+                      <tr key={job.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-7 w-7">
+                              <AvatarImage src={job.client?.photo_url || undefined} />
+                              <AvatarFallback>{job.client?.full_name?.[0] || "?"}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {job.client?.full_name || "Unknown"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {job.location_city}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <Badge variant="outline" className="text-xs">
-                                  {job.status}
-                                </Badge>
-                                {job.stage && (
-                                  <Badge
-                                    variant={
-                                      getJobStageBadge(job.stage).variant
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {getJobStageBadge(job.stage).label}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      ))
-                    )}
-                </CardContent>
-              </Card>
-
-              {/* Requested Jobs */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-amber-500" />
-                    Requested Jobs ({requestedJobs.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {requestedJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No requested jobs
-                    </p>
-                  ) : (
-                    requestedJobs.map((job) => (
-                      <Card
-                        key={job.id}
-                        className="p-3 cursor-pointer hover:bg-muted/50"
-                        onClick={() => openJobModal(job)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage
-                              src={job.client?.photo_url || undefined}
-                            />
-                            <AvatarFallback>
-                              {job.client?.full_name?.[0] || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
+                            <span className="inline-flex items-center gap-1 font-semibold">
                               {job.client?.full_name || "Unknown"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {job.location_city}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                {job.status}
-                              </Badge>
-                              {job.stage && (
-                                <Badge
-                                  variant={getJobStageBadge(job.stage).variant}
-                                  className="text-xs"
-                                >
-                                  {getJobStageBadge(job.stage).label}
-                                </Badge>
+                              {job.client?.is_verified && (
+                                <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:text-zinc-900" aria-label="Verified" />
                               )}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {freelancer ? (
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src={freelancer.photo_url || undefined} />
+                                <AvatarFallback>{freelancer.full_name?.[0] || "?"}</AvatarFallback>
+                              </Avatar>
+                              <span className="inline-flex items-center gap-1 font-semibold">
+                                {freelancer.full_name || "Unknown"}
+                                {freelancer.is_verified && (
+                                  <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:text-zinc-900" aria-label="Verified" />
+                                )}
+                              </span>
                             </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Completed Jobs */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                    Completed Jobs ({completedJobs.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {completedJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No completed jobs
-                    </p>
-                  ) : (
-                    completedJobs.map((job) => (
-                      <Card 
-                        key={job.id} 
-                        className="p-3 cursor-pointer hover:bg-muted/50"
-                        onClick={() => openJobModal(job)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage
-                              src={job.client?.photo_url || undefined}
-                            />
-                            <AvatarFallback>
-                              {job.client?.full_name?.[0] || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {job.client?.full_name || "Unknown"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {job.location_city}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(job.created_at), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
+                          ) : (
+                            <span className="text-sm text-zinc-400">Unassigned</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium">{getAdminJobCategory(job)}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-300">{adminCityLabel(job.location_city)}</td>
+                        <td className="px-6 py-4 text-sm font-semibold">{getAdminJobStatus(job)}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-300">{getCancellationReason(job)}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-500">{format(new Date(job.created_at), "MMM d, yyyy")}</td>
+                        <td className="px-6 py-4 text-right text-sm font-bold">{adminJobBudget(job)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <details className="relative inline-block text-left">
+                            <summary
+                              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden"
+                              aria-label="Job actions"
+                            >
+                              <MoreVertical className="h-5 w-5" />
+                            </summary>
+                            <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl bg-white p-1.5 text-left shadow-xl ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  openJobModal(job);
+                                  event.currentTarget.closest("details")?.removeAttribute("open");
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                              >
+                                <Eye className="h-4 w-4" /> View
+                              </button>
+                              <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                                Message
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => void messageJobParticipant(job.client_id)}
+                                disabled={messagingTargetId !== null}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-700"
+                              >
+                                {messagingTargetId === job.client_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                                Client: {job.client?.full_name || "Unknown"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => freelancerId && void messageJobParticipant(freelancerId)}
+                                disabled={!freelancerId || messagingTargetId !== null}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-700"
+                              >
+                                {messagingTargetId === freelancerId ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                                Freelancer: {freelancer?.full_name || "Unassigned"}
+                              </button>
+                            </div>
+                          </details>
+                        </td>
+                      </tr>
+                    )})}
+                    {overviewJobs.length === 0 && (
+                      <tr><td colSpan={8} className="px-6 py-14 text-center text-sm text-muted-foreground">No jobs match these filters</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="users" className="mt-6">
-            <Card className="border border-border/50 shadow-sm overflow-hidden rounded-xl bg-card">
+          <TabsContent value="users" className="admin-overview-tab mt-6">
+            <Card className="admin-overview-table-panel overflow-hidden rounded-2xl border-0 bg-card shadow-none">
               <CardHeader className="px-6 py-5 border-b border-border/50">
                 <CardTitle className="text-xl font-bold">Comprehensive User Registry</CardTitle>
-                <CardDescription className="text-zinc-500 dark:text-zinc-400">
-                  Manage marketplace participants, active sessions, and access permissions.
-                </CardDescription>
               </CardHeader>
-              <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+              <CardContent className="admin-overview-table-scroll overflow-auto p-0">
                 {users.length === 0 ? (
                   <div className="p-6 text-center text-muted-foreground">
                     No active user data loaded.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-sm text-zinc-600 dark:text-zinc-300">
-                      <thead className="sticky top-0 bg-zinc-50/80 backdrop-blur-md dark:bg-zinc-900/80 border-b border-border/50 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div className="overflow-x-auto bg-white dark:bg-zinc-900">
+                    <table className="w-full min-w-[1380px] border-collapse bg-white text-left text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                      <thead className="sticky top-0 border-b border-zinc-100 bg-white text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
                         <tr>
                           <th scope="col" className="px-6 py-3.5">Participant</th>
                           <th scope="col" className="px-6 py-3.5">Role</th>
                           <th scope="col" className="px-6 py-3.5">Location</th>
+                          <th scope="col" className="px-6 py-3.5">WhatsApp</th>
+                          <th scope="col" className="px-6 py-3.5">Telegram</th>
+                          <th scope="col" className="px-6 py-3.5">Agreement signed</th>
+                          <th scope="col" className="px-6 py-3.5">Completed as client</th>
+                          <th scope="col" className="px-6 py-3.5">Completed as freelancer</th>
                           <th scope="col" className="px-6 py-3.5">Onboarded</th>
                           <th scope="col" className="px-6 py-3.5 text-right">Operations</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/40 bg-card">
+                      <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
                         {users.map((u) => (
                           <tr key={u.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
                             <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
@@ -518,7 +686,22 @@ export default function AdminPage() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-sm">
-                              {u.city || "N/A"}
+                              {adminCityLabel(u.city)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {u.whatsapp_number_e164 || "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {u.telegram_username ? `@${u.telegram_username.replace(/^@/, "")}` : "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                              {u.legal_terms_accepted_at && u.privacy_accepted_at ? "Yes" : "No"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {jobs.filter((job) => job.status === "completed" && job.client_id === u.id).length}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {jobs.filter((job) => job.status === "completed" && job.selected_freelancer_id === u.id).length}
                             </td>
                             <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-sm">
                               {format(new Date(u.created_at), "MMM d, yyyy")}
@@ -551,173 +734,64 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="statistics" className="mt-6">
+          <TabsContent value="statistics" className="admin-overview-tab mt-6">
             {statistics && (
-              <div className="space-y-6">
-                {/* Quick Glance Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Total Operations</span>
-                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{statistics.totalJobs}</span>
-                    <div className="flex items-center gap-1.5 mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                      <span>{statistics.jobsThisWeek} created this week</span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Active Assignments</span>
-                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-emerald-600 dark:text-emerald-400">{statistics.activeJobs}</span>
-                    <span className="text-xs text-muted-foreground mt-2 font-medium">In execution phase</span>
-                  </div>
-
-                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Fulfilling Requests</span>
-                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-amber-600 dark:text-amber-400">{statistics.requestedJobs}</span>
-                    <span className="text-xs text-muted-foreground mt-2 font-medium">Candidate matching process</span>
-                  </div>
-
-                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Completed Work</span>
-                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-blue-600 dark:text-blue-400">{statistics.completedJobs}</span>
-                    <span className="text-xs text-muted-foreground mt-2 font-medium">Archived and paid out</span>
-                  </div>
+              <div className="admin-overview-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
+                <div className="border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                  <h2 className="text-lg font-bold">Platform statistics</h2>
                 </div>
-
-                {/* User Breakdown Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="border border-border/50 shadow-sm rounded-xl overflow-hidden bg-card">
-                    <CardHeader className="px-6 py-4 border-b border-border/50">
-                      <CardTitle className="text-base font-bold">Participant Metrics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-6 py-5 space-y-5">
-                      <div>
-                        <div className="flex justify-between items-center text-sm mb-1.5">
-                          <span className="font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-orange-500"></span>
-                            Clients (Employers)
-                          </span>
-                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{statistics.totalClients}</span>
-                        </div>
-                        <div className="w-full bg-zinc-100 dark:bg-zinc-800/60 rounded-full h-2">
-                          <div 
-                            className="bg-orange-500 h-2 rounded-full" 
-                            style={{ 
-                              width: `${statistics.totalUsers > 0 ? (statistics.totalClients / statistics.totalUsers) * 100 : 0}%` 
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center text-sm mb-1.5">
-                          <span className="font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                            Freelancers (Helpers)
-                          </span>
-                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{statistics.totalFreelancers}</span>
-                        </div>
-                        <div className="w-full bg-zinc-100 dark:bg-zinc-800/60 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full" 
-                            style={{ 
-                              width: `${statistics.totalUsers > 0 ? (statistics.totalFreelancers / statistics.totalUsers) * 100 : 0}%` 
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-border/40 flex justify-between items-center text-sm">
-                        <span className="text-zinc-500">Gross Platform Accounts</span>
-                        <span className="font-bold text-zinc-900 dark:text-zinc-50 text-base">{statistics.totalUsers}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border border-border/50 shadow-sm rounded-xl overflow-hidden bg-card">
-                    <CardHeader className="px-6 py-4 border-b border-border/50">
-                      <CardTitle className="text-base font-bold">Activity Velocity</CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-6 py-5 flex items-center justify-center h-full">
-                      <div className="text-center py-4">
-                        <span className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
-                          {statistics.jobsLastWeek > 0 
-                            ? `${Math.round(((statistics.jobsThisWeek - statistics.jobsLastWeek) / statistics.jobsLastWeek) * 100)}%`
-                            : "N/A"
-                          }
-                        </span>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Week-over-Week Request Growth</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="admin-overview-table-scroll overflow-auto">
+                  <table className="w-full min-w-[680px] text-left text-sm">
+                    <thead className="bg-zinc-50 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60">
+                      <tr><th className="px-6 py-3">Metric</th><th className="px-6 py-3">Value</th><th className="px-6 py-3">Context</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      <tr><td className="px-6 py-3 font-semibold">Total operations</td><td className="px-6 py-3">{statistics.totalJobs}</td><td className="px-6 py-3 text-muted-foreground">{statistics.jobsThisWeek} created this week</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Active assignments</td><td className="px-6 py-3">{statistics.activeJobs}</td><td className="px-6 py-3 text-muted-foreground">In execution</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Fulfilling requests</td><td className="px-6 py-3">{statistics.requestedJobs}</td><td className="px-6 py-3 text-muted-foreground">Candidate matching</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Completed work</td><td className="px-6 py-3">{statistics.completedJobs}</td><td className="px-6 py-3 text-muted-foreground">Archived and completed</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Clients</td><td className="px-6 py-3">{statistics.totalClients}</td><td className="px-6 py-3 text-muted-foreground">Employer accounts</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Helpers</td><td className="px-6 py-3">{statistics.totalFreelancers}</td><td className="px-6 py-3 text-muted-foreground">Freelancer accounts</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Total users</td><td className="px-6 py-3">{statistics.totalUsers}</td><td className="px-6 py-3 text-muted-foreground">All platform accounts</td></tr>
+                      <tr><td className="px-6 py-3 font-semibold">Weekly growth</td><td className="px-6 py-3">{statistics.jobsLastWeek > 0 ? `${Math.round(((statistics.jobsThisWeek - statistics.jobsLastWeek) / statistics.jobsLastWeek) * 100)}%` : "N/A"}</td><td className="px-6 py-3 text-muted-foreground">Week over week</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="reports" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Reports</CardTitle>
-                <CardDescription>Issues reported by users</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {reports.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No reports yet
-                    </p>
-                  ) : (
-                    reports.map((report) => (
-                      <Card
-                        key={report.id}
-                        className={`p-4 cursor-pointer hover:bg-muted/50 ${report.unread_count > 0 ? "border-primary" : ""}`}
-                        onClick={() => navigate(`/chat/${report.id}`)}
-                      >
-                        <div className="flex items-start gap-4">
-                          <Avatar>
-                            <AvatarImage
-                              src={report.client?.photo_url || undefined}
-                            />
-                            <AvatarFallback>
-                              {report.client?.full_name?.[0] || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">
-                                {report.client?.full_name || "Unknown User"}
-                              </p>
-                              {report.unread_count > 0 && (
-                                <Badge variant="destructive">
-                                  {report.unread_count}
-                                </Badge>
-                              )}
-                            </div>
-                            {report.last_message && (
-                              <p className="text-sm text-muted-foreground mt-1 truncate">
-                                {report.last_message.body}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(
-                                new Date(report.created_at),
-                                "MMM d, yyyy 'at' h:mm a",
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="reports" className="admin-overview-tab mt-6">
+            <div className="admin-overview-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
+              <div className="border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <h2 className="text-lg font-bold">User reports</h2>
+              </div>
+              <div className="admin-overview-table-scroll overflow-auto">
+                <table className="w-full min-w-[680px] text-left text-sm">
+                  <thead className="bg-zinc-50 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60">
+                    <tr><th className="px-6 py-3">User</th><th className="px-6 py-3">Latest message</th><th className="px-6 py-3">Created</th><th className="px-6 py-3">Unread</th><th className="px-6 py-3 text-right">Action</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {reports.map((report) => (
+                      <tr key={report.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40">
+                        <td className="px-6 py-3 font-semibold">{report.client?.full_name || "Unknown User"}</td>
+                        <td className="max-w-sm truncate px-6 py-3 text-muted-foreground">{report.last_message?.body || "No message"}</td>
+                        <td className="px-6 py-3 text-muted-foreground">{format(new Date(report.created_at), "MMM d, yyyy")}</td>
+                        <td className="px-6 py-3">{report.unread_count || 0}</td>
+                        <td className="px-6 py-3 text-right"><Button size="sm" className="rounded-full" onClick={() => void messageJobParticipant(report.client_id)}>Open</Button></td>
+                      </tr>
+                    ))}
+                    {reports.length === 0 && <tr><td colSpan={5} className="px-6 py-14 text-center text-muted-foreground">No reports yet</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 
         {/* Unified Job Details Modal */}
         <Dialog open={isJobModalOpen} onOpenChange={setIsJobModalOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-border/40 bg-card p-0">
+          <DialogContent className="admin-drawer-content max-w-3xl overflow-y-auto p-0">
             {selectedJob && (
               <div className="flex flex-col">
                 {/* Header banner */}
@@ -726,6 +800,9 @@ export default function AdminPage() {
                     <DialogTitle className="text-xl font-bold tracking-tight text-white">
                       Job Specification Detail
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                      Review and manage the selected job.
+                    </DialogDescription>
                     <p className="text-xs text-zinc-400 mt-1 font-medium">
                       Reference ID: <span className="font-mono">{selectedJob.id}</span>
                     </p>
@@ -840,9 +917,7 @@ export default function AdminPage() {
                       <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 rounded-xl">
                         <span className="text-xs text-zinc-500 font-medium">Compensation Range</span>
                         <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-0.5">
-                          {selectedJob.budget_min && selectedJob.budget_max 
-                            ? `$${selectedJob.budget_min} - $${selectedJob.budget_max}/hr` 
-                            : "Rate custom/not specified"}
+                          {adminJobBudget(selectedJob)}
                         </p>
                       </div>
 

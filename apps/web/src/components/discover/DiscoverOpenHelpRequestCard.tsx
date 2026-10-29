@@ -13,6 +13,7 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  Flag,
   Sparkles,
   Users,
   UtensilsCrossed,
@@ -393,6 +394,7 @@ type Props = {
   saved?: boolean;
   saveBusy?: boolean;
   onToggleSave?: () => void;
+  onReport?: () => void;
   onDismiss?: () => void;
   commentCount?: number;
   className?: string;
@@ -445,6 +447,7 @@ export function DiscoverOpenHelpRequestCard({
   saved = false,
   saveBusy = false,
   onToggleSave,
+  onReport,
   onDismiss,
   commentCount = 0,
   className,
@@ -570,6 +573,19 @@ export function DiscoverOpenHelpRequestCard({
                 <Bookmark className={cn("h-4 w-4", saved && "fill-current")} strokeWidth={2.25} />
               )}
             </button>
+            {onReport && (
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-red-500/80"
+                aria-label="Report request"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReport();
+                }}
+              >
+                <Flag className="h-4 w-4" aria-hidden />
+              </button>
+            )}
           </div>
 
           <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2">
@@ -671,6 +687,19 @@ export function DiscoverOpenHelpRequestCard({
                     />
                   )}
                 </button>
+                {onReport && (
+                  <button
+                    type="button"
+                    className={saveOpenHelpRequestBtnClass}
+                    aria-label="Report request"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReport();
+                    }}
+                  >
+                    <Flag className="h-5 w-5 text-muted-foreground hover:text-red-500" aria-hidden />
+                  </button>
+                )}
               </div>
             </div>
 
