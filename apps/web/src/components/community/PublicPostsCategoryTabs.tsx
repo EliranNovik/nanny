@@ -102,8 +102,8 @@ export function PublicPostsCategoryTabs({
                 "shrink-0",
                 dense ? "h-5 w-5" : "h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]",
                 selected
-                  ? "text-zinc-800 dark:text-white"
-                  : "text-zinc-500 dark:text-zinc-400",
+                  ? "text-white"
+                  : "text-orange-600 dark:text-orange-400",
               )}
               strokeWidth={2.25}
               aria-hidden

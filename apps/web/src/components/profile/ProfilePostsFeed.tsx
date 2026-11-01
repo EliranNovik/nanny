@@ -233,6 +233,7 @@ import {
   type EventJoinInterestStatus,
 } from "@/lib/profilePostEventJoin";
 import { preventDialogDismissForGooglePlacesPac } from "@/lib/googlePlacesPacModal";
+import { haversineDistanceKm } from "@/lib/geo";
 
 function mergeProfilePostMetadata(
   metadata: Record<string, unknown> | null | undefined,
@@ -1139,11 +1140,13 @@ function CommentsSidePanel({
   authorName,
   initialCount,
   wideLayout = false,
+  className,
 }: {
   postId: string;
   authorName?: string;
   initialCount?: number | null;
   wideLayout?: boolean;
+  className?: string;
 }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -1242,6 +1245,7 @@ function CommentsSidePanel({
         wideLayout
           ? "min-w-[320px] flex-1 max-w-[640px]"
           : "w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[600px]",
+        className,
       )}
     >
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
@@ -1720,8 +1724,8 @@ export function ComposeModal({
   const [customCategory, setCustomCategory] = useState("");
   const [customCategoryText, setCustomCategoryText] = useState("");
   const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
-  const isMobileViewport = useIsMobileViewport();
   const [sheetExpanded, setSheetExpanded] = useState(true);
+  const isMobileViewport = useIsMobileViewport();
   useCommunityFeedOverlayLock(open && isMobileViewport);
 
   useEffect(() => {
@@ -3793,7 +3797,6 @@ function PostCard({
   const { profile: viewerProfile, user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const isMobileViewport = useIsMobileViewport();
   const isJobRequest = post.source === "job_request";
   const [chatOpening, setChatOpening] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -4996,7 +4999,7 @@ function PostCard({
   }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   function renderEngagementRow() {
-    const pinEngagementToMobileBottom = isolateFocusedPost && isMobileViewport;
+    const pinEngagementToMobileBottom = isolateFocusedPost;
     const btnPad = isGlobalFeed
       ? "py-2.5"
       : hasMedia
@@ -5271,8 +5274,10 @@ function PostCard({
   const showPortraitMediaOverlay =
     isGlobalFeed &&
     hasMedia &&
-    mediaOrientation !== "landscape" &&
+    (mediaOrientation !== "landscape" || isEventPost || postTypeId === "community") &&
     Boolean(displayPostTitle || showFeedActionButton || showPortraitMediaMeta);
+  const useSimpleSocialMediaOverlay =
+    isEventPost || postTypeId === "community";
 
   const globalFeedCtaButton = showFeedActionButton ? (
     <button
@@ -5290,6 +5295,7 @@ function PostCard({
       }
       className={cn(
         "inline-flex h-10 w-auto min-w-[10rem] max-w-full shrink-0 items-center justify-center gap-1.5 self-end rounded-xl px-6 text-[13px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0 md:h-12 md:min-w-0 md:max-w-[12rem] md:rounded-xl md:px-5 md:text-[16px]",
+        useSimpleSocialMediaOverlay && "self-start",
         globalFeedPrimaryCtaClass(
           postTypeId,
           isJobRequest && jobAcceptedAt
@@ -5314,12 +5320,26 @@ function PostCard({
   ) : null;
 
   const portraitMediaGlassOverlay = showPortraitMediaOverlay ? (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] p-3">
-      <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl bg-white/55 px-3 py-2.5 shadow-none backdrop-blur-2xl backdrop-saturate-150">
+    <div
+      className={cn(
+        "pointer-events-none absolute z-[6] p-3",
+        useSimpleSocialMediaOverlay ? "inset-0" : "inset-x-0 bottom-0",
+      )}
+    >
+      <div
+        className={cn(
+          "pointer-events-auto flex flex-col gap-2",
+          useSimpleSocialMediaOverlay
+            ? "h-full bg-transparent p-0"
+            : "rounded-2xl bg-white/55 px-3 py-2.5 shadow-none backdrop-blur-2xl backdrop-saturate-150",
+        )}
+      >
         {displayPostTitle ? (
           <h3
             className={cn(
               "flex items-start gap-2 text-[16px] font-bold leading-snug text-zinc-950 drop-shadow-none",
+              useSimpleSocialMediaOverlay &&
+                "w-fit max-w-[85%] px-1 py-1 text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.9)]",
               displayPostTitleLayout?.className,
             )}
             dir={displayPostTitleLayout?.dir}
@@ -5333,7 +5353,7 @@ function PostCard({
             <span className="line-clamp-2">{displayPostTitle}</span>
           </h3>
         ) : null}
-        {showPortraitMediaMeta ? (
+        {showPortraitMediaMeta && !useSimpleSocialMediaOverlay ? (
           <div
             className={cn(
               "grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px] font-medium text-zinc-900",
@@ -5344,9 +5364,16 @@ function PostCard({
             {renderGlobalMetadataLines(false, true, true)}
           </div>
         ) : null}
-        {whenLabel || globalFeedCtaButton ? (
-          <div className="flex items-center justify-between gap-2">
-            {whenLabel ? (
+        {(!useSimpleSocialMediaOverlay && whenLabel) || globalFeedCtaButton ? (
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              useSimpleSocialMediaOverlay
+                ? "mt-auto justify-start"
+                : "justify-between",
+            )}
+          >
+            {whenLabel && !useSimpleSocialMediaOverlay ? (
               <span
                 className={cn(
                   whenBadgeClassForTimeframe(requestWhenTimeframe, whenExpired),
@@ -6638,6 +6665,8 @@ interface ProfilePostsFeedProps {
   filterTaggedUserId?: string;
   filterAuthorId?: string;
   authorNameFilter?: string;
+  /** Match post captions/keywords or author names. */
+  searchFilter?: string;
   sortOrder?: "newest" | "oldest";
   /** Show only posts liked by this user (new social feed). */
   filterLikedByUserId?: string;
@@ -6697,6 +6726,11 @@ interface ProfilePostsFeedProps {
   filterOtherSubcategoryId?: string | null;
   /** Show only the focused post/request — used by isolated offer/request pages. */
   isolateFocusedPost?: boolean;
+  /** Reports the resolved focused item to isolated-detail page chrome. */
+  onFocusedPostResolved?: (post: FeedPost | null) => void;
+  /** Stack comments below the centered post on isolated detail pages. */
+  detailStackLayout?: boolean;
+  rankingSort?: "most_liked" | "most_commented" | "most_shared" | "near_me" | null;
 }
 
 export function ProfilePostsFeed({
@@ -6705,6 +6739,7 @@ export function ProfilePostsFeed({
   filterTaggedUserId,
   filterAuthorId,
   authorNameFilter,
+  searchFilter,
   sortOrder = "newest",
   filterLikedByUserId,
   limit,
@@ -6732,6 +6767,9 @@ export function ProfilePostsFeed({
   filterCategoryId = null,
   filterOtherSubcategoryId = null,
   isolateFocusedPost = false,
+  onFocusedPostResolved,
+  detailStackLayout = false,
+  rankingSort = null,
 }: ProfilePostsFeedProps) {
   const { t, i18n } = useTranslation();
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
@@ -6906,6 +6944,14 @@ export function ProfilePostsFeed({
           .limit(10);
         if (profiles) resolvedAuthorIds = profiles.map((p) => p.id);
       }
+      if (searchFilter && searchFilter.trim().length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("full_name", `%${searchFilter.trim()}%`)
+          .limit(25);
+        if (profiles) resolvedAuthorIds = profiles.map((p) => p.id);
+      }
 
       // 1. Optional: liked-only filter (per user)
       let likedPostIds: string[] | null = null;
@@ -7029,7 +7075,11 @@ export function ProfilePostsFeed({
         let authorIds: string[] | null = null;
         if (userId) {
           authorIds = [userId];
-        } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
+        } else if (
+          authorNameFilter &&
+          authorNameFilter.trim().length > 0 &&
+          !searchFilter?.trim()
+        ) {
           if (resolvedAuthorIds.length === 0) return [];
           authorIds = resolvedAuthorIds;
         } else if (effectiveAuthorId && favoriteAuthorIds) {
@@ -7052,6 +7102,14 @@ export function ProfilePostsFeed({
 
       if (filterTaggedUserId) {
         query = query.contains("tagged_user_ids", [filterTaggedUserId]);
+      }
+
+      if (searchFilter?.trim()) {
+        const term = searchFilter.trim().replace(/[%_,()]/g, " ");
+        const authorClause = resolvedAuthorIds.length
+          ? `,author_id.in.(${resolvedAuthorIds.join(",")})`
+          : "";
+        query = query.or(`caption.ilike.%${term}%${authorClause}`);
       }
 
       if (effectivePostTypeFilter?.length) {
@@ -7537,6 +7595,7 @@ export function ProfilePostsFeed({
     filterTaggedUserId,
     filterAuthorId,
     authorNameFilter,
+    searchFilter,
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId,
@@ -7703,6 +7762,30 @@ export function ProfilePostsFeed({
       }
     }
 
+    if (rankingSort) {
+      result = [...result].sort((a, b) => {
+        if (rankingSort === "most_liked") return b.like_count - a.like_count;
+        if (rankingSort === "most_commented") return b.comment_count - a.comment_count;
+        if (rankingSort === "most_shared") {
+          return b.share_click_count - a.share_click_count;
+        }
+        const distance = (post: FeedPost) => {
+          if (viewerLocation?.lat == null || viewerLocation?.lng == null) return Number.POSITIVE_INFINITY;
+          const source = post as FeedPost & {
+            location_lat?: number | null;
+            location_lng?: number | null;
+            post_metadata?: Record<string, unknown> | null;
+          };
+          const lat = Number(source.location_lat ?? source.post_metadata?.location_lat);
+          const lng = Number(source.location_lng ?? source.post_metadata?.location_lng);
+          return Number.isFinite(lat) && Number.isFinite(lng)
+            ? haversineDistanceKm(viewerLocation.lat, viewerLocation.lng, lat, lng)
+            : Number.POSITIVE_INFINITY;
+        };
+        return distance(a) - distance(b);
+      });
+    }
+
     return result;
   }, [
     posts,
@@ -7713,9 +7796,16 @@ export function ProfilePostsFeed({
     normalizedFocusRequestId,
     allowPostDeepLink,
     allowRequestDeepLink,
+    rankingSort,
+    viewerLocation,
     filterPostTypeId,
     effectivePostTypeFilter,
   ]);
+
+  useEffect(() => {
+    if (!isolateFocusedPost || !onFocusedPostResolved) return;
+    onFocusedPostResolved(displayPosts[0] ?? null);
+  }, [displayPosts, isolateFocusedPost, onFocusedPostResolved]);
 
   const focusedPostFetching = focusedPostPending;
   const focusedRequestFetching = focusedRequestPending;
@@ -8180,6 +8270,7 @@ export function ProfilePostsFeed({
               className={cn(
                 "md:flex md:items-start md:justify-start",
                 expandDiscoverLayout ? "md:gap-6 lg:gap-8 xl:gap-10" : "md:gap-10 md:pr-4 lg:pr-8",
+                detailStackLayout && "md:flex-col md:items-stretch md:gap-8 md:pr-0 lg:pr-0",
               )}
             >
               <div className="min-w-0 md:flex-1">
@@ -8212,6 +8303,7 @@ export function ProfilePostsFeed({
                   authorName={authorName}
                   initialCount={post.comment_count}
                   wideLayout={expandDiscoverLayout}
+                  className={detailStackLayout ? "!flex !w-full !max-w-none !min-w-0" : undefined}
                 />
               ) : (
                 <CommentsSidePanel
@@ -8219,6 +8311,7 @@ export function ProfilePostsFeed({
                   authorName={authorName}
                   initialCount={post.comment_count}
                   wideLayout={expandDiscoverLayout}
+                  className={detailStackLayout ? "!flex !w-full !max-w-none !min-w-0" : undefined}
                 />
               )}
             </div>

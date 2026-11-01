@@ -81,7 +81,7 @@ export function DiscoverHomeOffersForYou({
     return (
       <section className={cn("w-full", className)} aria-label={t("discover.offersForYou")}>
         <div className="mb-5 h-7 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3">
           {Array.from({ length: 4 }, (_, i) => (
             <div key={i} className="flex items-center gap-3.5">
               <div className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
@@ -120,6 +120,7 @@ export function DiscoverHomeOffersForYou({
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
           {visibleOffers.map((offer) => {
             const iconId = resolveHelpCategoryIconId(offer.categoryId, offer.customCategory);
+            const listingImageUrl = offer.imageUrl || offer.authorPhotoUrl;
             const viewerLat = viewerLocation?.lat;
             const viewerLng = viewerLocation?.lng;
             const hasCoords =
@@ -160,15 +161,15 @@ export function DiscoverHomeOffersForYou({
                 type="button"
                 onClick={() => openOffer(offer.id)}
                 className={cn(
-                  "flex w-full items-center gap-3.5 text-left sm:gap-3",
-                  "outline-none transition-opacity active:opacity-80",
+                  "flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left",
+                  "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800">
-                  {offer.imageUrl ? (
+                <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                  {listingImageUrl ? (
                     <img
-                      src={offer.imageUrl}
+                      src={listingImageUrl}
                       alt=""
                       className="h-full w-full object-cover object-center"
                       loading="lazy"

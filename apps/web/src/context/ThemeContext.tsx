@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -20,6 +21,8 @@ interface ThemeContextType {
   toggleTheme: () => void;
   /** Sets an explicit light/dark preference (not auto). */
   setTheme: (theme: Theme) => void;
+  /** Light-only screens (e.g. landing) register here; the stored preference is untouched. */
+  acquireForcedLight: () => () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -54,7 +57,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
-  const theme = resolveTheme(themePreference, systemPrefersDark);
+  const [forcedLightCount, setForcedLightCount] = useState(0);
+  const theme: Theme =
+    forcedLightCount > 0 ? "light" : resolveTheme(themePreference, systemPrefersDark);
+
+  const acquireForcedLight = useCallback(() => {
+    setForcedLightCount((n) => n + 1);
+    return () => setForcedLightCount((n) => Math.max(0, n - 1));
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -72,7 +82,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-  }, [theme]);
+    root.style.colorScheme = forcedLightCount > 0 ? "light" : "";
+  }, [theme, forcedLightCount]);
 
   const persistThemePreference = (preference: ThemePreference) => {
     setThemePreferenceState(preference);
@@ -100,6 +111,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setThemePreference,
         toggleTheme,
         setTheme,
+        acquireForcedLight,
       }}
     >
       {children}
@@ -113,4 +125,10 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
+}
+
+/** Forces light theme while the calling component is mounted. */
+export function useForceLightTheme() {
+  const { acquireForcedLight } = useTheme();
+  useEffect(() => acquireForcedLight(), [acquireForcedLight]);
 }

@@ -2,33 +2,27 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Clock, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Loader2, MessageCircle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/context/AuthContext";
-import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useToast } from "@/components/ui/toast";
 import { acceptOpenHelpRequest } from "@/lib/acceptOpenHelpRequest";
-import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
 import { globalCommunityFeedPath } from "@/lib/communityFeedNav";
 import { isolatedOpenRequestPath } from "@/lib/jobRequestShare";
 import {
   loadDismissedOpenHelpRequestIds,
-  rememberDismissedOpenHelpRequest,
 } from "@/lib/dismissedOpenHelpRequests";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
-import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
-import { useJobRequestFavoriteIds } from "@/hooks/data/useJobRequestFavoriteIds";
 import {
-  DiscoverOpenHelpRequestCard,
+  useDiscoverOpenHelpRequests,
+  type DiscoverOpenHelpRequestRow,
+} from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
   DiscoverOpenHelpRequestsSeeMoreButton,
 } from "@/components/discover/DiscoverOpenHelpRequestCard";
-import {
-  DiscoverCarouselTabIndicator,
-  DiscoverRequestCarouselArrows,
-  useDiscoverRequestCarouselScroll,
-} from "@/components/discover/DiscoverRequestCarouselControls";
 import {
   discoverNearbyRequestCardCarouselItemClass,
   discoverRequestCardsCarouselContainerClass,
@@ -40,6 +34,17 @@ import {
   type DiscoverOpenHelpRequestSort,
 } from "@/lib/discoverHomeCategoryFilter";
 import { isOpenHelpRequestWhenExpired } from "@/lib/openHelpRequestDisplay";
+import {
+  openHelpRequestScheduleLine,
+  openHelpRequestTitle,
+} from "@/lib/openHelpRequestDisplay";
+import { jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
+import {
+  categoryIllustrationSrc,
+  helpCategoryIdFromServiceDetails,
+} from "@/lib/discoverCategoryTileIcons";
+import { postServiceCategoryLabel } from "@/lib/serviceCategories";
+import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 
 const MAX_VISIBLE = 8;
 
@@ -59,6 +64,102 @@ function canActAsHelper(
   return false;
 }
 
+function NearbyRequestRow({
+  row,
+  onOpen,
+  accepted,
+  accepting,
+  onAccept,
+}: {
+  row: DiscoverOpenHelpRequestRow;
+  onOpen: () => void;
+  accepted: boolean;
+  accepting: boolean;
+  onAccept: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const attachment = jobAttachmentImageUrls({
+    service_details: row.service_details ?? undefined,
+  })[0];
+  const image =
+    attachment ||
+    row.client_photo_url ||
+    categoryIllustrationSrc(
+      row.service_type,
+      helpCategoryIdFromServiceDetails(row.service_details),
+    );
+  const category = postServiceCategoryLabel(
+    row.service_type,
+    helpCategoryIdFromServiceDetails(row.service_details),
+  );
+  const title = openHelpRequestTitle(row, t);
+  const schedule = openHelpRequestScheduleLine(row);
+  const author = row.client_display_name?.trim() || "Member";
+  const timeAgo = row.created_at
+    ? formatDistanceToNow(new Date(row.created_at), {
+        addSuffix: true,
+        locale: dateFnsLocaleFor(i18n.language),
+      })
+    : "";
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] bg-white p-0 pe-3 text-left shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
+    >
+      <div className="h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+        <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] font-semibold text-emerald-700 dark:text-emerald-400 sm:text-[13px]">
+          {category}
+        </p>
+        <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
+          {title}
+        </p>
+        {schedule ? (
+          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+            {schedule}
+          </p>
+        ) : null}
+        <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+          {author}{timeAgo ? ` • ${timeAgo}` : ""}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={accepted || accepting}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAccept();
+        }}
+        className={cn(
+          "inline-flex h-10 min-w-[88px] shrink-0 items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default",
+          accepted
+            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+            : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
+        )}
+      >
+        {accepting ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        ) : accepted ? (
+          "Accepted"
+        ) : (
+          "Accept"
+        )}
+      </button>
+    </div>
+  );
+}
+
 type Props = {
   enabled?: boolean;
   className?: string;
@@ -74,11 +175,9 @@ export function DiscoverHomePostedHelpRequests({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
-  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { addToast } = useToast();
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
   const [acceptedJobIds, setAcceptedJobIds] = useState<Set<string>>(() => new Set());
-  const [savingJobId, setSavingJobId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<DiscoverOpenHelpRequestSort>("newest");
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
@@ -90,7 +189,6 @@ export function DiscoverHomePostedHelpRequests({
     enabled,
     user?.id,
   );
-  const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(user?.id);
 
   const undismissedRequests = useMemo(
     () =>
@@ -124,9 +222,6 @@ export function DiscoverHomePostedHelpRequests({
     () => visibleRows.map((row) => row.id).join(","),
     [visibleRows],
   );
-
-  const { scrollerRef, scrollByDir, activeIndex, scrollToIndex } =
-    useDiscoverRequestCarouselScroll(visibleRows.length);
 
   const { data: commentCountByJobId = {} } = useQuery({
     queryKey: ["discoverOpenHelpRequestComments", visibleJobIdsKey],
@@ -253,51 +348,6 @@ export function DiscoverHomePostedHelpRequests({
     [navigate],
   );
 
-  const handleDismiss = useCallback(
-    (jobId: string) => {
-      rememberDismissedOpenHelpRequest(user?.id, jobId);
-      setDismissedJobIds((prev) => new Set(prev).add(jobId));
-      trackEvent("discover_posted_help_request_dismiss", { job_id: jobId });
-    },
-    [user?.id],
-  );
-
-  const handleToggleSave = useCallback(
-    async (jobId: string) => {
-      if (!user?.id) {
-        openGuestAuthPrompt({ variant: "engage" });
-        return;
-      }
-
-      const currentlySaved = savedJobIds.has(jobId);
-      setSavingJobId(jobId);
-      try {
-        await toggleJobRequestFavorite(user.id, jobId, currentlySaved);
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.jobRequestFavorites(user.id),
-        });
-        trackEvent("discover_posted_help_request_save", {
-          job_id: jobId,
-          saved: !currentlySaved,
-        });
-        addToast({
-          title: currentlySaved ? "Removed from saved" : "Request saved",
-          description: currentlySaved ? undefined : "Find it under Saved → Requests.",
-          variant: "success",
-        });
-      } catch (err: unknown) {
-        addToast({
-          title: "Could not save",
-          description: err instanceof Error ? err.message : "Try again.",
-          variant: "error",
-        });
-      } finally {
-        setSavingJobId(null);
-      }
-    },
-    [user?.id, savedJobIds, queryClient, addToast, openGuestAuthPrompt],
-  );
-
   const handleOpenGlobalRequestsFeed = useCallback(
     (from: "discover_home" | "discover_home_header" = "discover_home_header") => {
       trackEvent("discover_posted_help_requests_see_more", {
@@ -342,7 +392,7 @@ export function DiscoverHomePostedHelpRequests({
     <section className={cn("w-full", className)} aria-label="Posted help requests">
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="min-w-0 text-[22px] font-black tracking-tight text-emerald-800 dark:text-emerald-400 sm:text-2xl">
-          {t("discover.openRequests")}
+          Requests near you
         </h2>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="inline-flex h-8 items-center gap-1 rounded-full bg-emerald-100 px-2.5 text-sm font-bold tabular-nums text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
@@ -416,10 +466,6 @@ export function DiscoverHomePostedHelpRequests({
               </div>
             ) : null}
           </div>
-          <DiscoverRequestCarouselArrows
-            onScrollLeft={() => scrollByDir(-1)}
-            onScrollRight={() => scrollByDir(1)}
-          />
         </div>
       </div>
 
@@ -438,35 +484,21 @@ export function DiscoverHomePostedHelpRequests({
           </p>
         </div>
       ) : (
-        <div ref={scrollerRef} className={discoverRequestCardsCarouselContainerClass}>
-          {visibleRows.map((row) => (
-            <DiscoverOpenHelpRequestCard
-              key={row.id}
-              row={row}
-              layout="carousel"
-              className={discoverNearbyRequestCardCarouselItemClass}
-              commentCount={commentCountByJobId[row.id] ?? 0}
-              onOpen={() => handleOpenRequest(row.id)}
-              saved={savedJobIds.has(row.id)}
-              saveBusy={savingJobId === row.id}
-              onToggleSave={() => void handleToggleSave(row.id)}
-              accepted={acceptedJobIds.has(row.id)}
-              accepting={acceptingJobId === row.id}
-              onAccept={() => void handleAccept(row.id, row.client_display_name)}
-              onDismiss={() => handleDismiss(row.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
+            {visibleRows.map((row) => (
+              <NearbyRequestRow
+                key={row.id}
+                row={row}
+                onOpen={() => handleOpenRequest(row.id)}
+                accepted={acceptedJobIds.has(row.id)}
+                accepting={acceptingJobId === row.id}
+                onAccept={() => void handleAccept(row.id, row.client_display_name)}
+              />
+            ))}
+          </div>
+        </>
       )}
-
-      {sortedRequests.length > 0 ? (
-        <DiscoverCarouselTabIndicator
-          count={visibleRows.length}
-          activeIndex={activeIndex}
-          onSelect={scrollToIndex}
-          ariaLabel={t("discover.openRequests")}
-        />
-      ) : null}
 
       {sortedRequests.length > 0 ? (
         <div className="mt-4 md:hidden">

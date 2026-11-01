@@ -1489,7 +1489,7 @@ export default function HelpersPage() {
             ) : (
               <div
                 ref={resultsAnchorRef}
-                className="grid grid-cols-3 items-stretch gap-5 xl:grid-cols-4"
+                className="grid grid-cols-3 items-stretch gap-[14px] px-[14px] lg:grid-cols-4"
               >
                 {displayedHelpers.map((h) => (
                   <div

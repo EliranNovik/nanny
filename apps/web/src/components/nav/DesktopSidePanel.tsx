@@ -25,6 +25,8 @@ import {
   Briefcase,
   Newspaper,
 } from "lucide-react";
+import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
+import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 
 type SavedProfileRow = {
   id: string;
@@ -52,20 +54,22 @@ export function isDesktopSidePanelExcludedRoute(pathname: string): boolean {
   return false;
 }
 
-export function DesktopSidePanel({
-  collapsed = false,
-}: {
-  collapsed?: boolean;
-}) {
+export function DesktopSidePanel() {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { unreadMessages } = useUnreadCounts();
-  const { pathname } = useLocation();
+  const { collapsed } = useDesktopSidePanel();
+  const { pathname, search } = useLocation();
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const { showRail } = useAuthenticatedShellLayout({
+    pathname,
+    search,
+    isAdmin: isAdminPage,
+  });
   const navigate = useNavigate();
   const mountedRef = useRef(false);
   const [savedProfilesOpen, setSavedProfilesOpen] = useState(true);
-  const [savedPostsOpen, setSavedPostsOpen] = useState(false);
+  const [savedPostsOpen, setSavedPostsOpen] = useState(true);
   const [savedProfiles, setSavedProfiles] = useState<SavedProfileRow[]>([]);
   const [savedPosts, setSavedPosts] = useState<SavedPostRow[]>([]);
   const [savedProfilesLoading, setSavedProfilesLoading] = useState(false);
@@ -296,12 +300,13 @@ export function DesktopSidePanel({
   // After all hooks: decide whether to render.
   if (!user || !profile) return null;
   if (isDesktopSidePanelExcludedRoute(pathname)) return null;
+  if (!isAdminPage && !showRail) return null;
 
-  if (collapsed) {
+  if (!isAdminPage && collapsed) {
     return (
       <aside
         className={cn(
-          "app-desktop-side-panel hidden !w-[96px] flex-col items-center md:flex",
+          "app-desktop-side-panel app-tablet-nav-rail !w-[76px] flex flex-col items-center overflow-hidden rounded-[38px] border border-black/[0.06] shadow-[0_18px_55px_rgba(45,31,20,0.14)] dark:border-white/15",
           isAdminPage
             ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
             : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
@@ -444,7 +449,7 @@ export function DesktopSidePanel({
   return (
     <aside
       className={cn(
-        "app-desktop-side-panel hidden md:flex flex-col",
+        "app-desktop-side-panel flex flex-col",
         isAdminPage
           ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
           : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",

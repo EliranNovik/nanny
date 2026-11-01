@@ -939,6 +939,24 @@
     "heroTitleHighlight": "community",
     "heroTitleAfter": "Many helpers.",
     "heroDescription": "Find help nearby — or offer your skills.",
+    "creamHero": {
+      "title": "Help is closer than you think.",
+      "subtitle": "Ask once. Nearby helpers respond.",
+      "findHelp": "Find help",
+      "offerHelp": "Offer help",
+      "appComingSoon": "Coming soon",
+      "getTheApp": "Get the app",
+      "canHelp": "{{name}} can help",
+      "phoneCategory": "Babysitting & childcare",
+      "phoneLive": "Searching near you...",
+      "phoneResponded": "{{count}} helpers responded",
+      "phoneChoose": "Choose helper",
+      "phoneMoreHelpers": "+{{count}} more",
+      "phoneFromYou": "from you",
+      "pushNow": "Now",
+      "pushTitle": "Babysitting & childcare · Today",
+      "pushBody": "New request from Fabian in Tel Aviv"
+    },
     "verifiedUsers": "Verified users",
     "localHelpers": "Local helpers",
     "fastResponse": "Fast response",
@@ -983,33 +1001,115 @@
     "postsTitle": "Requests, offers, community, and events",
     "postsSubtitle": "Browse every post type in one feed — then reply, message, or post your own.",
     "postsCta": "Open post feed",
-    "howItWorksTitle": "How it works",
-    "howItWorksSubtitle": "Simple steps to find the perfect helper or start earning today.",
+    "howItWorksEyebrow": "How Tebnu works",
+    "howItWorksTitle": "Ask. Connect. Get help.",
+    "howItWorksSubtitle": "A few taps bring the right people closer.",
+    "helperResponseNotification": {
+      "title": "Maya responded to your request",
+      "body": "I’m available and would be happy to help with babysitting.",
+      "time": "now"
+    },
+    "supporting": {
+      "eyebrow": "More from Tebnu",
+      "title": "More ways to connect nearby.",
+      "subtitle": "Choose how you want to discover, share, and stay in touch with people around you.",
+      "browse": {
+        "title": "Browse helpers",
+        "description": "Explore profile cards and narrow the results with filters when you prefer to choose directly."
+      },
+      "community": {
+        "title": "Community & events",
+        "description": "Share an update, post an event, or discover what people nearby are posting."
+      },
+      "messages": {
+        "title": "Messages",
+        "description": "Keep conversations, photos and arrangements together in familiar, simple chats."
+      }
+    },
+    "helperJourney": {
+      "eyebrow": "For helpers",
+      "title": "Help nearby. On your terms.",
+      "description": "Choose the help categories that fit you. Tebnu brings relevant nearby requests to you, so you can decide when and how you want to respond.",
+      "steps": {
+        "categories": {
+          "title": "Choose relevant categories",
+          "description": "Set the types of help you want to offer and your service area."
+        },
+        "notifications": {
+          "title": "Receive matching requests",
+          "description": "Get notified when someone nearby posts a request that fits your categories."
+        },
+        "respond": {
+          "title": "Respond directly",
+          "description": "Open the notification, review the details, and respond only when it works for you."
+        }
+      },
+      "cta": "Start helping nearby",
+      "notificationTitle": "New cleaning request nearby",
+      "notificationBody": "Tomorrow · 10:00–13:00 · 0.8 km away",
+      "accept": "Accept",
+      "decline": "Decline",
+      "imageAlt": "Tebnu helper screen showing matching requests nearby"
+    },
+    "communityCta": {
+      "eyebrow": "Your neighborhood is waiting",
+      "title": "Join the community now.",
+      "description": "Find trusted help nearby, share what you can offer, and make everyday life easier together.",
+      "getHelp": "Get help",
+      "helpOthers": "Help others"
+    },
+    "faq": {
+      "eyebrow": "Good to know",
+      "title": "Practical questions, answered.",
+      "subtitle": "The essentials before you post a request or offer your help.",
+      "items": {
+        "free": {
+          "question": "Is Tebnu free to use?",
+          "answer": "Yes. You can create an account, browse, post requests or offers, and message people on Tebnu for free."
+        },
+        "charge": {
+          "question": "Can helpers charge for their work?",
+          "answer": "Yes. Helpers can offer paid help or volunteer. Any rate should be shown clearly and agreed between both people before the work begins."
+        },
+        "commitment": {
+          "question": "Does posting a request commit me to a helper?",
+          "answer": "No. Posting lets nearby helpers respond. You decide whom to contact and whether to proceed; a response does not create a booking or commitment."
+        },
+        "verification": {
+          "question": "What does a verification badge mean?",
+          "answer": "Identity verification is optional. The badge means the person completed Tebnu’s identity-check process through Didit. It does not verify skills, perform a background check, or guarantee someone’s work."
+        },
+        "payments": {
+          "question": "How are payments arranged?",
+          "answer": "Clients and helpers agree the price and payment method directly. Tebnu does not currently process, hold, or guarantee payments."
+        }
+      }
+    },
     "steps": {
       "1": {
-        "title": "Post request",
-        "desc": "Answer a few short taps to match with local helpers.",
-        "imageAlt": "Phone showing a short help request form"
+        "title": "Tell us what you need",
+        "desc": "Choose the kind of help you need in seconds.",
+        "imageAlt": "Tebnu app screen for choosing a help category"
       },
       "2": {
-        "title": "Get matched",
-        "desc": "Helpers in your area see and respond to your request.",
-        "imageAlt": "Finding local helpers nearby"
+        "title": "Nearby helpers respond",
+        "desc": "Receive responses from available helpers around you.",
+        "imageAlt": "Responses from nearby helpers in the Tebnu app"
       },
       "3": {
-        "title": "Choose helper",
-        "desc": "Pick the person who fits you best from their profiles.",
-        "imageAlt": "Choosing a helper from matching profiles"
+        "title": "Choose your helper",
+        "desc": "Review profiles and choose the right person for you.",
+        "imageAlt": "Helper profile in the Tebnu app"
       },
       "4": {
-        "title": "Chat & confirm",
-        "desc": "Sort out details and schedule through direct chat.",
-        "imageAlt": "Chat conversation to confirm the details"
+        "title": "Know your helper",
+        "desc": "Review profiles, skills, ratings, and community activity.",
+        "imageAlt": "Helper profile with skills and reviews"
       },
       "5": {
-        "title": "You're set!",
-        "desc": "Your helper arrives as agreed. Relax and enjoy.",
-        "imageAlt": "Helper arriving and the job confirmed"
+        "title": "Join the community",
+        "desc": "Discover local events and connect beyond everyday tasks.",
+        "imageAlt": "Tebnu community and local events feed"
       }
     },
     "experienceTitleBefore": "Experience the ",

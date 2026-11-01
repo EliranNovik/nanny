@@ -50,11 +50,11 @@ type FavoritePostRow = {
 
 /** Side panel width at each desktop breakpoint (visible from md / 768px). */
 export const FAVORITES_SIDE_PANEL_WIDTH_CLASS =
-  "md:w-[260px] lg:w-[320px] xl:w-[380px] 2xl:w-[420px]";
+  "md:w-[380px]";
 
 /** Matches fixed panel width + right inset so feed header filters do not sit under the panel. */
 export const FAVORITES_SIDE_PANEL_RESERVE_CLASS =
-  "md:max-w-[calc(100%-276px)] lg:max-w-[calc(100%-336px)] xl:max-w-[calc(100%-396px)] 2xl:max-w-[calc(100%-436px)]";
+  "md:max-w-[calc(100%-396px)]";
 
 /** Fixed panel offset: slightly below app nav for a small gap from the feed header. */
 export const FAVORITES_SIDE_PANEL_FIXED_TOP_CLASS = "md:top-[4.75rem]";
@@ -63,10 +63,10 @@ export const FAVORITES_SIDE_PANEL_FIXED_MAX_H_CLASS =
   "md:max-h-[calc(100vh-4.75rem)]";
 
 const SIDE_PANEL_THUMB_CLASS =
-  "h-[84px] w-[118px] lg:h-[96px] lg:w-[144px] xl:h-[108px] xl:w-[168px] 2xl:h-[120px] 2xl:w-[192px]";
+  "h-[84px] w-[118px] lg:h-[96px] lg:w-[144px]";
 
 const SIDE_PANEL_SECTION_TITLE_CLASS =
-  "min-w-0 text-[13px] font-black uppercase leading-tight tracking-wide text-zinc-700 dark:text-zinc-200 lg:text-[14px] xl:text-[15px]";
+  "min-w-0 text-[13px] font-black uppercase leading-tight tracking-wide text-zinc-700 dark:text-zinc-200 lg:text-[14px]";
 
 const SIDE_PANEL_SECTION_CLASS = "mb-4 last:mb-0";
 
@@ -417,7 +417,7 @@ function ThumbCard({
       onClick={onOpen}
       className={cn(
         "group flex w-full items-start gap-2 rounded-xl p-1.5 text-left transition-colors",
-        "lg:gap-3 lg:rounded-2xl lg:p-2 xl:gap-3.5",
+        "lg:gap-3 lg:rounded-2xl lg:p-2",
         "hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40",
       )}
@@ -470,7 +470,7 @@ function ThumbCard({
       </div>
 
       <div className="min-w-0 flex-1 py-1">
-        <p className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-zinc-900 dark:text-white lg:text-[14px] xl:text-[15px]">
+        <p className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-zinc-900 dark:text-white lg:text-[14px]">
           {caption}
         </p>
         <div className="mt-1.5 flex items-center gap-1.5 lg:mt-2 lg:gap-2">

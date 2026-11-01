@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   Home,
-  LogIn,
   MessageCircle,
   GalleryHorizontal,
   Scale,
@@ -54,6 +53,8 @@ export type LandingSiteHeaderProps = {
   homeLinkRight?: boolean;
   /** Hide Post Feed nav item (e.g. already on `/community/feed`). */
   hidePostFeedLink?: boolean;
+  /** Hide Contact and Legal Hub from this header. */
+  hideContactAndLegal?: boolean;
   /** Hide About / Contact / Home in the desktop header (moved to a guest sidebar). */
   hideDesktopNavLinks?: boolean;
   /** Hide the in-header “Tebnu” wordmark. */
@@ -93,6 +94,8 @@ export type LandingSiteHeaderProps = {
   heroOverlay?: boolean;
   /** When set with heroOverlay, true means the hero is past and glass should show. */
   heroOverlayScrolled?: boolean;
+  /** With heroOverlay: hero is a light surface, so keep dark ink and a transparent bar on every breakpoint. */
+  heroOverlayLightSurface?: boolean;
 };
 
 const brandHeaderBgClass =
@@ -110,6 +113,7 @@ export function LandingSiteHeader({
   hideSignInCta = false,
   homeLinkRight = false,
   hidePostFeedLink = false,
+  hideContactAndLegal = false,
   hideDesktopNavLinks = false,
   hideBrand = false,
   centerContent,
@@ -129,6 +133,7 @@ export function LandingSiteHeader({
   overlayOnHero = false,
   heroOverlay = false,
   heroOverlayScrolled,
+  heroOverlayLightSurface = false,
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
@@ -171,6 +176,7 @@ export function LandingSiteHeader({
 
   const overlayScrolled = heroOverlayScrolled ?? headerScrolled;
   const heroOverPhoto = heroOverlay && !overlayScrolled;
+  const heroWhiteInk = heroOverPhoto && !heroOverlayLightSurface;
 
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
@@ -179,13 +185,15 @@ export function LandingSiteHeader({
   const isFeedChrome = fullBleedTop;
   const isMutedChrome = variant === "glassy" || isFeedChrome;
 
-  const landingHeaderInkClass = "text-zinc-800 dark:text-zinc-100";
+  const landingHeaderInkClass = heroOverlayLightSurface
+    ? "text-black"
+    : "text-zinc-800 dark:text-zinc-100";
 
   const linkColorClass = heroOverlay
     ? cn(
         landingHeaderInkClass,
         "hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-white/10 dark:hover:text-orange-400",
-        heroOverPhoto &&
+        heroWhiteInk &&
           "md:text-white/90 md:hover:bg-white/20 md:hover:text-white",
       )
     : isFeedChrome
@@ -205,10 +213,15 @@ export function LandingSiteHeader({
     "border-0 bg-white shadow-none ring-0 backdrop-blur-none dark:bg-background";
 
   const headerBgClass = heroOverlay
-    ? cn(
-        landingSolidBarClass,
-        heroOverPhoto && "md:bg-transparent md:dark:bg-transparent",
-      )
+    ? heroOverlayLightSurface
+      ? cn(
+          "border-0 shadow-none ring-0",
+          heroOverPhoto ? "bg-transparent" : "bg-[#FAF6EF]/95 backdrop-blur-md",
+        )
+      : cn(
+          landingSolidBarClass,
+          heroOverPhoto && "md:bg-transparent md:dark:bg-transparent",
+        )
     : overlayOnHero
     ? "max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:ring-0 md:border-0 md:shadow-none md:ring-0 md:bg-white dark:md:bg-background"
     : isFeedChrome
@@ -235,7 +248,7 @@ export function LandingSiteHeader({
 
   const menuIconClass = cn(
     heroOverlay
-      ? cn(landingHeaderInkClass, heroOverPhoto && "md:text-white")
+      ? cn(landingHeaderInkClass, heroWhiteInk && "md:text-white")
       : isFeedChrome
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
       : variant === "glassy"
@@ -255,7 +268,7 @@ export function LandingSiteHeader({
       ? cn(
           landingHeaderInkClass,
           "hover:bg-transparent hover:text-orange-600 dark:hover:text-orange-400",
-          heroOverPhoto && "md:text-white md:hover:bg-white/10 md:hover:text-white",
+          heroWhiteInk && "md:text-white md:hover:bg-white/10 md:hover:text-white",
         )
       : isFeedChrome
       ? "text-zinc-800 hover:bg-transparent hover:text-orange-600 dark:text-zinc-100 dark:hover:bg-transparent dark:hover:text-orange-400"
@@ -272,7 +285,7 @@ export function LandingSiteHeader({
   );
 
   const navContainerTextClass = heroOverlay
-    ? cn(landingHeaderInkClass, heroOverPhoto && "md:text-white")
+    ? cn(landingHeaderInkClass, heroWhiteInk && "md:text-white")
     : isMutedChrome
     ? "text-zinc-800 dark:text-zinc-200"
     : "text-white";
@@ -341,7 +354,7 @@ export function LandingSiteHeader({
         className={cn(
           "hidden -ml-1 text-lg font-black tracking-tight md:inline md:-ml-1.5 md:text-xl lg:text-2xl",
           landingHeaderInkClass,
-          heroOverPhoto &&
+          heroWhiteInk &&
             "md:text-white md:drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",
         )}
       >
@@ -571,12 +584,16 @@ export function LandingSiteHeader({
                   <Link to="/about" className={navLinkClass}>
                     {t("siteNav.aboutUs")}
                   </Link>
-                  <Link to="/contact" className={navLinkClass}>
-                    {t("siteNav.contact")}
-                  </Link>
-                  <Link to="/terms" className={navLinkClass}>
-                    {t("siteNav.legalHub")}
-                  </Link>
+                  {hideContactAndLegal ? null : (
+                    <>
+                      <Link to="/contact" className={navLinkClass}>
+                        {t("siteNav.contact")}
+                      </Link>
+                      <Link to="/terms" className={navLinkClass}>
+                        {t("siteNav.legalHub")}
+                      </Link>
+                    </>
+                  )}
                   {postFeedLinkDesktop}
                 </div>
               </div>
@@ -586,12 +603,16 @@ export function LandingSiteHeader({
                 <Link to="/about" className={dynamicNavLinkClass}>
                   {t("siteNav.aboutUs")}
                 </Link>
-                <Link to="/contact" className={dynamicNavLinkClass}>
-                  {t("siteNav.contact")}
-                </Link>
-                <Link to="/terms" className={dynamicNavLinkClass}>
-                  {t("siteNav.legalHub")}
-                </Link>
+                {hideContactAndLegal ? null : (
+                  <>
+                    <Link to="/contact" className={dynamicNavLinkClass}>
+                      {t("siteNav.contact")}
+                    </Link>
+                    <Link to="/terms" className={dynamicNavLinkClass}>
+                      {t("siteNav.legalHub")}
+                    </Link>
+                  </>
+                )}
                 {postFeedLinkDesktop}
                 {!homeLinkRight ? (
                   <Link to="/" className={dynamicNavLinkClass}>
@@ -612,7 +633,7 @@ export function LandingSiteHeader({
                   ? cn(
                       landingHeaderInkClass,
                       "hover:bg-black/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white",
-                      heroOverPhoto &&
+                      heroWhiteInk &&
                         "md:text-white md:hover:bg-white/15 md:hover:text-white",
                     )
                   : isFeedChrome || variant === "glassy"
@@ -632,7 +653,7 @@ export function LandingSiteHeader({
                     ? cn(
                         landingHeaderInkClass,
                         "hover:bg-black/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white",
-                        heroOverPhoto && "md:text-white md:hover:bg-white/15",
+                        heroWhiteInk && "md:text-white md:hover:bg-white/15",
                       )
                     : overlayOnHero
                       ? cn(overlayGlassIconClass, "max-md:h-11 max-md:w-11")
@@ -669,24 +690,25 @@ export function LandingSiteHeader({
             {!hideLoginCta && !user ? (
               <>
               {heroOverlay || isFeedChrome ? (
-                <div className="flex overflow-hidden rounded-full bg-orange-600 shadow-sm">
+                <div className="flex items-center gap-1.5 md:gap-2">
                   {hideSignInCta ? null : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => navigate("/login")}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center text-white transition-colors hover:bg-orange-700 md:h-10 md:w-10"
-                        aria-label={t("siteNav.signIn")}
-                      >
-                        <LogIn className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                      </button>
-                      <span className="my-2 w-px shrink-0 bg-white/35" aria-hidden />
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/login")}
+                      className={cn(
+                        "h-9 rounded-full px-3 text-sm font-bold transition-colors md:h-10 md:px-4",
+                        heroOverlayLightSurface
+                          ? "text-zinc-950 hover:bg-black/[0.05]"
+                          : "text-zinc-800 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10",
+                      )}
+                    >
+                      {t("siteNav.signIn")}
+                    </button>
                   )}
                   <button
                     type="button"
                     onClick={() => navigate("/onboarding")}
-                    className="h-9 px-3 text-sm font-bold text-white transition-colors hover:bg-orange-700 md:h-10 md:px-4"
+                    className="h-9 rounded-full bg-orange-600 px-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 md:h-10 md:px-4"
                   >
                     {t("siteNav.register")}
                   </button>
@@ -704,7 +726,7 @@ export function LandingSiteHeader({
                       ? cn(
                           landingHeaderInkClass,
                           "hover:bg-transparent hover:text-orange-600 dark:hover:text-orange-400",
-                          heroOverPhoto &&
+                          heroWhiteInk &&
                             "md:text-white md:hover:bg-white/10 md:hover:text-white",
                         )
                       : isLandingGlass

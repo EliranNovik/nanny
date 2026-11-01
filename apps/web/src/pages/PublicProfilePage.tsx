@@ -14,7 +14,6 @@ import {
   UserCircle,
   Plus,
   Trash2,
-  Sparkles,
   HelpCircle,
   HeartHandshake,
   Heart,
@@ -48,16 +47,18 @@ import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
-import { type PublicProfileServiceBoardPost, PublicProfileServiceBoard } from "@/components/profile/PublicProfileServiceBoard";
+import type { PublicProfileServiceBoardPost } from "@/components/profile/PublicProfileServiceBoard";
 import { LandingSiteHeader, guestSiteHeaderChromeProps } from "@/components/LandingSiteHeader";
 import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import {
   getServiceCategoryImage,
   isServiceCategoryId,
+  otherHelpSubcategoryLabel,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import {
   HIRE_CATEGORY_TILE_UI,
+  OTHER_HELP_SUBCATEGORY_UI,
   resolveHelpCategoryIconId,
 } from "@/lib/discoverCategoryTileIcons";
 import { requestHeroWaveToneClass } from "@/components/discover/DiscoverRequestHeroWaves";
@@ -67,7 +68,6 @@ import {
   ProfileReviewPreviewCard,
   ProfileReviewsSheet,
 } from "@/components/profile/ProfileReviewsSheet";
-import { scrollToProfilePostWhenReady } from "@/lib/profilePostShare";
 import {
   globalFeedMobilePageClass,
   type ViewerLocation,
@@ -98,6 +98,7 @@ import {
   bidirectionalTextProps,
   textDirection,
 } from "@/lib/textDirection";
+import { useTabletViewport } from "@/hooks/useIsTabletViewport";
 
 type PostedHelpEngagement =
   | "idle"
@@ -242,6 +243,20 @@ function publicProfileCategoryBadgeIcon(
   iconClassName?: string,
 ) {
   const id = categoryId.toLowerCase();
+  const subcategoryUi = OTHER_HELP_SUBCATEGORY_UI[id];
+  if (subcategoryUi) {
+    const { Icon, iconClass } = subcategoryUi;
+    return (
+      <Icon
+        className={cn(
+          "h-[1.125rem] w-[1.125rem] shrink-0",
+          iconClassName ?? iconClass,
+        )}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+    );
+  }
   if (!isServiceCategoryId(id)) {
     return (
       <HelpCircle
@@ -275,6 +290,19 @@ const profileCategoryScrollRowClass =
 
 const profileSidebarPanelClass =
   "rounded-[2rem] border border-zinc-100/70 bg-[#fafafa] p-6 dark:border-border/40 dark:bg-card/80 dark:shadow-xl dark:shadow-black/5";
+
+const PROFILE_LANGUAGE_FLAGS: Record<string, string> = {
+  hebrew: "🇮🇱",
+  english: "🇬🇧",
+  russian: "🇷🇺",
+  arabic: "🇸🇦",
+  french: "🇫🇷",
+  spanish: "🇪🇸",
+};
+
+function profileLanguageFlag(language: string) {
+  return PROFILE_LANGUAGE_FLAGS[language.trim().toLowerCase()] ?? "🌐";
+}
 
 const profileGalleryThumbTransform = {
   width: 480,
@@ -410,6 +438,15 @@ function ProfileLanguagesSection({
         <h3 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400">
           Languages
         </h3>
+        {isOwnProfile && !editing ? (
+          <button
+            type="button"
+            className="ms-auto text-[11px] font-bold text-orange-600 transition-opacity hover:opacity-70 dark:text-orange-400"
+            onClick={onEdit}
+          >
+            {languages.length > 0 ? "Edit" : "Add"}
+          </button>
+        ) : null}
       </div>
       {editing && isOwnProfile ? (
         <div className="space-y-3">
@@ -423,12 +460,15 @@ function ProfileLanguagesSection({
                   onClick={() => onToggle(lang)}
                   disabled={saving}
                   className={cn(
-                    "rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-colors",
+                    "inline-flex items-center rounded-full border px-3.5 py-1.5 text-[12px] font-bold shadow-sm transition-colors",
                     selected
-                      ? "bg-orange-600 text-white"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+                      ? "border-orange-600 bg-orange-600 text-white"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
                   )}
                 >
+                  <span className="me-1.5" aria-hidden>
+                    {profileLanguageFlag(lang)}
+                  </span>
                   {lang}
                 </button>
               );
@@ -463,8 +503,11 @@ function ProfileLanguagesSection({
               {languages.map((lang) => (
                 <span
                   key={lang}
-                  className="rounded-full bg-zinc-100 px-3.5 py-1.5 text-[12px] font-bold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
+                  className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-[12px] font-bold text-zinc-800 shadow-sm dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100"
                 >
+                  <span className="me-1.5" aria-hidden>
+                    {profileLanguageFlag(lang)}
+                  </span>
                   {lang}
                 </span>
               ))}
@@ -474,17 +517,6 @@ function ProfileLanguagesSection({
               No languages added yet.
             </p>
           )}
-          {isOwnProfile ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={onEdit}
-            >
-              {languages.length > 0 ? "Edit languages" : "Add languages"}
-            </Button>
-          ) : null}
         </div>
       )}
     </div>
@@ -749,6 +781,8 @@ export default function PublicProfilePage() {
   const { user: currentUser, profile: currentProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { isTablet } = useTabletViewport();
+  const effectiveProfilePanelOpen = isTablet;
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [freelancerMeta, setFreelancerMeta] = useState<FreelancerMeta | null>(
     null,
@@ -762,7 +796,7 @@ export default function PublicProfilePage() {
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
-  const [serviceBoardPosts, setServiceBoardPosts] = useState<
+  const [, setServiceBoardPosts] = useState<
     PublicProfileServiceBoardPost[]
   >([]);
   const [postedHelpRequests, setPostedHelpRequests] = useState<
@@ -797,6 +831,11 @@ export default function PublicProfilePage() {
   >(null);
   const [profileMediaTab, setProfileMediaTab] =
     useState<ProfileMediaSectionTab>("posts");
+  useEffect(() => {
+    if (effectiveProfilePanelOpen && profileMediaTab === "about") {
+      setProfileMediaTab("posts");
+    }
+  }, [effectiveProfilePanelOpen, profileMediaTab]);
   const [postsTabScrollToId, setPostsTabScrollToId] = useState<string | null>(
     null,
   );
@@ -1565,24 +1604,6 @@ export default function PublicProfilePage() {
     [userId, isOwnProfile, viewerLocation, postsTabScrollToId],
   );
 
-  const openServiceBoardPost = (postId: string) => {
-    setProfileMediaTab("posts");
-    setPostsTabScrollToId(postId);
-    window.requestAnimationFrame(() => {
-      const isDesktop = window.matchMedia("(min-width: 768px)").matches;
-      const section = document.getElementById(
-        isDesktop ? "profile-social-feed-desktop" : "profile-social-feed-mobile",
-      );
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    window.setTimeout(() => {
-      scrollToProfilePostWhenReady(postId, {
-        topInset: 96,
-        maxAttempts: 24,
-      });
-    }, 120);
-  };
-
   const helpedOthersCount = sharedJobs.filter(
     (j) => j.status === "completed" && j.selected_freelancer_id === userId,
   ).length;
@@ -1594,6 +1615,9 @@ export default function PublicProfilePage() {
   const videoRows = mediaItems.filter((m) => m.media_type === "video");
   const galleryImageUrls = imageRows.map((r) =>
     publicProfileMediaPublicUrl(r.storage_path),
+  );
+  const allProfileMediaUrls = mediaItems.map((row) =>
+    publicProfileMediaPublicUrl(row.storage_path),
   );
 
   const photoInitials = (profile?.full_name || "??")
@@ -1692,7 +1716,9 @@ export default function PublicProfilePage() {
     { id: "posts" as const, label: "Social Feed", Icon: LayoutGrid },
     { id: "images" as const, label: "Photos", Icon: ImageIcon },
     { id: "videos" as const, label: "Videos", Icon: Video },
-    { id: "about" as const, label: "About", Icon: UserCircle },
+    ...(!effectiveProfilePanelOpen
+      ? [{ id: "about" as const, label: "About", Icon: UserCircle }]
+      : []),
   ];
 
   async function handlePostedHelpConfirm() {
@@ -1873,12 +1899,12 @@ export default function PublicProfilePage() {
       {/* Desktop Hero section — hidden on mobile */}
       <div
         className={cn(
-          "hidden md:block bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
+          "hidden md:block md:pe-[400px] bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
           currentUser ? "pt-20 md:pt-24" : "pt-6 md:pt-8",
         )}
       >
         <div className="app-desktop-shell px-4">
-          <div className="flex flex-col md:flex-row gap-6 md:items-start">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
             <div className="hidden h-[119px] w-[119px] shrink-0 md:block">
               <button
@@ -1925,39 +1951,53 @@ export default function PublicProfilePage() {
                       {profileLocationLabel}
                     </p>
                   ) : null}
-                  <ProfileBioHeader
-                    profile={profile}
-                    isOwnProfile={isOwnProfile}
-                    editingBio={editingBio}
-                    setEditingBio={setEditingBio}
-                    bioDraft={bioDraft}
-                    setBioDraft={setBioDraft}
-                    savingBio={savingBio}
-                    onSave={(next) => void saveBio(next)}
-                    variant="desktop"
-                    profileEditPath={isOwnProfile ? ownProfileEditPath : null}
-                  />
-                  <div className="mt-3 max-w-2xl">
-                    <AvailabilityCard value={publicAvailability} />
-                  </div>
-                  {helperBadgesRow}
-                  {profile.categories && profile.categories.length > 0 && (
-                    <div className={cn("mt-2.5", profileCategoryScrollRowClass)}>
-                      {profile.categories.map((cat, i) => (
-                        <Badge
-                          key={i}
-                          variant="secondary"
-                          className={cn(
-                            profileCategoryBadgeClass,
-                            "bg-white/80 text-slate-700 dark:bg-zinc-800/80 dark:text-slate-200",
-                          )}
-                        >
-                          {publicProfileCategoryBadgeIcon(cat)}
-                          {cat.replace(/_/g, " ")}
-                        </Badge>
-                      ))}
+                  <div className="mt-4 md:-ms-[143px] md:w-[calc(100%+143px)]">
+                    <ProfileBioHeader
+                      profile={profile}
+                      isOwnProfile={isOwnProfile}
+                      editingBio={editingBio}
+                      setEditingBio={setEditingBio}
+                      bioDraft={bioDraft}
+                      setBioDraft={setBioDraft}
+                      savingBio={savingBio}
+                      onSave={(next) => void saveBio(next)}
+                      variant="desktop"
+                      profileEditPath={isOwnProfile ? ownProfileEditPath : null}
+                    />
+                    <div className="mt-3 max-w-2xl">
+                      <AvailabilityCard value={publicAvailability} />
                     </div>
-                  )}
+                    {helperBadgesRow}
+                    {profile.categories && profile.categories.length > 0 && (
+                      <div className={cn("mt-2.5", profileCategoryScrollRowClass)}>
+                        {profile.categories
+                          .filter(
+                            (cat) =>
+                              cat !== "other_help" ||
+                              !profile.categories?.some((candidate) =>
+                                Boolean(otherHelpSubcategoryLabel(candidate)),
+                              ),
+                          )
+                          .map((cat, i) => (
+                          <Badge
+                            key={i}
+                            variant="secondary"
+                            className={cn(
+                              profileCategoryBadgeClass,
+                              "bg-white/80 text-slate-700 dark:bg-zinc-800/80 dark:text-slate-200",
+                            )}
+                          >
+                            {publicProfileCategoryBadgeIcon(cat)}
+                            {otherHelpSubcategoryLabel(cat)
+                              ? t(`otherHelpSubcategories.${cat}`, {
+                                  defaultValue: otherHelpSubcategoryLabel(cat)!,
+                                })
+                              : serviceCategoryLabel(cat)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Action buttons */}
@@ -2039,7 +2079,7 @@ export default function PublicProfilePage() {
                   {!isOwnProfile && currentUser && profile.categories && profile.categories.length > 0 && (
                     <ProfileKnockMenu variant="contact" targetUserId={userId!} targetRole={profile.role} categories={profile.categories} viewerId={currentUser.id} viewerRole={currentProfile?.role ?? null} viewerName={currentProfile?.full_name ?? null} />
                   )}
-                  <details className="group relative">
+                  <details className="group relative md:hidden">
                     <summary
                       className="flex h-12 w-12 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-all hover:scale-105 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 [&::-webkit-details-marker]:hidden"
                       aria-label="Profile actions"
@@ -2098,7 +2138,7 @@ export default function PublicProfilePage() {
                 )}
               >
                 <Icon className="h-[1.05rem] w-[1.05rem] shrink-0" strokeWidth={2.25} aria-hidden />
-                <span className="md:inline">{id === "about" ? "Details" : label}</span>
+                <span className="md:inline">{label}</span>
               </button>
             ))}
             {isOwnProfile && (profileMediaTab === "images" || profileMediaTab === "videos") && (
@@ -2133,7 +2173,7 @@ export default function PublicProfilePage() {
       <div className="md:hidden">
         {/* Profile hero + tab bar — solid white in light mode until the posts feed */}
         <div className="bg-white dark:bg-background">
-        <div className="relative w-full overflow-hidden bg-muted h-[min(23.5rem,52vh)]">
+        <div className="hidden">
           <button
             type="button"
             onClick={() =>
@@ -2230,7 +2270,15 @@ export default function PublicProfilePage() {
                     profileCategoryScrollRowClass,
                   )}
                 >
-                  {profile.categories.map((cat, i) => (
+                  {profile.categories
+                    .filter(
+                      (cat) =>
+                        cat !== "other_help" ||
+                        !profile.categories?.some((candidate) =>
+                          Boolean(otherHelpSubcategoryLabel(candidate)),
+                        ),
+                    )
+                    .map((cat, i) => (
                     <span
                       key={i}
                       className={cn(
@@ -2240,7 +2288,11 @@ export default function PublicProfilePage() {
                       )}
                     >
                       {publicProfileCategoryBadgeIcon(cat)}
-                      {cat.replace(/_/g, " ")}
+                      {otherHelpSubcategoryLabel(cat)
+                        ? t(`otherHelpSubcategories.${cat}`, {
+                            defaultValue: otherHelpSubcategoryLabel(cat)!,
+                          })
+                        : serviceCategoryLabel(cat)}
                     </span>
                   ))}
                 </div>
@@ -2250,14 +2302,31 @@ export default function PublicProfilePage() {
         </div>
 
         <div className="px-5 pb-4 pt-4">
-          <div className="-mt-16 mb-4 flex items-end gap-4">
+          <div className="mb-4 flex items-center gap-4 pt-4">
             <AnimatedProfileRing
               photoUrl={profile.photo_url}
               name={profile.full_name ?? "Profile"}
               helper={showHelperBadges}
               className="z-20"
             />
-            <div className="pb-1">
+            <div className="min-w-0 pb-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="truncate text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+                  {profile.full_name}
+                </h1>
+                {profile.is_verified ? (
+                  <BadgeCheck
+                    className="h-5 w-5 shrink-0 fill-emerald-500 text-white"
+                    strokeWidth={2.35}
+                    aria-label="Certified verified helper"
+                  />
+                ) : null}
+              </div>
+              {profileLocationLabel ? (
+                <p className="mt-1 truncate text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {profileLocationLabel}
+                </p>
+              ) : null}
               <MemberSinceBadge
                 createdAt={profile.created_at}
                 helper={showHelperBadges}
@@ -2568,10 +2637,21 @@ export default function PublicProfilePage() {
       {/* ══════════════════════════════════════════════════════════
           DESKTOP MAIN CONTENT — hidden on mobile
       ══════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block app-desktop-shell py-8">
-        <div className="grid grid-cols-3 gap-8 items-start">
-          {/* Main content (2/3) */}
-          <div id="profile-social-feed-desktop" className="col-span-2 scroll-mt-24">
+      <div
+        className={cn(
+          "hidden py-8 dark:bg-background md:block md:pe-[400px]",
+          profileMediaTab === "images" ||
+          profileMediaTab === "videos" ||
+          profileMediaTab === "posts"
+            ? "bg-white"
+            : "bg-[#F2F2F7]",
+        )}
+      >
+        <div className="flex w-full items-start">
+          <div
+            id="profile-social-feed-desktop"
+            className="min-w-0 flex-1 scroll-mt-24 px-8"
+          >
             {profileMediaTab === "images" && (
               <ProfilePhotosGrid
                 imageRows={imageRows}
@@ -2651,18 +2731,63 @@ export default function PublicProfilePage() {
             )}
           </div>
 
-          {/* Desktop Sidebar (1/3) */}
-          <div className="col-span-1 space-y-6">
-            <div className={profileSidebarPanelClass}>
-              <div className="flex items-center gap-2.5 mb-5"><Sparkles className="h-4 w-4 text-orange-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Public Service Board</h3></div>
-              <PublicProfileServiceBoard
-                posts={serviceBoardPosts}
-                onPostOpen={openServiceBoardPost}
+          {/* Native iPad About panel */}
+          {effectiveProfilePanelOpen ? (
+          <aside className="fixed end-0 top-16 z-30 flex h-[calc(100dvh-4rem)] w-[400px] shrink-0 flex-col overflow-hidden border-s border-black/5 bg-white dark:border-white/10 dark:bg-[#1C1C1E]">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 pb-8">
+            <div className="flex items-center gap-2.5 pt-1">
+              <UserCircle className="h-5 w-5 text-orange-600" aria-hidden />
+              <h2 className="text-xl font-extrabold text-foreground">About</h2>
+              <details className="group relative ms-auto">
+                <summary
+                  className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-white/70 bg-white/80 text-slate-700 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-[#2C2C2E] dark:text-zinc-100 [&::-webkit-details-marker]:hidden"
+                  aria-label="Profile actions"
+                >
+                  <MoreHorizontal className="h-5 w-5" aria-hidden />
+                </summary>
+                <div className="absolute end-0 top-[calc(100%+0.4rem)] z-[80] min-w-48 overflow-hidden rounded-2xl border border-border/80 bg-card p-1.5 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      void sharePublicProfile();
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Share2 className="h-5 w-5 text-primary" aria-hidden />
+                    Share profile
+                  </button>
+                </div>
+              </details>
+            </div>
+            <HourlyRateCard rate={publicRate} />
+            <div className="py-2">
+              <ProfileLanguagesSection
+                languages={profile.languages ?? []}
+                isOwnProfile={isOwnProfile}
+                editing={editingLanguages}
+                draft={languagesDraft}
+                saving={savingLanguages}
+                onEdit={() => {
+                  setLanguagesDraft(profile.languages ?? []);
+                  setEditingLanguages(true);
+                }}
+                onCancel={() => {
+                  setLanguagesDraft(profile.languages ?? []);
+                  setEditingLanguages(false);
+                }}
+                onToggle={(lang) =>
+                  setLanguagesDraft((prev) =>
+                    prev.includes(lang)
+                      ? prev.filter((item) => item !== lang)
+                      : [...prev, lang],
+                  )
+                }
+                onSave={() => void saveLanguages(languagesDraft)}
               />
             </div>
-
-            {profileMediaTab !== "about" && reviews.length > 0 ? (
-              <div className={profileSidebarPanelClass}>
+            {reviews.length > 0 ? (
+              <div className="py-2">
                 <button
                   type="button"
                   onClick={() => setReviewsSheetOpen(true)}
@@ -2678,7 +2803,7 @@ export default function PublicProfilePage() {
                   </span>
                 </button>
                 <div
-                  className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
+                  className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
                   role="list"
                   aria-label="User reviews"
                 >
@@ -2693,7 +2818,91 @@ export default function PublicProfilePage() {
                 </div>
               </div>
             ) : null}
-          </div>
+            </div>
+
+            {mediaItems.length > 0 ? (
+              <section className="shrink-0 border-t border-black/10 bg-white pt-4 dark:border-white/10 dark:bg-[#1C1C1E]">
+                <div className="mb-3 flex items-center gap-2 px-5">
+                  <h3 className="text-[17px] font-extrabold text-foreground">
+                    Media
+                  </h3>
+                  <span className="text-[15px] font-semibold text-muted-foreground">
+                    {mediaItems.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="ms-auto text-[13px] font-bold text-orange-600 transition-opacity hover:opacity-75 dark:text-orange-400"
+                    onClick={() =>
+                      setProfileMediaLightbox({
+                        urls: allProfileMediaUrls,
+                        initialIndex: 0,
+                      })
+                    }
+                  >
+                    See all
+                  </button>
+                </div>
+                <div
+                  dir="ltr"
+                  className="grid grid-flow-col grid-rows-1 auto-cols-[131px] gap-[2px] overflow-x-auto pb-[max(0px,env(safe-area-inset-bottom,0px))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  aria-label="Profile media"
+                >
+                  {mediaItems.map((row) => {
+                    const src = publicProfileMediaPublicUrl(row.storage_path);
+                    const mediaIndex = mediaItems.findIndex(
+                      (media) => media.id === row.id,
+                    );
+                    return (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className="relative h-[131px] w-[131px] overflow-hidden bg-black outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-orange-500"
+                        onClick={() =>
+                          setProfileMediaLightbox({
+                            urls: allProfileMediaUrls,
+                            initialIndex: Math.max(0, mediaIndex),
+                          })
+                        }
+                        aria-label={
+                          row.media_type === "image"
+                            ? "View photo full screen"
+                            : "View video full screen"
+                        }
+                      >
+                        {row.media_type === "image" ? (
+                          <img
+                            src={publicProfileMediaUrl(
+                              row.storage_path,
+                              profileGalleryThumbTransform,
+                            )}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-200 hover:scale-[1.03]"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <>
+                            <video
+                              src={src}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="pointer-events-none h-full w-full object-cover"
+                            />
+                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm">
+                                <Video className="h-5 w-5" aria-hidden />
+                              </span>
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+          </aside>
+          ) : null}
 
           {profileMediaTab === "about" ? (
             <div className={cn(profileSidebarPanelClass, "col-span-3")}>

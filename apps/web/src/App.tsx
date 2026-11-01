@@ -13,7 +13,10 @@ import { AppSafeAreaSync } from "@/components/AppSafeAreaSync";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DiscoverHomeScrollHeaderProvider } from "@/context/DiscoverHomeScrollHeaderContext";
-import { DesktopSidePanelProvider, useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
+import {
+  DesktopSidePanelProvider,
+  useDesktopSidePanel,
+} from "@/context/DesktopSidePanelContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
 import { ConfigCheck } from "@/components/ConfigCheck";
@@ -114,6 +117,7 @@ import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { LegalAcceptanceGate } from "@/components/LegalAcceptanceGate";
 import { AnalyticsConsent } from "@/components/AnalyticsConsent";
+import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 
 // Protected route wrapper
 function ProtectedRoute({
@@ -261,9 +265,14 @@ function KeepAlivePages() {
  * Mobile + desktop: solid fixed header bar; shell uses --app-mobile-header-stack.
  */
 function PageLayoutWithHeader() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  const { showRail } = useAuthenticatedShellLayout({
+    pathname,
+    search,
+    isAdmin: isAdminPath,
+  });
   const shouldHideDesktopFooter =
     pathname === "/messages" ||
     pathname.startsWith("/messages/") ||
@@ -290,13 +299,19 @@ function PageLayoutWithHeader() {
         : "min-h-[100dvh] min-h-[-webkit-fill-available]",
     )}>
       <div className={isAdminPath ? "min-h-[100dvh] md:h-full md:min-h-0 md:overflow-hidden" : "min-h-[100dvh] min-h-[-webkit-fill-available]"}>
-        <DesktopSidePanel collapsed={desktopSidePanelCollapsed} />
+        <DesktopSidePanel />
         {/* On desktop, leave room for the fixed left panel */}
         <div
           className={cn(
             "min-w-0 app-mobile-scroll-top-clearance",
             isAdminPath && "md:h-full md:min-h-0 md:overflow-hidden",
-            desktopSidePanelCollapsed ? "md:ps-[96px]" : "app-side-panel-offset",
+            !isAdminPath && showRail
+              ? desktopSidePanelCollapsed
+                ? "app-tablet-rail-offset"
+                : "app-side-panel-offset"
+              : isAdminPath
+                ? "app-side-panel-offset"
+                : "",
           )}
         >
           {/* Always-mounted keep-alive pages */}

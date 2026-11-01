@@ -84,7 +84,6 @@ import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
   publicProfileHeaderGlassIconBtnClass,
   signedInAppHeaderBgClass,
-  signedInDesktopHeaderGlassClass,
   signedInHeaderIconBtnClass,
 } from "@/lib/discoverHomeHeaderChrome";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
@@ -92,6 +91,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 import { isDesktopSidePanelExcludedRoute } from "@/components/nav/DesktopSidePanel";
+import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 
 /** Tab icons: outline when inactive, filled when active. */
 function bottomNavTabGlyphClass(isActive: boolean) {
@@ -215,8 +215,7 @@ export function BottomNav() {
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { collapsed: desktopSidePanelCollapsed, toggleCollapsed: toggleDesktopSidePanel } =
-    useDesktopSidePanel();
+  const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const jobsTabCounts = useJobsTabCounts(user);
@@ -248,6 +247,15 @@ export function BottomNav() {
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
   const isAdminPage = pathnameNorm === "/admin" || pathnameNorm.startsWith("/admin/");
+  const {
+    isTablet,
+    showBottomTabs,
+    tabletChatDock,
+  } = useAuthenticatedShellLayout({
+    pathname: pathnameNorm,
+    search: location.search,
+    isAdmin: isAdminPage,
+  });
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const isCommunityFeedPage = pathnameNorm === "/community/feed";
@@ -399,14 +407,16 @@ export function BottomNav() {
   }, []);
 
   const hideMobileBottomNav =
+    !showBottomTabs ||
     (isDiscoverHome &&
       (discoverHomeOverlayOpen ||
         mobileSearchOpen)) ||
     (isCommunityFeedPage && communityFeedOverlayOpen) ||
     /^\/open-requests\/[^/]+$/.test(pathnameNorm) ||
     /^\/offers\/[^/]+$/.test(pathnameNorm) ||
-    /^\/messages\/[^/]+$/.test(pathnameNorm) ||
-    (pathnameNorm === "/messages" && !!jobsSearchParams.get("conversation"));
+    (!isTablet &&
+      (/^\/messages\/[^/]+$/.test(pathnameNorm) ||
+        (pathnameNorm === "/messages" && !!jobsSearchParams.get("conversation"))));
 
   useEffect(() => {
     if (!plusMenuOpen) return;
@@ -979,50 +989,23 @@ export function BottomNav() {
   );
 
   /** Desktop only: full-width top bar with menu, logo, search, notifications */
-  const DesktopHeader = hideDesktopAppHeader ? null : (
+  const DesktopHeader = hideDesktopAppHeader || !isTablet ? null : (
     <header
       data-desktop-header-strip=""
       className={cn(
         "hidden md:block fixed inset-x-0 top-0 z-50 w-full border-0 shadow-none",
         isAdminPage
-          ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
-          : signedInAppHeaderBgClass,
-        !isAdminPage && signedInDesktopHeaderGlassClass,
+          ? "bg-zinc-100 dark:bg-zinc-950"
+          : "bg-white dark:bg-zinc-950",
       )}
     >
       <div
         className={cn(
           "flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6",
           showDesktopBrandChrome &&
-            (desktopSidePanelCollapsed ? "md:ps-24" : "md:ps-[220px]"),
+            (desktopSidePanelCollapsed ? "md:ps-[108px]" : "md:ps-[244px]"),
         )}
       >
-        {showDesktopBrandChrome && !isAdminPage ? (
-          <div className="flex shrink-0 items-center gap-1 ps-2 sm:ps-3">
-            <button
-              type="button"
-              onClick={toggleDesktopSidePanel}
-              className={signedInHeaderIconBtnClass}
-              aria-label={desktopSidePanelCollapsed ? "Open menu" : "Collapse menu"}
-              aria-expanded={!desktopSidePanelCollapsed}
-            >
-              <Menu className="h-6 w-6" strokeWidth={2.4} />
-            </button>
-            <Link
-              to={headerBackHomeFallback}
-              className="flex shrink-0 items-center"
-              aria-label={t("common.home")}
-            >
-              <img
-                src={BRAND_LOGO_SRC}
-                alt="Tebnu"
-                className="h-10 w-auto shrink-0 md:h-11"
-                loading="eager"
-                decoding="async"
-              />
-            </Link>
-          </div>
-        ) : null}
         <div className="grid h-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <div className="flex min-w-0 items-center gap-2 ps-1">
             {isDiscoverHome ? (
@@ -1033,15 +1016,6 @@ export function BottomNav() {
                 }}
                 variant="header"
               />
-            ) : !showCommunityFeedHeaderLeft && !isAdminPage ? (
-              <button
-                type="button"
-                onClick={handleHeaderBack}
-                className={signedInHeaderIconBtnClass}
-                aria-label={t("common.back")}
-              >
-                <HeaderBackChevron />
-              </button>
             ) : null}
           </div>
 
@@ -1056,6 +1030,21 @@ export function BottomNav() {
                   />
                 </div>
               )}
+              {showDesktopBrandChrome && !isAdminPage ? (
+                <Link
+                  to={headerBackHomeFallback}
+                  className="flex shrink-0 items-center"
+                  aria-label={t("common.home")}
+                >
+                  <img
+                    src={BRAND_LOGO_SRC}
+                    alt="Tebnu"
+                    className="h-10 w-auto shrink-0 md:h-11"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </Link>
+              ) : null}
               {!isAdminPage && DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch />
@@ -1140,7 +1129,7 @@ export function BottomNav() {
     ? publicProfileHeaderGlassIconBtnClass
     : signedInHeaderIconBtnClass;
 
-  const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
+  const MobileSignedInHeader = !isTablet && !hideMobileAppHeaderChrome ? (
     <header
       data-mobile-header-strip
       className={cn(
@@ -1433,8 +1422,19 @@ export function BottomNav() {
         {MobileSignedInHeader}
         {!hideMobileBottomNav &&
           createPortal(
-          <nav className={mobileNavPortalClass}>
-          <div className={mobileNavShellClass}>
+          <nav
+            className={cn(
+              mobileNavPortalClass,
+              isTablet && "bottom-nav-tablet-portal",
+              tabletChatDock && "bottom-nav-tablet-chat-dock",
+            )}
+          >
+          <div
+            className={cn(
+              mobileNavShellClass,
+              isTablet && "bottom-nav-tablet-glass",
+            )}
+          >
             {mobileNavGlowLayer}
             {mobileNavReadableLayer}
             <div className={mobileNavItemsRowClass}>

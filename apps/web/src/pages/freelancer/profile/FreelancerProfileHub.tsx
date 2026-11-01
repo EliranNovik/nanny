@@ -26,17 +26,35 @@ import {
   CalendarDays,
   LayoutDashboard,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function FreelancerProfileHub() {
+type FreelancerProfileHubProps = {
+  form?: FreelancerProfileFormContext;
+  variant?: "page" | "sidebar";
+};
+
+export default function FreelancerProfileHub({
+  form,
+  variant = "page",
+}: FreelancerProfileHubProps) {
   const { t } = useTranslation();
   const { openReportModal } = useReportIssue();
-  const ctx = useOutletContext<FreelancerProfileFormContext>();
+  const outletForm = useOutletContext<FreelancerProfileFormContext | undefined>();
+  const ctx = form ?? outletForm;
+  if (!ctx) return null;
   const { profile, fullName, photoUrl } = ctx;
 
   return (
-    <div className="min-h-screen bg-background pb-6 md:pb-8">
-      <div className="app-desktop-shell pt-6 md:pt-8">
-        <div className="app-desktop-centered-wide">
+    <div
+      className={cn(
+        "bg-background",
+        variant === "sidebar"
+          ? "min-h-full pb-8"
+          : "min-h-screen pb-6 md:pb-8",
+      )}
+    >
+      <div className={cn(variant === "sidebar" ? "px-5 pt-5" : "app-desktop-shell pt-6 md:pt-8")}>
+        <div className={variant === "sidebar" ? "w-full" : "app-desktop-centered-wide"}>
           <ProfileHubIdentityCard
             fullName={fullName ?? ""}
             photoUrl={photoUrl}

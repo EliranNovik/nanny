@@ -11,6 +11,13 @@ type Props = {
   variant?: "header" | "compact" | "profile";
 };
 
+const LOCALE_FLAGS: Record<string, string> = {
+  en: "🇬🇧",
+  he: "🇮🇱",
+  ru: "🇷🇺",
+  fr: "🇫🇷",
+};
+
 export function LanguageSwitcher({ className, triggerClassName, variant = "header" }: Props) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -49,6 +56,9 @@ export function LanguageSwitcher({ className, triggerClassName, variant = "heade
         aria-expanded={open}
         aria-haspopup="listbox"
       >
+        <span className="text-base leading-none" aria-hidden>
+          {LOCALE_FLAGS[current]}
+        </span>
         <span
           className={cn(
             "text-sm font-bold uppercase tracking-wide",
@@ -87,13 +97,14 @@ export function LanguageSwitcher({ className, triggerClassName, variant = "heade
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center px-3.5 py-2.5 text-start text-sm font-semibold transition-colors",
+                  "flex w-full items-center gap-3 px-3.5 py-2.5 text-start text-sm font-semibold transition-colors",
                   selected
                     ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                     : "text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/80",
                 )}
               >
-                {t(LOCALE_LABEL_KEYS[locale])}
+                <span className="text-xl leading-none" aria-hidden>{LOCALE_FLAGS[locale]}</span>
+                <span>{t(LOCALE_LABEL_KEYS[locale])}</span>
               </button>
             );
           })}

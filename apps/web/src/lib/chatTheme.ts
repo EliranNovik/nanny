@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Rich dark gradient + light neutral background for the chat thread. */
 export const chatAreaBgClass =
-  "chat-screen bg-[#fbfaf8] text-foreground dark:text-white";
+  "chat-screen bg-white text-foreground dark:bg-[#101214] dark:text-white";
 
 /** Frosted overlay for the chat header and composer so messages can show through. */
 export const chatComposerBarClass = cn(
@@ -14,8 +14,8 @@ export const chatComposerBarClass = cn(
 export const chatChromeBarClass = chatComposerBarClass;
 
 export const chatComposerFieldWrapClass = cn(
-  "flex min-h-11 flex-1 items-center rounded-[1.25rem] border border-orange-100 bg-orange-50/70 px-3 py-0 shadow-none outline-none ring-0",
-  "dark:border-transparent dark:bg-orange-950/20",
+  "flex min-h-11 flex-1 items-center rounded-[1.25rem] border-0 bg-[#EFEFF2] px-3 py-0 shadow-none outline-none ring-0",
+  "dark:bg-[#2C2D33]",
   "md:min-h-[48px] md:rounded-[1.375rem] md:px-3 md:py-1",
   "lg:min-h-[44px] lg:py-1",
   "focus-within:outline-none focus-within:ring-0",
@@ -31,21 +31,18 @@ export const chatComposerFieldClass = cn(
 );
 
 export const chatReceivedBubbleCn = cn(
-  "max-w-[90%] rounded-[18px] rounded-bl-[5px] px-3.5 py-2.5 text-left shadow-sm",
-  "border border-orange-100/70 bg-[#fff3e8]",
-  "dark:border-orange-900/25 dark:bg-orange-950/25",
-  "md:max-w-[80%] md:px-3.5 md:py-2",
+  "max-w-full rounded-[20px] rounded-bl-none px-3.5 py-2.5 text-left shadow-none",
+  "border-0 bg-[#f0f0f2]",
+  "dark:bg-[#2A2A2C]",
 );
 
 export const chatReceivedMessageTextCn =
   "text-zinc-800 dark:text-orange-50/90";
 
 export const chatSentBubbleCn = cn(
-  "chat-sent-bubble ml-auto max-w-[90%] rounded-[18px] rounded-br-[5px] px-3.5 py-2.5 text-left",
-  "bg-gradient-to-br from-orange-700 via-orange-600 to-orange-500 text-white",
-  "shadow-md shadow-orange-900/15 border-t border-white/10",
-  "dark:border-0 dark:shadow-none",
-  "md:max-w-[80%] md:rounded-[20px] md:px-4 md:py-2",
+  "chat-sent-bubble ml-auto max-w-full rounded-[20px] rounded-br-none px-3.5 py-2.5 text-left",
+  "bg-gradient-to-br from-[#FB923C] to-[#EA580C] text-white",
+  "border-0 shadow-none dark:from-[#C2410C] dark:to-[#9A3412]",
 );
 
 export const chatBubbleBodyTextCn =
@@ -60,10 +57,10 @@ export const chatBubbleInnerMetaWrapCn =
 
 export const chatMessageColumnCn = (isOwn: boolean) =>
   cn(
-    "flex w-max min-w-0 shrink flex-col space-y-0.5",
+    "flex w-full min-w-0 flex-col space-y-0.5 max-w-[88%] md:max-w-[78%] lg:max-w-[70%]",
     isOwn
-      ? "max-w-[90%] items-end md:max-w-[80%]"
-      : "max-w-[90%] items-start text-left md:max-w-[80%]",
+      ? "items-end"
+      : "items-start text-left",
   );
 
 /** Image/video attachments — wider column so landscape media can use horizontal space. */

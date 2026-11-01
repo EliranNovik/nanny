@@ -43,11 +43,20 @@
   }
 
   .app-desktop-side-panel {
-    @apply fixed bottom-0 start-0 top-0 z-[200] w-[220px];
+    @apply fixed bottom-4 start-4 top-4 z-[200] w-[220px];
+  }
+
+  .app-tablet-nav-rail {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+
+  .app-tablet-rail-offset {
+    padding-inline-start: 108px;
   }
 
   html:has([data-messages-page]) .app-desktop-side-panel {
-    @apply md:top-0;
+    @apply md:top-4;
   }
 }
 
@@ -339,6 +348,40 @@
     .app-main-scroll-pad {
       padding-bottom: 0;
     }
+  }
+
+  .bottom-nav-tablet-portal {
+    display: block !important;
+    left: 50%;
+    right: auto;
+    width: min(520px, calc(100vw - 32px));
+    padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 6px), 4px);
+    transform: translateX(-50%);
+  }
+
+  .bottom-nav-tablet-portal .bottom-nav-tablet-glass {
+    width: 100%;
+    max-width: 520px;
+    min-height: 62px;
+    padding: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 31px;
+    background: rgba(255, 255, 255, 0.76);
+    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.16);
+    -webkit-backdrop-filter: blur(24px) saturate(1.45);
+    backdrop-filter: blur(24px) saturate(1.45);
+  }
+
+  .dark .bottom-nav-tablet-portal .bottom-nav-tablet-glass {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(8, 8, 8, 0.76);
+    box-shadow: 0 12px 18px rgba(0, 0, 0, 0.55);
+  }
+
+  .bottom-nav-tablet-chat-dock {
+    left: 170px;
+    width: 340px;
+    transform: none;
   }
 
   /* Isolated offer/request: mobile bottom nav is replaced by the engagement dock. */

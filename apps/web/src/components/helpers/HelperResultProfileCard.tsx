@@ -535,7 +535,7 @@ export function HelperResultProfileCard({
   if (variant === "browse") {
     return (
     <>
-      <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-zinc-800 shadow-lg shadow-black/30 dark:bg-zinc-800 md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-2xl md:hover:shadow-black/40">
+      <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)] dark:bg-zinc-800 dark:shadow-lg dark:shadow-black/30 md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-[0_18px_44px_rgba(15,23,42,0.18)] dark:md:hover:shadow-2xl dark:md:hover:shadow-black/40">
         <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-900 md:aspect-[4/5] md:flex-none">
           {slides.length === 0 ? (
             <ProfilePhotoPlaceholder name={h.full_name} seed={h.id} />
@@ -744,7 +744,7 @@ export function HelperResultProfileCard({
             {liveCategories.map((cat) => (
               <span
                 key={cat.id}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-zinc-700/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:bg-zinc-700/80 dark:text-white"
               >
                 <CategoryIcon id={cat.id} className="h-3.5 w-3.5 text-emerald-400" />
                 {t(`feed.categories.${cat.id}`, { defaultValue: cat.label })}
@@ -754,7 +754,7 @@ export function HelperResultProfileCard({
 
           <p
             className={cn(
-              "line-clamp-3 text-[14px] leading-relaxed text-zinc-200 md:min-h-[4.125rem]",
+              "line-clamp-3 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-200 md:min-h-[4.125rem]",
               !h.freelancer_profiles?.bio && "max-md:hidden",
             )}
           >
@@ -763,13 +763,13 @@ export function HelperResultProfileCard({
 
           <p
             className={cn(
-              "flex items-center gap-2 text-[15px] font-bold text-white md:min-h-[1.5rem]",
+              "flex items-center gap-2 text-[15px] font-bold text-zinc-900 dark:text-white md:min-h-[1.5rem]",
               !rateLabel && "max-md:hidden",
             )}
           >
             {rateLabel ? (
               <>
-                <Tag className="h-4 w-4 shrink-0 text-white/80" aria-hidden />
+                <Tag className="h-4 w-4 shrink-0 text-zinc-500 dark:text-white/80" aria-hidden />
                 {rateLabel}
               </>
             ) : null}
@@ -787,7 +787,7 @@ export function HelperResultProfileCard({
               type="button"
               onClick={(e) => void openDirectChat(e)}
               disabled={chatOpening}
-              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-zinc-700 px-4 text-[13px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-zinc-600 active:bg-zinc-800 disabled:pointer-events-none disabled:opacity-60"
+              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-zinc-100 px-4 text-[13px] font-bold uppercase tracking-wide text-zinc-800 transition-colors hover:bg-zinc-200 active:bg-zinc-300 disabled:pointer-events-none disabled:opacity-60 dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600 dark:active:bg-zinc-800"
             >
               {chatOpening ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

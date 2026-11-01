@@ -69,6 +69,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
 import type { CompanionPinHelperVariant } from "@/components/JobMap";
+import ConfirmedListParity from "@/components/confirmed/ConfirmedListParity";
 const JobMap = lazy(() => import("@/components/JobMap"));
 const ImageLightboxModal = lazy(() =>
   import("@/components/ImageLightboxModal").then((m) => ({
@@ -1831,7 +1832,7 @@ function liveMapHelpersSignature(rows: LiveMapHelperSpot[]): string {
     .join("\u001e");
 }
 
-export default function ConfirmedListPage() {
+export function LegacyConfirmedListPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -2483,7 +2484,7 @@ export default function ConfirmedListPage() {
         "md:block md:min-h-screen md:overflow-visible md:pb-10",
       )}
     >
-      <div className="app-desktop-shell flex min-h-0 max-w-6xl flex-1 flex-col pt-4 max-md:!px-3 max-md:overflow-visible max-md:pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] max-md:min-h-0 md:block md:flex-none md:overflow-visible md:pb-10 md:pt-6">
+      <div className="app-desktop-shell flex min-h-0 max-w-md flex-1 flex-col pt-4 !px-3 overflow-visible pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
         {/* Desktop: single column — map full-width with request summary overlaid on top-right */}
         <div className="flex min-h-0 flex-1 flex-col animate-fade-in overflow-hidden max-md:min-h-0 max-md:flex-none max-md:overflow-visible md:!overflow-visible md:block md:items-start md:gap-5 md:overflow-visible">
 
@@ -2499,7 +2500,7 @@ export default function ConfirmedListPage() {
             >
               {/* Desktop: floating timer + Stop on top of the map */}
               {job && !freelancers.some((f) => f.is_open_job_accepted) ? (
-                <div className="pointer-events-none absolute left-4 top-[4.5rem] z-30 hidden md:block">
+                <div className="pointer-events-none absolute left-4 top-[4.5rem] z-30 hidden">
                   <div className="pointer-events-auto inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-background/95 p-1.5 pl-3 shadow-xl backdrop-blur-xl dark:border-white/[0.08] dark:bg-zinc-950/90">
                     <div className="inline-flex items-center gap-2">
                       <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -2531,7 +2532,7 @@ export default function ConfirmedListPage() {
 
               {/* Desktop: Request summary — floating card on top-right of the map */}
               {job ? (
-                <section className="pointer-events-none absolute right-4 top-4 z-30 hidden w-[340px] max-w-[calc(100%-2rem)] md:block lg:w-[360px]">
+                <section className="pointer-events-none absolute right-4 top-4 z-30 hidden w-[340px] max-w-[calc(100%-2rem)]">
                   <div className="pointer-events-auto flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-[24px] border border-white/40 bg-background/95 p-5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.04] backdrop-blur-xl dark:bg-zinc-950/90 dark:border-white/[0.08] dark:ring-white/[0.06]">
                     <div className="flex items-center justify-between gap-3">
                       <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
@@ -2613,13 +2614,11 @@ export default function ConfirmedListPage() {
         <div
           id="applicants-section"
           className={cn(
-            "mb-8 flex gap-4 pb-3",
-            "max-md:-mx-3 max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:overflow-y-visible max-md:px-3 max-md:scroll-smooth max-md:overscroll-x-contain max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:none] max-md:[touch-action:pan-x_pan-y] max-md:[&::-webkit-scrollbar]:hidden",
-            "md:-mx-4 md:mx-0 md:snap-x md:snap-mandatory md:overflow-x-auto md:overflow-y-hidden md:scroll-smooth md:px-4 md:px-0",
+            "mb-8 flex flex-col gap-4 pb-3",
             freelancers.length === 0 && "hidden",
           )}
         >
-          <div className="flex max-md:w-max max-md:flex-row max-md:gap-3 md:w-full md:flex-shrink-0 md:flex-row md:gap-4 md:pr-1">
+          <div className="flex w-full flex-col gap-4">
             {freelancers.map((freelancer) => {
               const fp = freelancer.freelancer_profiles;
               const initials =
@@ -2658,8 +2657,7 @@ export default function ConfirmedListPage() {
                   className={cn(
                     "group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[22px] bg-zinc-950 shadow-2xl shadow-black/40 outline-none transition-transform active:scale-[0.995]",
                     "focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "max-md:w-[min(82vw,21rem)] max-md:shrink-0 max-md:snap-center",
-                    "md:w-[min(82vw,300px)] md:flex-shrink-0 md:snap-start",
+                    "w-full",
                   )}
                 >
                   <ConfirmedApplicantMediaHero
@@ -2852,7 +2850,7 @@ export default function ConfirmedListPage() {
 
         {/* Structured fields & map — desktop inline; mobile uses dialog */}
         {job && (
-          <div className="hidden md:block">
+          <div className="hidden">
           <ConfirmedPageMoreSpecifics
             job={job}
             onOpenFullscreenMap={() => setMapModalOpen(true)}
@@ -3070,3 +3068,5 @@ export default function ConfirmedListPage() {
     </div>
   );
 }
+
+export default ConfirmedListParity;

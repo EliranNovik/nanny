@@ -5,12 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 import {
   ClipboardList,
+  Briefcase,
+  CalendarDays,
+  ChevronRight,
   Clock,
-  Compass,
   Plus,
   Radio,
   Search,
-  Send,
   Users,
   UsersRound,
   Wifi,
@@ -44,7 +45,6 @@ import {
   navigateToHelpersBrowse,
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
-import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
 import {
   DISCOVER_STROKE,
@@ -66,21 +66,17 @@ import {
 } from "@/lib/serviceCategories";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
-import { communityFeedScrollState } from "@/lib/communityFeedNav";
 import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { LiveTimer } from "@/components/LiveTimer";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
-import { DiscoverHomeMyOpenRequests } from "@/components/discover/DiscoverHomeMyOpenRequests";
 import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
 import { DiscoverHomeOffersForYou } from "@/components/discover/DiscoverHomeOffersForYou";
 import { DiscoverHomeCategoryFilterRow } from "@/components/discover/DiscoverHomeCategoryFilterRow";
+import { UserSearch } from "@/components/UserSearch";
 
 type HomeMode = "hire" | "work";
-
-const DISCOVER_HIRE_COMMUNITY_POST_TYPES = ["offer_service"] as const;
-const DISCOVER_WORK_COMMUNITY_POST_TYPES = ["request_help", "event"] as const;
 
 type Props = {
   homeMode: HomeMode;
@@ -91,10 +87,10 @@ type Props = {
 
 /** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
-  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[22rem] lg:min-h-[23rem]";
+  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[320px]";
 
 const heroStackClassName =
-  "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:px-7 md:pb-28 md:pt-6";
+  "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:w-[55%] md:px-10 md:pb-24 md:pt-12";
 
 const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
 
@@ -114,19 +110,12 @@ export function DiscoverHomeActionFirst({
   const { guardKycAction } = useKycGate();
   const isHire = homeMode === "hire";
   const isRtl = i18n.dir() === "rtl";
-  const discoverCommunityPostTypes = isHire
-    ? [...DISCOVER_HIRE_COMMUNITY_POST_TYPES]
-    : [...DISCOVER_WORK_COMMUNITY_POST_TYPES];
-  const openCommunityFeedPost = useCallback(
-    (postId: string) => {
-      navigate(GLOBAL_POSTS_PATH, { state: communityFeedScrollState(postId) });
-    },
-    [navigate],
-  );
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myRequestsOpen, setMyRequestsOpen] = useState(false);
+  const [myOffersOpen, setMyOffersOpen] = useState(false);
+  const [myOffersCount, setMyOffersCount] = useState(0);
   const [categoryFilter, setCategoryFilter] =
     useState<DiscoverHomeCategoryFilter>("all");
 
@@ -149,17 +138,6 @@ export function DiscoverHomeActionFirst({
       lng: profile.location_lng ?? null,
     };
   }, [profile]);
-  const discoverPostsFeedProps = {
-    limit: 5 as const,
-    appearance: "discover" as const,
-    discoverSidePanel: "favorites" as const,
-    filterPostTypeIds: discoverCommunityPostTypes,
-    sidePanelPostTypeIds: discoverCommunityPostTypes,
-    onSidePanelPostOpen: openCommunityFeedPost,
-    plainCards: true,
-    globalFeedLayout: true,
-    viewerLocation,
-  };
   const [freelancerLiveMeta, setFreelancerLiveMeta] = useState<{
     live_until: string | null;
     available_now: boolean | null;
@@ -197,8 +175,23 @@ export function DiscoverHomeActionFirst({
   }, [quickMoreOpen]);
 
   useDiscoverHomeOverlayLock(
-    quickMoreOpen || myRequestsOpen || pendingWorkRequestsOpen,
+    quickMoreOpen || myRequestsOpen || myOffersOpen || pendingWorkRequestsOpen,
   );
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMyOffersCount(0);
+      return;
+    }
+    void supabase
+      .from("profile_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("author_id", user.id)
+      .eq("post_type_id", "offer_service")
+      .then(({ count, error }) => {
+        if (!error) setMyOffersCount(count ?? 0);
+      });
+  }, [user?.id]);
 
   /** Clients + freelancers both persist 24h go-live on `freelancer_profiles` — refetch when returning to the tab. */
   useEffect(() => {
@@ -547,7 +540,8 @@ export function DiscoverHomeActionFirst({
           )}
           aria-label={t("discover.postRequest")}
         >
-          <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+          <Plus className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+          <span className="ms-2 text-sm font-extrabold">Request help</span>
         </button>
         <button
           type="button"
@@ -566,7 +560,8 @@ export function DiscoverHomeActionFirst({
           )}
           aria-label={t("nav.findHelpers")}
         >
-          <Users className="h-7 w-7" strokeWidth={2} aria-hidden />
+          <Users className="h-5 w-5" strokeWidth={2} aria-hidden />
+          <span className="ms-2 text-sm font-extrabold">Find helpers</span>
         </button>
       </div>
     );
@@ -605,12 +600,13 @@ export function DiscoverHomeActionFirst({
               : t("nav.goLive")
           }
         >
-          <Radio className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+          <Radio className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <span className="ms-2 text-sm font-extrabold">Go live</span>
         </button>
         <button
           type="button"
           onClick={() => {
-            trackEvent("discover_actions_share_post", {
+            trackEvent("discover_actions_post_offer", {
               mode: homeMode,
               source: "mobile_work_cta",
             });
@@ -619,7 +615,7 @@ export function DiscoverHomeActionFirst({
               return;
             }
             guardKycAction("share_post", () => {
-              navigate(`${GLOBAL_POSTS_PATH}?compose=1`);
+              navigate(`${GLOBAL_POSTS_PATH}?compose=1&postType=offer_service`);
             });
           }}
           className={cn(
@@ -628,9 +624,10 @@ export function DiscoverHomeActionFirst({
             "transition-transform active:scale-[0.98]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 focus-visible:ring-offset-2",
           )}
-          aria-label={t("nav.sharePost")}
+          aria-label="Post offer"
         >
-          <Send className="h-7 w-7" strokeWidth={2} aria-hidden />
+          <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
+          <span className="ms-2 text-sm font-extrabold">Post offer</span>
         </button>
       </div>
     );
@@ -744,36 +741,12 @@ export function DiscoverHomeActionFirst({
 
   function renderDesktopHeroQuickActions() {
     const buttonBase =
-      "flex h-12 items-center justify-center gap-2 rounded-2xl px-4 text-[14px] font-black tracking-tight shadow-lg transition-all active:scale-[0.98]";
+      "flex h-[54px] items-center justify-center gap-2 rounded-full border px-4 text-[14px] font-black tracking-tight shadow-sm transition-all active:scale-[0.98]";
     const neutral =
-      "bg-white/90 text-zinc-950 backdrop-blur-md hover:bg-white";
-    const blue =
-      "bg-gradient-to-r from-slate-900 via-blue-950 to-slate-950 text-white shadow-blue-950/25 hover:from-slate-950 hover:via-blue-950 hover:to-black";
-
-    const sharePost = () => {
-      if (!user) {
-        openGuestAuthPrompt({ variant: "create" });
-        return;
-      }
-      guardKycAction("share_post", () => {
-        navigate(`${GLOBAL_POSTS_PATH}?compose=1`);
-      });
-    };
-
+      "border-zinc-200/80 bg-white/85 text-zinc-950 backdrop-blur-xl hover:bg-white dark:border-white/15 dark:bg-zinc-900/80 dark:text-white";
     if (isHire) {
       return (
-        <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-3 gap-2 md:grid">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent("discover_hero_quick_find_helpers", { mode: "hire" });
-              navigate("/client/helpers");
-            }}
-            className={cn(buttonBase, neutral)}
-          >
-            <Search className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            {t("discoverHome.actions.findHelpers")}
-          </button>
+        <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(520px,48%)] grid-cols-2 gap-2 md:grid">
           <button
             type="button"
             onClick={() => {
@@ -788,27 +761,23 @@ export function DiscoverHomeActionFirst({
             <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
             {t("discoverHome.actions.postRequest")}
           </button>
-          <button type="button" onClick={sharePost} className={cn(buttonBase, blue)}>
-            <Send className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            {t("discoverHome.actions.sharePost")}
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_hero_quick_find_helpers", { mode: "hire" });
+              navigate("/client/helpers");
+            }}
+            className={cn(buttonBase, neutral)}
+          >
+            <Search className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+            {t("discoverHome.actions.findHelpers")}
           </button>
         </div>
       );
     }
 
     return (
-      <div className="pointer-events-auto absolute inset-x-7 bottom-5 z-[22] hidden grid-cols-3 gap-2 md:grid">
-        <button
-          type="button"
-          onClick={() => {
-            trackEvent("discover_hero_quick_explore", { mode: "work" });
-            navigate("/community/feed");
-          }}
-          className={cn(buttonBase, neutral)}
-        >
-          <Compass className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-          {t("discoverHome.actions.explore")}
-        </button>
+      <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(520px,48%)] grid-cols-2 gap-2 md:grid">
         <button
           type="button"
           onClick={() => {
@@ -825,11 +794,105 @@ export function DiscoverHomeActionFirst({
             ? t("discoverHome.actions.live")
             : t("discoverHome.actions.goLive")}
         </button>
-        <button type="button" onClick={sharePost} className={cn(buttonBase, blue)}>
-          <Send className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-          {t("discoverHome.actions.sharePost")}
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_hero_quick_post_offer", { mode: "work" });
+            guardKycAction("share_post", () =>
+              navigate(`${GLOBAL_POSTS_PATH}?compose=1&postType=offer_service`),
+            );
+          }}
+          className={cn(buttonBase, neutral)}
+        >
+          <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+          Post offer
         </button>
       </div>
+    );
+  }
+
+  function renderMyContentSummary() {
+    const count = isHire ? myRequestsCount : myOffersCount;
+    const Icon = isHire ? ClipboardList : Briefcase;
+    return (
+      <button
+        type="button"
+        onClick={() => (isHire ? setMyRequestsOpen(true) : setMyOffersOpen(true))}
+        className={cn(
+          "flex w-full max-w-[560px] items-center gap-3 rounded-[20px] bg-white p-[5px] pe-4 text-left",
+          "shadow-[0_4px_12px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)]",
+          "dark:bg-[#1d1f21] dark:shadow-none",
+        )}
+      >
+        <span className={cn(
+          "flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[15px]",
+          isHire ? "bg-orange-500/12 text-orange-600" : "bg-emerald-500/12 text-emerald-600",
+        )}>
+          <Icon className="h-8 w-8" strokeWidth={2.25} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-extrabold text-foreground">
+            {isHire ? "My requests" : "My offers"}
+          </span>
+          <span className="mt-1 block text-sm font-semibold text-muted-foreground">
+            {count} {count === 1 ? (isHire ? "request" : "offer") : (isHire ? "requests" : "offers")}
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground rtl-flip-icon" />
+      </button>
+    );
+  }
+
+  function renderExplorePromoBanner() {
+    const promotesEvents = isHire;
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(GLOBAL_POSTS_PATH)}
+        className={cn(
+          "group relative mx-auto mt-4 flex min-h-[132px] w-full items-center overflow-hidden rounded-[24px] px-5 py-5 text-left text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-0.5 active:scale-[0.99] lg:max-w-[860px]",
+          promotesEvents ? "bg-violet-700" : "bg-teal-800",
+        )}
+      >
+        <img
+          src={
+            promotesEvents
+              ? "/images/tebnu-events-banner.jpg"
+              : "/images/tebnu-community-banner.jpg"
+          }
+          alt=""
+          className="absolute inset-y-0 right-0 h-full w-[52%] object-cover object-center transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          decoding="async"
+        />
+        <span className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/20 to-transparent" />
+        <span
+          className={cn(
+            "absolute inset-y-0 left-0 w-[68%]",
+            promotesEvents
+              ? "bg-gradient-to-r from-violet-800 via-violet-700/95 to-violet-700/10"
+              : "bg-gradient-to-r from-teal-900 via-teal-800/95 to-teal-800/10",
+          )}
+        />
+        <span className="relative z-10 min-w-0 max-w-[58%] flex-1">
+          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/25">
+            {promotesEvents ? (
+              <CalendarDays className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            ) : (
+              <UsersRound className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            )}
+          </span>
+          <span className="block text-lg font-black leading-tight">
+            {promotesEvents ? "Events happening near you" : "Discover your community"}
+          </span>
+          <span className="mt-1 block text-sm font-semibold text-white/85">
+            {promotesEvents
+              ? "Meet people and join something new"
+              : "See stories and posts from people nearby"}
+          </span>
+        </span>
+        <ChevronRight className="absolute bottom-4 right-4 z-10 h-6 w-6 transition-transform group-hover:translate-x-1 rtl-flip-icon" />
+      </button>
     );
   }
 
@@ -841,13 +904,41 @@ export function DiscoverHomeActionFirst({
     >
       {renderQuickActionDockMobile()}
       <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
-        {isHire ? renderMobileHireActionButtons() : renderMobileWorkActionButtons()}
+        <section className="relative mx-4 mt-2 h-[240px] overflow-hidden rounded-[26px] bg-zinc-900 shadow-sm">
+          <img
+            src={
+              isHire
+                ? DISCOVER_PRIMARY_HERO_IMAGES.hire
+                : DISCOVER_PRIMARY_HERO_IMAGES.work
+            }
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-center"
+            decoding="async"
+            {...{ fetchpriority: "high" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/10" />
+          <h1 className="absolute inset-x-5 top-5 z-10 max-w-[82%] text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_14px_rgba(0,0,0,0.65)]">
+            {isHire
+              ? "A little help, nearby"
+              : "Someone nearby needs your help"}
+          </h1>
+          <div className="absolute inset-x-0 bottom-4 z-10">
+            {isHire
+              ? renderMobileHireActionButtons()
+              : renderMobileWorkActionButtons()}
+          </div>
+        </section>
+        {isHire ? (
+          <div className="px-4 pt-3">
+            <div className="rounded-2xl border border-zinc-200/80 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+              <UserSearch />
+            </div>
+          </div>
+        ) : null}
+        <div className="px-4 pt-4">{renderMyContentSummary()}</div>
 
         {isHire ? (
           <div className="flex flex-col px-0 pb-6">
-            <div className="w-full px-4 pt-4 pb-2">
-              <DiscoverHomeMyOpenRequests explorePath={explorePath} />
-            </div>
             <DiscoverHomeCategoryFilterRow
               variant="hire"
               layout="pills"
@@ -860,6 +951,7 @@ export function DiscoverHomeActionFirst({
                 categoryFilter={categoryFilter}
                 viewerLocation={viewerLocation}
               />
+              {renderExplorePromoBanner()}
             </div>
             <div className="w-full px-4 pt-4 pb-2">
               <DiscoverHomeMyLiveHelpJobs
@@ -882,6 +974,7 @@ export function DiscoverHomeActionFirst({
               categoryFilter={categoryFilter}
               className="w-full px-4 pt-3 pb-2"
             />
+            <div className="px-4">{renderExplorePromoBanner()}</div>
             <div className="w-full px-4 pt-4 pb-2">
               <DiscoverHomeMyLiveHelpJobs
                 mode="work"
@@ -898,8 +991,8 @@ export function DiscoverHomeActionFirst({
           <div className={cn("flex min-h-0 min-w-0 flex-col gap-4 md:h-full", !isHire && "hidden")}>
             <section
               className={cn(
-                "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:min-h-0",
-                "ring-1 ring-white/10 ring-inset transition-all duration-500",
+                "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left shadow-sm md:mx-0 md:max-w-none group md:min-h-0",
+                "bg-zinc-900 transition-all duration-500 dark:bg-zinc-950",
               )}
             >
               {renderHeroStats()}
@@ -908,11 +1001,12 @@ export function DiscoverHomeActionFirst({
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
+                <div className="absolute inset-0 z-[5] bg-gradient-to-r from-black/85 via-black/55 to-black/5" />
+                <div className="absolute inset-x-0 bottom-0 z-[5] h-32 bg-gradient-to-t from-black/55 to-transparent" />
 
                 <div className={heroStackClassName}>
                   <div
@@ -925,7 +1019,7 @@ export function DiscoverHomeActionFirst({
                       {/* Desktop hero actions moved into the bottom Actions menu */}
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-700 sm:px-3 sm:py-1.5 dark:text-orange-300">
                           <Zap
                             className={cn(discoverIcon.sm, "shrink-0")}
                             strokeWidth={DISCOVER_STROKE}
@@ -937,15 +1031,11 @@ export function DiscoverHomeActionFirst({
                       <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                         <h2
                           className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
-                          style={{
-                            textShadow: "0 4px 30px rgba(0,0,0,0.5)",
-                          }}
                         >
-                          {t("discoverHome.heroHire.title")}
+                          A little help, nearby
                         </h2>
                         <p
-                          className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                          className="whitespace-pre-line text-[0.875rem] font-medium leading-snug text-white/85 sm:text-[15px]"
                         >
                           {t("discoverHome.heroHire.sub")}
                         </p>
@@ -959,8 +1049,8 @@ export function DiscoverHomeActionFirst({
           
           <section
             className={cn(
-              "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:h-full md:min-h-0",
-              "ring-1 ring-white/10 ring-inset transition-all duration-500",
+              "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left shadow-sm md:mx-0 md:max-w-none group md:h-full md:min-h-0",
+              "bg-zinc-900 transition-all duration-500 dark:bg-zinc-950",
               isHire && "hidden"
             )}
           >
@@ -971,11 +1061,12 @@ export function DiscoverHomeActionFirst({
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
+                <div className="absolute inset-0 z-[5] bg-gradient-to-r from-black/85 via-black/55 to-black/5" />
+                <div className="absolute inset-x-0 bottom-0 z-[5] h-32 bg-gradient-to-t from-black/55 to-transparent" />
 
                 <div className={heroStackClassName}>
                   <div
@@ -987,7 +1078,7 @@ export function DiscoverHomeActionFirst({
                     <div className="min-w-0">
                       {/* Desktop hero actions moved into the bottom Actions menu */}
 
-                      <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                      <div className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 sm:px-3 sm:py-1.5 dark:text-emerald-300">
                         <Wifi
                           className={cn(discoverIcon.sm, "shrink-0")}
                           strokeWidth={DISCOVER_STROKE}
@@ -998,15 +1089,11 @@ export function DiscoverHomeActionFirst({
                       <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                         <h2
                           className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
-                          style={{
-                            textShadow: "0 4px 30px rgba(0,0,0,0.5)",
-                          }}
                         >
-                          {t("discoverHome.heroWork.title")}
+                          Someone nearby needs your help
                         </h2>
                         <p
-                          className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                          className="text-[0.875rem] font-medium leading-snug text-white/85 sm:text-[15px]"
                         >
                           {t("discoverHome.heroWork.sub")}
                         </p>
@@ -1019,31 +1106,7 @@ export function DiscoverHomeActionFirst({
         </div>
 
         <div className="min-h-0 w-full overflow-hidden pt-2 flex flex-col gap-2">
-          <div className={cn(!isHire && "hidden")}>
-            <DiscoverHomeRealtimeStrip
-              variant="hire"
-              explorePath={explorePath}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              onOpenMyRequests={user?.id ? () => setMyRequestsOpen(true) : undefined}
-              hideDesktopQuickActions
-            />
-          </div>
-          <div className={cn(isHire && "hidden")}>
-            <DiscoverHomeRealtimeStrip
-              variant="work"
-              explorePath={explorePath}
-              categoryFilter={categoryFilter}
-              onCategoryFilterChange={setCategoryFilter}
-              onOpenPending={user?.id ? () => setPendingWorkRequestsOpen(true) : undefined}
-              hideDesktopQuickActions
-            />
-          </div>
-
-          <DiscoverHomeMyOpenRequests
-            className={cn("min-w-0 px-0.5 pt-1", !isHire && "hidden")}
-            explorePath={explorePath}
-          />
+          <div className="px-0.5 pt-1">{renderMyContentSummary()}</div>
           <div className={cn("min-w-0 px-0.5 pt-4", !isHire && "hidden")}>
             <DiscoverHomeCategoryFilterRow
               variant="hire"
@@ -1056,6 +1119,7 @@ export function DiscoverHomeActionFirst({
               categoryFilter={categoryFilter}
               viewerLocation={viewerLocation}
             />
+            {renderExplorePromoBanner()}
           </div>
           <DiscoverHomeMyLiveHelpJobs
             mode="hire"
@@ -1070,18 +1134,12 @@ export function DiscoverHomeActionFirst({
           categoryFilter={categoryFilter}
           className={cn("px-1 pt-2 pb-1", isHire && "hidden")}
         />
+        {!isHire ? <div className="px-1">{renderExplorePromoBanner()}</div> : null}
         <DiscoverHomeMyLiveHelpJobs
           mode="work"
           exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
           className={cn("min-w-0 px-0.5 pt-3", isHire && "hidden")}
         />
-
-        <section className="mt-6 pb-0">
-          <h2 className="mb-6 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            {t("discover.ourCommunityLive")}
-          </h2>
-          <ProfilePostsFeed {...discoverPostsFeedProps} />
-        </section>
       </div>
 
       {/* My Requests Modal */}
@@ -1104,6 +1162,40 @@ export function DiscoverHomeActionFirst({
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
             <ExploreMyPostedRequests variant="modal" />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* My Offers Modal */}
+      <Dialog open={myOffersOpen} onOpenChange={setMyOffersOpen}>
+        <DialogContent
+          aria-describedby={undefined}
+          className={cn(
+            "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+            mobileTallBottomSheetDialogClass,
+            mobileBottomSheetSlideAnimationClass,
+            "md:max-h-[min(90vh,48rem)] md:max-w-4xl md:rounded-2xl",
+          )}
+        >
+          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-black tracking-tight">My offers</DialogTitle>
+              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
+                <X className="h-6 w-6" strokeWidth={2.5} />
+              </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#F2F2F7] p-4 dark:bg-black">
+            {user?.id ? (
+              <ProfilePostsFeed
+                appearance="discover"
+                filterAuthorId={user.id}
+                filterPostTypeId="offer_service"
+                plainCards
+                globalFeedLayout
+                viewerLocation={viewerLocation}
+              />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

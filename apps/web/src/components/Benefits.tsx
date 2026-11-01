@@ -65,7 +65,7 @@ function BenefitMainCard({
 }) {
   const Icon = benefit.icon;
   return (
-    <div className="grid w-full overflow-hidden rounded-[1.75rem] bg-white shadow-[0_20px_50px_-24px_rgba(15,23,42,0.35)] dark:bg-zinc-800 dark:shadow-black/50 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+    <div className="grid w-full overflow-hidden rounded-[2rem] bg-white shadow-[0_28px_70px_-42px_rgba(124,45,18,0.5)] md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
       <div className="relative min-h-[200px] overflow-hidden bg-slate-100 dark:bg-zinc-800 md:min-h-[360px]">
         <img
           src={benefit.image}
@@ -112,25 +112,23 @@ export default function Benefits() {
   const currentCopy = benefitCopy(current.id);
 
   return (
-    <section className="relative w-full">
-      <svg
-        className="block h-14 w-full text-emerald-600 md:h-16"
-        viewBox="0 0 375 56"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <path
-          fill="currentColor"
-          d="M0 56V18C58-6 118 44 192 16C266 -8 318 40 375 12V56Z"
-        />
-      </svg>
-      <div className="bg-emerald-600 px-5 pb-24 pt-8 sm:px-8 md:pb-32 md:pt-12 lg:px-12 lg:pb-36">
-        <h2 className="text-center text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
+    <section className="relative w-full px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-[82rem] overflow-hidden rounded-[3rem] bg-[linear-gradient(135deg,#F97316_0%,#F15A24_55%,#EA580C_100%)] px-5 py-12 shadow-[0_40px_100px_-58px_rgba(194,65,12,0.85)] sm:px-8 md:py-16 lg:px-12">
+      <div className="pointer-events-none absolute -right-20 -top-32 h-96 w-96 rounded-full bg-white/10 blur-2xl" aria-hidden />
+      <div className="pointer-events-none absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-amber-300/20 blur-3xl" aria-hidden />
+      <ShieldCheck className="pointer-events-none absolute -right-10 top-12 h-52 w-52 rotate-12 text-white/[0.07]" strokeWidth={1.1} aria-hidden />
+      <Star className="pointer-events-none absolute bottom-10 left-[7%] h-28 w-28 -rotate-12 text-white/[0.06]" strokeWidth={1.1} aria-hidden />
+      <Target className="pointer-events-none absolute right-[32%] top-[42%] h-36 w-36 rotate-6 text-white/[0.05]" strokeWidth={1} aria-hidden />
+      <div className="mx-auto max-w-3xl text-center">
+        <span className="inline-flex rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+          {t("landing.whyChooseUs")}
+        </span>
+        <h2 className="mt-5 text-center text-3xl font-black tracking-[-0.035em] text-white md:text-5xl">
           {t("landing.benefitsTitle")}
         </h2>
       </div>
 
-      <div className="relative z-10 -mt-16 flex w-full snap-y snap-mandatory flex-col gap-5 overflow-y-auto pb-4 md:hidden">
+      <div className="mt-12 flex w-full snap-y snap-mandatory flex-col gap-5 overflow-y-auto pb-4 md:hidden">
         {benefits.map((benefit) => (
           <div key={benefit.id} className="w-full snap-start">
             <BenefitMainCard benefit={benefit} copy={benefitCopy(benefit.id)} />
@@ -138,7 +136,7 @@ export default function Benefits() {
         ))}
       </div>
 
-      <div className="relative z-10 mx-auto hidden -mt-24 max-w-7xl px-4 sm:px-6 md:block lg:-mt-28 lg:px-8">
+      <div className="mt-12 hidden md:block">
         <div
           className="grid grid-cols-5 gap-5"
           role="tablist"
@@ -158,8 +156,8 @@ export default function Benefits() {
                 onFocus={() => setActive(idx)}
                 onClick={() => setActive(idx)}
                 className={cn(
-                  "flex flex-col items-start gap-3 rounded-2xl bg-white px-6 py-7 text-left shadow-[0_16px_40px_-12px_rgba(15,23,42,0.16)] transition-all duration-300 dark:bg-zinc-800 dark:shadow-black/40",
-                  selected && "shadow-lg shadow-orange-500/10",
+                  "flex flex-col items-start gap-3 rounded-[1.5rem] bg-white/85 px-5 py-5 text-left shadow-[0_14px_36px_-28px_rgba(124,45,18,0.45)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:bg-white",
+                  selected && "-translate-y-1.5 bg-white shadow-[0_24px_50px_-24px_rgba(124,45,18,0.7)]",
                 )}
               >
                 <span
@@ -185,6 +183,7 @@ export default function Benefits() {
         >
           <BenefitMainCard benefit={current} copy={currentCopy} />
         </div>
+      </div>
       </div>
     </section>
   );

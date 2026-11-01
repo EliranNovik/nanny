@@ -67,7 +67,7 @@ export function ChatSimpleHeader({
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="h-10 w-10 shrink-0 rounded-full text-foreground hover:bg-muted/60 md:hidden dark:text-white dark:hover:bg-white/10"
+          className="h-10 w-10 shrink-0 rounded-full text-foreground hover:bg-muted/60 dark:text-white dark:hover:bg-white/10"
         >
           <HeaderBackChevron />
         </Button>
@@ -95,7 +95,7 @@ export function ChatSimpleHeader({
                   profile={profile ?? undefined}
                   className="inline-flex shrink-0 rounded-full"
                 >
-                  <Avatar className="h-11 w-11 shadow-lg shadow-violet-500/15">
+                  <Avatar className="h-[50px] w-[50px] shadow-lg shadow-violet-500/15">
                     <AvatarImage
                       src={photoUrl || undefined}
                       className="object-cover"
@@ -114,7 +114,7 @@ export function ChatSimpleHeader({
               profile={profile ?? undefined}
               className="inline-flex shrink-0 rounded-full"
             >
-              <Avatar className="h-11 w-11 ring-1 ring-white/10">
+              <Avatar className="h-[50px] w-[50px]">
                 <AvatarImage
                   src={photoUrl || undefined}
                   className="object-cover"
@@ -137,7 +137,7 @@ export function ChatSimpleHeader({
 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <h2 className="truncate text-lg font-bold leading-tight text-foreground dark:text-white sm:text-xl">
+            <h2 className="truncate text-[17px] font-bold leading-tight text-foreground dark:text-white">
               {displayName}
             </h2>
             {isVerified ? (
@@ -148,7 +148,7 @@ export function ChatSimpleHeader({
             ) : null}
           </div>
           {statusLine ? (
-            <p className="truncate text-sm text-muted-foreground dark:text-slate-400">
+            <p className="truncate text-[13px] text-muted-foreground dark:text-slate-400">
               {statusLine}
             </p>
           ) : null}

@@ -231,7 +231,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     if (authLoading || !user) {
       return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-          <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
+          <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta hideContactAndLegal />
           <main className="flex flex-1 items-center justify-center">
             <AppBootSplashLogo />
           </main>
@@ -252,7 +252,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
     });
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta hideContactAndLegal />
         <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
@@ -264,7 +264,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   if (user) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
+        <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta hideContactAndLegal />
         <main className="flex flex-1 items-center justify-center">
           <AppBootSplashLogo />
         </main>
@@ -276,7 +276,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-white dark:bg-background">
-      <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta />
+      <LandingSiteHeader {...guestSiteHeaderChromeProps} hideSignInCta hideContactAndLegal />
       <div className="flex min-h-0 flex-1">
       {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
       <div className="relative hidden min-h-0 shrink-0 flex-col justify-end overflow-hidden rounded-r-[2rem] bg-slate-900 p-16 lg:flex lg:w-1/2">

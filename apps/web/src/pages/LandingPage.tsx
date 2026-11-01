@@ -13,8 +13,6 @@ import {
   ChevronRight,
   Truck,
   Loader2,
-  HelpingHand,
-  HeartHandshake,
   HelpCircle,
   MapPin,
   Clock,
@@ -26,6 +24,7 @@ import {
   ArrowDownRight,
   RefreshCw,
   StickyNote,
+  MessageCircle,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
@@ -47,8 +46,9 @@ import {
   globalFeedPrimaryCtaClass,
 } from "@/lib/globalFeedPostUi";
 import { useTranslation } from "react-i18next";
+import { useForceLightTheme } from "@/context/ThemeContext";
 import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
-import { LandingHeroCollage } from "@/components/landing/LandingHeroCollage";
+import { LandingCreamHero } from "@/components/landing/LandingCreamHero";
 import {
   HIRE_CATEGORY_TILE_UI,
   OTHER_HELP_SUBCATEGORY_UI,
@@ -149,30 +149,153 @@ function landingActivityDetailValue(
 const HOW_IT_WORKS_STEPS = [
   {
     step: 1,
-    image: "/images/how-it-works/how-it-works-post-request.png",
-    imageDark: "/images/how-it-works/how-it-works-post-request-dark.png",
+    image: "/images/how-it-works/screen-categories.webp",
+    tone: "orange",
   },
   {
     step: 2,
-    image: "/images/how-it-works/how-it-works-get-matched.png",
-    imageDark: "/images/how-it-works/how-it-works-get-matched-dark.png",
+    image: "/images/how-it-works/screen-offer-help.webp",
+    tone: "mint",
   },
   {
     step: 3,
-    image: "/images/how-it-works/how-it-works-choose-helper.png",
-    imageDark: "/images/how-it-works/how-it-works-choose-helper-dark.png",
-  },
-  {
-    step: 4,
-    image: "/images/how-it-works/how-it-works-chat-confirm.png",
-    imageDark: "/images/how-it-works/how-it-works-chat-confirm-dark.png",
-  },
-  {
-    step: 5,
-    image: "/images/how-it-works/how-it-works-youre-set.png",
-    imageDark: "/images/how-it-works/how-it-works-youre-set-dark.png",
+    image: "/images/how-it-works/screen-profiles.webp",
+    tone: "orange",
   },
 ] as const;
+
+const SUPPORTING_FEATURES = [
+  { id: "browse", image: "/images/how-it-works/screen-find-help.webp", icon: Users },
+  { id: "community", image: "/images/how-it-works/screen-community.webp", icon: CalendarDays },
+  { id: "messages", image: "/images/how-it-works/screen-messages-v3.webp", icon: MessageCircle },
+] as const;
+
+function SupportingFeatureScreen({
+  feature,
+  className,
+}: {
+  feature: (typeof SUPPORTING_FEATURES)[number];
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative mx-auto h-[31rem] w-[15rem] rounded-[3rem] border-[3px] border-zinc-500 bg-gradient-to-r from-zinc-950 via-zinc-700 to-black p-[7px] shadow-[0_32px_45px_-20px_rgba(24,24,27,0.48)]", className)}>
+      <span className="absolute -left-[6px] top-24 h-12 w-[4px] rounded-l bg-zinc-700" aria-hidden />
+      <span className="absolute -right-[6px] top-32 h-20 w-[4px] rounded-r bg-zinc-700" aria-hidden />
+      <div className="h-full overflow-hidden rounded-[2.45rem] bg-white">
+        <img src={feature.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+      </div>
+    </div>
+  );
+}
+
+function SupportingConnectionsSection() {
+  const { t } = useTranslation();
+  const [activeFeature, setActiveFeature] = useState<(typeof SUPPORTING_FEATURES)[number]["id"]>("browse");
+  const active = SUPPORTING_FEATURES.find((feature) => feature.id === activeFeature) ?? SUPPORTING_FEATURES[0];
+
+  return (
+    <section className="scroll-reveal px-5 py-20 opacity-0 translate-y-10 transition-all duration-1000 sm:px-8 md:py-28 lg:px-12">
+      <div className="relative mx-auto max-w-[82rem] px-0 py-6 sm:px-2 lg:py-10">
+        <div className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-orange-200/30 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute bottom-[-12rem] right-[18%] h-96 w-96 rounded-full bg-emerald-200/25 blur-3xl" aria-hidden />
+
+        <div className="relative max-w-4xl">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-orange-500" aria-hidden />
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-orange-600">{t("landing.supporting.eyebrow")}</p>
+          </div>
+          <h2 className="mt-5 text-4xl font-black leading-[0.96] tracking-[-0.05em] text-zinc-950 md:text-6xl">{t("landing.supporting.title")}</h2>
+          <p className="mt-5 max-w-2xl text-lg font-medium leading-relaxed text-zinc-600">{t("landing.supporting.subtitle")}</p>
+        </div>
+
+        <div className="relative mt-14 hidden items-stretch gap-10 md:grid md:grid-cols-[minmax(0,0.95fr)_minmax(25rem,1.05fr)] lg:gap-16">
+          <div className="flex flex-col justify-center space-y-3">
+            {SUPPORTING_FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              const selected = feature.id === activeFeature;
+              const index = SUPPORTING_FEATURES.findIndex((item) => item.id === feature.id) + 1;
+              return (
+                <button
+                  key={feature.id}
+                  type="button"
+                  onClick={() => setActiveFeature(feature.id)}
+                  className={cn(
+                    "group relative flex w-full items-center gap-4 border-0 bg-transparent py-5 pl-5 pr-3 text-left transition-all duration-300",
+                    selected
+                      ? "translate-x-2"
+                      : "opacity-70 hover:translate-x-1 hover:opacity-100",
+                  )}
+                >
+                  <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full bg-orange-500 transition-opacity", selected ? "opacity-100" : "opacity-0")} aria-hidden />
+                  <span
+                    className={cn(
+                      "flex h-16 w-16 shrink-0 items-center justify-center transition-all duration-300 lg:h-20 lg:w-20",
+                      selected
+                        ? "scale-110 text-orange-600"
+                        : feature.id === "browse"
+                          ? "text-emerald-600"
+                          : feature.id === "community"
+                            ? "text-amber-600"
+                            : "text-orange-600",
+                    )}
+                  >
+                    <Icon className="h-9 w-9 lg:h-10 lg:w-10" strokeWidth={1.7} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="mb-1 block text-sm font-black uppercase tracking-[0.18em] text-zinc-400">0{index}</span>
+                    <span className="block text-lg font-black tracking-[-0.025em] text-zinc-950 lg:text-xl">{t(`landing.supporting.${feature.id}.title`)}</span>
+                    <span className="mt-1.5 block max-w-xl text-sm font-medium leading-relaxed text-zinc-600">{t(`landing.supporting.${feature.id}.description`)}</span>
+                  </span>
+                  <ChevronRight className={cn("h-5 w-5 shrink-0 transition-all", selected ? "translate-x-0 text-orange-500 opacity-100" : "-translate-x-2 text-zinc-300 opacity-0 group-hover:translate-x-0 group-hover:opacity-100")} />
+                </button>
+              );
+            })}
+          </div>
+          <div className="relative flex min-h-[41rem] items-center justify-center overflow-visible p-8">
+            <div className="absolute left-8 top-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              {t(`landing.supporting.${active.id}.title`)}
+            </div>
+            <div className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(253,186,116,0.18),rgba(167,243,208,0.1)_45%,transparent_70%)]" aria-hidden />
+            <div className="absolute bottom-12 left-1/2 h-16 w-64 -translate-x-1/2 rounded-full bg-zinc-900/15 blur-2xl" aria-hidden />
+            <div key={active.id} className="animate-in fade-in zoom-in-95 slide-in-from-right-4 duration-500">
+              <SupportingFeatureScreen feature={active} className="h-[37rem] w-[17.75rem]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 space-y-12 md:hidden">
+          {SUPPORTING_FEATURES.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <article key={feature.id} className="rounded-[2rem] border border-zinc-200/80 bg-white/70 p-5 shadow-[0_20px_50px_-38px_rgba(24,24,27,0.35)]">
+                <div className="mb-6 flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "flex h-14 w-14 shrink-0 items-center justify-center",
+                      feature.id === "browse"
+                        ? "text-emerald-600"
+                        : feature.id === "community"
+                          ? "text-amber-600"
+                          : "text-orange-600",
+                    )}
+                  >
+                    <Icon className="h-8 w-8" strokeWidth={1.7} />
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-black text-zinc-950">{t(`landing.supporting.${feature.id}.title`)}</h3>
+                    <p className="mt-1 text-sm font-medium leading-relaxed text-zinc-600">{t(`landing.supporting.${feature.id}.description`)}</p>
+                  </div>
+                </div>
+                <SupportingFeatureScreen feature={feature} />
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function LandingActivityDetailIcon({
   kind,
@@ -394,20 +517,9 @@ export default function LandingPage() {
   }, []);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const isDarkTheme = false;
-  useEffect(() => {
-    const root = document.documentElement;
-    const restoreDark = root.classList.contains("dark");
-    const previousColorScheme = root.style.colorScheme;
-    root.classList.remove("dark");
-    root.style.colorScheme = "light";
-    return () => {
-      if (restoreDark) root.classList.add("dark");
-      root.style.colorScheme = previousColorScheme;
-    };
-  }, []);
-  const buttonsRef = useRef<HTMLDivElement>(null);
-  const mobileHeroButtonsRef = useRef<HTMLDivElement>(null);
+  useForceLightTheme();
+  const buttonsRef = useRef<HTMLDivElement | null>(null);
+  const mobileHeroButtonsRef = useRef<HTMLDivElement | null>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
   const showcaseSwipeRef = useRef({
@@ -422,7 +534,7 @@ export default function LandingPage() {
   const [showFixedButtons, setShowFixedButtons] = useState(false);
   const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const { activityLoading, activityItems, heroPosts, heroPostsLoading, reviewsLoading, reviews } =
+  const { activityLoading, activityItems, reviewsLoading, reviews } =
     useLandingPagePreview();
 
   const showcaseCategories = [
@@ -530,16 +642,12 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setHeroScrolledPast(entry.boundingClientRect.bottom < 72);
-      },
-      { threshold: [0, 0.05, 0.15, 0.35, 0.6, 1] },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    const updateHeaderSurface = () => {
+      setHeroScrolledPast(window.scrollY > 24);
+    };
+    updateHeaderSurface();
+    window.addEventListener("scroll", updateHeaderSurface, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeaderSurface);
   }, []);
 
   useEffect(() => {
@@ -587,255 +695,257 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-white text-slate-900 dark:bg-background dark:text-foreground max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]">
+    <div className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-[#FAF6EF] text-slate-900 dark:bg-background dark:text-foreground max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]">
       <LandingSiteHeader
         hideLeftLogo
         hideBackButton
         hideBackButtonMobile
         heroOverlay
         heroOverlayScrolled={heroScrolledPast}
+        heroOverlayLightSurface
         hideThemeToggle
+        hideContactAndLegal
         onBrandClick={() => setAboutOpen(true)}
       />
 
       <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+      <ContactUsButton />
 
       {/* Sticky hero CTAs when scrolled past — desktop only */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-8 z-[60] hidden justify-center px-6 transition-all duration-500 md:flex",
+          "fixed bottom-8 left-6 z-[60] hidden transition-all duration-500 md:flex lg:left-10",
           showFixedButtons
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-10 pointer-events-none",
         )}
       >
-        <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-2xl bg-white/95 p-2 pl-2.5 pr-2 shadow-2xl backdrop-blur-xl dark:bg-zinc-800/90">
-          <Button
-            onClick={handleSearchingForJob}
-            className="h-auto min-h-12 gap-2 whitespace-normal rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-5 py-2 text-sm font-bold leading-tight text-white shadow-md hover:from-emerald-600 hover:to-green-700"
-          >
-            <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} />
-            <span>{t("landing.offerHelp")}</span>
-          </Button>
+        <div className="flex items-center justify-center gap-1.5 rounded-[1.4rem] border border-white/90 bg-white/80 p-1.5 shadow-[0_18px_55px_-14px_rgba(24,24,27,0.3),0_2px_8px_rgba(24,24,27,0.08)] ring-1 ring-zinc-950/5 backdrop-blur-2xl transition-transform duration-300 hover:-translate-y-1">
           <Button
             onClick={handleHiringHelper}
-            className="h-auto min-h-12 gap-2 whitespace-normal rounded-xl bg-gradient-to-r from-orange-500 to-red-600 px-5 py-2 text-sm font-bold leading-tight text-white shadow-md hover:from-orange-600 hover:to-red-700"
+            className="h-11 gap-2 rounded-full bg-[#F97316] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(249,115,22,0.9)] transition-all hover:-translate-y-0.5 hover:bg-orange-600"
           >
-            <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} />
-            <span>{t("landing.needHelp")}</span>
+            <span>{t("landing.creamHero.findHelp")}</span>
+            <ArrowUpRight className="h-4.5 w-4.5 shrink-0 rtl:-scale-x-100" strokeWidth={2.25} />
           </Button>
-          <span
-            className="mx-0.5 hidden h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-white/20 sm:block"
-            aria-hidden
-          />
-          <ContactUsButton variant="dock" />
+          <button
+            type="button"
+            onClick={handleSearchingForJob}
+            className="mx-3 text-sm font-semibold text-zinc-900 underline decoration-zinc-900 decoration-[1.5px] underline-offset-[6px] transition hover:text-orange-600 hover:decoration-orange-600"
+          >
+            {t("landing.creamHero.offerHelp")}
+          </button>
         </div>
       </div>
 
-      <main className="flex-1">
-        {/* Full-Screen Hero Section */}
-        <section
-          ref={heroRef}
-          className="relative w-full min-h-[90vh] overflow-visible group/hero md:min-h-screen md:bg-white dark:md:bg-background"
-        >
-          {/* Mobile — white hero with same post collage as desktop */}
-          <div className="relative bg-white dark:bg-background md:hidden">
-            <div data-nosnippet>
-              <LandingHeroCollage
-                embedded
-                posts={heroPosts}
-                loading={heroPostsLoading}
-                className="relative left-1/2 z-0 w-screen max-w-[100vw] -translate-x-1/2"
-                heroActions={
-                  <div ref={mobileHeroButtonsRef} className="flex w-full flex-col gap-3">
-                    <Button
-                      type="button"
-                      onClick={handleHiringHelper}
-                      className="flex h-14 w-full items-center justify-between gap-3 whitespace-normal rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-4 text-left text-lg font-black leading-tight text-white shadow-lg transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98]"
-                    >
-                      <span className="flex min-w-0 items-center justify-start gap-2.5">
-                        <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
-                        <span className="whitespace-pre-line">{t("landing.needHelp")}</span>
-                      </span>
-                      <ChevronRight className="h-6 w-6 shrink-0 rtl:rotate-180" strokeWidth={2.5} aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleSearchingForJob}
-                      className="flex h-14 w-full items-center justify-between gap-3 whitespace-normal rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 text-left text-lg font-black leading-tight text-white shadow-lg transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98]"
-                    >
-                      <span className="flex min-w-0 items-center justify-start gap-2.5">
-                        <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
-                        <span className="whitespace-pre-line">{t("landing.offerHelp")}</span>
-                      </span>
-                      <ChevronRight className="h-6 w-6 shrink-0 rtl:rotate-180" strokeWidth={2.5} aria-hidden />
-                    </Button>
-                  </div>
-                }
-              />
-            </div>
-          </div>
-
-          {/* Desktop — side portraits with centered copy */}
-          <div className="relative hidden min-h-svh bg-white dark:bg-background md:block">
-            <div
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-none"
-              aria-hidden
-            >
-              <img
-                src="/ChatGPT Image Aug 23, 2026 at 11_08_39 AM.png"
-                alt=""
-                className="h-full w-full object-cover object-center"
-              />
-              <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/40 to-transparent" />
-            </div>
-
-            <div className="relative z-10 flex min-h-svh flex-col items-center justify-center px-8 pt-24 pb-56 text-center">
-              <div className="relative w-full max-w-3xl animate-in fade-in duration-1000">
-                <div
-                  className="pointer-events-none absolute -inset-x-16 -inset-y-12 rounded-full bg-black/20 blur-3xl"
-                  aria-hidden
-                />
-                <div className="relative">
-                <h1 className="text-6xl font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)] lg:text-7xl">
-                  {t("landing.heroTitleBefore")}
-                  <span className="inline-block rounded-2xl border-0 bg-white/40 px-3.5 py-1 text-orange-500 shadow-none outline-none ring-0 backdrop-blur-md">
-                    {t("landing.heroTitleHighlight")}
-                  </span>
-                  <span className="block">{t("landing.heroTitleAfter")}</span>
-                </h1>
-                <p className="mx-auto mt-6 max-w-2xl text-xl font-semibold text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.5)] lg:text-2xl">
-                  {t("landing.heroDescription")}
-                </p>
-
-                <div
-                  ref={buttonsRef}
-                  className="relative z-20 mt-9 flex flex-wrap items-center justify-center gap-5"
-                >
-                  <Button
-                    onClick={handleSearchingForJob}
-                    className="group/btn flex h-16 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 px-8 text-lg font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-600 hover:to-green-700 active:scale-[0.98] lg:h-[4.5rem] lg:px-9 lg:text-xl"
-                  >
-                    <HelpingHand className="h-10 w-10 shrink-0 lg:h-11 lg:w-11" strokeWidth={2.25} />
-                    {t("landing.offerHelp")}
-                  </Button>
-                  <Button
-                    onClick={handleHiringHelper}
-                    className="group/btn flex h-16 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-8 text-lg font-bold text-white shadow-lg shadow-orange-500/30 transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[4.5rem] lg:px-9 lg:text-xl"
-                  >
-                    <HeartHandshake className="h-10 w-10 shrink-0 lg:h-11 lg:w-11" strokeWidth={2.25} />
-                    {t("landing.needHelp")}
-                  </Button>
-                </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute inset-x-0 bottom-0 z-20 flex shadow-[0_-16px_40px_-20px_rgba(15,23,42,0.35)]">
-              <div className="flex min-w-0 flex-1 items-stretch overflow-hidden bg-white dark:bg-zinc-800">
-                <div className="relative w-44 shrink-0 self-stretch sm:w-52 lg:w-60">
-                  <img
-                    src="/ChatGPT Image Aug 31, 2026, 08_52_25 AM.png"
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                  />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-3.5 lg:px-6 lg:py-4">
-                  <div className="flex items-start justify-between gap-6">
-                    <p className="min-w-0 text-base font-bold leading-snug text-slate-900 dark:text-zinc-100 md:text-lg">
-                      {t("landing.postsTitle")}
-                    </p>
-                    <p className="flex shrink-0 flex-wrap items-center justify-end gap-x-5 text-base font-semibold text-slate-600 dark:text-zinc-300">
-                      <span className="inline-flex items-center gap-1.5">
-                        <BadgeCheck className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
-                        {t("landing.verifiedUsers")}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
-                        {t("landing.localHelpers")}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock className="h-5 w-5 text-orange-500" strokeWidth={2.2} aria-hidden />
-                        {t("landing.fastResponse")}
-                      </span>
-                    </p>
-                  </div>
-                  <p className="mt-1.5 text-sm font-medium leading-snug text-slate-500 dark:text-zinc-400">
-                    {t("landing.postsSubtitle")}
-                  </p>
-                  <Link
-                    to="/community/feed"
-                    className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-orange-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700"
-                  >
-                    {t("landing.postsCta")}
-                    <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
+      <main className="flex-1 overflow-hidden">
+        <section ref={heroRef} className="relative w-full">
+          <LandingCreamHero
+            onFindHelp={handleHiringHelper}
+            onOfferHelp={handleSearchingForJob}
+            ctaRef={(el) => {
+              buttonsRef.current = el;
+              mobileHeroButtonsRef.current = el;
+            }}
+          />
         </section>
 
         <section
-          className="relative w-full scroll-reveal opacity-0 translate-y-10 pt-16 pb-28 transition-all duration-1000 delay-200 md:pt-28 md:pb-36 lg:pt-36 lg:pb-44"
+          className="relative w-full scroll-reveal overflow-hidden px-0 py-20 opacity-0 translate-y-10 transition-all duration-1000 delay-200 md:py-28"
           aria-labelledby="how-it-works-heading"
         >
-          <svg
-            className="block h-14 w-full text-primary md:h-16"
-            viewBox="0 0 375 56"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <path
-              fill="currentColor"
-              d="M0 56V22C70 50 128-4 198 26C268 54 322 8 375 30V56Z"
-            />
-          </svg>
-          <div className="bg-primary px-5 pb-28 pt-8 sm:px-8 sm:pb-32 sm:pt-12 lg:px-12 lg:pb-36">
-            <div className="mx-auto max-w-3xl text-center">
+          <div className="pointer-events-none absolute left-[-12rem] top-12 h-96 w-96 rounded-full bg-orange-300/15 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute right-[-10rem] top-1/3 h-96 w-96 rounded-full bg-emerald-300/15 blur-3xl" aria-hidden />
+
+          <div className="relative mx-auto max-w-[90rem] px-5 sm:px-8 lg:px-12">
+            <div className="max-w-5xl">
+              <span className="text-xs font-black uppercase tracking-[0.34em] text-orange-600">
+                {t("landing.howItWorksEyebrow")}
+              </span>
               <h2
                 id="how-it-works-heading"
-                className="text-3xl font-black tracking-tight text-white md:text-5xl"
+                className="mt-4 text-5xl font-black leading-[0.94] tracking-[-0.055em] text-zinc-950 md:text-7xl"
               >
                 {t("landing.howItWorksTitle")}
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-base font-medium text-white/90 md:text-lg">
+              <p className="mt-4 max-w-2xl text-lg font-medium leading-relaxed text-zinc-600 md:text-xl">
                 {t("landing.howItWorksSubtitle")}
               </p>
             </div>
-          </div>
 
-          <div className="relative z-10 mx-auto -mt-20 max-w-7xl px-4 sm:-mt-24 sm:px-6 lg:-mt-28 lg:px-8">
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-5">
+            <div className="relative mt-14 grid gap-14 md:grid-cols-3 md:gap-8 lg:mt-10 lg:gap-16">
+              <svg
+                className="pointer-events-none absolute left-[17%] right-[17%] top-[42%] hidden h-24 w-[66%] md:block"
+                viewBox="0 0 1000 100"
+                fill="none"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                <path d="M0 52 C150 98 350 3 500 52 C650 98 850 3 1000 52" stroke="#FB923C" strokeOpacity=".45" strokeWidth="2" strokeDasharray="8 10" />
+                <circle cx="500" cy="52" r="7" fill="#F97316" />
+              </svg>
               {HOW_IT_WORKS_STEPS.map((step) => (
                 <article
                   key={step.step}
-                  className="relative flex h-full flex-col items-center rounded-2xl bg-white px-5 pb-7 pt-12 text-center shadow-[0_16px_40px_-12px_rgba(15,23,42,0.16)] dark:bg-zinc-800 dark:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)]"
+                  className="group relative z-10 flex flex-col items-center transition duration-500 hover:-translate-y-2"
                 >
-                  <span className="absolute -top-6 left-1/2 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border-2 border-primary bg-white text-xl font-black text-primary dark:bg-zinc-800">
-                    {step.step}
-                  </span>
-                  <img
-                    src={isDarkTheme ? step.imageDark : step.image}
-                    alt={t(`landing.steps.${step.step}.imageAlt`)}
-                    className="mb-4 h-40 w-40 object-contain"
-                  />
-                  <h3 className="mb-2 text-2xl font-bold leading-tight text-slate-900 dark:text-zinc-100">
-                    {t(`landing.steps.${step.step}.title`)}
-                  </h3>
-                  <p className="text-lg font-medium leading-relaxed text-slate-500 dark:text-zinc-400">
-                    {t(`landing.steps.${step.step}.desc`)}
-                  </p>
+                  <div
+                    className={cn(
+                      "relative flex w-full max-w-[22rem] justify-center rounded-full px-8 py-2",
+                      step.tone === "mint"
+                        ? "bg-[radial-gradient(circle,rgba(110,231,183,0.32),rgba(167,243,208,0.12)_55%,transparent_72%)]"
+                        : "bg-[radial-gradient(circle,rgba(253,186,116,0.34),rgba(254,215,170,0.12)_55%,transparent_72%)]",
+                    )}
+                  >
+                    <div className="relative h-[27rem] w-[13rem] rounded-[3rem] border-[3px] border-zinc-500 bg-gradient-to-r from-zinc-950 via-zinc-700 to-black p-[7px] shadow-[0_30px_35px_-18px_rgba(24,24,27,0.55),inset_0_0_0_1px_rgba(255,255,255,0.3)] transition-transform duration-700 group-hover:scale-[1.02] lg:h-[31rem] lg:w-[15rem]">
+                      <span className="absolute -left-[6px] top-24 h-12 w-[4px] rounded-l bg-zinc-700 shadow-sm" aria-hidden />
+                      <span className="absolute -left-[6px] top-40 h-16 w-[4px] rounded-l bg-zinc-700 shadow-sm" aria-hidden />
+                      <span className="absolute -right-[6px] top-32 h-20 w-[4px] rounded-r bg-zinc-700 shadow-sm" aria-hidden />
+                      <div className="h-full overflow-hidden rounded-[2.45rem] bg-white">
+                        <img
+                          src={step.image}
+                          alt={t(`landing.steps.${step.step}.imageAlt`)}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      {step.step === 2 && (
+                        <div className="absolute left-3 right-3 top-10 z-20 rounded-[1.15rem] border border-white/70 bg-white/95 p-2.5 shadow-[0_12px_30px_rgba(24,24,27,0.28)] backdrop-blur-xl">
+                          <div className="flex items-start gap-2.5">
+                            <div className="relative h-10 w-10 shrink-0">
+                              <img
+                                src="/images/how-it-works/helper-notification-avatar-2.webp"
+                                alt=""
+                                className="h-full w-full rounded-full object-cover ring-1 ring-black/10"
+                              />
+                              <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-white shadow-sm">
+                                <img
+                                  src="/Tebnu mobile logo.png"
+                                  alt=""
+                                  className="h-3 w-3 object-contain"
+                                />
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="truncate text-[11px] font-black leading-tight text-zinc-950">
+                                  {t("landing.helperResponseNotification.title")}
+                                </p>
+                                <span className="text-[8px] font-semibold text-zinc-400">
+                                  {t("landing.helperResponseNotification.time")}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 line-clamp-2 text-[9px] font-medium leading-tight text-zinc-600">
+                                {t("landing.helperResponseNotification.body")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex w-full max-w-[22rem] items-center justify-center gap-4">
+                    <span
+                      className={cn(
+                        "flex h-11 min-w-11 items-center justify-center rounded-full text-sm font-black",
+                        step.tone === "mint"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-orange-100 text-orange-700",
+                      )}
+                    >
+                      {String(step.step).padStart(2, "0")}
+                    </span>
+                    <h3 className="text-xl font-black leading-tight tracking-[-0.035em] text-zinc-950 lg:text-2xl">
+                      {t(`landing.steps.${step.step}.title`)}
+                    </h3>
+                  </div>
                 </article>
               ))}
             </div>
           </div>
         </section>
 
+        <section className="px-5 py-20 sm:px-8 md:py-28 lg:px-12">
+          <div className="relative mx-auto grid max-w-[82rem] overflow-hidden rounded-[2.75rem] bg-[#113D36] text-white shadow-[0_35px_90px_-60px_rgba(6,78,59,0.8)] md:grid-cols-[1.05fr_0.95fr]">
+            <div className="relative z-10 flex flex-col justify-center px-7 py-12 sm:px-10 md:px-14 md:py-16 lg:px-16">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
+                {t("landing.helperJourney.eyebrow")}
+              </p>
+              <h2 className="mt-5 max-w-2xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-5xl lg:text-6xl">
+                {t("landing.helperJourney.title")}
+              </h2>
+              <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-emerald-50/80">
+                {t("landing.helperJourney.description")}
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {(["categories", "notifications", "respond"] as const).map((item, index) => (
+                  <div key={item} className="flex items-start gap-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-300 text-xs font-black text-emerald-950">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-black text-white">{t(`landing.helperJourney.steps.${item}.title`)}</p>
+                      <p className="mt-1 text-sm font-medium leading-relaxed text-emerald-50/65">
+                        {t(`landing.helperJourney.steps.${item}.description`)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSearchingForJob}
+                className="mt-9 inline-flex h-[3.25rem] w-fit items-center gap-2 rounded-full bg-emerald-300 px-7 text-base font-black text-emerald-950 shadow-[0_14px_30px_-16px_rgba(110,231,183,0.7)] transition hover:-translate-y-0.5 hover:bg-emerald-200"
+              >
+                {t("landing.helperJourney.cta")}
+                <ArrowUpRight className="h-5 w-5 rtl:-scale-x-100" />
+              </button>
+            </div>
+
+            <div className="relative flex min-h-[38rem] items-end justify-center overflow-hidden bg-[radial-gradient(circle_at_55%_45%,rgba(110,231,183,0.22),transparent_55%)] px-8 pt-14">
+              <div className="absolute right-[-5rem] top-[-5rem] h-72 w-72 rounded-full border border-emerald-300/20" aria-hidden />
+              <div className="absolute right-[-1rem] top-[-1rem] h-52 w-52 rounded-full border border-emerald-300/15" aria-hidden />
+              <div className="relative h-[34rem] w-[16.4rem] translate-y-8 rounded-[3.15rem] border-[3px] border-zinc-500 bg-gradient-to-r from-zinc-950 via-zinc-700 to-black p-[7px] shadow-[0_35px_50px_-20px_rgba(0,0,0,0.65)]">
+                <span className="absolute -left-[6px] top-28 h-14 w-[4px] rounded-l bg-zinc-700" aria-hidden />
+                <span className="absolute -right-[6px] top-36 h-20 w-[4px] rounded-r bg-zinc-700" aria-hidden />
+                <div className="h-full overflow-hidden rounded-[2.55rem] bg-white">
+                  <img
+                    src="/images/how-it-works/screen-offer-help.webp"
+                    alt={t("landing.helperJourney.imageAlt")}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+
+              <div className="absolute left-4 top-24 w-[min(21rem,88%)] rounded-[1.35rem] border border-white/70 bg-white/95 p-3.5 text-zinc-950 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:left-8">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-11 w-11 shrink-0">
+                    <img src="/images/how-it-works/helper-notification-avatar.webp" alt="" className="h-full w-full rounded-full object-cover" />
+                    <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm">
+                      <img src="/Tebnu mobile logo.png" alt="" className="h-5 w-5 object-contain" />
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black">{t("landing.helperJourney.notificationTitle")}</p>
+                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600">{t("landing.helperJourney.notificationBody")}</p>
+                  </div>
+                  <span className="ml-auto self-start text-[9px] font-semibold text-zinc-400">{t("landing.helperResponseNotification.time")}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <SupportingConnectionsSection />
+
         {/* Interactive Job Category Showcase — centered 3-up carousel */}
-        <section className="w-full scroll-reveal pt-32 pb-24 opacity-0 transition-all delay-300 duration-1000 translate-y-10 md:pt-40">
+        {false && (
+        <section className="w-full scroll-reveal py-20 opacity-0 transition-all delay-300 duration-1000 translate-y-10 md:py-28">
           <div className="mb-10 space-y-4 px-5 text-center sm:px-8 lg:px-12 xl:px-16">
-            <h2 className="text-4xl font-black leading-tight tracking-tight text-slate-900 dark:text-zinc-50 md:text-6xl">
+            <h2 className="text-4xl font-black leading-tight tracking-[-0.035em] text-zinc-950 md:text-6xl">
               {t("landing.experienceTitleBefore")}
               <span className="text-primary italic">{t("landing.experienceTitleBrand")}</span>
               {t("landing.experienceTitleAfter")}
@@ -897,7 +1007,7 @@ export default function LandingPage() {
                                 }
                           }
                           className={cn(
-                            "group relative overflow-hidden rounded-[1.75rem] bg-slate-100 text-left shadow-[0_24px_48px_-16px_rgba(0,0,0,0.28)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                            "group relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-slate-100 text-left shadow-[0_22px_55px_-30px_rgba(24,24,27,0.42)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                             isCenter
                               ? "z-20 w-[min(72vw,28rem)] sm:w-[30rem] md:w-[32rem] lg:w-[34rem]"
                               : "z-10 w-[min(28vw,15rem)] cursor-pointer sm:w-[16.5rem] md:w-[18rem] lg:w-[20rem]",
@@ -1011,8 +1121,8 @@ export default function LandingPage() {
             </div>
 
             {/* Details Revealed Below Active Card */}
-            <div className="mt-8 w-full animate-in fade-in slide-in-from-top-4 duration-700 px-5 sm:px-8 lg:px-12 xl:px-16">
-              <div className="max-h-[700px] w-full space-y-12 overflow-y-auto py-8 scrollbar-hide">
+            <div className="mt-10 w-full animate-in fade-in slide-in-from-top-4 duration-700 px-5 sm:px-8 lg:px-12 xl:px-16">
+              <div className="mx-auto max-h-[700px] max-w-6xl space-y-12 overflow-y-auto rounded-[1.5rem] border border-black/[0.06] bg-white/70 px-6 py-8 shadow-[0_20px_60px_-44px_rgba(24,24,27,0.3)] backdrop-blur-sm scrollbar-hide md:px-9">
                 <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
                   <div className="space-y-4">
                     <div className="hidden h-1 w-12 rounded-full bg-primary sm:block" />
@@ -1048,9 +1158,10 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Benefits Section */}
-        <div className="scroll-reveal pb-16 opacity-0 translate-y-10 transition-all duration-1000 md:pb-24">
+        <div className="scroll-reveal py-20 opacity-0 translate-y-10 transition-all duration-1000 md:py-28">
           <Benefits />
         </div>
 
@@ -1295,11 +1406,16 @@ export default function LandingPage() {
         )}
 
         {/* About our helpers — full-width horizontal scroll on large screens */}
-        <div className="w-full pt-32 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 md:pt-40">
-          <div className="mb-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
-            <h2 className="text-2xl font-bold text-black dark:text-zinc-50 md:text-3xl">
+        <div className="w-full py-20 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 md:py-28">
+          <div className="mb-10 flex w-full items-end justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">
+                {t("landing.verifiedUsers")}
+              </span>
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-zinc-950 md:text-5xl">
               About our helpers
-            </h2>
+              </h2>
+            </div>
             <div className="hidden shrink-0 gap-2 md:flex">
               <Button
                 variant="outline"
@@ -1323,7 +1439,7 @@ export default function LandingPage() {
           <div
             ref={reviewsRef}
             data-nosnippet
-            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-12 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
+            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-5 pb-12 scrollbar-hide sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
           >
             {reviewsLoading ? (
               <div className="flex min-h-[240px] w-full items-center justify-center text-muted-foreground">
@@ -1344,7 +1460,7 @@ export default function LandingPage() {
                 return (
                   <article
                     key={review.id}
-                    className="group relative mt-10 w-[min(88vw,320px)] shrink-0 snap-start rounded-3xl bg-white p-8 pt-14 shadow-xl transition-all duration-500 hover:shadow-2xl dark:bg-zinc-800 dark:shadow-black/40 sm:w-[360px] md:w-[400px] lg:w-[420px] xl:w-[440px]"
+                    className="group relative mt-10 w-[min(88vw,320px)] shrink-0 snap-start rounded-[1.5rem] border border-black/[0.06] bg-white p-7 pt-14 shadow-[0_18px_50px_-34px_rgba(24,24,27,0.38)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-34px_rgba(24,24,27,0.38)] sm:w-[360px] md:w-[400px] lg:w-[420px]"
                   >
                     <Link
                       to={`/profile/${helper.id}`}
@@ -1405,6 +1521,81 @@ export default function LandingPage() {
             )}
           </div>
         </div>
+
+        <section className="px-5 py-20 sm:px-8 md:py-28 lg:px-12">
+          <div className="mx-auto grid max-w-[82rem] gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-700">
+                {t("landing.faq.eyebrow")}
+              </p>
+              <h2 className="mt-4 text-4xl font-black leading-[0.98] tracking-[-0.045em] text-zinc-950 md:text-5xl">
+                {t("landing.faq.title")}
+              </h2>
+              <p className="mt-4 max-w-md text-base font-medium leading-relaxed text-zinc-600">
+                {t("landing.faq.subtitle")}
+              </p>
+            </div>
+            <div className="divide-y divide-zinc-200 border-y border-zinc-200">
+              {(["free", "charge", "commitment", "verification", "payments"] as const).map((item) => (
+                <details key={item} className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-left">
+                    <span className="text-lg font-black tracking-[-0.02em] text-zinc-950">
+                      {t(`landing.faq.items.${item}.question`)}
+                    </span>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-xl font-medium text-zinc-600 transition group-open:rotate-45 group-open:border-orange-300 group-open:text-orange-600">
+                      +
+                    </span>
+                  </summary>
+                  <p className="max-w-3xl pb-6 pr-12 text-base font-medium leading-relaxed text-zinc-600">
+                    {t(`landing.faq.items.${item}.answer`)}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-5 pb-20 pt-10 sm:px-8 md:pb-28 lg:px-12">
+          <div className="relative mx-auto grid max-w-[82rem] overflow-hidden rounded-[2.5rem] bg-[#F26822] shadow-[0_30px_80px_-45px_rgba(194,65,12,0.7)] md:min-h-[25rem] md:grid-cols-[1.05fr_0.95fr]">
+            <div className="relative z-10 flex flex-col justify-center px-7 py-12 text-white sm:px-10 md:px-14 md:py-16">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-100">
+                {t("landing.communityCta.eyebrow")}
+              </p>
+              <h2 className="mt-4 max-w-xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-5xl lg:text-6xl">
+                {t("landing.communityCta.title")}
+              </h2>
+              <p className="mt-5 max-w-lg text-lg font-medium leading-relaxed text-orange-50/90">
+                {t("landing.communityCta.description")}
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleHiringHelper}
+                  className="inline-flex h-[3.25rem] items-center gap-2 rounded-full bg-white px-7 text-base font-bold text-orange-600 shadow-[0_14px_30px_-18px_rgba(0,0,0,0.45)] transition hover:-translate-y-0.5 hover:bg-orange-50"
+                >
+                  {t("landing.communityCta.getHelp")}
+                  <ArrowUpRight className="h-5 w-5 rtl:-scale-x-100" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSearchingForJob}
+                  className="h-[3.25rem] rounded-full border border-white/55 px-7 text-base font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
+                >
+                  {t("landing.communityCta.helpOthers")}
+                </button>
+              </div>
+            </div>
+            <div className="relative min-h-[20rem] overflow-hidden md:min-h-full">
+              <img
+                src="/images/landing-delivery-helper.webp"
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover object-center"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#F26822]/35 via-transparent to-[#F26822]/10 md:bg-gradient-to-r md:from-[#F26822] md:via-[#F26822]/20 md:to-transparent" />
+            </div>
+          </div>
+        </section>
       </main>
 
       <Footer />
@@ -1418,28 +1609,23 @@ export default function LandingPage() {
             : "pointer-events-none translate-y-full opacity-0",
         )}
       >
-        <div className="flex overflow-hidden rounded-[1.35rem] bg-[linear-gradient(90deg,#10b981_0%,#22c55e_46%,#fb923c_54%,#ea580c_100%)] shadow-lg">
-          <Button
-            onClick={handleSearchingForJob}
-            className="flex min-h-16 min-w-0 flex-1 items-center justify-start gap-2.5 rounded-none bg-transparent px-4 text-left text-sm font-black leading-tight tracking-tight text-white shadow-none hover:bg-black/10"
-          >
-            <HelpingHand className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="min-w-0 whitespace-pre-line text-left">{t("landing.offerHelp")}</span>
-          </Button>
+        <div className="flex items-center gap-2 rounded-[1.35rem] border border-white/90 bg-white/90 p-1.5 shadow-[0_14px_40px_-14px_rgba(24,24,27,0.35)] ring-1 ring-zinc-950/5 backdrop-blur-xl">
           <Button
             onClick={handleHiringHelper}
-            className="flex min-h-16 min-w-0 flex-1 items-center justify-start gap-2.5 rounded-none bg-transparent px-4 text-left text-sm font-black leading-tight tracking-tight text-white shadow-none hover:bg-black/10"
+            className="h-12 min-w-0 flex-1 gap-2 rounded-full bg-[#F97316] px-5 text-sm font-semibold text-white shadow-[0_10px_22px_-12px_rgba(249,115,22,0.9)] hover:bg-orange-600"
           >
-            <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="min-w-0 whitespace-pre-line text-left">{t("landing.needHelp")}</span>
+            <span>{t("landing.creamHero.findHelp")}</span>
+            <ArrowUpRight className="h-4 w-4 shrink-0 rtl:-scale-x-100" strokeWidth={2.25} aria-hidden />
           </Button>
+          <button
+            type="button"
+            onClick={handleSearchingForJob}
+            className="min-w-0 flex-1 px-3 py-3 text-sm font-semibold text-zinc-900 underline decoration-zinc-900 decoration-[1.5px] underline-offset-[6px] transition hover:text-orange-600 hover:decoration-orange-600"
+          >
+            {t("landing.creamHero.offerHelp")}
+          </button>
         </div>
       </div>
-      <ContactUsButton
-        phoneNumber="972541234567"
-        message="Hi Tebnu! I have a question about your services."
-        className={cn(showFixedButtons && "md:hidden")}
-      />
     </div>
   );
 }

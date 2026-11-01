@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  MessageSquare,
   Sparkles,
   UtensilsCrossed,
   Truck,
@@ -26,6 +25,12 @@ import JobReviewModal from "@/components/JobReviewModal";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { queryKeys } from "@/hooks/data/keys";
@@ -57,6 +62,25 @@ type LiveHelpPayload = {
 };
 
 const HELPING_NOW_STATUSES = ["locked", "active"] as const;
+
+const CLIENT_CANCEL_REASONS = [
+  ["helper_no_show", "Helper didn't show up"],
+  ["helper_unresponsive", "Helper stopped responding"],
+  ["helper_not_good_enough", "Helper wasn't good enough"],
+  ["helper_unprofessional", "Helper was unprofessional"],
+  ["price_disagreement", "We couldn't agree on the price"],
+  ["schedule_changed", "My plans or schedule changed"],
+  ["other", "Other reason"],
+] as const;
+
+const HELPER_CANCEL_REASONS = [
+  ["client_unresponsive", "User stopped responding"],
+  ["job_not_as_described", "Job wasn't as described"],
+  ["price_disagreement", "We couldn't agree on the price"],
+  ["schedule_conflict", "I can't make the time"],
+  ["personal_emergency", "Personal emergency"],
+  ["other", "Other reason"],
+] as const;
 
 function formatJobTitle(job: { service_type?: string | null }) {
   if (job.service_type === "cleaning") return "Cleaning";
@@ -143,6 +167,9 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
   } | null>(null);
   const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
+  const [cancelJob, setCancelJob] = useState<JobRow | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelledJobId, setCancelledJobId] = useState<string | null>(null);
 
   const otherPartyLabel = mode === "hire" ? "Helper" : "Client";
   const emptyTitle =
@@ -262,10 +289,101 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
     [mode, profileMap, queryClient, qk],
   );
 
+  const cancelMatch = useCallback(
+    async (reason: string) => {
+      if (!cancelJob || cancelling) return;
+      setCancelling(true);
+      const jobId = cancelJob.id;
+      try {
+        const { error } = await supabase.rpc("cancel_job_match", {
+          p_job_id: jobId,
+          p_reason: reason,
+          p_note: null,
+        });
+        if (error) throw error;
+        setCancelJob(null);
+        setCancelledJobId(jobId);
+        await queryClient.invalidateQueries({ queryKey: qk });
+      } catch (error) {
+        console.error("[ExploreLiveHelpNow] cancel_job_match", error);
+      } finally {
+        setCancelling(false);
+      }
+    },
+    [cancelJob, cancelling, queryClient, qk],
+  );
+
   if (!userId) return null;
 
   return (
     <section className="space-y-4" aria-label="Live help now">
+      <Dialog
+        open={!!cancelJob}
+        onOpenChange={(open) => {
+          if (!open && !cancelling) setCancelJob(null);
+        }}
+      >
+        <DialogContent className="left-0 top-auto bottom-0 w-full max-w-none translate-x-0 translate-y-0 rounded-t-[28px] border-x-0 border-b-0 p-5 sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px]">
+          <DialogTitle className="text-center text-xl font-black">
+            Why are you cancelling?
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Choose the reason for cancelling this match.
+          </DialogDescription>
+          <div className="grid gap-2">
+            {(mode === "hire"
+              ? CLIENT_CANCEL_REASONS
+              : HELPER_CANCEL_REASONS
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                disabled={cancelling}
+                onClick={() => void cancelMatch(id)}
+                className="min-h-12 rounded-2xl bg-muted px-4 py-3 text-left text-sm font-bold transition-colors hover:bg-muted/80 disabled:opacity-60"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!cancelledJobId} onOpenChange={() => undefined}>
+        <DialogContent
+          className="max-w-sm rounded-[28px] text-center"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <DialogTitle className="text-2xl font-black">
+            Thanks for letting us know
+          </DialogTitle>
+          <DialogDescription className="leading-relaxed">
+            {mode === "hire"
+              ? "The match was cancelled and your request is live again. You can pick another helper from the list or wait for new helpers to accept."
+              : "The match was cancelled. Thanks for keeping the request owner informed."}
+          </DialogDescription>
+          {mode === "hire" ? (
+            <div className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+              Request is live again
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            className="h-12 rounded-2xl font-bold"
+            onClick={() => {
+              const jobId = cancelledJobId;
+              setCancelledJobId(null);
+              if (mode === "hire" && jobId) {
+                navigate(`/client/jobs/${encodeURIComponent(jobId)}/live`);
+              }
+            }}
+          >
+            {mode === "hire" ? "Back to listing" : "Done"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {reviewJob ? (
         <JobReviewModal
           open={!!reviewJob}
@@ -424,21 +542,11 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
                 <div className="mt-4 flex gap-3">
                   <Button
                     type="button"
-                    variant="outline"
-                    className="h-11 flex-1 rounded-[18px] border-border/70 text-[14px] font-bold text-foreground transition-all hover:bg-muted/50 active:scale-[0.98]"
-                    onClick={() => {
-                      // Send the user to the page they land on after being matched (which has chat):
-                      //  - hire (client viewing): /client/jobs/:id/live (ConfirmedListPage)
-                      //  - work (helper viewing): /freelancer/jobs/match?focus_job_id=:id (FreelancerJobsMatchPage)
-                      const target =
-                        mode === "hire"
-                          ? `/client/jobs/${encodeURIComponent(job.id)}/live`
-                          : `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`;
-                      navigate(target);
-                    }}
+                    variant="destructive"
+                    className="h-11 w-[120px] rounded-[18px] bg-red-500/15 text-[14px] font-bold text-red-600 shadow-none hover:bg-red-500/25 dark:text-red-300"
+                    onClick={() => setCancelJob(job)}
                   >
-                    <MessageSquare className="mr-2 h-4 w-4" aria-hidden />
-                    Message
+                    Cancel
                   </Button>
                   <Button
                     type="button"

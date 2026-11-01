@@ -929,6 +929,24 @@
     "heroTitleHighlight": "communauté",
     "heroTitleAfter": "Beaucoup d'entraide.",
     "heroDescription": "Trouvez de l’aide près de vous — ou proposez la vôtre.",
+    "creamHero": {
+      "title": "L'aide est plus proche que vous ne le pensez.",
+      "subtitle": "Demandez une fois. Les aidants à proximité répondent.",
+      "findHelp": "Trouver de l'aide",
+      "offerHelp": "Proposer de l'aide",
+      "appComingSoon": "Bientôt disponible",
+      "getTheApp": "Télécharger l’application",
+      "canHelp": "{{name}} peut aider",
+      "phoneCategory": "Baby-sitting et garde d’enfants",
+      "phoneLive": "Recherche près de chez vous...",
+      "phoneResponded": "{{count}} aidants ont répondu",
+      "phoneChoose": "Choisir un aidant",
+      "phoneMoreHelpers": "+{{count}} autres",
+      "phoneFromYou": "de vous",
+      "pushNow": "À l’instant",
+      "pushTitle": "Baby-sitting et garde d’enfants · Aujourd’hui",
+      "pushBody": "Nouvelle demande de Fabian à Tel-Aviv"
+    },
     "verifiedUsers": "Membres vérifiés",
     "localHelpers": "Aidants locaux",
     "fastResponse": "Réponse rapide",
@@ -973,33 +991,115 @@
     "postsTitle": "Demandes, offres, communauté et événements",
     "postsSubtitle": "Tous les types de publications dans un seul fil — répondez, envoyez un message ou publiez le vôtre.",
     "postsCta": "Ouvrir le fil",
-    "howItWorksTitle": "Comment ça marche",
-    "howItWorksSubtitle": "Des étapes simples pour trouver la bonne personne ou commencer à gagner dès aujourd'hui.",
+    "howItWorksEyebrow": "Comment fonctionne Tebnu",
+    "howItWorksTitle": "Demandez. Échangez. Soyez aidé.",
+    "howItWorksSubtitle": "Quelques clics suffisent pour trouver les bonnes personnes.",
+    "helperResponseNotification": {
+      "title": "Maya a répondu à votre demande",
+      "body": "Je suis disponible et ravie de vous aider pour le babysitting.",
+      "time": "maintenant"
+    },
+    "supporting": {
+      "eyebrow": "Plus avec Tebnu",
+      "title": "D’autres façons de créer des liens près de chez vous.",
+      "subtitle": "Choisissez comment découvrir, partager et rester en contact avec les personnes autour de vous.",
+      "browse": {
+        "title": "Parcourir les aidants",
+        "description": "Explorez les profils et affinez les résultats avec des filtres lorsque vous préférez choisir directement."
+      },
+      "community": {
+        "title": "Communauté et événements",
+        "description": "Partagez une actualité, publiez un événement ou découvrez ce que les personnes proches publient."
+      },
+      "messages": {
+        "title": "Messages",
+        "description": "Regroupez conversations, photos et arrangements dans des échanges simples et familiers."
+      }
+    },
+    "helperJourney": {
+      "eyebrow": "Pour les aidants",
+      "title": "Aidez près de chez vous. À votre façon.",
+      "description": "Choisissez les catégories d’aide qui vous correspondent. Tebnu vous présente les demandes pertinentes à proximité ; vous décidez quand et comment répondre.",
+      "steps": {
+        "categories": {
+          "title": "Choisissez vos catégories",
+          "description": "Définissez les types d’aide que vous souhaitez proposer et votre zone de service."
+        },
+        "notifications": {
+          "title": "Recevez les demandes adaptées",
+          "description": "Soyez averti lorsqu’une personne proche publie une demande correspondant à vos catégories."
+        },
+        "respond": {
+          "title": "Répondez directement",
+          "description": "Ouvrez la notification, consultez les détails et répondez uniquement lorsque cela vous convient."
+        }
+      },
+      "cta": "Commencer à aider près de chez vous",
+      "notificationTitle": "Nouvelle demande de ménage à proximité",
+      "notificationBody": "Demain · 10:00–13:00 · à 0,8 km",
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "imageAlt": "Écran aidant Tebnu affichant les demandes adaptées à proximité"
+    },
+    "communityCta": {
+      "eyebrow": "Votre quartier vous attend",
+      "title": "Rejoignez la communauté.",
+      "description": "Trouvez une aide de confiance à proximité, partagez vos compétences et simplifiez le quotidien ensemble.",
+      "getHelp": "Trouver de l’aide",
+      "helpOthers": "Aider les autres"
+    },
+    "faq": {
+      "eyebrow": "Bon à savoir",
+      "title": "Des réponses aux questions pratiques.",
+      "subtitle": "L’essentiel avant de publier une demande ou de proposer votre aide.",
+      "items": {
+        "free": {
+          "question": "Tebnu est-il gratuit ?",
+          "answer": "Oui. Vous pouvez créer un compte, parcourir les publications, publier des demandes ou des offres et envoyer des messages gratuitement."
+        },
+        "charge": {
+          "question": "Les aidants peuvent-ils facturer leur travail ?",
+          "answer": "Oui. Les aidants peuvent proposer une aide rémunérée ou bénévole. Le tarif doit être clairement indiqué et accepté par les deux personnes avant le début du travail."
+        },
+        "commitment": {
+          "question": "Publier une demande m’engage-t-il auprès d’un aidant ?",
+          "answer": "Non. La publication permet aux aidants proches de répondre. Vous choisissez qui contacter et si vous souhaitez continuer ; une réponse ne constitue ni une réservation ni un engagement."
+        },
+        "verification": {
+          "question": "Que signifie le badge de vérification ?",
+          "answer": "La vérification d’identité est facultative. Le badge indique que la personne a suivi le processus de vérification d’identité de Tebnu via Didit. Il ne valide pas ses compétences, ne constitue pas une vérification d’antécédents et ne garantit pas son travail."
+        },
+        "payments": {
+          "question": "Comment les paiements sont-ils organisés ?",
+          "answer": "Le client et l’aidant conviennent directement du prix et du mode de paiement. Tebnu ne traite, ne conserve et ne garantit actuellement aucun paiement."
+        }
+      }
+    },
     "steps": {
       "1": {
-        "title": "Publier une demande",
-        "desc": "Quelques tapotements suffisent pour trouver des aidants près de chez vous.",
-        "imageAlt": "Téléphone affichant un court formulaire de demande"
+        "title": "Dites-nous ce qu’il vous faut",
+        "desc": "Choisissez le type d’aide dont vous avez besoin en quelques secondes.",
+        "imageAlt": "Écran de sélection d’une catégorie d’aide dans Tebnu"
       },
       "2": {
-        "title": "Être mis en relation",
-        "desc": "Les aidants de votre quartier voient votre demande et y répondent.",
-        "imageAlt": "Recherche d'aidants à proximité"
+        "title": "Des aidants proches répondent",
+        "desc": "Recevez les réponses d’aidants disponibles près de chez vous.",
+        "imageAlt": "Réponses d’aidants proches dans l’application Tebnu"
       },
       "3": {
-        "title": "Choisir un aidant",
-        "desc": "Choisissez la personne qui vous convient le mieux d'après les profils.",
-        "imageAlt": "Choix d'un aidant parmi les profils"
+        "title": "Choisissez votre aidant",
+        "desc": "Consultez les profils et choisissez la bonne personne.",
+        "imageAlt": "Profil d’un aidant dans l’application Tebnu"
       },
       "4": {
-        "title": "Discuter et confirmer",
-        "desc": "Réglez les détails et le planning en discussion directe.",
-        "imageAlt": "Conversation pour confirmer les détails"
+        "title": "Découvrez votre prochain aidant",
+        "desc": "Consultez les profils, compétences, notes et activités.",
+        "imageAlt": "Profil d’un aidant avec compétences et avis"
       },
       "5": {
-        "title": "C'est parti !",
-        "desc": "Votre aidant arrive comme convenu. Détendez-vous.",
-        "imageAlt": "L'aidant arrive et la mission est confirmée"
+        "title": "Rejoignez la communauté",
+        "desc": "Découvrez les événements locaux et créez des liens.",
+        "imageAlt": "Fil communautaire et événements locaux Tebnu"
       }
     },
     "experienceTitleBefore": "Découvrez ",

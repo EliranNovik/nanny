@@ -8,7 +8,6 @@ import { queryKeys } from "@/hooks/data/keys";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { glassBadgeClass } from "@/lib/glassBadge";
 import { discoverMobileSheetBottomOffset } from "@/lib/discoverSheetDialog";
 import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 
@@ -89,15 +88,14 @@ export function GlobalFeedMobileTebnuMenu({
           setFavoritesOpen(true);
         }}
         className={cn(
-          glassBadgeClass,
-          "inline-flex items-center rounded-full px-3 py-1",
+          "inline-flex items-center px-1 py-1",
           "text-[20px] font-extrabold lowercase leading-none tracking-tight",
           "transition-opacity active:opacity-80",
           className,
         )}
         aria-label={t("feed.global.myFavorites")}
       >
-        <span className="text-white">tebnu</span>
+        <span className="text-black dark:text-white">tebnu</span>
         <span className="text-zinc-400">.feed</span>
       </button>
 

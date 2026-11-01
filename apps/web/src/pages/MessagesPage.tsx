@@ -66,6 +66,7 @@ import {
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 import { chatContactPreview } from "@/lib/chatSharePayloads";
 import { maskAdminProfile } from "@/lib/adminProfiles";
+import { useTabletViewport } from "@/hooks/useIsTabletViewport";
 
 function trimPreviewNoise(body: string | null | undefined): string {
   if (!body) return "";
@@ -108,6 +109,7 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isTablet } = useTabletViewport();
   const params = useParams<{ conversationId?: string }>();
   /** `/messages?conversation=` or `/messages/:conversationId` (both routes render this page) */
   const conversationId =
@@ -133,6 +135,24 @@ export default function MessagesPage() {
   const [favoriteUserIds, setFavoriteUserIds] = useState<Set<string>>(
     () => new Set(),
   );
+
+  // Native tablet messages always opens the newest available thread.
+  useEffect(() => {
+    if (
+      isTablet &&
+      !conversationId &&
+      conversations.length > 0 &&
+      !inboxQuery.isPending
+    ) {
+      setSearchParams({ conversation: conversations[0].id }, { replace: true });
+    }
+  }, [
+    conversationId,
+    conversations,
+    inboxQuery.isPending,
+    isTablet,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     if (!userSearchQuery.trim()) {
@@ -339,14 +359,14 @@ export default function MessagesPage() {
   // Keep mobile pane in sync with URL (useLayoutEffect avoids one frame with chat hidden).
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.innerWidth >= 768) return;
+    if (isTablet) return;
     if (conversationId) {
       setInboxTab("messages");
       setMobileView("chat");
     } else {
       setMobileView("contacts");
     }
-  }, [conversationId]);
+  }, [conversationId, isTablet]);
 
   useEffect(() => {
     if (!conversationId || !user) {
@@ -564,14 +584,20 @@ export default function MessagesPage() {
 
   const handleConversationClick = (convoId: string, otherUserId?: string) => {
     prefetchConversationThread(convoId, otherUserId);
-    setSearchParams({ conversation: convoId });
+    setSearchParams({ conversation: convoId }, { replace: isTablet });
     // On mobile, switch to chat view
-    if (window.innerWidth < 768) {
+    if (!isTablet) {
       setMobileView("chat");
     }
   };
 
   function handleBackToContacts() {
+    if (isTablet) {
+      navigate(
+        profile?.role === "freelancer" ? "/freelancer/home" : "/client/home",
+      );
+      return;
+    }
     setSearchParams({});
     setMobileView("contacts");
   }
@@ -617,7 +643,7 @@ export default function MessagesPage() {
         data-messages-page=""
         className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background"
       >
-        <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
+        <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-[340px] md:flex">
           <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
             <div className="flex w-full items-center gap-3">
               <div className="min-w-0 flex-1 space-y-1.5">
@@ -655,23 +681,28 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:gap-3 md:bg-orange-50/40 md:p-3 dark:md:bg-[#0c0a09]"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:bg-orange-50/40 dark:md:bg-[#0c0a09]"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
-          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)] md:w-80 md:rounded-3xl md:border md:border-orange-100/70 md:shadow-sm dark:md:border-orange-900/25 lg:w-96",
-          "md:flex",
-          mobileView === "contacts" ? "flex" : "hidden md:flex",
+          "relative h-full min-h-0 flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)]",
+          isTablet
+            ? "flex w-[340px] border-r border-black/10 dark:border-white/10"
+            : "w-full",
+          !isTablet && mobileView !== "contacts" ? "hidden" : "flex",
         )}
       >
         {/* Desktop: inbox section tabs in sidebar header. Mobile uses floating header + global bottom nav. */}
-        <div className="hidden md:contents">
+        <div className={isTablet ? "contents" : "hidden"}>
           <div
             className={cn(
-              "z-40 flex shrink-0 items-center gap-2.5 bg-transparent px-4 pb-3 sm:gap-3 md:pt-4",
+              "z-40 flex shrink-0 flex-col bg-white/82 px-5 pb-3 pt-3 backdrop-blur-xl backdrop-saturate-150 dark:bg-black/75",
             )}
           >
+            <h1 className="mb-3 text-[28px] font-extrabold leading-tight tracking-tight">
+              {t("messagesPage.messages")}
+            </h1>
             <div
               className={cn(
                 "flex w-auto gap-0.5 rounded-full p-1 md:min-w-0 md:flex-1 md:gap-0",
@@ -938,7 +969,9 @@ export default function MessagesPage() {
                       className={cn(
                         "messages-conversation-row border border-transparent",
                         isActive &&
-                          "border-orange-200/80 bg-orange-50/90 dark:border-orange-900/40 dark:bg-orange-950/25",
+                          (isTablet
+                            ? "border-transparent bg-black/[0.06] dark:bg-white/10"
+                            : "border-orange-200/80 bg-orange-50/90 dark:border-orange-900/40 dark:bg-orange-950/25"),
                         convo.unread_count > 0 && !isActive && "is-unread",
                       )}
                       onClick={() =>
@@ -963,7 +996,8 @@ export default function MessagesPage() {
                       <div className="relative shrink-0">
                         <Avatar
                           className={cn(
-                            "h-14 w-14 flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]",
+                            "flex-shrink-0",
+                            isTablet ? "h-[50px] w-[50px]" : "h-[62px] w-[62px]",
                             convo.other_user_profile?.is_admin &&
                               "bg-white ring-1 ring-slate-200",
                           )}
@@ -1199,8 +1233,8 @@ export default function MessagesPage() {
       {/* Chat Area - Right Side */}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-3xl md:border md:border-orange-100/70 md:bg-white md:shadow-sm dark:md:border-orange-900/25 dark:md:bg-zinc-950",
-          mobileView === "chat" ? "flex" : "hidden md:flex",
+          "min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950",
+          isTablet || mobileView === "chat" ? "flex" : "hidden",
         )}
       >
         {conversationId ? (
@@ -1246,9 +1280,12 @@ export default function MessagesPage() {
                         }
                       : null
                   }
-                  showBackButton
+                  showBackButton={!isTablet}
                   onBack={handleBackToContacts}
-                  className="fixed left-0 right-0 top-0 z-40 md:absolute md:inset-x-0 md:top-0"
+                  className={cn(
+                    "inset-x-0 top-0 z-40",
+                    isTablet ? "absolute" : "fixed",
+                  )}
                 />
 
                 <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -1259,8 +1296,7 @@ export default function MessagesPage() {
                       hideBackButton={true}
                       otherUserId={otherUserId}
                       chatPaneVisible={
-                        mobileView === "chat" ||
-                        typeof window !== "undefined" && window.innerWidth >= 768
+                        mobileView === "chat" || isTablet
                       }
                     />
                   </div>

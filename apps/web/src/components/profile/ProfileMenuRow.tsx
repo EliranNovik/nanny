@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
@@ -27,9 +27,15 @@ export function ProfileMenuRow({
         className,
       )}
     >
-      <Link
+      <NavLink
         to={to}
-        className="flex min-w-0 flex-1 items-stretch gap-3.5 px-4 md:gap-5 md:px-5"
+        className={({ isActive }) =>
+          cn(
+            "flex min-w-0 flex-1 items-stretch gap-3.5 px-4 md:gap-5 md:px-5",
+            isActive &&
+              "bg-orange-500/[0.12] text-orange-700 dark:text-orange-300",
+          )
+        }
       >
         <span className="flex w-10 shrink-0 items-center self-center md:w-11">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 text-foreground/80 md:h-11 md:w-11">
@@ -50,7 +56,7 @@ export function ProfileMenuRow({
             <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground md:h-6 md:w-6" />
           ) : null}
         </span>
-      </Link>
+      </NavLink>
       {trailing ? (
         <div
           className="flex shrink-0 items-center self-center gap-2 pr-1 md:pr-2"
