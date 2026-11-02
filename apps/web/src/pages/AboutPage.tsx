@@ -1,7 +1,4 @@
-import {
-  guestSiteHeaderChromeProps,
-  LandingSiteHeader,
-} from "@/components/LandingSiteHeader";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { AboutUsContent } from "@/components/AboutUsContent";
 import { Footer } from "@/components/Footer";
 import { usePageSeo } from "@/lib/seo";
@@ -14,8 +11,15 @@ export default function AboutPage() {
     path: "/about",
   });
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+    <div className="min-h-screen bg-[#FAF6EF] dark:bg-background flex flex-col">
+      <LandingSiteHeader
+        hideLeftLogo
+        hideBackButton
+        hideBackButtonMobile
+        fullBleedTop
+        className="!bg-[#FAF6EF] dark:!bg-background"
+        hideContactAndLegal
+      />
       <main className="flex-1 px-4 pb-12 pt-8">
         <AboutUsContent />
       </main>

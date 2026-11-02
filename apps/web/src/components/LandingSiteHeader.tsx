@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,6 +59,8 @@ export type LandingSiteHeaderProps = {
   hideDesktopNavLinks?: boolean;
   /** Hide the in-header “Tebnu” wordmark. */
   hideBrand?: boolean;
+  /** Hide only the centered mobile wordmark while preserving it on desktop. */
+  hideBrandMobile?: boolean;
   /** Replaces the desktop center nav (e.g. category filters on the guest feed). */
   centerContent?: ReactNode;
   /** In document flow — scrolls with the page instead of fixed overlay. */
@@ -116,6 +118,7 @@ export function LandingSiteHeader({
   hideContactAndLegal = false,
   hideDesktopNavLinks = false,
   hideBrand = false,
+  hideBrandMobile = false,
   centerContent,
   scrollWithPage = false,
   fullWidth = false,
@@ -137,6 +140,7 @@ export function LandingSiteHeader({
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -186,7 +190,7 @@ export function LandingSiteHeader({
   const isMutedChrome = variant === "glassy" || isFeedChrome;
 
   const landingHeaderInkClass = heroOverlayLightSurface
-    ? "text-black"
+    ? "text-black dark:text-zinc-100"
     : "text-zinc-800 dark:text-zinc-100";
 
   const linkColorClass = heroOverlay
@@ -206,6 +210,10 @@ export function LandingSiteHeader({
     "rounded-full px-2.5 py-1 text-sm font-bold transition-all duration-200",
     linkColorClass,
   );
+  const activeTabClass =
+    "text-orange-600 underline decoration-orange-500 decoration-2 underline-offset-[8px] dark:text-orange-400 dark:decoration-orange-400";
+  const navTabClass = (path: string, baseClass = dynamicNavLinkClass) =>
+    cn(baseClass, pathname === path && activeTabClass);
 
   const overlayGlassIconClass = publicProfileHeaderGlassIconBtnClass;
 
@@ -216,7 +224,9 @@ export function LandingSiteHeader({
     ? heroOverlayLightSurface
       ? cn(
           "border-0 shadow-none ring-0",
-          heroOverPhoto ? "bg-transparent" : "bg-[#FAF6EF]/95 backdrop-blur-md",
+          heroOverPhoto
+            ? "bg-transparent"
+            : "bg-[#FAF6EF]/95 backdrop-blur-md dark:bg-background/95",
         )
       : cn(
           landingSolidBarClass,
@@ -296,7 +306,7 @@ export function LandingSiteHeader({
   };
 
   const postFeedLinkDesktop = !hidePostFeedLink ? (
-    <Link to={COMMUNITY_FEED_PATH} className={dynamicNavLinkClass}>
+    <Link to={COMMUNITY_FEED_PATH} className={navTabClass(COMMUNITY_FEED_PATH)}>
       {t("siteNav.postFeed")}
     </Link>
   ) : null;
@@ -508,7 +518,7 @@ export function LandingSiteHeader({
             ) : null}
           </div>
 
-          {!isLandingGlass && !hideBrand ? (
+          {!isLandingGlass && !hideBrand && !hideBrandMobile ? (
             onBrandClick ? (
               <button
                 type="button"
@@ -581,12 +591,12 @@ export function LandingSiteHeader({
                   </span>
                 </div>
                 <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white shrink-0">
-                  <Link to="/about" className={navLinkClass}>
+                  <Link to="/about" className={navTabClass("/about", navLinkClass)}>
                     {t("siteNav.aboutUs")}
                   </Link>
                   {hideContactAndLegal ? null : (
                     <>
-                      <Link to="/contact" className={navLinkClass}>
+                      <Link to="/contact" className={navTabClass("/contact", navLinkClass)}>
                         {t("siteNav.contact")}
                       </Link>
                       <Link to="/terms" className={navLinkClass}>
@@ -600,12 +610,12 @@ export function LandingSiteHeader({
             ) : hideDesktopNavLinks ? null : (
               <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden -translate-y-1/2 justify-center md:flex">
                 <div className={cn("pointer-events-auto flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
-                <Link to="/about" className={dynamicNavLinkClass}>
+                <Link to="/about" className={navTabClass("/about")}>
                   {t("siteNav.aboutUs")}
                 </Link>
                 {hideContactAndLegal ? null : (
                   <>
-                    <Link to="/contact" className={dynamicNavLinkClass}>
+                    <Link to="/contact" className={navTabClass("/contact")}>
                       {t("siteNav.contact")}
                     </Link>
                     <Link to="/terms" className={dynamicNavLinkClass}>
@@ -615,7 +625,7 @@ export function LandingSiteHeader({
                 )}
                 {postFeedLinkDesktop}
                 {!homeLinkRight ? (
-                  <Link to="/" className={dynamicNavLinkClass}>
+                  <Link to="/" className={navTabClass("/")}>
                     {t("siteNav.home")}
                   </Link>
                 ) : null}
@@ -698,7 +708,7 @@ export function LandingSiteHeader({
                       className={cn(
                         "h-9 rounded-full px-3 text-sm font-bold transition-colors md:h-10 md:px-4",
                         heroOverlayLightSurface
-                          ? "text-zinc-950 hover:bg-black/[0.05]"
+                          ? "text-zinc-950 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10"
                           : "text-zinc-800 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10",
                       )}
                     >
@@ -843,20 +853,24 @@ export function LandingSiteHeader({
               >
                 <Users className="w-6 h-6 text-primary" /> {t("siteNav.aboutUs")}
               </Link>
-              <Link
-                to="/contact"
-                className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <MessageCircle className="w-6 h-6 text-primary" /> {t("siteNav.contact")}
-              </Link>
-              <Link
-                to="/terms"
-                className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Scale className="w-6 h-6 text-primary" /> {t("siteNav.legalHub")}
-              </Link>
+              {hideContactAndLegal ? null : (
+                <>
+                  <Link
+                    to="/contact"
+                    className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <MessageCircle className="w-6 h-6 text-primary" /> {t("siteNav.contact")}
+                  </Link>
+                  <Link
+                    to="/terms"
+                    className="flex items-center gap-4 text-xl font-black text-slate-900 dark:text-zinc-100"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Scale className="w-6 h-6 text-primary" /> {t("siteNav.legalHub")}
+                  </Link>
+                </>
+              )}
               {postFeedLinkMobile}
               <Link
                 to="/"

@@ -1224,5 +1224,39 @@
       "high_rated": "High rated",
       "available": "Available"
     }
+  },
+  "about": {
+    "badge": "About Tebnu",
+    "heroTitle": "Find help fast.",
+    "heroAccent": "Meet people nearby.",
+    "heroDescription": "Tebnu is one app for getting help, offering what you can do and discovering the people around you. Post a need, find the right person and start a conversation without the usual searching.",
+    "heroSecondary": "It is also a local social space: community posts, useful offers and events that turn a quick request into a real connection.",
+    "heroImageAlt": "Tebnu app showing nearby offers",
+    "why": {
+      "title": "Why Tebnu exists",
+      "first": "Finding someone for a small, urgent or everyday need should not take hours. Tebnu brings requests, offers, profiles and chat into one fast experience designed around where you are.",
+      "openPrefix": "Open",
+      "findHelpers": "Find helpers",
+      "openSuffix": "to see real people nearby, what they offer and when they are available. You stay in control of who you contact and choose.",
+      "third": "Beyond the task, Tebnu helps local relationships grow through community posts and events. People can get to know one another, share what is happening and keep helping each other over time."
+    },
+    "everything": {
+      "title": "Everything in one app",
+      "subtitle": "A direct path from “I need help” to “we’re connected.”",
+      "built": "Built for real life"
+    },
+    "highlights": {
+      "post": { "title": "Post what you need", "description": "Create a clear request in moments. Add the place, timing and details once, then let nearby people respond." },
+      "find": { "title": "Find help nearby", "description": "Browse real profiles, useful categories and local availability without searching across endless websites and groups." },
+      "connect": { "title": "Connect quickly", "description": "Compare responses, open a profile and chat directly. Everything needed to make a decision stays in one simple flow." },
+      "community": { "title": "Become part of the community", "description": "Share offers, discover local events and meet people who help one another—not only once, but whenever the community needs it." }
+    },
+    "trust": {
+      "title": "Trust that grows through real interaction",
+      "description": "Clear profiles, verification signals, direct messaging and reviews help people make informed choices. Tebnu creates the place to connect; you decide who feels right for you.",
+      "nearby": "Nearby people",
+      "chat": "Fast direct chat",
+      "community": "Community that lasts"
+    }
   }
 }

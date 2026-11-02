@@ -1214,5 +1214,39 @@
       "high_rated": "Mieux notés",
       "available": "Disponibles"
     }
+  },
+  "about": {
+    "badge": "À propos de Tebnu",
+    "heroTitle": "Trouvez de l’aide rapidement.",
+    "heroAccent": "Rencontrez des personnes proches.",
+    "heroDescription": "Tebnu est l’application unique pour recevoir de l’aide, proposer vos compétences et découvrir les personnes autour de vous. Publiez un besoin, trouvez la bonne personne et commencez à échanger sans recherches interminables.",
+    "heroSecondary": "C’est aussi un espace social local : publications communautaires, offres utiles et événements transforment une demande ponctuelle en véritable rencontre.",
+    "heroImageAlt": "L’application Tebnu présentant des offres à proximité",
+    "why": {
+      "title": "Pourquoi Tebnu existe",
+      "first": "Trouver quelqu’un pour un besoin ponctuel, urgent ou quotidien ne devrait pas prendre des heures. Tebnu réunit demandes, offres, profils et messagerie dans une expérience rapide conçue autour de votre localisation.",
+      "openPrefix": "Ouvrez",
+      "findHelpers": "Trouver de l’aide",
+      "openSuffix": "pour voir de vraies personnes à proximité, ce qu’elles proposent et leurs disponibilités. Vous gardez le contrôle sur les personnes que vous contactez et choisissez.",
+      "third": "Au-delà de la tâche, Tebnu aide les relations locales à grandir grâce aux publications communautaires et aux événements. Chacun peut faire connaissance, partager ce qui se passe et continuer à s’entraider."
+    },
+    "everything": {
+      "title": "Tout dans une seule application",
+      "subtitle": "Un chemin direct de « j’ai besoin d’aide » à « nous sommes en contact ».",
+      "built": "Pensée pour la vraie vie"
+    },
+    "highlights": {
+      "post": { "title": "Publiez ce dont vous avez besoin", "description": "Créez une demande claire en quelques instants. Ajoutez le lieu, l’horaire et les détails une seule fois, puis laissez les personnes proches répondre." },
+      "find": { "title": "Trouvez de l’aide à proximité", "description": "Parcourez de vrais profils, des catégories utiles et les disponibilités locales sans chercher sur une multitude de sites et de groupes." },
+      "connect": { "title": "Échangez rapidement", "description": "Comparez les réponses, ouvrez un profil et discutez directement. Tout ce qu’il faut pour décider reste dans un parcours simple." },
+      "community": { "title": "Rejoignez la communauté", "description": "Partagez des offres, découvrez des événements locaux et rencontrez des personnes qui s’entraident chaque fois que la communauté en a besoin." }
+    },
+    "trust": {
+      "title": "Une confiance qui grandit grâce à de vrais échanges",
+      "description": "Des profils clairs, des signes de vérification, la messagerie directe et les avis aident chacun à faire un choix éclairé. Tebnu crée le lieu de rencontre ; vous décidez qui vous convient.",
+      "nearby": "Personnes à proximité",
+      "chat": "Messagerie directe rapide",
+      "community": "Une communauté durable"
+    }
   }
 }

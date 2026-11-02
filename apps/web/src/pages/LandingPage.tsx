@@ -196,8 +196,9 @@ function SupportingConnectionsSection() {
   return (
     <section className="scroll-reveal px-5 py-20 opacity-0 translate-y-10 transition-all duration-1000 sm:px-8 md:py-28 lg:px-12">
       <div className="relative mx-auto max-w-[82rem] px-0 py-6 sm:px-2 lg:py-10">
-        <div className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-orange-200/30 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute bottom-[-12rem] right-[18%] h-96 w-96 rounded-full bg-emerald-200/25 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-orange-300/42 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute bottom-[-12rem] right-[18%] h-96 w-96 rounded-full bg-emerald-300/38 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute right-[8%] top-[28%] h-[30rem] w-[30rem] rounded-full bg-violet-500/28 blur-2xl" aria-hidden />
 
         <div className="relative max-w-4xl">
           <div className="flex items-center gap-3">
@@ -517,6 +518,7 @@ export default function LandingPage() {
   }, []);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  // Dark mode is intentionally disabled on the landing page for now.
   useForceLightTheme();
   const buttonsRef = useRef<HTMLDivElement | null>(null);
   const mobileHeroButtonsRef = useRef<HTMLDivElement | null>(null);
@@ -695,7 +697,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-[#FAF6EF] text-slate-900 dark:bg-background dark:text-foreground max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]">
+    <div className="landing-page flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-[#FAF6EF] text-slate-900 dark:bg-[#09090b] dark:text-zinc-100 max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]">
       <LandingSiteHeader
         hideLeftLogo
         hideBackButton
@@ -703,6 +705,7 @@ export default function LandingPage() {
         heroOverlay
         heroOverlayScrolled={heroScrolledPast}
         heroOverlayLightSurface
+        hideBrandMobile
         hideThemeToggle
         hideContactAndLegal
         onBrandClick={() => setAboutOpen(true)}
@@ -754,8 +757,9 @@ export default function LandingPage() {
           className="relative w-full scroll-reveal overflow-hidden px-0 py-20 opacity-0 translate-y-10 transition-all duration-1000 delay-200 md:py-28"
           aria-labelledby="how-it-works-heading"
         >
-          <div className="pointer-events-none absolute left-[-12rem] top-12 h-96 w-96 rounded-full bg-orange-300/15 blur-3xl" aria-hidden />
-          <div className="pointer-events-none absolute right-[-10rem] top-1/3 h-96 w-96 rounded-full bg-emerald-300/15 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute left-[-12rem] top-12 h-96 w-96 rounded-full bg-orange-400/[0.34] blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute right-[-10rem] top-1/3 h-96 w-96 rounded-full bg-emerald-400/[0.32] blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute left-1/2 top-[58%] h-[28rem] w-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.18] blur-3xl" aria-hidden />
 
           <div className="relative mx-auto max-w-[90rem] px-5 sm:px-8 lg:px-12">
             <div className="max-w-5xl">

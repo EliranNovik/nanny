@@ -1975,3 +1975,42 @@ html.dark .bg-gradient-mesh {
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Landing page dark palette for legacy light-only presentation utilities. */
+.dark .landing-page .text-zinc-950:not([class*="dark:text-"]),
+.dark .landing-page .text-slate-900:not([class*="dark:text-"]) {
+  color: rgb(250 250 250);
+}
+
+.dark .landing-page .text-zinc-900:not([class*="dark:text-"]),
+.dark .landing-page .text-slate-800:not([class*="dark:text-"]) {
+  color: rgb(228 228 231);
+}
+
+.dark .landing-page .text-zinc-700:not([class*="dark:text-"]),
+.dark .landing-page .text-zinc-600:not([class*="dark:text-"]),
+.dark .landing-page .text-slate-700:not([class*="dark:text-"]),
+.dark .landing-page .text-slate-600:not([class*="dark:text-"]) {
+  color: rgb(212 212 216);
+}
+
+.dark .landing-page [class*="bg-white/70"]:not([class*="dark:bg-"]),
+.dark .landing-page [class*="bg-white/80"]:not([class*="dark:bg-"]),
+.dark .landing-page [class*="bg-white/90"]:not([class*="dark:bg-"]),
+.dark .landing-page [class*="bg-white/95"]:not([class*="dark:bg-"]) {
+  background-color: rgb(24 24 27 / 0.9);
+}
+
+.dark .landing-page .bg-white:not([class*="dark:bg-"]) {
+  background-color: rgb(24 24 27);
+}
+
+.dark .landing-page .border-zinc-200\/80:not([class*="dark:border-"]),
+.dark .landing-page .border-gray-200:not([class*="dark:border-"]),
+.dark .landing-page .border-white\/90:not([class*="dark:border-"]) {
+  border-color: rgb(63 63 70);
+}
+
+.dark .landing-page .ring-zinc-950\/5 {
+  --tw-ring-color: rgb(255 255 255 / 0.08);
+}

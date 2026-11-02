@@ -4,7 +4,7 @@ import { ArrowUpRight, ChevronLeft, MoreHorizontal, Radar } from "lucide-react";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { cn } from "@/lib/utils";
 
-export const LANDING_CREAM_BG = "bg-[#FAF6EF]";
+export const LANDING_CREAM_BG = "bg-[#FAF6EF] dark:bg-[#09090b]";
 
 const HELPERS = [
   { name: "Maya", photo: "/images/helper_profile_1.png" },
@@ -323,9 +323,9 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
         </div>
       </div>
 
-      <div className="relative z-10 flex min-h-[100svh] flex-col justify-start px-5 pb-0 pt-24 sm:px-10 md:justify-center md:px-[4.7vw] md:pb-[6vh] md:pt-[12vh]">
+      <div className="relative z-10 flex min-h-[100svh] flex-col justify-start px-5 pb-0 pt-20 sm:px-10 md:justify-center md:px-[4.7vw] md:pb-[6vh] md:pt-[12vh]">
         <div className="min-w-0 w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 md:max-w-[50vw]">
-          <h1 className="w-[calc(100vw-2.5rem)] max-w-full whitespace-normal break-words text-[2.25rem] font-black leading-[1.02] tracking-[-0.04em] text-zinc-950 min-[430px]:text-[2.7rem] sm:w-auto sm:text-7xl md:text-[clamp(3.5rem,7.4vw,8.75rem)] md:leading-[0.96]">
+          <h1 className="w-[calc(100vw-2.5rem)] max-w-full whitespace-normal break-words text-[2.6rem] font-black leading-[0.98] tracking-[-0.045em] text-zinc-950 min-[430px]:text-[3rem] sm:w-auto sm:text-7xl md:text-[clamp(3.5rem,7.4vw,8.75rem)] md:leading-[0.96]">
             {t("landing.creamHero.title")}
           </h1>
           <p className="mt-4 text-lg font-medium leading-snug text-zinc-600 sm:mt-6 sm:text-2xl md:mt-[2.2vw] md:text-[clamp(1.125rem,2.15vw,2rem)]">
@@ -354,15 +354,15 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <span className="mr-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">
+            <span className="mr-1 hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sm:inline">
               {t("landing.creamHero.appComingSoon")}
             </span>
             <button
               type="button"
               disabled
-              className="flex h-11 cursor-default items-center gap-2 rounded-xl bg-zinc-950 px-4 text-left text-white opacity-90 shadow-sm"
+              className="flex h-9 cursor-default items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white opacity-90 shadow-sm sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
             >
-              <img src="/app-store-apple.svg" alt="" className="h-7 w-7 shrink-0 object-contain" />
+              <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
               <span>
                 <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-300">{t("landing.creamHero.getTheApp")}</span>
                 <span className="block text-xs font-bold leading-tight">iOS</span>
@@ -371,14 +371,26 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
             <button
               type="button"
               disabled
-              className="flex h-11 cursor-default items-center gap-2 rounded-xl border border-zinc-300 bg-white/75 px-4 text-left text-zinc-950 opacity-90 shadow-sm backdrop-blur"
+              className="flex h-9 cursor-default items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 opacity-90 shadow-sm backdrop-blur sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
             >
-              <img src="/google-play-logo.svg" alt="" className="h-7 w-7 shrink-0 object-contain" />
+              <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
               <span>
                 <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-500">{t("landing.creamHero.getTheApp")}</span>
                 <span className="block text-xs font-bold leading-tight">Android</span>
               </span>
             </button>
+          </div>
+          <div className="mt-3 flex items-center md:hidden">
+            <img
+              src={BRAND_LOGO_SRC}
+              alt=""
+              className="h-11 w-auto"
+              loading="eager"
+              decoding="async"
+            />
+            <span className="-ml-1 text-xl font-black tracking-[-0.04em] text-zinc-950 dark:text-white">
+              tebnu
+            </span>
           </div>
         </div>
 

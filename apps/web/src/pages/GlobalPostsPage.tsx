@@ -41,14 +41,11 @@ import {
 import { globalFeedMobileFeedAreaClass } from "@/lib/globalFeedPostUi";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { queryKeys } from "@/hooks/data/keys";
-import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
 import {
   ALL_HELP_CATEGORY_ID,
   type DiscoverHomeCategoryId,
-  OTHER_HELP_SUBCATEGORIES,
 } from "@/lib/serviceCategories";
 import {
-  FAVORITES_SIDE_PANEL_RESERVE_CLASS,
   FAVORITES_SIDE_PANEL_WIDTH_CLASS,
   FavoritesPostsSidePanel,
 } from "@/components/discover/FavoritesPostsSidePanel";
@@ -65,10 +62,10 @@ type FeedMainContentProps = {
   } | null;
   focusPostId: string | null;
   focusRequestId: string | null;
-  openCompose: () => void;
+  onGuestFindHelp?: () => void;
+  onGuestOfferHelp?: () => void;
   expandDiscoverLayout?: boolean;
   postTypeFilter: CommunityFeedPostTypeFilter;
-  onPostTypeFilterChange: (filter: CommunityFeedPostTypeFilter) => void;
   /** When set (e.g. request + offer), overrides single post-type filter for the main feed. */
   feedPostTypeIds?: string[] | null;
   commentedFilterActive: boolean;
@@ -90,6 +87,7 @@ type FeedMainContentProps = {
   /** Guest global feed: grey main column + white cards on desktop light mode. */
   guestDesktopLightLayout?: boolean;
   guestSidebarOpen?: boolean;
+  guestSidebarSiteNavVisible?: boolean;
   insightsPanelOpen?: boolean;
   insightsPanelLocked?: boolean;
   tabletLayout?: boolean;
@@ -102,11 +100,13 @@ type FeedMainContentProps = {
 };
 
 function FeedMainContent({
+  user,
   focusPostId,
   focusRequestId,
+  onGuestFindHelp,
+  onGuestOfferHelp,
   expandDiscoverLayout = false,
   postTypeFilter,
-  onPostTypeFilterChange,
   feedPostTypeIds = null,
   commentedFilterActive,
   acceptedFilterActive,
@@ -120,6 +120,7 @@ function FeedMainContent({
   onSidePanelPostOpen,
   guestDesktopLightLayout = false,
   guestSidebarOpen = false,
+  guestSidebarSiteNavVisible = true,
   insightsPanelOpen = true,
   insightsPanelLocked = false,
   tabletLayout = false,
@@ -142,8 +143,9 @@ function FeedMainContent({
       {guestDesktopLightLayout ? (
         <GuestCommunityFeedAside
           expanded={guestSidebarOpen}
-          postTypeFilter={postTypeFilter}
-          onPostTypeFilterChange={onPostTypeFilterChange}
+          showSiteNav={guestSidebarSiteNavVisible}
+          onFindHelp={onGuestFindHelp}
+          onOfferHelp={onGuestOfferHelp}
         />
       ) : null}
       <div
@@ -151,13 +153,18 @@ function FeedMainContent({
           guestDesktopLightLayout && "md:min-w-0 md:flex-1 md:pb-8 md:pt-6",
         )}
       >
-        <div className="mb-5 px-2 md:px-0">
+        <div
+          className={cn(
+            "mb-5 px-2 md:px-0",
+            guestDesktopLightLayout &&
+              "md:sticky md:top-1 md:z-[70] md:me-auto md:max-w-[min(42rem,calc(100%-364px))] lg:max-w-[min(46rem,calc(100%-404px))] xl:max-w-[min(50rem,calc(100%-464px))] 2xl:max-w-[min(54rem,calc(100%-524px))]",
+          )}
+        >
           <div className={cn(
-            "flex h-14 items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 shadow-sm",
-            "dark:border-white/10 dark:bg-zinc-900",
-            insightsPanelOpen && FAVORITES_SIDE_PANEL_RESERVE_CLASS,
+            "flex h-14 items-center gap-3 rounded-full border border-zinc-200/80 bg-white px-5 shadow-sm",
+            "dark:border-transparent dark:bg-zinc-900 dark:shadow-none",
           )}>
-            <Search className="h-5 w-5 shrink-0 text-orange-500" />
+            <Search className="h-6 w-6 shrink-0 text-orange-500" />
             <input
               value={searchQuery}
               onChange={(event) => onSearchQueryChange?.(event.target.value)}
@@ -172,7 +179,7 @@ function FeedMainContent({
             <button
               type="button"
               onClick={onOpenSort}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm"
+              className="flex h-10 w-10 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
               aria-label="Sort posts"
             >
               <SlidersHorizontal className="h-5 w-5" />
@@ -182,7 +189,9 @@ function FeedMainContent({
 
         <div
           className={cn(
-            guestDesktopLightLayout ? "md:flex md:items-start" : tabletLayout && "flex items-start",
+            guestDesktopLightLayout
+              ? "md:flex md:items-start md:gap-6"
+              : tabletLayout && "flex items-start gap-6",
           )}
         >
         <div
@@ -233,12 +242,11 @@ function FeedMainContent({
               guestDesktopLightLayout
                 ? "hidden md:sticky md:flex"
                 : "sticky flex",
-              "min-h-0 flex-col shrink-0 self-start overflow-y-auto overflow-x-hidden",
+              "min-h-0 flex-col shrink-0 self-start overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
               FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-              !guestDesktopLightLayout && "w-[380px]",
-              "-mt-[5.5rem] top-16 max-h-[calc(100dvh-4rem)]",
+              "-mt-[6.25rem] top-16 max-h-[calc(100dvh-4rem)]",
               guestDesktopLightLayout
-                ? "md:bg-white md:px-3 md:pb-6 md:pt-1 lg:px-4 dark:md:bg-background"
+                ? "md:bg-white md:px-3 md:pb-6 md:pt-3 lg:px-4 dark:md:bg-background"
                 : "bg-white px-3 pb-24 pt-3 dark:bg-background",
             )}
           >
@@ -257,7 +265,7 @@ function FeedMainContent({
             <div className="min-h-0 w-full min-w-0 flex-1">
               <FavoritesPostsSidePanel
                 embedded
-                postTypeIds={null}
+                postTypeIds={user ? null : ["community", "event"]}
                 onPostOpen={onSidePanelPostOpen}
               />
             </div>
@@ -281,7 +289,6 @@ function FeedMainContent({
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
-  const { t } = useTranslation();
   useScrollToTopOnPathnameChange();
   useMobileScrollDirectionHeaderHide(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -301,8 +308,9 @@ export default function GlobalPostsPage() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeInitialPostTypeId, setComposeInitialPostTypeId] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [guestSidebarOpen, setGuestSidebarOpen] = useState(false);
+  const guestSidebarOpen = true;
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
+  const [guestHeaderCompact, setGuestHeaderCompact] = useState(false);
   const [sortDrawerOpen, setSortDrawerOpen] = useState(false);
   const [feedSortMode, setFeedSortMode] = useState<
     "newest" | "oldest" | "most_liked" | "most_commented" | "most_shared" | "near_me"
@@ -314,6 +322,14 @@ export default function GlobalPostsPage() {
   });
   const insightsPanelLocked = isTablet && isLandscape;
   const insightsPanelOpen = isTablet && (insightsPanelLocked || storedInsightsPanelOpen);
+
+  useEffect(() => {
+    if (user) return;
+    const updateHeaderMode = () => setGuestHeaderCompact(window.scrollY > 56);
+    updateHeaderMode();
+    window.addEventListener("scroll", updateHeaderMode, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeaderMode);
+  }, [user]);
   const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
     () => parseCommunityFeedTypeFilter(searchParams.get("type")) ?? "all",
   );
@@ -376,28 +392,6 @@ export default function GlobalPostsPage() {
     setCategoryFilter(parseCommunityFeedCategory(categoryParam) ?? ALL_HELP_CATEGORY_ID);
     if (!categoryParam) setOtherSubFilter(null);
   }, [categoryParam]);
-
-  const handlePostTypeFilterChange = useCallback(
-    (filter: CommunityFeedPostTypeFilter) => {
-      setPostTypeFilter(filter);
-      setAcceptedFilterActive(false);
-      const next = new URLSearchParams(searchParams);
-      next.delete("types");
-      if (filter === "all") {
-        next.delete("type");
-      } else {
-        next.set("type", filter);
-      }
-      if (filter !== "request_help" && filter !== "all") {
-        next.delete("request");
-      }
-      if (filter === "request_help") {
-        next.delete("post");
-      }
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams],
-  );
 
   const handleCategoryFilterChange = useCallback(
     (id: DiscoverHomeCategoryId) => {
@@ -512,51 +506,24 @@ export default function GlobalPostsPage() {
   return (
     <PageFrame
       variant="fullBleed"
-      className="bg-[#F2F2F7] dark:bg-black"
+      className={cn(
+        user ? "bg-[#F2F2F7]" : "bg-[#FAF6EF]",
+        "dark:bg-black",
+      )}
       frameName="community-feed"
       data-community-feed-page={user ? "" : undefined}
       data-community-feed-guest={!user ? "" : undefined}
     >
       {!user ? (
         <LandingSiteHeader
-          hidePostFeedLink
           hideLeftLogo
           hideBackButton
           hideBackButtonMobile
-          hideDesktopNavLinks
+          hideContactAndLegal
+          hideDesktopNavLinks={guestHeaderCompact}
           fullBleedTop
+          className="!bg-[#FAF6EF] dark:!bg-background"
           onBrandClick={() => setAboutOpen(true)}
-          desktopSidebarOpen={guestSidebarOpen}
-          onDesktopSidebarToggle={() => setGuestSidebarOpen((open) => !open)}
-          centerContent={
-            <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2">
-              <PublicPostsCategoryTabs
-                dense
-                className="justify-center"
-                lightGrey
-                activeId={categoryFilter}
-                onSelect={handleCategoryFilterChange}
-              />
-              {categoryFilter === "other_help" ? (
-                <select
-                  value={otherSubFilter ?? ""}
-                  onChange={(e) => setOtherSubFilter(e.target.value || null)}
-                  className={cn(
-                    "h-8 max-w-[9.5rem] shrink-0 rounded-full border-0 bg-zinc-50 px-2.5 text-[11px] font-semibold text-zinc-800 outline-none",
-                    "hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200",
-                  )}
-                  aria-label={t("discoverHome.filters.pickSubcategory")}
-                >
-                  <option value="">{t("discoverHome.filters.allOther")}</option>
-                  {OTHER_HELP_SUBCATEGORIES.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {t(`otherHelpSubcategories.${sub.id}`)}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-          }
         />
       ) : null}
 
@@ -574,9 +541,9 @@ export default function GlobalPostsPage() {
             profile={profile}
             focusPostId={focusPostId}
             focusRequestId={focusRequestId}
-            openCompose={openCompose}
+            onGuestFindHelp={() => openGuestAuthPrompt({ variant: "create" })}
+            onGuestOfferHelp={() => openGuestAuthPrompt({ variant: "engage" })}
             postTypeFilter={postTypeFilter}
-            onPostTypeFilterChange={handlePostTypeFilterChange}
             feedPostTypeIds={["community", "event"]}
             commentedFilterActive={commentedFilterActive}
             onCommentedFilterChange={setCommentedFilterActive}
@@ -596,6 +563,7 @@ export default function GlobalPostsPage() {
             onSidePanelPostOpen={handleSidePanelPostOpen}
             guestDesktopLightLayout={!user}
             guestSidebarOpen={guestSidebarOpen}
+            guestSidebarSiteNavVisible={guestHeaderCompact}
             insightsPanelOpen={insightsPanelOpen}
             insightsPanelLocked={insightsPanelLocked}
             tabletLayout={isTablet}
@@ -753,23 +721,19 @@ export default function GlobalPostsPage() {
       ) : null}
 
       {/* Desktop: floating "Share a post" CTA */}
-      <button
+      {user ? <button
         type="button"
-        onClick={user ? openCompose : () => setAboutOpen(true)}
+        onClick={openCompose}
         className={cn(
           "hidden md:inline-flex fixed bottom-6 z-[120]",
-          user
-            ? "left-[calc(220px+1.5rem)]"
-            : guestSidebarOpen
-              ? "left-[calc(15.5rem+1.25rem)]"
-              : "left-[calc(6.5rem+1.25rem)] lg:left-[calc(7rem+1.25rem)]",
+          "left-[calc(220px+1.5rem)]",
           "items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-extrabold tracking-tight",
           "bg-orange-600 text-white shadow-xl shadow-orange-500/25 transition-all",
           "hover:bg-orange-700 hover:-translate-y-[2px] active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "whitespace-nowrap",
         )}
-        aria-label={user ? "Share a post" : "What is tebnu?"}
+        aria-label="Share a post"
       >
         <Send
           className="h-4 w-4 translate-x-[1px]"
@@ -777,7 +741,7 @@ export default function GlobalPostsPage() {
           aria-hidden
         />
         Share a post
-      </button>
+      </button> : null}
 
       {/* Guest desktop: "What is tebnu?" modal (opened via desktop share button). */}
       {!user ? (

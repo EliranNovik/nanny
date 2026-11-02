@@ -65,15 +65,15 @@ function BenefitMainCard({
 }) {
   const Icon = benefit.icon;
   return (
-    <div className="grid w-full overflow-hidden rounded-[2rem] bg-white shadow-[0_28px_70px_-42px_rgba(124,45,18,0.5)] md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-      <div className="relative min-h-[200px] overflow-hidden bg-slate-100 dark:bg-zinc-800 md:min-h-[360px]">
+    <div className="grid w-full gap-7 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-10">
+      <div className="relative min-h-[200px] overflow-hidden rounded-[2rem] bg-orange-900/20 ring-1 ring-white/20 md:min-h-[360px]">
         <img
           src={benefit.image}
           alt={copy.imageAlt}
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
       </div>
-      <div className="flex flex-col justify-center gap-4 px-6 py-7 md:px-12 md:py-12">
+      <div className="flex flex-col justify-center gap-4 px-1 py-4 md:px-4 md:py-8">
         <div className="flex items-center gap-3">
           <span
             className={cn(
@@ -84,14 +84,14 @@ function BenefitMainCard({
           >
             <Icon className="h-9 w-9" strokeWidth={2.1} aria-hidden />
           </span>
-          <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-zinc-50 md:text-3xl">
+          <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">
             {copy.title}
           </h3>
         </div>
-        <p className="text-lg font-semibold leading-relaxed text-slate-700 dark:text-zinc-300 md:text-xl">
+        <p className="text-lg font-semibold leading-relaxed text-white md:text-xl">
           {copy.description}
         </p>
-        <p className="text-base font-medium leading-relaxed text-slate-500 dark:text-zinc-400 md:text-lg">
+        <p className="text-base font-medium leading-relaxed text-orange-50/85 md:text-lg">
           {copy.explanation}
         </p>
       </div>

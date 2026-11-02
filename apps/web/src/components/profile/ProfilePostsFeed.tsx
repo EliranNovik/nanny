@@ -85,6 +85,7 @@ import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
 } from "@/lib/publicProfileMedia";
+import { mediaUrl as optimizedMediaUrl } from "@/lib/imageTransform";
 import { scrollToProfilePostWhenReady, shareProfilePost, parseProfilePostShareId } from "@/lib/profilePostShare";
 import { fetchProfilePostById } from "@/lib/fetchProfilePostById";
 import { normalizeAppLocale } from "@/i18n";
@@ -3630,7 +3631,11 @@ function PostMediaCarousel({
         aria-label="Post media carousel"
       >
         {items.map((item, index) => {
-          const url = publicProfileMediaPublicUrl(item.storage_path);
+          const rawUrl = publicProfileMediaPublicUrl(item.storage_path);
+          const url =
+            item.media_type === "image"
+              ? optimizedMediaUrl.hero(rawUrl)
+              : rawUrl;
           const isActive = index === activeIndex;
 
           return (
@@ -3652,7 +3657,7 @@ function PostMediaCarousel({
                     src={url}
                     alt=""
                     className={cn("h-full w-full", mediaObjectClass(index))}
-                    loading={index === 0 ? "eager" : "lazy"}
+                    loading="lazy"
                     decoding="async"
                     onLoad={(e) => {
                       const el = e.currentTarget;
@@ -3941,7 +3946,9 @@ function PostCard({
 
   const mediaUrl =
     post.media_type && post.storage_path
-      ? publicProfileMediaPublicUrl(post.storage_path)
+      ? post.media_type === "image"
+        ? optimizedMediaUrl.hero(publicProfileMediaPublicUrl(post.storage_path))
+        : publicProfileMediaPublicUrl(post.storage_path)
       : null;
   const hasMedia = Boolean(mediaUrl);
 
@@ -4068,7 +4075,8 @@ function PostCard({
   const isProfile = appearance === "profile";
   const isPlainCard = Boolean(plainCard);
   const isGlobalFeed = Boolean(globalFeedLayout);
-  const isVideoHeaderOverlay = hasMedia && post.media_type === "video";
+  const isVideoHeaderOverlay =
+    !isGlobalFeed && hasMedia && post.media_type === "video";
   const cardPadX =
     isGlobalFeed
       ? cn("px-3 md:px-3.5", globalFeedMobileCardPadClass)
@@ -4108,6 +4116,8 @@ function PostCard({
   const mobileMediaBoxClass =
     globalFeedPortraitBoxClass
       ? cn(mobileMediaInsetClass, globalFeedPortraitBoxClass)
+      : isGlobalFeed && isLandscape
+        ? cn(mobileMediaInsetClass, "aspect-[4/5]")
       : mediaAspectRatio
         ? cn(
           mobileMediaInsetClass,
@@ -4121,7 +4131,7 @@ function PostCard({
             mobilePortraitFallbackHeight,
           );
   const feedMediaAspectStyle: React.CSSProperties | undefined =
-    isGlobalFeed && !isLandscape ? undefined : mediaAspectStyle;
+    isGlobalFeed ? undefined : mediaAspectStyle;
   const mobileMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
 
   // Desktop media sizing:
@@ -4129,14 +4139,14 @@ function PostCard({
   // - Landscape: full width, sized to the media's real aspect ratio
   // Desktop: keep global-feed images short so cards don't dominate the viewport.
   const portraitDesktopSizingClass = isGlobalFeed
-    ? "md:aspect-[16/10] md:h-auto md:max-h-[26rem] md:w-full md:overflow-hidden"
+    ? "md:aspect-[4/5] md:h-auto md:max-h-[50rem] md:w-full md:overflow-hidden"
     : isDiscover
     ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
     : isProfile
       ? "md:h-[min(68vh,40rem)] md:max-h-[min(68vh,40rem)] md:w-auto md:max-w-full"
       : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
   const desktopMediaBoxClass = isGlobalFeed
-    ? "md:rounded-xl md:aspect-[16/10] md:h-auto md:max-h-[26rem] md:w-full md:overflow-hidden"
+    ? "md:rounded-xl md:aspect-[4/5] md:h-auto md:max-h-[50rem] md:w-full md:overflow-hidden"
     : mediaAspectRatio
     ? cn(
       "md:rounded-xl",
@@ -4683,22 +4693,60 @@ function PostCard({
         ? precomputedFromProfilePostOverlay(post.translation_overlay)
         : null,
   });
+  const communityFallbackTitle = (() => {
+    if (postTypeId !== "community") return null;
+    const metadataTitle =
+      post.source === "post" && typeof post.post_metadata?.title === "string"
+        ? post.post_metadata.title.trim()
+        : "";
+    if (metadataTitle) return metadataTitle;
+    const text = effectiveCaption.trim();
+    if (!text) return null;
+    const firstLine = text.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "";
+    if (firstLine.length <= 100) return firstLine;
+    const firstSentence = firstLine.match(/^.{1,100}?[.!?](?:\s|$)/)?.[0]?.trim();
+    return firstSentence || `${firstLine.slice(0, 97).trimEnd()}…`;
+  })();
   const displayPostTitle = isGeneratedListing
     ? postTitle
-    : postTranslation.displayTitle ?? postTitle;
+    : postTranslation.displayTitle ?? postTitle ?? communityFallbackTitle;
   const translatedNotes =
     postTranslation.displayBody ??
     (globalTextOnlyBody || effectiveCaption || postDescription);
   const displayTextOnlyBody = isGeneratedListing
     ? joinListingLeadAndNotes(listingLead, translatedNotes)
     : translatedNotes;
-  const displayPostDescription = isGeneratedListing
+  const rawDisplayPostDescription = isGeneratedListing
     ? joinListingLeadAndNotes(
         listingLead,
         postTranslation.displayBody ?? (effectiveCaption.trim() ? effectiveCaption : null),
       )
     : postTranslation.displayBody ??
       (effectiveCaption.trim() ? effectiveCaption : postDescription);
+  const displayPostDescription = (() => {
+    if (!rawDisplayPostDescription || !displayPostTitle) {
+      return rawDisplayPostDescription;
+    }
+    const lines = rawDisplayPostDescription.split(/\r?\n/);
+    if (
+      lines[0]?.trim().toLocaleLowerCase() ===
+      displayPostTitle.trim().toLocaleLowerCase()
+    ) {
+      return lines.slice(1).join("\n").trim() || null;
+    }
+    if (
+      rawDisplayPostDescription
+        .trimStart()
+        .toLocaleLowerCase()
+        .startsWith(displayPostTitle.trim().toLocaleLowerCase())
+    ) {
+      return rawDisplayPostDescription
+        .trimStart()
+        .slice(displayPostTitle.trim().length)
+        .trimStart() || null;
+    }
+    return rawDisplayPostDescription;
+  })();
   const displayPostTitleLayout = useMemo(
     () => (displayPostTitle ? bidirectionalTextProps(displayPostTitle) : null),
     [displayPostTitle],
@@ -5334,7 +5382,7 @@ function PostCard({
             : "rounded-2xl bg-white/55 px-3 py-2.5 shadow-none backdrop-blur-2xl backdrop-saturate-150",
         )}
       >
-        {displayPostTitle ? (
+        {displayPostTitle && !useSimpleSocialMediaOverlay ? (
           <h3
             className={cn(
               "flex items-start gap-2 text-[16px] font-bold leading-snug text-zinc-950 drop-shadow-none",
@@ -5413,7 +5461,7 @@ function PostCard({
               "rounded-2xl",
               globalFeedMobileCardClass,
               guestDesktopLightLayout
-                ? "bg-zinc-50 shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
+                ? "bg-white shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
                 : globalFeedCardSurfaceClass,
             )
           : isDiscover || isPlainCard
@@ -5458,13 +5506,6 @@ function PostCard({
                       aria-label="Verified"
                     />
                   ) : null}
-                  <PostTypeCategorySubtitle
-                    postTypeId={postTypeId}
-                    typeName={feedPostTypeName}
-                    categoryLabel={serviceCategoryMeta?.label}
-                    whenExpired={whenExpired}
-                    expiredOnLabel={whenLabel}
-                  />
                 </div>
                 <p className="text-[15px] font-medium leading-tight text-muted-foreground">
                   <time className="tabular-nums">{postedLabel}</time>
@@ -5478,6 +5519,21 @@ function PostCard({
               </div>
             </div>
           </div>
+          <PostTypeCategorySubtitle
+            postTypeId={postTypeId}
+            typeName={feedPostTypeName}
+            categoryLabel={serviceCategoryMeta?.label}
+            whenExpired={whenExpired}
+            expiredOnLabel={whenLabel}
+            className={cn(
+              "ms-auto shrink-0 rounded-full px-2.5 py-1 text-[11px]",
+              postTypeId === "request_help" && "bg-orange-500/12 dark:bg-orange-500/20",
+              postTypeId === "offer_service" && "bg-emerald-500/12 dark:bg-emerald-500/20",
+              postTypeId === "event" && "bg-violet-500/12 dark:bg-violet-500/20",
+              postTypeId === "community" && "bg-blue-500/12 dark:bg-blue-500/20",
+              !postTypeId && "bg-zinc-100 dark:bg-zinc-800",
+            )}
+          />
           {isOwnFeed && post.source === "post" ? (
             <div className="flex shrink-0 items-center gap-1">
               {isProfile && listingStatusType ? (
@@ -5646,6 +5702,20 @@ function PostCard({
         </div>
       </div>
       )}
+      {isGlobalFeed && hasMedia && useSimpleSocialMediaOverlay && displayPostTitle ? (
+        <div
+          className={cn(
+            cardPadX,
+            "-mt-2 pb-2 pt-0",
+            displayPostTitleLayout?.className,
+          )}
+          dir={displayPostTitleLayout?.dir}
+        >
+          <h3 className="text-[16px] font-bold leading-snug text-foreground">
+            {displayPostTitle}
+          </h3>
+        </div>
+      ) : null}
       {isGlobalFeed && pickupRoute ? (
         <FeedPickupRouteMedia postId={post.id} route={pickupRoute} />
       ) : null}
@@ -5832,7 +5902,7 @@ function PostCard({
                 "h-full w-full",
                 isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass,
               )}
-              loading="eager"
+              loading="lazy"
               decoding="async"
               onLoad={(e) => {
                 const el = e.currentTarget;
