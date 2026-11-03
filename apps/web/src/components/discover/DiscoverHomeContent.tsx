@@ -38,7 +38,6 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     }
   }, [homeMode, addToast]);
 
-  const explorePath = isClient ? "/client/explore" : "/freelancer/explore";
   const workPrimaryPath = "/availability/post-now";
   const createRequestPath = "/client/create";
 
@@ -63,7 +62,6 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none md:overflow-x-hidden md:overflow-y-visible">
           <DiscoverHomeActionFirst
             homeMode={homeMode}
-            explorePath={explorePath}
             workPrimaryPath={workPrimaryPath}
             createRequestPath={createRequestPath}
           />

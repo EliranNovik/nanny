@@ -79,7 +79,6 @@ type HomeMode = "hire" | "work";
 
 type Props = {
   homeMode: HomeMode;
-  explorePath: string;
   workPrimaryPath: string;
   createRequestPath: string;
 };
@@ -122,7 +121,6 @@ function heroColorFadeStyle(
 
 export function DiscoverHomeActionFirst({
   homeMode,
-  explorePath,
   workPrimaryPath,
   createRequestPath,
 }: Props) {

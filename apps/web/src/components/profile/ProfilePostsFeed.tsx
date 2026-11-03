@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -1677,7 +1677,7 @@ export function ComposeModal({
   initialPostTypeId?: string | null;
 }) {
   const { t, i18n } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [caption, setCaption] = useState("");
   const [composeMedia, setComposeMedia] = useState<ComposeMediaDraft[]>([]);

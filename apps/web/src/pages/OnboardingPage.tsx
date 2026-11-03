@@ -16,7 +16,6 @@ import {
   Home,
   Sparkles,
   Truck,
-  Wrench,
 } from "lucide-react";
 import {
   SUPPORTED_LOCALES,
