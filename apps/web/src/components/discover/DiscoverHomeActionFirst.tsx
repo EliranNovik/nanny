@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/hooks/data/keys";
 import {
   ClipboardList,
-  Briefcase,
   CalendarDays,
   ChevronRight,
   Clock,
@@ -14,7 +17,6 @@ import {
   Search,
   Users,
   UsersRound,
-  Wifi,
   Zap,
 } from "lucide-react";
 import {
@@ -46,10 +48,6 @@ import {
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
-import {
-  DISCOVER_STROKE,
-  discoverIcon,
-} from "@/components/discover/discoverHomeIcons";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
 import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
@@ -64,17 +62,18 @@ import {
   DISCOVER_HOME_CATEGORIES,
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
-import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { LiveTimer } from "@/components/LiveTimer";
-import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
 import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
 import { DiscoverHomeOffersForYou } from "@/components/discover/DiscoverHomeOffersForYou";
 import { DiscoverHomeCategoryFilterRow } from "@/components/discover/DiscoverHomeCategoryFilterRow";
-import { UserSearch } from "@/components/UserSearch";
+import {
+  categoryIllustrationSrc,
+  helpCategoryIdFromServiceDetails,
+} from "@/lib/discoverCategoryTileIcons";
 
 type HomeMode = "hire" | "work";
 
@@ -90,12 +89,36 @@ const heroInnerClassName =
   "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[320px]";
 
 const heroStackClassName =
-  "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:w-[55%] md:px-10 md:pb-24 md:pt-12";
+  "relative z-10 flex min-h-0 flex-1 flex-col justify-end px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:w-[min(62%,38rem)] md:px-10 md:pb-[8.5rem] md:pt-12";
 
-const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
+const heroTopBlockClassName = "flex max-w-2xl flex-col gap-3.5 md:gap-4";
 
-const heroTitleBlockClassName = "max-w-[17rem] space-y-1.5 pr-1 sm:max-w-[19rem]";
+const heroTitleBlockClassName = "max-w-[min(100%,28rem)] space-y-2.5 pr-1 sm:max-w-[34rem] md:space-y-3";
 
+const heroHeadlineClassName =
+  "text-[1.85rem] font-semibold leading-[1.12] tracking-[-0.025em] text-white text-balance sm:text-[2.35rem] md:text-[3rem] lg:text-[3.35rem]";
+
+const heroSubClassName =
+  "max-w-[28rem] text-[14px] font-normal leading-relaxed text-white/75 sm:text-[15px] md:text-[16px]";
+
+/** Soft multi-stop fade so the photo melts into the solid color panel. */
+function heroColorFadeStyle(
+  tone: "hire" | "work",
+  rtl: boolean,
+): CSSProperties {
+  const solid = tone === "hire" ? "rgb(194 65 12)" : "rgb(6 95 70)"; // orange-700 / emerald-800
+  const dir = rtl ? "to left" : "to right";
+  return {
+    background: `linear-gradient(${dir},
+      ${solid} 0%,
+      ${solid} 36%,
+      rgba(${tone === "hire" ? "194 65 12" : "6 95 70"} / 0.92) 48%,
+      rgba(${tone === "hire" ? "194 65 12" : "6 95 70"} / 0.62) 60%,
+      rgba(${tone === "hire" ? "194 65 12" : "6 95 70"} / 0.28) 74%,
+      rgba(${tone === "hire" ? "194 65 12" : "6 95 70"} / 0.08) 86%,
+      transparent 100%)`,
+  };
+}
 
 export function DiscoverHomeActionFirst({
   homeMode,
@@ -113,11 +136,10 @@ export function DiscoverHomeActionFirst({
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const { data: frData } = useFreelancerRequests(user?.id);
-  const [myRequestsOpen, setMyRequestsOpen] = useState(false);
-  const [myOffersOpen, setMyOffersOpen] = useState(false);
-  const [myOffersCount, setMyOffersCount] = useState(0);
+  const [myOfferCategoryIds, setMyOfferCategoryIds] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] =
     useState<DiscoverHomeCategoryFilter>("all");
+  const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
 
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
@@ -174,24 +196,61 @@ export function DiscoverHomeActionFirst({
     if (quickMoreOpen) setQuickMoreSheetExpanded(true);
   }, [quickMoreOpen]);
 
-  useDiscoverHomeOverlayLock(
-    quickMoreOpen || myRequestsOpen || myOffersOpen || pendingWorkRequestsOpen,
-  );
+  useDiscoverHomeOverlayLock(quickMoreOpen || pendingWorkRequestsOpen);
 
   useEffect(() => {
     if (!user?.id) {
-      setMyOffersCount(0);
+      setMyOfferCategoryIds([]);
       return;
     }
     void supabase
       .from("profile_posts")
-      .select("id", { count: "exact", head: true })
+      .select("id, custom_category, post_metadata")
       .eq("author_id", user.id)
       .eq("post_type_id", "offer_service")
-      .then(({ count, error }) => {
-        if (!error) setMyOffersCount(count ?? 0);
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data, error }) => {
+        if (error) return;
+        const ids: string[] = [];
+        for (const row of data ?? []) {
+          const meta =
+            row.post_metadata && typeof row.post_metadata === "object"
+              ? (row.post_metadata as Record<string, unknown>)
+              : null;
+          const fromMeta =
+            (typeof meta?.category === "string" && meta.category) ||
+            (typeof meta?.service_type === "string" && meta.service_type) ||
+            null;
+          const custom =
+            (typeof row.custom_category === "string" && row.custom_category.trim()) ||
+            (typeof meta?.custom_category === "string" &&
+              meta.custom_category.trim()) ||
+            null;
+          const id = (fromMeta || custom || "other_help").toLowerCase();
+          if (!ids.includes(id)) ids.push(id);
+          if (ids.length >= 3) break;
+        }
+        setMyOfferCategoryIds(ids);
       });
   }, [user?.id]);
+
+  const myRequestThumbIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const job of frData?.myOpenRequests ?? []) {
+      const sub = helpCategoryIdFromServiceDetails(
+        (job as { service_details?: Record<string, unknown> | null }).service_details,
+      );
+      const id = (
+        sub ||
+        (typeof job.service_type === "string" ? job.service_type : null) ||
+        "other_help"
+      ).toLowerCase();
+      if (!ids.includes(id)) ids.push(id);
+      if (ids.length >= 3) break;
+    }
+    return ids;
+  }, [frData?.myOpenRequests]);
 
   /** Clients + freelancers both persist 24h go-live on `freelancer_profiles` — refetch when returning to the tab. */
   useEffect(() => {
@@ -211,54 +270,6 @@ export function DiscoverHomeActionFirst({
   const isInActive24hGoLiveWindow =
     !isHire &&
     isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveMeta.live_until });
-
-  /**
-   * Hero stat — viewer's own "Live help" count, matching the Explore page exactly.
-   * Shares the same `queryKeys.exploreLiveHelp(userId, mode)` cache key as
-   * `ExploreLiveHelpNow` and `DiscoverHomeMyLiveHelpJobs`, returning the same
-   * `{ jobs, profileMap }` shape so we never clobber the shared cache. `select`
-   * derives the count we need without re-fetching.
-   *  - Hire: jobs where the viewer is the client and a helper is currently engaged.
-   *  - Work: jobs where the viewer is the selected helper and is currently helping.
-   */
-  const { data: heroLiveHelpData } = useQuery<
-    { jobs: Array<{ id: string }>; profileMap: Record<string, unknown> },
-    Error,
-    number
-  >({
-    queryKey: queryKeys.exploreLiveHelp(user?.id, homeMode),
-    enabled: !!user?.id,
-    staleTime: 2 * 60 * 1000,
-    queryFn: async () => {
-      if (!user?.id) return { jobs: [], profileMap: {} };
-      const base = supabase
-        .from("job_requests")
-        .select(
-          "id, created_at, service_type, location_city, location_lat, location_lng, client_id, selected_freelancer_id, status",
-        );
-      const filtered = isHire
-        ? base.eq("client_id", user.id)
-        : base.eq("selected_freelancer_id", user.id);
-      const { data, error } = await filtered
-        .in("status", ["locked", "active"])
-        .not("selected_freelancer_id", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(24);
-      if (error) {
-        console.warn("[DiscoverHomeActionFirst] live help count", error);
-        return { jobs: [], profileMap: {} };
-      }
-      return {
-        jobs: (data ?? []) as Array<{ id: string }>,
-        profileMap: {},
-      };
-    },
-    select: (raw) =>
-      Array.isArray((raw as { jobs?: unknown[] })?.jobs)
-        ? (raw as { jobs: unknown[] }).jobs.length
-        : 0,
-  });
-  const myLiveHelpCount = heroLiveHelpData ?? 0;
 
   /** Total live helper slots across Discover home categories (same pool as the strip). */
   const hireLiveHelperCount = useMemo(() => {
@@ -289,6 +300,16 @@ export function DiscoverHomeActionFirst({
 
   const myRequestsCount = useMemo(() => {
     return (frData?.myOpenRequests ?? []).length;
+  }, [frData]);
+
+  const myRequestsAcceptedCount = useMemo(() => {
+    return (frData?.myOpenRequests ?? []).reduce((sum, job) => {
+      const n =
+        typeof (job as { acceptedCount?: number }).acceptedCount === "number"
+          ? (job as { acceptedCount: number }).acceptedCount
+          : 0;
+      return sum + n;
+    }, 0);
   }, [frData]);
 
   const pendingWorkRequestsCount = useMemo(() => {
@@ -365,7 +386,7 @@ export function DiscoverHomeActionFirst({
                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
                   onClick={() => {
                     setQuickMoreOpen(false);
-                    setMyRequestsOpen(true);
+                    navigate("/my-requests");
                   }}
                 >
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300">
@@ -514,7 +535,7 @@ export function DiscoverHomeActionFirst({
   /** Get help mobile: Post request (orange +) and Find helpers (grey people). */
   function renderMobileHireActionButtons() {
     return (
-      <div className="flex gap-2.5 px-4 pt-1.5 pb-1">
+      <div className="flex gap-2 px-2.5 pt-1.5 pb-1">
         <button
           type="button"
           onClick={() => {
@@ -533,15 +554,15 @@ export function DiscoverHomeActionFirst({
             });
           }}
           className={cn(
-            "flex h-14 flex-1 items-center justify-center rounded-full",
-            "bg-orange-500 text-white shadow-sm",
-            "transition-transform active:scale-[0.98]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2",
+            "flex h-12 flex-1 items-center justify-center rounded-xl",
+            "bg-white text-orange-700 shadow-sm",
+            "transition-colors hover:bg-orange-50 active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-600",
           )}
           aria-label={t("discover.postRequest")}
         >
-          <Plus className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-          <span className="ms-2 text-sm font-extrabold">Request help</span>
+          <Plus className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <span className="ms-2 text-sm font-semibold">Request help</span>
         </button>
         <button
           type="button"
@@ -553,24 +574,24 @@ export function DiscoverHomeActionFirst({
             navigateToHelpersBrowse(navigate);
           }}
           className={cn(
-            "flex h-14 flex-1 items-center justify-center rounded-full",
-            "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100",
-            "transition-transform active:scale-[0.98]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 focus-visible:ring-offset-2",
+            "flex h-12 flex-1 items-center justify-center rounded-xl border border-zinc-200/80",
+            "bg-white text-zinc-900 shadow-sm",
+            "transition-colors hover:bg-zinc-50 active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
           )}
           aria-label={t("nav.findHelpers")}
         >
           <Users className="h-5 w-5" strokeWidth={2} aria-hidden />
-          <span className="ms-2 text-sm font-extrabold">Find helpers</span>
+          <span className="ms-2 text-sm font-semibold">Find helpers</span>
         </button>
       </div>
     );
   }
 
-  /** Help others mobile: Go live (green) and Share post (grey). */
+  /** Help others mobile: Go live and Post offer. */
   function renderMobileWorkActionButtons() {
     return (
-      <div className="flex gap-2.5 px-4 pt-1.5 pb-1">
+      <div className="flex gap-2 px-2.5 pt-1.5 pb-1">
         <button
           type="button"
           onClick={() => {
@@ -589,10 +610,10 @@ export function DiscoverHomeActionFirst({
             });
           }}
           className={cn(
-            "flex h-14 flex-1 items-center justify-center rounded-full",
-            "bg-emerald-500 text-white shadow-sm",
-            "transition-transform active:scale-[0.98]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2",
+            "flex h-12 flex-1 items-center justify-center rounded-xl",
+            "bg-white text-emerald-800 shadow-sm",
+            "transition-colors hover:bg-emerald-50 active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700",
           )}
           aria-label={
             isInActive24hGoLiveWindow
@@ -601,7 +622,7 @@ export function DiscoverHomeActionFirst({
           }
         >
           <Radio className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-          <span className="ms-2 text-sm font-extrabold">Go live</span>
+          <span className="ms-2 text-sm font-semibold">Go live</span>
         </button>
         <button
           type="button"
@@ -619,15 +640,15 @@ export function DiscoverHomeActionFirst({
             });
           }}
           className={cn(
-            "flex h-14 flex-1 items-center justify-center rounded-full",
-            "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100",
-            "transition-transform active:scale-[0.98]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 focus-visible:ring-offset-2",
+            "flex h-12 flex-1 items-center justify-center rounded-xl border border-zinc-200/80",
+            "bg-white text-zinc-900 shadow-sm",
+            "transition-colors hover:bg-zinc-50 active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
           )}
           aria-label="Post offer"
         >
           <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
-          <span className="ms-2 text-sm font-extrabold">Post offer</span>
+          <span className="ms-2 text-sm font-semibold">Post offer</span>
         </button>
       </div>
     );
@@ -640,14 +661,14 @@ export function DiscoverHomeActionFirst({
     const liveUntil = freelancerLiveCountdownTarget(freelancerLiveMeta);
     return (
       <div className="pointer-events-none absolute right-6 top-6 z-[21] hidden md:block">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/45 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md">
-          <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+        <div className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-black/35 px-2.5 py-1.5 text-[11px] font-medium tracking-wide text-white backdrop-blur-sm">
+          <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-            <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
+            <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
           </span>
           <span>Live</span>
           {liveUntil ? (
-            <span className="rounded-full bg-white/15 px-2 py-1 text-[11px] font-black tabular-nums tracking-wide">
+            <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums">
               <LiveTimer
                 countdownTo={liveUntil}
                 render={({ time }) => <span>{time}</span>}
@@ -659,106 +680,25 @@ export function DiscoverHomeActionFirst({
     );
   }
 
-  /**
-   * Desktop-only key-stat pills overlaid on the right side of the hero image.
-   * Clicking a stat deep-links to the matching Explore tab.
-   *  - Hire (Get help now): Live help
-   *  - Work (Help others): Live help
-   */
-  function renderHeroStats() {
-    type HeroStat = {
-      label: string;
-      value: number;
-      accent: string;
-      tab: string;
-    };
-    const stats: HeroStat[] = isHire
-      ? [
-          {
-            label: t("discoverHome.actions.liveHelp"),
-            value: myLiveHelpCount,
-            accent: "bg-emerald-500/85",
-            tab: "live_help",
-          },
-        ]
-      : [
-          {
-            label: t("discoverHome.actions.liveHelp"),
-            value: myLiveHelpCount,
-            accent: "bg-emerald-500/85",
-            tab: "live_help",
-          },
-        ];
-
-    return (
-      <div
-        className={cn(
-          "pointer-events-auto absolute top-6 z-[20] hidden items-start gap-7 md:flex",
-          isRtl ? "left-7" : "right-7",
-        )}
-      >
-        {stats.map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            onClick={() => {
-              trackEvent("discover_hero_stat_click", {
-                mode: homeMode,
-                tab: s.tab,
-              });
-              navigate(`${explorePath}?mode=${homeMode}&tab=${s.tab}`);
-            }}
-            aria-label={`${s.label}: ${s.value}. Open in Explore`}
-            className={cn(
-              "group flex cursor-pointer flex-col items-center rounded-xl bg-black/15 px-3 py-1.5 text-center text-white backdrop-blur-sm transition-transform duration-150",
-              "hover:-translate-y-0.5 active:scale-[0.97]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-0",
-            )}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className={cn("block h-2 w-2 rounded-full", s.accent)}
-                aria-hidden
-              />
-              <span
-                className="text-[32px] font-black leading-none tabular-nums text-white transition-colors group-hover:text-white"
-                style={{ textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}
-              >
-                {s.value > 999 ? "999+" : s.value}
-              </span>
-            </span>
-            <span
-              className="mt-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-white/95 transition-colors group-hover:text-white"
-              style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
-            >
-              {s.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    );
-  }
-
   function renderDesktopHeroQuickActions() {
     const buttonBase =
-      "flex h-[54px] items-center justify-center gap-2 rounded-full border px-4 text-[14px] font-black tracking-tight shadow-sm transition-all active:scale-[0.98]";
-    const neutral =
-      "border-zinc-200/80 bg-white/85 text-zinc-950 backdrop-blur-xl hover:bg-white dark:border-white/15 dark:bg-zinc-900/80 dark:text-white";
+      "flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-[13.5px] font-semibold tracking-tight transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
+    const primary =
+      "border-transparent bg-white text-zinc-900 shadow-sm hover:bg-zinc-50";
+    const secondary =
+      "border-zinc-200/80 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50";
     if (isHire) {
       return (
-        <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(520px,48%)] grid-cols-2 gap-2 md:grid">
+        <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(420px,46%)] grid-cols-2 gap-2.5 md:grid">
           <button
             type="button"
             onClick={() => {
               trackEvent("discover_hero_quick_post_request", { mode: "hire" });
               guardKycAction("start_request", () => navigate(createRequestPath));
             }}
-            className={cn(
-              buttonBase,
-              "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 text-white shadow-orange-950/25 hover:from-orange-600 hover:to-red-600",
-            )}
+            className={cn(buttonBase, primary, "text-orange-700")}
           >
-            <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+            <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} />
             {t("discoverHome.actions.postRequest")}
           </button>
           <button
@@ -767,9 +707,9 @@ export function DiscoverHomeActionFirst({
               trackEvent("discover_hero_quick_find_helpers", { mode: "hire" });
               navigate("/client/helpers");
             }}
-            className={cn(buttonBase, neutral)}
+            className={cn(buttonBase, secondary)}
           >
-            <Search className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+            <Search className="h-5 w-5 shrink-0" strokeWidth={2.25} />
             {t("discoverHome.actions.findHelpers")}
           </button>
         </div>
@@ -777,19 +717,16 @@ export function DiscoverHomeActionFirst({
     }
 
     return (
-      <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(520px,48%)] grid-cols-2 gap-2 md:grid">
+      <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(420px,46%)] grid-cols-2 gap-2.5 md:grid">
         <button
           type="button"
           onClick={() => {
             trackEvent("discover_hero_quick_go_live", { mode: "work" });
             guardKycAction("go_live", () => navigate(workPrimaryPath));
           }}
-          className={cn(
-            buttonBase,
-            "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 text-white shadow-emerald-950/25 hover:from-emerald-600 hover:to-teal-600",
-          )}
+          className={cn(buttonBase, primary, "text-emerald-800")}
         >
-          <Radio className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+          <Radio className="h-5 w-5 shrink-0" strokeWidth={2.25} />
           {isInActive24hGoLiveWindow
             ? t("discoverHome.actions.live")
             : t("discoverHome.actions.goLive")}
@@ -802,44 +739,129 @@ export function DiscoverHomeActionFirst({
               navigate(`${GLOBAL_POSTS_PATH}?compose=1&postType=offer_service`),
             );
           }}
-          className={cn(buttonBase, neutral)}
+          className={cn(buttonBase, secondary)}
         >
-          <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+          <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} />
           Post offer
         </button>
       </div>
     );
   }
 
-  function renderMyContentSummary() {
-    const count = isHire ? myRequestsCount : myOffersCount;
-    const Icon = isHire ? ClipboardList : Briefcase;
+  function renderSummaryThumbStack(categoryIds: string[], emptyTone: "orange" | "emerald") {
+    const ids = categoryIds.length > 0 ? categoryIds.slice(0, 3) : ["other_help"];
+    return (
+      <span className="relative flex h-9 w-[3.75rem] shrink-0 items-center" aria-hidden>
+        {ids.map((id, index) => (
+          <span
+            key={`${id}-${index}`}
+            className={cn(
+              "absolute top-0 h-9 w-9 overflow-hidden rounded-lg ring-2 ring-white shadow-sm dark:ring-zinc-900",
+              emptyTone === "orange" ? "bg-orange-100" : "bg-emerald-100",
+            )}
+            style={{
+              left: `${index * 12}px`,
+              zIndex: ids.length - index,
+            }}
+          >
+            <img
+              src={categoryIllustrationSrc(id)}
+              alt=""
+              className="h-full w-full object-cover object-center"
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  function renderMyContentSummaryCard(
+    kind: "requests" | "offers",
+    opts?: { showTitleInside?: boolean },
+  ) {
+    const isRequests = kind === "requests";
+    const showTitleInside = opts?.showTitleInside ?? true;
+    const acceptedBadge =
+      isRequests && myRequestsAcceptedCount > 0 ? (
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
+            "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+          )}
+          aria-label={`${myRequestsAcceptedCount} accepted`}
+        >
+          <Users className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+          {myRequestsAcceptedCount}
+        </span>
+      ) : null;
     return (
       <button
         type="button"
-        onClick={() => (isHire ? setMyRequestsOpen(true) : setMyOffersOpen(true))}
+        onClick={() =>
+          navigate(isRequests ? "/my-requests" : "/my-offers")
+        }
         className={cn(
-          "flex w-full max-w-[560px] items-center gap-3 rounded-[20px] bg-white p-[5px] pe-4 text-left",
-          "shadow-[0_4px_12px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)]",
-          "dark:bg-[#1d1f21] dark:shadow-none",
+          "flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white/95 p-1.5 pe-3 text-left shadow-sm backdrop-blur-sm transition hover:bg-white hover:shadow-md",
+          "dark:border-white/10 dark:bg-[#1d1f21]/95 dark:shadow-none",
+          showTitleInside && "md:h-11 md:rounded-xl md:p-1 md:pe-3",
         )}
       >
-        <span className={cn(
-          "flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[15px]",
-          isHire ? "bg-orange-500/12 text-orange-600" : "bg-emerald-500/12 text-emerald-600",
-        )}>
-          <Icon className="h-8 w-8" strokeWidth={2.25} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-base font-extrabold text-foreground">
-            {isHire ? "My requests" : "My offers"}
+        {renderSummaryThumbStack(
+          isRequests ? myRequestThumbIds : myOfferCategoryIds,
+          isRequests ? "orange" : "emerald",
+        )}
+        {showTitleInside ? (
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold tracking-tight text-foreground">
+              {isRequests ? "My requests" : "My offers"}
+            </span>
           </span>
-          <span className="mt-1 block text-sm font-semibold text-muted-foreground">
-            {count} {count === 1 ? (isHire ? "request" : "offer") : (isHire ? "requests" : "offers")}
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground rtl-flip-icon" />
+        ) : (
+          <span className="min-w-0 flex-1" />
+        )}
+        {acceptedBadge}
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl-flip-icon" />
       </button>
+    );
+  }
+
+  /** Desktop hero overlay: My requests / My offers, bottom-aligned with action buttons. */
+  function renderHeroMyContentSummary() {
+    return (
+      <div
+        className={cn(
+          "pointer-events-auto absolute z-[24] hidden w-[min(18.5rem,38%)] flex-col justify-end gap-2 md:flex",
+          "bottom-5 end-6",
+        )}
+      >
+        {isHire
+          ? renderMyContentSummaryCard("requests")
+          : renderMyContentSummaryCard("offers")}
+      </div>
+    );
+  }
+
+  /** Mobile: section below hero — title on page background, box underneath. */
+  function renderMobileMyContentSummary() {
+    const kind = isHire ? "requests" : "offers";
+    const title = isHire ? "My requests" : "My offers";
+    const titleClass = isHire
+      ? "text-orange-700 dark:text-orange-400"
+      : "text-emerald-700 dark:text-emerald-400";
+    return (
+      <div className="px-4 pt-4">
+        <h2
+          className={cn(
+            "mb-2.5 text-[22px] font-black tracking-tight",
+            titleClass,
+          )}
+        >
+          {title}
+        </h2>
+        {renderMyContentSummaryCard(kind, { showTitleInside: false })}
+      </div>
     );
   }
 
@@ -850,7 +872,7 @@ export function DiscoverHomeActionFirst({
         type="button"
         onClick={() => navigate(GLOBAL_POSTS_PATH)}
         className={cn(
-          "group relative mx-auto mt-4 flex min-h-[132px] w-full items-center overflow-hidden rounded-[24px] px-5 py-5 text-left text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-0.5 active:scale-[0.99] lg:max-w-[860px]",
+          "group relative mt-4 flex min-h-[132px] w-full items-center overflow-hidden rounded-[24px] px-5 py-5 text-left text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-0.5 active:scale-[0.99] md:mr-auto md:max-w-[860px]",
           promotesEvents ? "bg-violet-700" : "bg-teal-800",
         )}
       >
@@ -904,7 +926,7 @@ export function DiscoverHomeActionFirst({
     >
       {renderQuickActionDockMobile()}
       <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
-        <section className="relative mx-4 mt-2 h-[240px] overflow-hidden rounded-[26px] bg-zinc-900 shadow-sm">
+        <section className="relative mx-1.5 mt-1 h-[260px] overflow-hidden rounded-2xl bg-zinc-900 shadow-sm ring-1 ring-black/5">
           <img
             src={
               isHire
@@ -916,71 +938,65 @@ export function DiscoverHomeActionFirst({
             decoding="async"
             {...{ fetchpriority: "high" }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/10" />
-          <h1 className="absolute inset-x-5 top-5 z-10 max-w-[82%] text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_14px_rgba(0,0,0,0.65)]">
-            {isHire
-              ? "A little help, nearby"
-              : "Someone nearby needs your help"}
-          </h1>
-          <div className="absolute inset-x-0 bottom-4 z-10">
+          <div className="absolute inset-0 z-[5] bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-3 z-10 flex flex-col gap-2.5">
+            <div className="px-4">
+              <h1 className="max-w-[15.5rem] text-[1.55rem] font-semibold leading-[1.15] tracking-[-0.02em] text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.35)]">
+                {isHire
+                  ? "A little help, nearby"
+                  : "Someone nearby needs your help"}
+              </h1>
+            </div>
             {isHire
               ? renderMobileHireActionButtons()
               : renderMobileWorkActionButtons()}
           </div>
         </section>
-        {isHire ? (
-          <div className="px-4 pt-3">
-            <div className="rounded-2xl border border-zinc-200/80 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-              <UserSearch />
-            </div>
-          </div>
-        ) : null}
-        <div className="px-4 pt-4">{renderMyContentSummary()}</div>
+        {renderMobileMyContentSummary()}
 
         {isHire ? (
           <div className="flex flex-col px-0 pb-6">
+            <div className="w-full px-4 pt-4 pb-1">
+              <DiscoverHomeMyLiveHelpJobs mode="hire" />
+            </div>
             <DiscoverHomeCategoryFilterRow
               variant="hire"
               layout="pills"
               selected={categoryFilter}
               onSelect={setCategoryFilter}
-              className="px-4 pt-4 pb-3"
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={setOtherSubFilter}
+              className="px-4 pt-3 pb-3"
             />
             <div className="w-full px-4 pt-1 pb-2">
               <DiscoverHomeOffersForYou
                 categoryFilter={categoryFilter}
+                otherSubFilter={otherSubFilter}
                 viewerLocation={viewerLocation}
               />
               {renderExplorePromoBanner()}
             </div>
-            <div className="w-full px-4 pt-4 pb-2">
-              <DiscoverHomeMyLiveHelpJobs
-                mode="hire"
-                exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
-                createRequestPath={createRequestPath}
-              />
-            </div>
           </div>
         ) : (
           <>
+            <div className="w-full px-4 pt-3 pb-1">
+              <DiscoverHomeMyLiveHelpJobs mode="work" />
+            </div>
             <DiscoverHomeCategoryFilterRow
               variant="work"
               selected={categoryFilter}
               onSelect={setCategoryFilter}
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={setOtherSubFilter}
               className="px-4 pt-3 pb-5"
             />
             <DiscoverHomePostedHelpRequests
               enabled
               categoryFilter={categoryFilter}
+              otherSubFilter={otherSubFilter}
               className="w-full px-4 pt-3 pb-2"
             />
             <div className="px-4">{renderExplorePromoBanner()}</div>
-            <div className="w-full px-4 pt-4 pb-2">
-              <DiscoverHomeMyLiveHelpJobs
-                mode="work"
-                exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-              />
-            </div>
           </>
         )}
       </div>
@@ -991,22 +1007,23 @@ export function DiscoverHomeActionFirst({
           <div className={cn("flex min-h-0 min-w-0 flex-col gap-4 md:h-full", !isHire && "hidden")}>
             <section
               className={cn(
-                "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left shadow-sm md:mx-0 md:max-w-none group md:min-h-0",
-                "bg-zinc-900 transition-all duration-500 dark:bg-zinc-950",
+                "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-2xl text-left shadow-sm ring-1 ring-black/5 md:mx-0 md:max-w-none group md:min-h-0",
+                "bg-orange-700 transition-all duration-500",
               )}
             >
-              {renderHeroStats()}
               {renderDesktopHeroQuickActions()}
               <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+                  className="pointer-events-none absolute inset-y-0 end-0 h-full w-[58%] object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />
-                <div className="absolute inset-0 z-[5] bg-gradient-to-r from-black/85 via-black/55 to-black/5" />
-                <div className="absolute inset-x-0 bottom-0 z-[5] h-32 bg-gradient-to-t from-black/55 to-transparent" />
+                <div
+                  className="absolute inset-y-0 start-0 z-[5] w-[70%]"
+                  style={heroColorFadeStyle("hire", isRtl)}
+                />
 
                 <div className={heroStackClassName}>
                   <div
@@ -1016,57 +1033,43 @@ export function DiscoverHomeActionFirst({
                     )}
                   >
                     <div className="min-w-0">
-                      {/* Desktop hero actions moved into the bottom Actions menu */}
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-700 sm:px-3 sm:py-1.5 dark:text-orange-300">
-                          <Zap
-                            className={cn(discoverIcon.sm, "shrink-0")}
-                            strokeWidth={DISCOVER_STROKE}
-                            aria-hidden
-                          />
-                          {t("discoverHome.heroHire.badge")}
-                        </div>
-                      </div>
-                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                        <h2
-                          className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
-                        >
+                      <div className={cn(heroTitleBlockClassName, "pr-0")}>
+                        <h2 className={heroHeadlineClassName}>
                           A little help, nearby
                         </h2>
-                        <p
-                          className="whitespace-pre-line text-[0.875rem] font-medium leading-snug text-white/85 sm:text-[15px]"
-                        >
+                        <p className={heroSubClassName}>
                           {t("discoverHome.heroHire.sub")}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
+                {renderHeroMyContentSummary()}
               </div>
             </section>
           </div>
           
           <section
             className={cn(
-              "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left shadow-sm md:mx-0 md:max-w-none group md:h-full md:min-h-0",
-              "bg-zinc-900 transition-all duration-500 dark:bg-zinc-950",
+              "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-2xl text-left shadow-sm ring-1 ring-black/5 md:mx-0 md:max-w-none group md:h-full md:min-h-0",
+              "bg-emerald-800 transition-all duration-500",
               isHire && "hidden"
             )}
           >
               {renderDesktopWorkLiveBadge()}
-              {renderHeroStats()}
               {renderDesktopHeroQuickActions()}
               <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+                  className="pointer-events-none absolute inset-y-0 end-0 h-full w-[58%] object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />
-                <div className="absolute inset-0 z-[5] bg-gradient-to-r from-black/85 via-black/55 to-black/5" />
-                <div className="absolute inset-x-0 bottom-0 z-[5] h-32 bg-gradient-to-t from-black/55 to-transparent" />
+                <div
+                  className="absolute inset-y-0 start-0 z-[5] w-[70%]"
+                  style={heroColorFadeStyle("work", isRtl)}
+                />
 
                 <div className={heroStackClassName}>
                   <div
@@ -1076,129 +1079,62 @@ export function DiscoverHomeActionFirst({
                     )}
                   >
                     <div className="min-w-0">
-                      {/* Desktop hero actions moved into the bottom Actions menu */}
-
-                      <div className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 sm:px-3 sm:py-1.5 dark:text-emerald-300">
-                        <Wifi
-                          className={cn(discoverIcon.sm, "shrink-0")}
-                          strokeWidth={DISCOVER_STROKE}
-                          aria-hidden
-                        />
-                        {t("discoverHome.heroWork.badge")}
-                      </div>
-                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                        <h2
-                          className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
-                        >
+                      <div className={cn(heroTitleBlockClassName, "pr-0")}>
+                        <h2 className={heroHeadlineClassName}>
                           Someone nearby needs your help
                         </h2>
-                        <p
-                          className="text-[0.875rem] font-medium leading-snug text-white/85 sm:text-[15px]"
-                        >
+                        <p className={heroSubClassName}>
                           {t("discoverHome.heroWork.sub")}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
+                {renderHeroMyContentSummary()}
               </div>
             </section>
         </div>
 
         <div className="min-h-0 w-full overflow-hidden pt-2 flex flex-col gap-2">
-          <div className="px-0.5 pt-1">{renderMyContentSummary()}</div>
-          <div className={cn("min-w-0 px-0.5 pt-4", !isHire && "hidden")}>
+          <div className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}>
+            <DiscoverHomeMyLiveHelpJobs mode="hire" className="pb-3" />
             <DiscoverHomeCategoryFilterRow
               variant="hire"
               layout="pills"
               selected={categoryFilter}
               onSelect={setCategoryFilter}
+              otherSubFilter={otherSubFilter}
+              onOtherSubFilterChange={setOtherSubFilter}
               className="pb-3"
             />
             <DiscoverHomeOffersForYou
               categoryFilter={categoryFilter}
+              otherSubFilter={otherSubFilter}
               viewerLocation={viewerLocation}
             />
             {renderExplorePromoBanner()}
           </div>
-          <DiscoverHomeMyLiveHelpJobs
-            mode="hire"
-            exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
-            createRequestPath={createRequestPath}
-            className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}
-          />
         </div>
 
+        <div className={cn("min-w-0 px-0.5 pt-2", isHire && "hidden")}>
+          <DiscoverHomeMyLiveHelpJobs mode="work" className="pb-3" />
+          <DiscoverHomeCategoryFilterRow
+            variant="work"
+            selected={categoryFilter}
+            onSelect={setCategoryFilter}
+            otherSubFilter={otherSubFilter}
+            onOtherSubFilterChange={setOtherSubFilter}
+            className="pb-3"
+          />
+        </div>
         <DiscoverHomePostedHelpRequests
           enabled
           categoryFilter={categoryFilter}
+          otherSubFilter={otherSubFilter}
           className={cn("px-1 pt-2 pb-1", isHire && "hidden")}
         />
         {!isHire ? <div className="px-1">{renderExplorePromoBanner()}</div> : null}
-        <DiscoverHomeMyLiveHelpJobs
-          mode="work"
-          exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-          className={cn("min-w-0 px-0.5 pt-3", isHire && "hidden")}
-        />
       </div>
-
-      {/* My Requests Modal */}
-      <Dialog open={myRequestsOpen} onOpenChange={setMyRequestsOpen}>
-        <DialogContent
-          aria-describedby={undefined}
-          className={cn(
-          "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
-          mobileTallBottomSheetDialogClass,
-          mobileBottomSheetSlideAnimationClass,
-          "md:max-h-[min(90vh,48rem)] md:max-w-4xl md:rounded-2xl"
-        )}>
-          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-black tracking-tight">Your requests</DialogTitle>
-              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
-                <X className="h-6 w-6" strokeWidth={2.5} />
-              </DialogClose>
-            </div>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
-            <ExploreMyPostedRequests variant="modal" />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* My Offers Modal */}
-      <Dialog open={myOffersOpen} onOpenChange={setMyOffersOpen}>
-        <DialogContent
-          aria-describedby={undefined}
-          className={cn(
-            "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
-            mobileTallBottomSheetDialogClass,
-            mobileBottomSheetSlideAnimationClass,
-            "md:max-h-[min(90vh,48rem)] md:max-w-4xl md:rounded-2xl",
-          )}
-        >
-          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-black tracking-tight">My offers</DialogTitle>
-              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
-                <X className="h-6 w-6" strokeWidth={2.5} />
-              </DialogClose>
-            </div>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[#F2F2F7] p-4 dark:bg-black">
-            {user?.id ? (
-              <ProfilePostsFeed
-                appearance="discover"
-                filterAuthorId={user.id}
-                filterPostTypeId="offer_service"
-                plainCards
-                globalFeedLayout
-                viewerLocation={viewerLocation}
-              />
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Pending Work Requests Modal */}
       <Dialog open={pendingWorkRequestsOpen} onOpenChange={setPendingWorkRequestsOpen}>

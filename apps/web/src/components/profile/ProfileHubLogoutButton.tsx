@@ -12,7 +12,7 @@ export function ProfileHubLogoutButton() {
       type="button"
       variant="ghost"
       size="sm"
-      className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+      className="w-full justify-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
       onClick={() => void signOut()}
     >
       <LogOut className="h-4 w-4" aria-hidden />

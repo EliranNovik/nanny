@@ -33,9 +33,6 @@ export const guestSiteHeaderChromeProps = {
   fullBleedTop: true,
 } as const;
 
-const navLinkClass =
-  "text-sm font-bold hover:text-white/80 transition-colors";
-
 export type LandingSiteHeaderProps = {
   /** `logo` = fixed Tebnu mark (landing). `back` = return to home (About / Contact). */
   leftCorner?: "logo" | "back";
@@ -300,6 +297,43 @@ export function LandingSiteHeader({
     ? "text-zinc-800 dark:text-zinc-200"
     : "text-white";
 
+  /** Signed-in chrome sits on light bars (landing / about / contact / feed) — keep ink dark. */
+  const signedInOnLightChrome =
+    heroOverlayLightSurface || isFeedChrome || variant === "glassy";
+  const signedInInkClass = signedInOnLightChrome
+    ? "text-zinc-900 dark:text-zinc-100"
+    : heroOverlay
+      ? cn(landingHeaderInkClass, heroWhiteInk && "md:text-white")
+      : isLandingGlass
+        ? "text-slate-900 md:text-white"
+        : "text-white";
+  const signedInMutedHoverClass = signedInOnLightChrome
+    ? "hover:text-orange-600 dark:hover:text-orange-400"
+    : heroOverlay
+      ? cn(
+          "hover:text-orange-600 dark:hover:text-orange-400",
+          heroWhiteInk && "md:hover:text-white/80",
+        )
+      : "hover:text-white/80";
+  const signedInDividerClass = signedInOnLightChrome
+    ? "border-zinc-300/70 dark:border-white/20"
+    : heroOverlay
+      ? cn(
+          "border-zinc-300/70 dark:border-white/20",
+          heroWhiteInk && "md:border-white/20",
+        )
+      : "border-white/20";
+  const signedInAvatarBorderClass = signedInOnLightChrome
+    ? "border-zinc-200 dark:border-white/20"
+    : isLandingGlass
+      ? "max-md:border-slate-200 md:border-white/30"
+      : "border-white/30";
+  const signedInAvatarFallbackClass = signedInOnLightChrome
+    ? "bg-zinc-100 text-zinc-700 dark:bg-white/15 dark:text-white"
+    : isLandingGlass
+      ? "max-md:bg-slate-100 max-md:text-slate-700 md:bg-white/20 md:text-white"
+      : "bg-white/20 text-white";
+
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
@@ -560,21 +594,11 @@ export function LandingSiteHeader({
                 </div>
               </div>
             ) : user ? (
-              <div className="flex items-center gap-4 md:gap-8 min-w-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className={cn(
-                    "h-9 w-9 flex-shrink-0 border",
-                    isLandingGlass
-                      ? "max-md:border-slate-200 md:border-white/30"
-                      : "border-white/30"
-                  )}>
+              <div className="flex min-w-0 items-center gap-4 md:gap-8">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar className={cn("h-9 w-9 flex-shrink-0 border", signedInAvatarBorderClass)}>
                     <AvatarImage src={profile?.photo_url || undefined} alt="" />
-                    <AvatarFallback className={cn(
-                      "text-xs font-bold",
-                      isLandingGlass
-                        ? "max-md:bg-slate-100 max-md:text-slate-700 md:bg-white/20 md:text-white"
-                        : "bg-white/20 text-white",
-                    )}>
+                    <AvatarFallback className={cn("text-xs font-bold", signedInAvatarFallbackClass)}>
                       {profile?.full_name
                         ?.split(" ")
                         .map((n) => n[0])
@@ -583,23 +607,20 @@ export function LandingSiteHeader({
                         .slice(0, 2) || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className={cn(
-                    "text-sm font-bold truncate",
-                    isLandingGlass ? "text-slate-900 md:text-white" : "text-white",
-                  )}>
+                  <span className={cn("truncate text-sm font-bold", signedInInkClass)}>
                     Hi, {profile?.full_name?.split(" ")[0] || "User"}
                   </span>
                 </div>
-                <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white shrink-0">
-                  <Link to="/about" className={navTabClass("/about", navLinkClass)}>
+                <div className={cn("hidden shrink-0 items-center gap-6 md:flex lg:gap-8", signedInInkClass)}>
+                  <Link to="/about" className={navTabClass("/about")}>
                     {t("siteNav.aboutUs")}
                   </Link>
                   {hideContactAndLegal ? null : (
                     <>
-                      <Link to="/contact" className={navTabClass("/contact", navLinkClass)}>
+                      <Link to="/contact" className={navTabClass("/contact")}>
                         {t("siteNav.contact")}
                       </Link>
-                      <Link to="/terms" className={navLinkClass}>
+                      <Link to="/terms" className={dynamicNavLinkClass}>
                         {t("siteNav.legalHub")}
                       </Link>
                     </>
@@ -776,17 +797,18 @@ export function LandingSiteHeader({
               </div>
               </>
             ) : user ? (
-              <div className={cn(
-                "hidden md:flex items-center gap-6 border-l pl-6",
-                isFeedChrome
-                  ? "border-zinc-300/70 text-zinc-800 dark:border-white/20 dark:text-white"
-                  : "border-white/20 text-white",
-              )}>
+              <div
+                className={cn(
+                  "hidden items-center gap-6 border-l pl-6 md:flex",
+                  signedInDividerClass,
+                  signedInInkClass,
+                )}
+              >
                 <Link
                   to={dashboardPath}
                   className={cn(
                     "flex items-center gap-1.5 text-sm font-bold transition-colors",
-                    isFeedChrome ? "hover:text-zinc-950 dark:hover:text-white/80" : "hover:text-white/80",
+                    signedInMutedHoverClass,
                   )}
                 >
                   <Home className="w-4 h-4" /> Dashboard
@@ -797,14 +819,7 @@ export function LandingSiteHeader({
               <button
                 type="button"
                 onClick={() => navigate(dashboardPath)}
-                className={cn(
-                  "md:hidden p-2 transition-colors",
-                  isFeedChrome
-                    ? "text-zinc-800 dark:text-white"
-                    : isLandingGlass
-                      ? "text-slate-900 md:text-white"
-                      : "text-white",
-                )}
+                className={cn("p-2 transition-colors md:hidden", signedInInkClass)}
               >
                 <Home className="w-6 h-6" />
               </button>

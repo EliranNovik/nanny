@@ -379,7 +379,7 @@
       "cooking": "ארוחות בבית",
       "pickup_delivery": "שליחויות ומשלוחים",
       "nanny": "טיפול אמין בילדים",
-      "technical_help": "תיקונים ותמיכה טכנית",
+      "home_maintenance": "תיקונים ותחזוקה",
       "other_help": "כל דבר אחר"
     },
     "careFrequency": {
@@ -476,7 +476,6 @@
     "selectLabel": "בחרו קטגוריה",
     "selectPlaceholder": "בחרו קטגוריה…",
     "beauty_personal_care": "טיפוח ויופי",
-    "technical_help": "עזרה טכנית",
     "heavy_lifting_moving": "הרמת משאות והובלות",
     "coaching_lessons": "אימון ושיעורים",
     "shopping_errands": "קניות ושליחויות",
@@ -484,7 +483,7 @@
     "elderly_help": "עזרה לקשישים",
     "paperwork_bureaucracy": "ניירת ובירוקרטיה",
     "event_help": "עזרה באירועים",
-    "home_maintenance": "תחזוקת בית",
+    "technical_help": "עזרה טכנית",
     "digital_creative": "עזרה דיגיטלית ויצירתית",
     "religious_community": "עזרה דתית / קהילתית",
     "customOption": "אחר (אף אחד מאלה)",
@@ -574,7 +573,7 @@
       "cooking": "בישול",
       "pickup_delivery": "משלוחים",
       "nanny": "מטפלת",
-      "technical_help": "טכני",
+      "home_maintenance": "בית",
       "other_help": "אחר",
       "allOther": "כל השאר",
       "pickSubcategory": "סינון לפי סוג",
@@ -724,6 +723,7 @@
       "cooking": "בישול",
       "pickup_delivery": "איסוף ומשלוח",
       "nanny": "בייביסיטר",
+      "home_maintenance": "תחזוקת בית",
       "technical_help": "עזרה טכנית",
       "other_help": "עזרה אחרת",
       "help_request": "בקשת עזרה"
@@ -810,6 +810,7 @@
         "cooking": "מחפשים מישהו לבישול{{when}}{{location}}.",
         "nanny": "מחפשים בייביסיטר אחראי{{when}}{{location}}.",
         "pickup_delivery": "מחפשים עזרה באיסוף ומשלוח{{when}}{{location}}.",
+        "home_maintenance": "מחפשים עזרה בתחזוקת בית{{when}}{{location}}.",
         "technical_help": "מחפשים עזרה טכנית{{when}}{{location}}.",
         "other_help": "מחפשים מישהו זמין לעזור{{when}}{{location}}.",
         "default": "מחפשים {{category}}{{when}}{{location}}."

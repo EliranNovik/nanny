@@ -11,7 +11,7 @@ export function ProfileHubHomeButton() {
       asChild
       variant="ghost"
       size="sm"
-      className="gap-2 text-muted-foreground"
+      className="w-full justify-center gap-2 text-muted-foreground"
     >
       <Link to="/">
         <Home className="h-4 w-4" aria-hidden />

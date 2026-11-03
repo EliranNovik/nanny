@@ -164,12 +164,14 @@ type Props = {
   enabled?: boolean;
   className?: string;
   categoryFilter?: DiscoverHomeCategoryFilter;
+  otherSubFilter?: string | null;
 };
 
 export function DiscoverHomePostedHelpRequests({
   enabled = true,
   className,
   categoryFilter = "all",
+  otherSubFilter = null,
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -200,8 +202,13 @@ export function DiscoverHomePostedHelpRequests({
     [openRequests, dismissedJobIds],
   );
   const filteredRequests = useMemo(
-    () => filterOpenHelpRequestsByCategory(undismissedRequests, categoryFilter),
-    [undismissedRequests, categoryFilter],
+    () =>
+      filterOpenHelpRequestsByCategory(
+        undismissedRequests,
+        categoryFilter,
+        otherSubFilter,
+      ),
+    [undismissedRequests, categoryFilter, otherSubFilter],
   );
 
   useEffect(() => {

@@ -4,7 +4,6 @@ import en from "@/i18n/locales/en.json";
 import fr from "@/i18n/locales/fr.json";
 import he from "@/i18n/locales/he.json";
 import ru from "@/i18n/locales/ru.json";
-import { haversineDistanceKm } from "@/lib/geo";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
 import {
@@ -227,32 +226,12 @@ export function formatFeedDistanceKm(km: number): string {
 }
 
 export function feedPostLocationLine(
-  t: TFunction,
+  _t: TFunction,
   locationLabel: string,
-  viewer: ViewerLocation | null | undefined,
-  post: GlobalFeedPostLike,
+  _viewer: ViewerLocation | null | undefined,
+  _post: GlobalFeedPostLike,
 ): string {
-  const trimmed = locationLabel.trim();
-  if (!trimmed) return "";
-
-  const coords = feedPostLocationCoords(post);
-  const viewerLat = viewer?.lat;
-  const viewerLng = viewer?.lng;
-  if (
-    coords &&
-    typeof viewerLat === "number" &&
-    typeof viewerLng === "number" &&
-    Number.isFinite(viewerLat) &&
-    Number.isFinite(viewerLng)
-  ) {
-    const km = haversineDistanceKm(viewerLat, viewerLng, coords.lat, coords.lng);
-    return t("feed.global.locationWithDistance", {
-      location: trimmed,
-      distance: formatFeedDistanceKm(km),
-    });
-  }
-
-  return trimmed;
+  return locationLabel.trim();
 }
 
 export function feedPostTitle(
@@ -316,9 +295,9 @@ export function feedPostDescription(
   return userCaption || text;
 }
 
-/** Global feed post card shell — pale grey in light mode; darker on desktop dark mode. */
+/** Global feed post card shell — white in light mode; darker on desktop dark mode. */
 export const globalFeedCardSurfaceClass =
-  "bg-zinc-50 shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
+  "bg-white shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
 
 export function globalFeedPostTypeAccentClass(typeId: string | null): string {
   switch (typeId) {
@@ -783,7 +762,7 @@ export const globalFeedMobilePageClass = globalFeedMobileFeedAreaClass;
 
 /** Mobile global feed card shell — full width, rounded top and bottom. */
 export const globalFeedMobileCardClass =
-  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-zinc-50 dark:max-md:bg-[#181b1f]";
+  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
 
 /** Mobile card inner horizontal padding. */
 export const globalFeedMobileCardPadClass = "max-md:px-1";

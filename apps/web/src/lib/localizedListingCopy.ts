@@ -25,6 +25,7 @@ const REQUEST_LOOKING_KEYS = new Set([
   "cooking",
   "nanny",
   "pickup_delivery",
+  "home_maintenance",
   "technical_help",
   "other_help",
 ]);

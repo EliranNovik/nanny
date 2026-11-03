@@ -2,23 +2,18 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Zap } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { trackEvent } from "@/lib/analytics";
-import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
-import { DiscoverMyLiveHelpCard } from "@/components/discover/DiscoverOpenHelpRequestCard";
 import {
-  DiscoverRequestCarouselArrows,
-  useDiscoverRequestCarouselScroll,
-} from "@/components/discover/DiscoverRequestCarouselControls";
-import {
-  discoverLeanPersonalCardCarouselItemClass,
-  discoverRequestCardsCarouselContainerClass,
-} from "@/components/discover/discoverRequestCarouselCardShared";
+  categoryIllustrationSrc,
+  helpCategoryIdFromServiceDetails,
+} from "@/lib/discoverCategoryTileIcons";
+import { postServiceCategoryLabel } from "@/lib/serviceCategories";
 
 type Mode = "hire" | "work";
 
@@ -50,34 +45,14 @@ type LiveHelpPayload = {
   profileMap: Record<string, ProfileMini>;
 };
 
-const HELPING_NOW_STATUSES = ["locked", "active"] as const;
+type Props = {
+  mode: Mode;
+  exploreLiveHelpPath?: string;
+  createRequestPath?: string;
+  className?: string;
+};
 
-function toLiveHelpCardRow(job: JobRow): Pick<
-  DiscoverOpenHelpRequestRow,
-  | "service_type"
-  | "location_city"
-  | "created_at"
-  | "notes"
-  | "ai_generated_copy"
-  | "when_timeframe"
-  | "budget_min"
-  | "budget_max"
-  | "budget_rate_type"
-  | "service_details"
-> {
-  return {
-    service_type: job.service_type,
-    location_city: job.location_city,
-    created_at: job.created_at,
-    notes: job.notes ?? null,
-    ai_generated_copy: job.ai_generated_copy,
-    when_timeframe: job.when_timeframe ?? null,
-    budget_min: job.budget_min ?? null,
-    budget_max: job.budget_max ?? null,
-    budget_rate_type: job.budget_rate_type ?? null,
-    service_details: job.service_details ?? null,
-  };
-}
+const HELPING_NOW_STATUSES = ["locked", "active"] as const;
 
 function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
   const queryClient = useQueryClient();
@@ -120,255 +95,167 @@ function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
         .limit(24);
 
       if (error) {
-        console.warn("[DiscoverHomeMyLiveHelpJobs] jobs", error);
+        console.warn("[DiscoverHomeMyLiveHelpJobs]", error);
         return { jobs: [], profileMap: {} };
       }
 
-      const rows = (data ?? []) as JobRow[];
-      if (rows.length === 0) return { jobs: rows, profileMap: {} };
-
-      const otherIds = Array.from(
-        new Set(
-          (mode === "hire"
-            ? rows.map((r) => String(r.selected_freelancer_id ?? ""))
-            : rows.map((r) => String(r.client_id ?? ""))
-          ).filter(Boolean),
+      const jobs = (data ?? []) as JobRow[];
+      const otherIds = [
+        ...new Set(
+          jobs
+            .map((j) =>
+              mode === "hire" ? j.selected_freelancer_id : j.client_id,
+            )
+            .filter((id): id is string => Boolean(id)),
         ),
-      );
+      ];
 
-      const profileMap: Record<string, ProfileMini> = {};
+      let profileMap: Record<string, ProfileMini> = {};
       if (otherIds.length > 0) {
-        const { data: profs } = await supabase
+        const { data: profiles } = await supabase
           .from("profiles")
           .select("id, full_name, photo_url")
           .in("id", otherIds);
-        for (const p of (profs ?? []) as ProfileMini[]) {
-          if (p?.id) profileMap[p.id] = p;
-        }
+        profileMap = Object.fromEntries(
+          ((profiles ?? []) as ProfileMini[]).map((p) => [p.id, p]),
+        );
       }
 
-      return { jobs: rows, profileMap };
+      return { jobs, profileMap };
     },
   });
 }
 
-type Props = {
-  mode: Mode;
-  exploreLiveHelpPath: string;
-  createRequestPath?: string;
-  className?: string;
-};
+function jobCategoryLabel(job: JobRow): string {
+  const sub = helpCategoryIdFromServiceDetails(job.service_details);
+  return postServiceCategoryLabel(job.service_type, sub);
+}
 
-type LiveHelpSectionProps = {
-  jobs: JobRow[];
-  profileMap: Record<string, ProfileMini>;
-  loading: boolean;
-  className?: string;
-  title: string;
-  subtitle: string;
-  ariaLabel: string;
-  emptyTitle: string;
-  emptySub: string;
-  otherPartyLabel: string;
-  otherPartyFallback: string;
-  getOtherPartyId: (job: JobRow) => string;
-  getJobOpenPath: (jobId: string) => string;
-  openTrackEvent: string;
-  createRequestPath?: string;
-  emptyPostTrackEvent?: string;
-};
-
-function DiscoverHomeLiveHelpSection({
-  jobs,
-  profileMap,
-  loading,
-  className,
-  title,
-  subtitle,
-  ariaLabel,
-  emptyTitle,
-  emptySub,
-  otherPartyLabel,
-  otherPartyFallback,
-  getOtherPartyId,
-  getJobOpenPath,
-  openTrackEvent,
-  createRequestPath,
-  emptyPostTrackEvent,
-}: LiveHelpSectionProps) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { scrollerRef, scrollByDir } = useDiscoverRequestCarouselScroll();
-
-  if (loading) {
-    return (
-      <section className={cn("w-full", className)} aria-label={ariaLabel}>
-        <div className="mb-3 space-y-1">
-          <div className="h-6 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-          <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
-        </div>
-        <div className={discoverRequestCardsCarouselContainerClass}>
-          {Array.from({ length: 2 }, (_, i) => (
-            <div
-              key={i}
-              className={cn(
-                discoverLeanPersonalCardCarouselItemClass,
-                "h-28 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70",
-              )}
-            />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (jobs.length === 0) {
-    const showPostCta = !!createRequestPath;
-    return (
-      <section className={cn("w-full", className)} aria-label={ariaLabel}>
-        <div className="mb-3">
-          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-            {title}
-          </h2>
-          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-100/80 px-4 py-5 text-left shadow-sm dark:border-zinc-700 dark:bg-zinc-800/70">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200/90 text-zinc-600 ring-1 ring-zinc-300/60 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/80">
-            <Zap className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-bold leading-tight text-zinc-900 dark:text-white">
-              {emptyTitle}
-            </p>
-            <p className="mt-0.5 text-[12px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
-              {emptySub}
-            </p>
-          </div>
-          {showPostCta ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (emptyPostTrackEvent) {
-                  trackEvent(emptyPostTrackEvent, {});
-                }
-                navigate(createRequestPath as string);
-              }}
-              className={cn(
-                "shrink-0 inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-zinc-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-zinc-800 shadow-sm transition-colors",
-                "hover:bg-zinc-200 active:scale-95",
-                "dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:shadow-none",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50",
-              )}
-              aria-label={t("discover.postRequest")}
-            >
-              {t("discover.postRequest")}
-            </button>
-          ) : null}
-        </div>
-      </section>
-    );
-  }
-
+function jobCategoryId(job: JobRow): string | null {
   return (
-    <section className={cn("w-full", className)} aria-label={ariaLabel}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-            {title}
-          </h2>
-          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
-        </div>
-        <DiscoverRequestCarouselArrows
-          onScrollLeft={() => scrollByDir(-1)}
-          onScrollRight={() => scrollByDir(1)}
-        />
-      </div>
-
-      <div ref={scrollerRef} className={discoverRequestCardsCarouselContainerClass}>
-        {jobs.map((job) => {
-          const otherId = getOtherPartyId(job);
-          const otherProfile = otherId ? profileMap[otherId] : null;
-          const otherPartyName =
-            (otherProfile?.full_name || "").trim() || otherPartyFallback;
-
-          return (
-            <DiscoverMyLiveHelpCard
-              key={job.id}
-              row={toLiveHelpCardRow(job)}
-              layout="carousel"
-              className={discoverLeanPersonalCardCarouselItemClass}
-              categoryIconTone={otherPartyLabel === "Helper" ? "orange" : "green"}
-              otherPartyLabel={otherPartyLabel}
-              otherPartyName={otherPartyName}
-              otherPartyPhotoUrl={otherProfile?.photo_url ?? null}
-              onOpen={() => {
-                trackEvent(openTrackEvent, { job_id: job.id });
-                navigate(getJobOpenPath(job.id));
-              }}
-            />
-          );
-        })}
-      </div>
-    </section>
+    helpCategoryIdFromServiceDetails(job.service_details) ||
+    job.service_type ||
+    null
   );
 }
 
 export function DiscoverHomeMyLiveHelpJobs({
   mode,
-  exploreLiveHelpPath: _exploreLiveHelpPath,
-  createRequestPath,
   className,
 }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const { data, isLoading: loading } = useDiscoverMyLiveHelpJobs(user?.id, mode);
   const jobs = useMemo(() => data?.jobs ?? [], [data]);
   const profileMap = data?.profileMap ?? {};
 
-  if (!user?.id) return null;
+  if (!user?.id || loading || jobs.length === 0) return null;
 
-  if (mode === "hire") {
-    return (
-      <DiscoverHomeLiveHelpSection
-        jobs={jobs}
-        profileMap={profileMap}
-        loading={loading}
-        createRequestPath={createRequestPath}
-        className={className}
-        title={t("discover.myHelpLive")}
-        subtitle={t("discover.myHelpLiveSubtitle")}
-        ariaLabel={t("discover.myHelpLive")}
-        emptyTitle={t("discover.noLiveHelpYet")}
-        emptySub={t("discover.noLiveHelpYetSub")}
-        otherPartyLabel="Helper"
-        otherPartyFallback="Helper"
-        getOtherPartyId={(job) => String(job.selected_freelancer_id ?? "")}
-        getJobOpenPath={(jobId) => `/client/jobs/${encodeURIComponent(jobId)}/live`}
-        openTrackEvent="discover_my_help_live_open"
-        emptyPostTrackEvent="discover_my_help_live_empty_post_request"
-      />
-    );
-  }
+  const title =
+    mode === "hire" ? t("discover.myHelpLive") : t("discover.liveHelp");
+  const titleClass =
+    mode === "hire"
+      ? "text-orange-700 dark:text-orange-400"
+      : "text-emerald-700 dark:text-emerald-400";
+  const ringClass =
+    mode === "hire"
+      ? "focus-visible:ring-orange-500/70"
+      : "focus-visible:ring-emerald-500/70";
 
   return (
-    <DiscoverHomeLiveHelpSection
-      jobs={jobs}
-      profileMap={profileMap}
-      loading={loading}
-      className={className}
-      title={t("discover.liveHelp")}
-      subtitle={t("discover.liveHelpSubtitle")}
-      ariaLabel={t("discover.liveHelp")}
-      emptyTitle={t("discover.noLiveGigsYet")}
-      emptySub={t("discover.noLiveGigsYetSub")}
-      otherPartyLabel="Helping"
-      otherPartyFallback="Client"
-      getOtherPartyId={(job) => String(job.client_id ?? "")}
-      getJobOpenPath={(jobId) =>
-        `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(jobId)}`
-      }
-      openTrackEvent="discover_my_live_help_open"
-    />
+    <section className={cn("w-full", className)} aria-label={title}>
+      <h2
+        className={cn(
+          "mb-5 text-[24px] font-black tracking-tight sm:text-2xl",
+          titleClass,
+        )}
+      >
+        {title}
+      </h2>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
+        {jobs.map((job) => {
+          const otherId =
+            mode === "hire"
+              ? String(job.selected_freelancer_id ?? "")
+              : String(job.client_id ?? "");
+          const otherProfile = otherId ? profileMap[otherId] : null;
+          const otherName =
+            (otherProfile?.full_name || "").trim() ||
+            (mode === "hire" ? "Helper" : "Client");
+          const categoryId = jobCategoryId(job);
+          const categoryLabel = jobCategoryLabel(job);
+          const location = (job.location_city ?? "").trim() || null;
+          const openPath =
+            mode === "hire"
+              ? `/client/jobs/${encodeURIComponent(job.id)}/live`
+              : `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`;
+
+          return (
+            <button
+              key={job.id}
+              type="button"
+              onClick={() => {
+                trackEvent(
+                  mode === "hire"
+                    ? "discover_my_help_live_open"
+                    : "discover_my_live_help_open",
+                  { job_id: job.id },
+                );
+                navigate(openPath);
+              }}
+              className={cn(
+                "flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left",
+                "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
+                "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                ringClass,
+              )}
+            >
+              <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <img
+                  src={categoryIllustrationSrc(categoryId)}
+                  alt=""
+                  className="h-full w-full origin-center scale-[1.08] object-cover object-center"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    "truncate text-[15px] font-semibold sm:text-[13px]",
+                    titleClass,
+                  )}
+                >
+                  {categoryLabel}
+                </p>
+                <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
+                  {location || title}
+                </p>
+                <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+                  {mode === "hire" ? `Helper · ${otherName}` : `Helping · ${otherName}`}
+                </p>
+                <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  Live now
+                </p>
+              </div>
+
+              <ChevronRight
+                className="h-6 w-6 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600 sm:h-5 sm:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }

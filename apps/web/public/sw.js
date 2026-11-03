@@ -1,5 +1,5 @@
 // ─── Cache names — bump STATIC_CACHE when fetch logic changes ────────────────
-const STATIC_CACHE   = 'tebnu-static-v4';
+const STATIC_CACHE   = 'tebnu-static-v5';
 const MEDIA_CACHE    = 'tebnu-media-v3';    // Supabase storage images & videos
 
 // ─── Supabase project URL prefix (cross-origin images / videos) ───────────────

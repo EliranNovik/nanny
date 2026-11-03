@@ -366,7 +366,7 @@ export function ChatComposer({
             }
             handleSend(event);
           }}
-          className="flex w-full max-w-none items-end gap-1.5 rounded-[22px] border border-transparent bg-white p-1.5 shadow-[0_8px_28px_rgba(124,45,18,0.08)] dark:bg-zinc-900"
+          className="flex w-full max-w-none items-end gap-1.5 rounded-[22px] border border-transparent bg-[#F5F5F7] p-1.5 shadow-none dark:bg-zinc-900"
         >
           <input
             ref={fileInputRef}
@@ -520,7 +520,7 @@ export function ChatComposer({
             }
             handleSend(event);
           }}
-          className="flex w-full max-w-none items-end gap-1.5 rounded-[22px] border border-transparent bg-white p-1.5 shadow-[0_8px_28px_rgba(124,45,18,0.08)] dark:bg-zinc-900"
+          className="flex w-full max-w-none items-end gap-1.5 rounded-[22px] border border-transparent bg-[#F5F5F7] p-1.5 shadow-none dark:bg-zinc-900"
         >
           <input
             ref={fileInputRef}

@@ -60,12 +60,12 @@ export const HIRE_CATEGORY_TILE_UI: Record<
     iconClass: "text-sky-600 dark:text-sky-400",
     badgeIconClass: "text-sky-700",
   },
-  technical_help: {
-    Icon: Wrench,
+  home_maintenance: {
+    Icon: Home,
     tileClass:
-      "bg-slate-500/[0.08] ring-slate-400/25 dark:bg-slate-500/15 dark:ring-slate-500/30",
-    iconClass: "text-slate-700 dark:text-slate-300",
-    badgeIconClass: "text-slate-700",
+      "bg-orange-500/[0.08] ring-orange-400/25 dark:bg-orange-500/15 dark:ring-orange-500/30",
+    iconClass: "text-orange-600 dark:text-orange-400",
+    badgeIconClass: "text-orange-700",
   },
   other_help: {
     Icon: HelpCircle,
@@ -121,10 +121,10 @@ export const OTHER_HELP_SUBCATEGORY_UI: Record<
     iconClass: "text-fuchsia-600 dark:text-fuchsia-400",
     badgeIconClass: "text-fuchsia-700",
   },
-  home_maintenance: {
-    Icon: Home,
-    iconClass: "text-orange-600 dark:text-orange-400",
-    badgeIconClass: "text-orange-700",
+  technical_help: {
+    Icon: Wrench,
+    iconClass: "text-slate-700 dark:text-slate-300",
+    badgeIconClass: "text-slate-700",
   },
   digital_creative: {
     Icon: Palette,
@@ -188,14 +188,101 @@ export function helpCategoryIdFromServiceDetails(
   return null;
 }
 
+/** Bump when replacing files in `public/category-icons/` so SW/browser caches refresh. */
+const CATEGORY_ILLUSTRATION_ASSET_VERSION = "20261102b";
+
 /** 3D category illustrations for text-only request cards. */
 export function categoryIllustrationSrc(
   categoryId?: string | null,
   ...candidates: Array<string | null | undefined>
 ): string {
   const id = resolveHelpCategoryIconId(categoryId, ...candidates);
-  if (id && CATEGORY_ILLUSTRATION_IDS.has(id)) {
-    return `/category-icons/${id}.png`;
-  }
-  return "/category-icons/other_help.png";
+  const file =
+    id && CATEGORY_ILLUSTRATION_IDS.has(id) ? id : "other_help";
+  return `/category-icons/${file}.png?v=${CATEGORY_ILLUSTRATION_ASSET_VERSION}`;
+}
+
+/** Exact badge PNG background fills for category filter / picker boxes. */
+export const CATEGORY_BADGE_BOX_COLORS: Record<
+  string,
+  { idle: string; selected: string }
+> = {
+  cleaning: {
+    idle: "bg-[#aed8ef] text-slate-900",
+    selected: "bg-[#3d8eb8] text-white ring-2 ring-[#3d8eb8]/40 ring-offset-2 ring-offset-background",
+  },
+  cooking: {
+    idle: "bg-[#fabb97] text-slate-900",
+    selected: "bg-[#e07840] text-white ring-2 ring-[#e07840]/40 ring-offset-2 ring-offset-background",
+  },
+  pickup_delivery: {
+    idle: "bg-[#ddccf5] text-slate-900",
+    selected: "bg-[#8f6fd4] text-white ring-2 ring-[#8f6fd4]/40 ring-offset-2 ring-offset-background",
+  },
+  nanny: {
+    idle: "bg-[#bbd0b5] text-slate-900",
+    selected: "bg-[#6a8f5a] text-white ring-2 ring-[#6a8f5a]/40 ring-offset-2 ring-offset-background",
+  },
+  home_maintenance: {
+    idle: "bg-[#f3d5b5] text-slate-900",
+    selected: "bg-[#c9955a] text-white ring-2 ring-[#c9955a]/40 ring-offset-2 ring-offset-background",
+  },
+  other_help: {
+    idle: "bg-[#e5dbf6] text-slate-900",
+    selected: "bg-[#8b6fc7] text-white ring-2 ring-[#8b6fc7]/40 ring-offset-2 ring-offset-background",
+  },
+  beauty_personal_care: {
+    idle: "bg-[#fad6d2] text-slate-900",
+    selected: "bg-[#d47a72] text-white",
+  },
+  heavy_lifting_moving: {
+    idle: "bg-[#dbcefa] text-slate-900",
+    selected: "bg-[#8f6fd4] text-white",
+  },
+  coaching_lessons: {
+    idle: "bg-[#aad3eb] text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  shopping_errands: {
+    idle: "bg-[#fdf1e1] text-slate-900",
+    selected: "bg-[#d4a06a] text-white",
+  },
+  pet_help: {
+    idle: "bg-[#fcc19e] text-slate-900",
+    selected: "bg-[#e07840] text-white",
+  },
+  elderly_help: {
+    idle: "bg-[#bbd0b2] text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
+  },
+  paperwork_bureaucracy: {
+    idle: "bg-[#afc7d4] text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  event_help: {
+    idle: "bg-[#d7c9ee] text-slate-900",
+    selected: "bg-[#8b6fc7] text-white",
+  },
+  technical_help: {
+    idle: "bg-[#abc2cf] text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  digital_creative: {
+    idle: "bg-[#afd6e9] text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  religious_community: {
+    idle: "bg-[#c6d7bf] text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
+  },
+};
+
+export function categoryBadgeBoxClass(
+  categoryId?: string | null,
+  selected = false,
+): string {
+  const meta =
+    CATEGORY_BADGE_BOX_COLORS[categoryId ?? ""] ??
+    CATEGORY_BADGE_BOX_COLORS.other_help;
+  return selected ? meta.selected : meta.idle;
 }

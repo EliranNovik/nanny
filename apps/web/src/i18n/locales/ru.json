@@ -379,7 +379,7 @@
       "cooking": "Еда дома",
       "pickup_delivery": "Поручения и доставка",
       "nanny": "Надёжный уход за детьми",
-      "technical_help": "Ремонт и техподдержка",
+      "home_maintenance": "Ремонт и уход за домом",
       "other_help": "Что-то ещё"
     },
     "careFrequency": {
@@ -476,7 +476,6 @@
     "selectLabel": "Выберите категорию",
     "selectPlaceholder": "Выберите категорию…",
     "beauty_personal_care": "Красота и уход за собой",
-    "technical_help": "Техническая помощь",
     "heavy_lifting_moving": "Переноска тяжестей и переезды",
     "coaching_lessons": "Коучинг и уроки",
     "shopping_errands": "Покупки и поручения",
@@ -484,7 +483,7 @@
     "elderly_help": "Помощь пожилым",
     "paperwork_bureaucracy": "Документы и бюрократия",
     "event_help": "Помощь на мероприятиях",
-    "home_maintenance": "Обслуживание дома",
+    "technical_help": "Техническая помощь",
     "digital_creative": "Цифровая и творческая помощь",
     "religious_community": "Религиозная / общинная помощь",
     "customOption": "Другое (ничего из этого)",
@@ -574,7 +573,7 @@
       "cooking": "Готовка",
       "pickup_delivery": "Доставка",
       "nanny": "Няня",
-      "technical_help": "Техника",
+      "home_maintenance": "Дом",
       "other_help": "Другое",
       "allOther": "Всё другое",
       "pickSubcategory": "Фильтр по типу",
@@ -724,6 +723,7 @@
       "cooking": "Готовка",
       "pickup_delivery": "Доставка и курьер",
       "nanny": "Няня",
+      "home_maintenance": "Обслуживание дома",
       "technical_help": "Техническая помощь",
       "other_help": "Другая помощь",
       "help_request": "Запрос на помощь"
@@ -810,6 +810,7 @@
         "cooking": "Ищем кого-то для готовки{{when}}{{location}}.",
         "nanny": "Ищем ответственную няню{{when}}{{location}}.",
         "pickup_delivery": "Ищем помощь с доставкой{{when}}{{location}}.",
+        "home_maintenance": "Ищем помощь по обслуживанию дома{{when}}{{location}}.",
         "technical_help": "Ищем техническую помощь{{when}}{{location}}.",
         "other_help": "Ищем кого-то, кто может помочь{{when}}{{location}}.",
         "default": "Ищем {{category}}{{when}}{{location}}."

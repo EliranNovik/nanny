@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { ShieldCheck, Instagram, Facebook, Twitter } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { OPEN_COOKIE_SETTINGS_EVENT } from "@/components/AnalyticsConsent";
 
 export function Footer() {
   const { t } = useTranslation();
@@ -132,15 +131,6 @@ export function Footer() {
                 <Link to="/disclaimer" className="text-slate-400 hover:text-white font-bold transition-colors">
                   {t("legalHub.documents.disclaimer")}
                 </Link>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className="text-left text-slate-400 hover:text-white font-bold transition-colors"
-                  onClick={() => window.dispatchEvent(new Event(OPEN_COOKIE_SETTINGS_EVENT))}
-                >
-                  {t("analyticsConsent.settings")}
-                </button>
               </li>
             </ul>
             <div className="mt-8 pt-8 border-t border-white/5">

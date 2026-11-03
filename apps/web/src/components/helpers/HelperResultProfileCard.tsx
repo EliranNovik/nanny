@@ -15,6 +15,7 @@ import {
   Utensils,
   Package,
   Baby,
+  Home,
   Wrench,
   Star,
   Tag,
@@ -168,6 +169,7 @@ function CategoryIcon({ id, className }: { id: string; className?: string }) {
     case "cooking": return <Utensils className={className} aria-hidden />;
     case "pickup_delivery": return <Package className={className} aria-hidden />;
     case "nanny": return <Baby className={className} aria-hidden />;
+    case "home_maintenance": return <Home className={className} aria-hidden />;
     case "technical_help": return <Wrench className={className} aria-hidden />;
     case "other_help": return <HelpCircle className={className} aria-hidden />;
     default: return <Sparkles className={className} aria-hidden />;

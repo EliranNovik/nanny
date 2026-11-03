@@ -22,6 +22,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProfileHubSkeleton } from "@/components/loading/PageSkeletons";
 
 type ClientProfileHubProps = {
   form?: ClientProfileFormContext;
@@ -36,7 +37,7 @@ export default function ClientProfileHub({
   const { openReportModal } = useReportIssue();
   const outletForm = useOutletContext<ClientProfileFormContext | undefined>();
   const ctx = form ?? outletForm;
-  if (!ctx) return null;
+  if (!ctx) return <ProfileHubSkeleton />;
   const { profile, fullName, photoUrl } = ctx;
 
   return (
@@ -72,17 +73,17 @@ export default function ClientProfileHub({
             <ProfileMenuRow to="/client/profile/account" icon={UserCircle} label={t("profile.myAccount")} />
           </div>
 
-          <div className="mt-10 flex flex-col items-center gap-3 pb-4">
+          <div className="mt-10 grid grid-cols-2 items-center gap-x-2 gap-y-3 pb-4">
             <RoleOnboardingGuide
               role={profile?.role ?? "client"}
               triggerLabel="Help"
-              triggerClassName="gap-2 text-muted-foreground"
+              triggerClassName="w-full justify-center gap-2 text-muted-foreground"
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="gap-2 text-muted-foreground"
+              className="w-full justify-center gap-2 text-muted-foreground"
               onClick={openReportModal}
             >
               <AlertCircle className="w-4 h-4" />

@@ -18,6 +18,7 @@ import {
   MessageCircle,
   User,
   LogOut,
+  ExternalLink,
   Shield,
   CheckCircle2,
   BarChart3,
@@ -61,11 +62,28 @@ export function DesktopSidePanel() {
   const { collapsed } = useDesktopSidePanel();
   const { pathname, search } = useLocation();
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
-  const { showRail } = useAuthenticatedShellLayout({
+  const { showRail, whiteRail } = useAuthenticatedShellLayout({
     pathname,
     search,
     isAdmin: isAdminPage,
   });
+  const isMessagesPage =
+    pathname === "/messages" || pathname.startsWith("/messages/");
+  /** Extra clearance under the fixed header on all pages except messages. */
+  const insetFromHeader = !isAdminPage && !isMessagesPage;
+  /** Messages always uses the compact icon-over-label rail. */
+  const iconRail = !isAdminPage && (collapsed || isMessagesPage);
+  const railBg = isAdminPage
+    ? "bg-zinc-100 dark:bg-zinc-950"
+    : whiteRail
+      ? "bg-white dark:bg-background"
+      : "bg-[#F2F2F7] dark:bg-background";
+  const navHover = whiteRail
+    ? "hover:bg-zinc-100 dark:hover:bg-white/10"
+    : "hover:bg-white/90 dark:hover:bg-white/10";
+  const navActive = whiteRail
+    ? "bg-zinc-100 text-foreground dark:bg-white/10"
+    : "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none";
   const navigate = useNavigate();
   const mountedRef = useRef(false);
   const [savedProfilesOpen, setSavedProfilesOpen] = useState(true);
@@ -302,17 +320,20 @@ export function DesktopSidePanel() {
   if (isDesktopSidePanelExcludedRoute(pathname)) return null;
   if (!isAdminPage && !showRail) return null;
 
-  if (!isAdminPage && collapsed) {
+  if (iconRail) {
     return (
       <aside
         className={cn(
-          "app-desktop-side-panel app-tablet-nav-rail !w-[76px] flex flex-col items-center overflow-hidden rounded-[38px] border border-black/[0.06] shadow-[0_18px_55px_rgba(45,31,20,0.14)] dark:border-white/15",
-          isAdminPage
-            ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
-            : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+          "app-desktop-side-panel app-tablet-nav-rail !w-[76px] flex flex-col items-center overflow-hidden border-0 shadow-none",
+          railBg,
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain px-1.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            insetFromHeader ? "pb-3 pt-16" : "py-3",
+          )}
+        >
           <nav className="flex w-full flex-col items-center gap-1">
             {items.map((it) => {
               const active = it.activeMatch(pathname);
@@ -324,20 +345,26 @@ export function DesktopSidePanel() {
                   key={it.href}
                   to={it.href}
                   className={cn(
-                    "relative flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
-                    "text-muted-foreground hover:text-foreground hover:opacity-90",
-                    active && "text-foreground",
+                    "group relative flex w-full flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 transition-colors",
+                    navHover,
+                    active ? navActive : "text-zinc-800 dark:text-zinc-100",
                   )}
                   aria-current={active ? "page" : undefined}
                   aria-label={label}
                 >
+                  {active ? (
+                    <span
+                      className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-orange-500"
+                      aria-hidden
+                    />
+                  ) : null}
                   <span className="relative flex h-7 w-7 items-center justify-center">
                     {isProfileRow ? (
                       <Avatar
                         className={cn(
                           "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
                           active
-                            ? "border-transparent ring-2 ring-foreground"
+                            ? "border-transparent ring-2 ring-orange-500"
                             : "border-black/10 dark:border-white/15",
                         )}
                       >
@@ -353,7 +380,15 @@ export function DesktopSidePanel() {
                         </AvatarFallback>
                       </Avatar>
                     ) : (
-                      <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                      <Icon
+                        className={cn(
+                          "h-6 w-6 shrink-0 transition-colors",
+                          active
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
+                        )}
+                        strokeWidth={2.15}
+                      />
                     )}
                     {it.id === "messages" && unreadMessages > 0 ? (
                       <Badge
@@ -364,7 +399,14 @@ export function DesktopSidePanel() {
                       </Badge>
                     ) : null}
                   </span>
-                  <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                  <span
+                    className={cn(
+                      "w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight",
+                      active
+                        ? "text-foreground"
+                        : "text-zinc-800 dark:text-zinc-100",
+                    )}
+                  >
                     {label}
                   </span>
                 </Link>
@@ -382,14 +424,35 @@ export function DesktopSidePanel() {
                     key={it.href}
                     to={it.href}
                     className={cn(
-                      "relative flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
-                      "text-muted-foreground hover:text-foreground hover:opacity-90",
-                      active && "rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm hover:text-white",
+                      "group relative flex w-full flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 transition-colors",
+                      "hover:bg-white/90 dark:hover:bg-white/10",
+                      active
+                        ? "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none"
+                        : "text-zinc-800 dark:text-zinc-100",
                     )}
                     aria-label={it.label}
                   >
-                    <Icon className="h-5 w-5 shrink-0" strokeWidth={2.4} />
-                    <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+                    {active ? (
+                      <span
+                        className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-orange-500"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors",
+                        active
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500",
+                      )}
+                      strokeWidth={2.15}
+                    />
+                    <span
+                      className={cn(
+                        "w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight",
+                        active ? "text-foreground" : "text-zinc-800 dark:text-zinc-100",
+                      )}
+                    >
                       {it.label}
                     </span>
                   </Link>
@@ -398,49 +461,62 @@ export function DesktopSidePanel() {
             </nav>
           )}
 
-          <div className={cn("mt-auto w-full flex-col items-center gap-1 py-2", isAdminPage ? "hidden" : "flex")}>
-            <button
-              type="button"
-              onClick={() => openSaved("profiles")}
-              className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-muted-foreground transition-opacity hover:text-foreground hover:opacity-90"
-              aria-label={t("nav.savedProfiles")}
-            >
-              <Bookmark className="h-5 w-5" strokeWidth={2.5} />
-              <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
-                {t("nav.savedProfiles")}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => openSaved("posts")}
-              className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-muted-foreground transition-opacity hover:text-foreground hover:opacity-90"
-              aria-label={t("nav.savedPosts")}
-            >
-              <Bookmark className="h-5 w-5 fill-current" strokeWidth={2.5} />
-              <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
-                {t("nav.savedPosts")}
-              </span>
-            </button>
-          </div>
+          {!isMessagesPage ? (
+            <div className={cn("mt-auto w-full flex-col items-center gap-1 py-2", isAdminPage ? "hidden" : "flex")}>
+              <button
+                type="button"
+                onClick={() => openSaved("profiles")}
+                className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-zinc-800 transition-colors hover:opacity-90 dark:text-zinc-100"
+                aria-label={t("nav.savedProfiles")}
+              >
+                <Bookmark className="h-5 w-5 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
+                <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
+                  {t("nav.savedProfiles")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openSaved("posts")}
+                className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-zinc-800 transition-colors hover:opacity-90 dark:text-zinc-100"
+                aria-label={t("nav.savedPosts")}
+              >
+                <Bookmark className="h-5 w-5 fill-zinc-400 text-zinc-400 dark:fill-zinc-500 dark:text-zinc-500" strokeWidth={2.25} />
+                <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
+                  {t("nav.savedPosts")}
+                </span>
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <div className="w-full shrink-0 border-t border-border/10 p-2">
+        <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-border/10 p-2">
           <button
             type="button"
             onClick={async () => {
               await signOut();
             }}
             className={cn(
-              "flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-opacity",
-              "text-red-500 hover:text-red-600 hover:opacity-90 active:scale-[0.98]",
+              "flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-colors",
+              "text-red-600 hover:opacity-90 active:scale-[0.98]",
             )}
             aria-label={t("common.logOut")}
           >
-            <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
-            <span className="w-full text-center text-[10px] font-bold leading-[1.15] tracking-tight">
+            <LogOut className="h-6 w-6 shrink-0 text-red-400" strokeWidth={2.15} />
+            <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
               {t("common.logOut")}
             </span>
           </button>
+          <Link
+            to="/"
+            className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-zinc-500 transition-colors hover:text-zinc-800 hover:opacity-90 dark:text-zinc-400 dark:hover:text-zinc-100"
+            aria-label={t("messagesPage.goHome")}
+            title={t("messagesPage.goHome")}
+          >
+            <ExternalLink className="h-5 w-5 shrink-0" strokeWidth={2.15} />
+            <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
+              {t("common.home")}
+            </span>
+          </Link>
         </div>
       </aside>
     );
@@ -449,14 +525,17 @@ export function DesktopSidePanel() {
   return (
     <aside
       className={cn(
-        "app-desktop-side-panel flex flex-col",
-        isAdminPage
-          ? "bg-zinc-100 backdrop-blur-none dark:bg-zinc-950"
-          : "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+        "app-desktop-side-panel flex flex-col border-0 shadow-none",
+        railBg,
       )}
     >
       {/* Independent scroll: panel content scrolls without moving the page */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          insetFromHeader ? "pt-16" : "pt-3",
+        )}
+      >
 
         <div className="mt-2 flex flex-col">
           <nav className="flex w-full flex-col items-stretch gap-1">
@@ -470,19 +549,25 @@ export function DesktopSidePanel() {
                   key={it.href}
                   to={it.href}
                   className={cn(
-                    "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
-                    "text-muted-foreground hover:text-foreground",
-                    active && "text-foreground",
+                    "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+                    navHover,
+                    active ? navActive : "text-zinc-800 dark:text-zinc-100",
                   )}
                   aria-current={active ? "page" : undefined}
                   title={label}
                 >
+                  {active ? (
+                    <span
+                      className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-orange-500"
+                      aria-hidden
+                    />
+                  ) : null}
                   {isProfileRow ? (
                     <Avatar
                       className={cn(
                         "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
                         active
-                          ? "border-transparent ring-2 ring-foreground"
+                          ? "border-transparent ring-2 ring-orange-500"
                           : "border-black/10 dark:border-white/15",
                       )}
                     >
@@ -498,9 +583,24 @@ export function DesktopSidePanel() {
                       </AvatarFallback>
                     </Avatar>
                   ) : (
-                    <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                    <Icon
+                      className={cn(
+                        "h-6 w-6 shrink-0 transition-colors",
+                        active
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
+                      )}
+                      strokeWidth={2.15}
+                    />
                   )}
-                  <span className="text-[13px] font-bold leading-none tracking-tight">
+                  <span
+                    className={cn(
+                      "text-[13px] font-semibold leading-none tracking-tight",
+                      active
+                        ? "text-foreground"
+                        : "text-zinc-800 dark:text-zinc-100",
+                    )}
+                  >
                     {label}
                   </span>
                   {it.id === "messages" && unreadMessages > 0 && (
@@ -532,14 +632,35 @@ export function DesktopSidePanel() {
                       key={it.href}
                       to={it.href}
                       className={cn(
-                        "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
-                        "text-muted-foreground hover:text-foreground",
-                        active && "rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm hover:text-white",
+                        "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+                        "hover:bg-white/90 dark:hover:bg-white/10",
+                        active
+                          ? "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none"
+                          : "text-zinc-800 dark:text-zinc-100",
                       )}
                       title={it.label}
                     >
-                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2.4} />
-                      <span className="text-[13px] font-bold leading-none tracking-tight">
+                      {active ? (
+                        <span
+                          className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-orange-500"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <Icon
+                        className={cn(
+                          "h-5 w-5 shrink-0 transition-colors",
+                          active
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500",
+                        )}
+                        strokeWidth={2.15}
+                      />
+                      <span
+                        className={cn(
+                          "text-[13px] font-semibold leading-none tracking-tight",
+                          active ? "text-foreground" : "text-zinc-800 dark:text-zinc-100",
+                        )}
+                      >
                         {it.label}
                       </span>
                     </Link>
@@ -553,7 +674,7 @@ export function DesktopSidePanel() {
               {/* Saved profiles */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:text-foreground"
+                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
                 onClick={() => {
                   setSavedProfilesOpen((v) => {
                     const next = !v;
@@ -565,20 +686,13 @@ export function DesktopSidePanel() {
                 }}
               >
                 <span className="inline-flex items-center gap-2">
-                  <Bookmark className="h-4 w-4" strokeWidth={2.6} />
+                  <Bookmark className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
                   {t("nav.savedProfiles")}
                 </span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", savedProfilesOpen && "rotate-180")} />
+                <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform dark:text-zinc-500", savedProfilesOpen && "rotate-180")} />
               </button>
               {savedProfilesOpen ? (
                 <div className="mt-1 space-y-1 px-1 pb-1">
-                  <button
-                    type="button"
-                    className="w-full px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:text-foreground"
-                    onClick={() => openSaved("profiles")}
-                  >
-                    View all
-                  </button>
                   {savedProfilesLoading ? (
                     <div className="px-2 py-2 text-xs font-semibold text-muted-foreground">
                       Loading…
@@ -629,7 +743,7 @@ export function DesktopSidePanel() {
               {/* Saved posts */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-black uppercase tracking-wide text-foreground/90 hover:text-foreground"
+                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
                 onClick={() => {
                   setSavedPostsOpen((v) => {
                     const next = !v;
@@ -641,20 +755,13 @@ export function DesktopSidePanel() {
                 }}
               >
                 <span className="inline-flex items-center gap-2">
-                  <Bookmark className="h-4 w-4" strokeWidth={2.6} />
+                  <Bookmark className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
                   {t("nav.savedPosts")}
                 </span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", savedPostsOpen && "rotate-180")} />
+                <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform dark:text-zinc-500", savedPostsOpen && "rotate-180")} />
               </button>
               {savedPostsOpen ? (
                 <div className="mt-1 space-y-1 px-1 pb-1">
-                  <button
-                    type="button"
-                    className="w-full px-2 py-1.5 text-left text-[13px] font-semibold text-muted-foreground hover:text-foreground"
-                    onClick={() => openSaved("posts")}
-                  >
-                    View all
-                  </button>
                   {savedPostsLoading ? (
                     <div className="px-2 py-2 text-xs font-semibold text-muted-foreground">
                       Loading…
@@ -685,23 +792,31 @@ export function DesktopSidePanel() {
           </div>
         </div>
       </div>
-      <div className="shrink-0 p-3 border-t border-border/10">
+      <div className="flex shrink-0 items-center gap-1 border-t border-border/10 p-3">
         <button
           type="button"
           onClick={async () => {
             await signOut();
           }}
           className={cn(
-            "group flex w-full items-center gap-3 px-3 py-2.5 transition-opacity",
-            "text-red-500 hover:text-red-600 hover:opacity-90 active:scale-[0.98]",
+            "group flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 transition-colors",
+            "text-red-600 hover:opacity-90 active:scale-[0.98]",
           )}
           aria-label={t("common.logOut")}
         >
-          <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
-          <span className="text-[13px] font-bold leading-none tracking-tight">
+          <LogOut className="h-6 w-6 shrink-0 text-red-400" strokeWidth={2.15} />
+          <span className="truncate text-[13px] font-semibold leading-none tracking-tight">
             {t("common.logOut")}
           </span>
         </button>
+        <Link
+          to="/"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-black/[0.04] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100"
+          aria-label={t("messagesPage.goHome")}
+          title={t("messagesPage.goHome")}
+        >
+          <ExternalLink className="h-5 w-5" strokeWidth={2.15} />
+        </Link>
       </div>
     </aside>
   );

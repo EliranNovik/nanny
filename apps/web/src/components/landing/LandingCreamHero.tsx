@@ -169,7 +169,7 @@ function PhoneMockup() {
           <div className="mt-1 text-center">
             <div className="mx-auto flex max-w-[14rem] items-center justify-center gap-2 px-2">
               <img
-                src="/category-icons/nanny.png"
+                src="/category-icons/nanny.png?v=20261102b"
                 alt=""
                 className="h-11 w-11 shrink-0 rounded-full object-cover"
               />

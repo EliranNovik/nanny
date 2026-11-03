@@ -14,8 +14,8 @@ export const chatComposerBarClass = cn(
 export const chatChromeBarClass = chatComposerBarClass;
 
 export const chatComposerFieldWrapClass = cn(
-  "flex min-h-11 flex-1 items-center rounded-[1.25rem] border-0 bg-[#EFEFF2] px-3 py-0 shadow-none outline-none ring-0",
-  "dark:bg-[#2C2D33]",
+  "flex min-h-11 flex-1 items-center rounded-[1.25rem] border-0 bg-transparent px-3 py-0 shadow-none outline-none ring-0",
+  "dark:bg-transparent",
   "md:min-h-[48px] md:rounded-[1.375rem] md:px-3 md:py-1",
   "lg:min-h-[44px] lg:py-1",
   "focus-within:outline-none focus-within:ring-0",

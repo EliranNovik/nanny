@@ -379,7 +379,7 @@
       "cooking": "Meals at home",
       "pickup_delivery": "Errands & courier",
       "nanny": "Trusted childcare",
-      "technical_help": "Repairs & tech support",
+      "home_maintenance": "Repairs & upkeep",
       "other_help": "Anything else"
     },
     "careFrequency": {
@@ -476,7 +476,6 @@
     "selectLabel": "Choose a category",
     "selectPlaceholder": "Select a category…",
     "beauty_personal_care": "Beauty & Personal Care",
-    "technical_help": "Technical Help",
     "heavy_lifting_moving": "Heavy Lifting & Moving Help",
     "coaching_lessons": "Coaching & Lessons",
     "shopping_errands": "Shopping & Errands",
@@ -484,7 +483,7 @@
     "elderly_help": "Elderly Help",
     "paperwork_bureaucracy": "Paperwork & Bureaucracy Help",
     "event_help": "Event Help",
-    "home_maintenance": "Home Maintenance",
+    "technical_help": "Technical Help",
     "digital_creative": "Digital & Creative Help",
     "religious_community": "Religious / Community Help",
     "customOption": "Other (none of these)",
@@ -574,7 +573,7 @@
       "cooking": "Cooking",
       "pickup_delivery": "Pickup",
       "nanny": "Nanny",
-      "technical_help": "Technical",
+      "home_maintenance": "Home",
       "other_help": "Other",
       "allOther": "All other",
       "pickSubcategory": "Filter by type",
@@ -724,6 +723,7 @@
       "cooking": "Cooking",
       "pickup_delivery": "Pick up & delivery",
       "nanny": "Nanny",
+      "home_maintenance": "Home Maintenance",
       "technical_help": "Technical Help",
       "other_help": "Other help",
       "help_request": "Help request"
@@ -820,6 +820,7 @@
         "cooking": "Looking for someone to cook{{when}}{{location}}.",
         "nanny": "Looking for a responsible babysitter{{when}}{{location}}.",
         "pickup_delivery": "Looking for help with pickup and delivery{{when}}{{location}}.",
+        "home_maintenance": "Looking for home maintenance help{{when}}{{location}}.",
         "technical_help": "Looking for technical help{{when}}{{location}}.",
         "other_help": "Looking for someone available to help{{when}}{{location}}.",
         "default": "Looking for {{category}}{{when}}{{location}}."

@@ -3,7 +3,6 @@ import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/component
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
-import { useKycGate } from "@/context/KycGateContext";
 import { useScrollToTopOnPathnameChange } from "@/hooks/useScrollToTopOnPathnameChange";
 import { useMobileScrollDirectionHeaderHide } from "@/hooks/useMobileScrollDirectionHeaderHide";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -150,134 +149,148 @@ function FeedMainContent({
       ) : null}
       <div
         className={cn(
+          "md:flex md:items-start md:gap-5 lg:gap-8 xl:gap-10",
           guestDesktopLightLayout && "md:min-w-0 md:flex-1 md:pb-8 md:pt-6",
         )}
       >
         <div
           className={cn(
-            "mb-5 px-2 md:px-0",
-            guestDesktopLightLayout &&
-              "md:sticky md:top-1 md:z-[70] md:me-auto md:max-w-[min(42rem,calc(100%-364px))] lg:max-w-[min(46rem,calc(100%-404px))] xl:max-w-[min(50rem,calc(100%-464px))] 2xl:max-w-[min(54rem,calc(100%-524px))]",
+            "min-w-0 w-full md:flex-1",
+            !guestDesktopLightLayout && globalFeedMobileFeedAreaClass,
+            "md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
           )}
         >
-          <div className={cn(
-            "flex h-14 items-center gap-3 rounded-full border border-zinc-200/80 bg-white px-5 shadow-sm",
-            "dark:border-transparent dark:bg-zinc-900 dark:shadow-none",
-          )}>
-            <Search className="h-6 w-6 shrink-0 text-orange-500" />
-            <input
-              value={searchQuery}
-              onChange={(event) => onSearchQueryChange?.(event.target.value)}
-              placeholder="Search people or keywords"
-              className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground"
-            />
-            {searchQuery ? (
-              <button type="button" onClick={() => onSearchQueryChange?.("")} className="text-muted-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onOpenSort}
-              className="flex h-10 w-10 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
-              aria-label="Sort posts"
+          <div
+            className={cn(
+              "mb-5 w-full px-2 md:px-0",
+              guestDesktopLightLayout && "md:sticky md:top-16 md:z-[70]",
+            )}
+          >
+            <div
+              className={cn(
+                "flex h-14 w-full items-center gap-3 rounded-full border border-zinc-200/80 bg-white px-5 shadow-sm",
+                "dark:border-transparent dark:bg-zinc-900 dark:shadow-none",
+              )}
             >
-              <SlidersHorizontal className="h-5 w-5" />
-            </button>
+              <Search className="h-6 w-6 shrink-0 text-orange-500" />
+              <input
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange?.(event.target.value)}
+                placeholder="Search people or keywords"
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => onSearchQueryChange?.("")}
+                  className="text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onOpenSort}
+                className="flex h-10 w-10 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                aria-label="Sort posts"
+              >
+                <SlidersHorizontal className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div
-          className={cn(
-            guestDesktopLightLayout
-              ? "md:flex md:items-start md:gap-6"
-              : tabletLayout && "flex items-start gap-6",
-          )}
-        >
-        <div
-          className={cn(
-            !guestDesktopLightLayout &&
-              cn(globalFeedMobileFeedAreaClass, tabletLayout && "min-w-0 flex-1"),
-            guestDesktopLightLayout &&
-              "md:ms-0 md:me-auto md:min-w-0 md:flex-1 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
-          )}
-        >
-        <ProfilePostsFeed
-          appearance="discover"
-          discoverSidePanel="favorites"
-          focusPostId={focusPostId}
-          focusRequestId={focusRequestId}
-          expandDiscoverLayout={expandDiscoverLayout}
-          filterPostTypeId={
-            feedPostTypeIds?.length || postTypeFilter === "all" ? null : postTypeFilter
-          }
-          filterPostTypeIds={feedPostTypeIds}
-          sidePanelPostTypeIds={[]}
-          filterCommentedOwnPosts={commentedFilterActive}
-          filterAcceptedRequests={acceptedFilterActive}
-          filterAuthorId={favoriteAuthorFilterId ?? undefined}
-          authorNameFilter={searchQuery || undefined}
-          searchFilter={searchQuery || undefined}
-          sortOrder={feedSortOrder}
-          rankingSort={rankingSort}
-          feedAdvancedFilters={advancedFilters}
-          excludeOwnJobRequests={false}
-          fixedFavoritesSidePanel={false}
-          externalFavoritesSidePanel
-          scrollToPostId={scrollToPostId}
-          onScrollToPostDone={onScrollToPostDone}
-          plainCards
-          globalFeedLayout
-          viewerLocation={viewerLocation}
-          filterCategoryId={categoryFilter}
-          filterOtherSubcategoryId={categoryFilter === "other_help" ? otherSubFilter : null}
-          onSidePanelPostOpen={onSidePanelPostOpen}
-          guestDesktopLightLayout={guestDesktopLightLayout}
-        />
+          <ProfilePostsFeed
+            appearance="discover"
+            discoverSidePanel="favorites"
+            focusPostId={focusPostId}
+            focusRequestId={focusRequestId}
+            expandDiscoverLayout={expandDiscoverLayout}
+            filterPostTypeId={
+              feedPostTypeIds?.length || postTypeFilter === "all"
+                ? null
+                : postTypeFilter
+            }
+            filterPostTypeIds={feedPostTypeIds}
+            sidePanelPostTypeIds={[]}
+            filterCommentedOwnPosts={commentedFilterActive}
+            filterAcceptedRequests={acceptedFilterActive}
+            filterAuthorId={favoriteAuthorFilterId ?? undefined}
+            authorNameFilter={searchQuery || undefined}
+            searchFilter={searchQuery || undefined}
+            sortOrder={feedSortOrder}
+            rankingSort={rankingSort}
+            feedAdvancedFilters={advancedFilters}
+            excludeOwnJobRequests={false}
+            fixedFavoritesSidePanel={false}
+            externalFavoritesSidePanel
+            scrollToPostId={scrollToPostId}
+            onScrollToPostDone={onScrollToPostDone}
+            plainCards
+            globalFeedLayout
+            viewerLocation={viewerLocation}
+            filterCategoryId={categoryFilter}
+            filterOtherSubcategoryId={
+              categoryFilter === "other_help" ? otherSubFilter : null
+            }
+            onSidePanelPostOpen={onSidePanelPostOpen}
+            guestDesktopLightLayout={guestDesktopLightLayout}
+          />
         </div>
 
         {guestDesktopLightLayout || insightsPanelOpen ? (
-          <div
-            className={cn(
-              guestDesktopLightLayout
-                ? "hidden md:sticky md:flex"
-                : "sticky flex",
-              "min-h-0 flex-col shrink-0 self-start overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-              FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-              "-mt-[6.25rem] top-16 max-h-[calc(100dvh-4rem)]",
-              guestDesktopLightLayout
-                ? "md:bg-white md:px-3 md:pb-6 md:pt-3 lg:px-4 dark:md:bg-background"
-                : "bg-white px-3 pb-24 pt-3 dark:bg-background",
-            )}
-          >
-            {!guestDesktopLightLayout && !insightsPanelLocked ? (
-              <div className="mb-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => onInsightsPanelOpenChange?.(false)}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-white/75 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-zinc-900/75 dark:text-zinc-100"
-                  aria-label={t("feed.sidePanel.close", { defaultValue: "Hide insights" })}
-                >
-                  <PanelRightClose className="h-6 w-6" strokeWidth={2.25} />
-                </button>
+          <>
+            {/* Width spacer so the feed column doesn't sit under the fixed panel */}
+            <div
+              className={cn(
+                "hidden shrink-0 md:block",
+                FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+              )}
+              aria-hidden
+            />
+            <div
+              className={cn(
+                "hidden min-h-0 flex-col overflow-y-auto overflow-x-hidden md:fixed md:end-0 md:top-16 md:z-30 md:flex",
+                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+                "max-h-[calc(100dvh-4rem)]",
+                guestDesktopLightLayout
+                  ? "md:bg-white md:px-3 md:pb-6 md:pt-3 md:pe-3 lg:px-4 lg:pe-4 dark:md:bg-background"
+                  : "bg-white px-3 pe-3 pb-6 pt-3 dark:bg-background",
+              )}
+            >
+              {!guestDesktopLightLayout && !insightsPanelLocked ? (
+                <div className="mb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onInsightsPanelOpenChange?.(false)}
+                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-white/75 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-zinc-900/75 dark:text-zinc-100"
+                    aria-label={t("feed.sidePanel.close", {
+                      defaultValue: "Hide insights",
+                    })}
+                  >
+                    <PanelRightClose className="h-6 w-6" strokeWidth={2.25} />
+                  </button>
+                </div>
+              ) : null}
+              <div className="min-h-0 w-full min-w-0 flex-1">
+                <FavoritesPostsSidePanel
+                  embedded
+                  postTypeIds={user ? null : ["community", "event"]}
+                  onPostOpen={onSidePanelPostOpen}
+                />
               </div>
-            ) : null}
-            <div className="min-h-0 w-full min-w-0 flex-1">
-              <FavoritesPostsSidePanel
-                embedded
-                postTypeIds={user ? null : ["community", "event"]}
-                onPostOpen={onSidePanelPostOpen}
-              />
             </div>
-          </div>
+          </>
         ) : null}
-        </div>
+
         {!guestDesktopLightLayout && tabletLayout && !insightsPanelOpen ? (
           <button
             type="button"
             onClick={() => onInsightsPanelOpenChange?.(true)}
-            className="fixed end-5 top-24 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-white/80 text-zinc-700 shadow-lg backdrop-blur-xl hover:bg-white dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100"
-            aria-label={t("feed.sidePanel.open", { defaultValue: "Show insights" })}
+            className="fixed end-5 top-20 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-white/80 text-zinc-700 shadow-lg backdrop-blur-xl hover:bg-white dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100"
+            aria-label={t("feed.sidePanel.open", {
+              defaultValue: "Show insights",
+            })}
           >
             <PanelRightOpen className="h-6 w-6" strokeWidth={2.25} />
           </button>
@@ -292,7 +305,6 @@ export default function GlobalPostsPage() {
   useScrollToTopOnPathnameChange();
   useMobileScrollDirectionHeaderHide(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
-  const { guardKycAction } = useKycGate();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -315,13 +327,15 @@ export default function GlobalPostsPage() {
   const [feedSortMode, setFeedSortMode] = useState<
     "newest" | "oldest" | "most_liked" | "most_commented" | "most_shared" | "near_me"
   >("newest");
-  const { isTablet, isLandscape } = useTabletViewport();
+  const { isTablet, isLandscape, isMdUp } = useTabletViewport();
   const [storedInsightsPanelOpen, setStoredInsightsPanelOpen] = useState(() => {
     if (typeof window === "undefined") return true;
     return window.localStorage.getItem("tebnu_feed_side_panel_open") !== "false";
   });
   const insightsPanelLocked = isTablet && isLandscape;
-  const insightsPanelOpen = isTablet && (insightsPanelLocked || storedInsightsPanelOpen);
+  /** Desktop/tablet: show favorites panel under the header (guests always; signed-in when open). */
+  const insightsPanelOpen =
+    isMdUp && (insightsPanelLocked || storedInsightsPanelOpen || !user);
 
   useEffect(() => {
     if (user) return;
@@ -471,13 +485,11 @@ export default function GlobalPostsPage() {
     next.delete("compose");
     next.delete("postType");
     setSearchParams(next, { replace: true });
-    guardKycAction("share_post", () => {
-      setComposeInitialPostTypeId(
-        postType === "request_help" || postType === "offer_service" ? postType : null,
-      );
-      setComposeOpen(true);
-    });
-  }, [guardKycAction, searchParams, setSearchParams, user]);
+    setComposeInitialPostTypeId(
+      postType === "request_help" || postType === "offer_service" ? postType : null,
+    );
+    setComposeOpen(true);
+  }, [searchParams, setSearchParams, user]);
 
   const authorProfile: ProfileSnippet | null = user ? {
     id: user.id,
@@ -491,7 +503,7 @@ export default function GlobalPostsPage() {
       openGuestAuthPrompt({ variant: "create" });
       return;
     }
-    guardKycAction("share_post", () => setComposeOpen(true));
+    setComposeOpen(true);
   }
 
   useEffect(() => {

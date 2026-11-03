@@ -1,35 +1,23 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ChevronDown,
   Compass,
   CookingPot,
+  Home,
   LayoutGrid,
   Sparkles,
   Truck,
   UsersRound,
-  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
   OTHER_HELP_SUBCATEGORIES,
+  type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
-
-const stripCategoryCircleClass =
-  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-[4.25rem] md:w-[4.25rem] items-center justify-center rounded-full border-0 bg-zinc-100 shadow-none transition-all dark:bg-zinc-800/75 md:dark:bg-zinc-900/55";
-
-const stripCategoryLabelClass =
-  "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[10.5px]";
-
-const stripCategoryCompassClass = "max-md:h-10 max-md:w-10 md:h-10 md:w-10";
-
-const stripCategoryIconShellClass =
-  "flex max-md:h-10 max-md:w-10 md:h-10 md:w-10 items-center justify-center";
-
-const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-7 md:w-7";
+import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
 
 export function categoryIconNode(
   serviceType: string | null | undefined,
@@ -39,25 +27,69 @@ export function categoryIconNode(
   if (serviceType === "cooking") return <CookingPot className={className} aria-hidden />;
   if (serviceType === "pickup_delivery") return <Truck className={className} aria-hidden />;
   if (serviceType === "nanny") return <UsersRound className={className} aria-hidden />;
+  if (serviceType === "home_maintenance") return <Home className={className} aria-hidden />;
   if (serviceType === "other_help") return <LayoutGrid className={className} aria-hidden />;
-  return <Wrench className={className} aria-hidden />;
+  return <Home className={className} aria-hidden />;
 }
 
 function accentFor(variant: "hire" | "work") {
   return variant === "work"
     ? {
         ring: "focus-visible:ring-emerald-400/70",
-        activeCircle:
-          "border-0 bg-zinc-100 text-emerald-700 shadow-none dark:bg-zinc-800/75 dark:text-emerald-300 md:dark:bg-zinc-900/55",
+        allIdle: "bg-zinc-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-200",
+        allSelected:
+          "bg-emerald-600 text-white ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
         activeLabel: "text-emerald-700 dark:text-emerald-300",
+        selectedRing:
+          "ring-2 ring-emerald-500/50 ring-offset-2 ring-offset-background",
       }
     : {
         ring: "focus-visible:ring-orange-400/70",
-        activeCircle:
-          "border-0 bg-zinc-100 text-orange-700 shadow-none dark:bg-zinc-800/75 dark:text-orange-300 md:dark:bg-zinc-900/55",
+        allIdle: "bg-zinc-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-200",
+        allSelected:
+          "bg-orange-500 text-white ring-2 ring-orange-400/40 ring-offset-2 ring-offset-background",
         activeLabel: "text-orange-700 dark:text-orange-300",
+        selectedRing:
+          "ring-2 ring-orange-500/50 ring-offset-2 ring-offset-background",
       };
 }
+
+function CategoryBadgeBox({
+  categoryId,
+  className,
+}: {
+  categoryId: string;
+  className?: string;
+}) {
+  return (
+    <img
+      src={categoryIllustrationSrc(categoryId)}
+      alt=""
+      className={cn("h-full w-full object-cover object-center", className)}
+      loading="lazy"
+      decoding="async"
+      aria-hidden
+    />
+  );
+}
+
+type FilterItem =
+  | { kind: "main"; id: ServiceCategoryId }
+  | { kind: "sub"; id: string };
+
+/** Main service types minus Other, then every Other subcategory as its own badge. */
+function buildFlatFilterItems(): FilterItem[] {
+  const mains = DISCOVER_HOME_CATEGORIES.filter(
+    (c) => c.id !== ALL_HELP_CATEGORY_ID && c.id !== "other_help",
+  ).map((c) => ({ kind: "main" as const, id: c.id as ServiceCategoryId }));
+  const subs = OTHER_HELP_SUBCATEGORIES.map((s) => ({
+    kind: "sub" as const,
+    id: s.id,
+  }));
+  return [...mains, ...subs];
+}
+
+const FLAT_FILTER_ITEMS = buildFlatFilterItems();
 
 type Props = {
   variant: "hire" | "work";
@@ -66,7 +98,7 @@ type Props = {
   otherSubFilter?: string | null;
   onOtherSubFilterChange?: (id: string | null) => void;
   className?: string;
-  /** Get Help uses compact orange pills; Help others keeps circular tiles. */
+  /** Kept for callers; both layouts render badge boxes. */
   layout?: "circles" | "pills";
 };
 
@@ -77,154 +109,59 @@ export function DiscoverHomeCategoryFilterRow({
   otherSubFilter = null,
   onOtherSubFilterChange,
   className,
-  layout = "circles",
 }: Props) {
   const { t } = useTranslation();
   const filterAccent = accentFor(variant);
-  const [otherDropdownOpen, setOtherDropdownOpen] = useState(
-    selected === "other_help",
-  );
 
-  useEffect(() => {
-    if (selected !== "other_help") setOtherDropdownOpen(false);
-  }, [selected]);
+  const selectAll = () => {
+    onOtherSubFilterChange?.(null);
+    onSelect("all");
+  };
 
-  const selectCategory = (id: DiscoverHomeCategoryFilter) => {
-    if (id === "other_help") {
-      setOtherDropdownOpen((open) => (selected === "other_help" ? !open : true));
-    } else {
-      setOtherDropdownOpen(false);
-      onOtherSubFilterChange?.(null);
-    }
+  const selectMain = (id: ServiceCategoryId) => {
+    onOtherSubFilterChange?.(null);
     onSelect(id);
   };
 
-  if (layout === "pills") {
-    const pillIdle =
-      "border-0 bg-zinc-100 text-zinc-500 dark:border dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400";
-    const pillActive =
-      variant === "work"
-        ? "border-0 bg-zinc-100 text-emerald-700 dark:border dark:border-emerald-400 dark:bg-zinc-900 dark:text-emerald-300"
-        : "border-0 bg-zinc-100 text-orange-700 dark:border dark:border-orange-400 dark:bg-zinc-900 dark:text-orange-300";
-    const pillBase =
-      "inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-[15px] font-semibold transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  const selectSub = (id: string) => {
+    onOtherSubFilterChange?.(id);
+    onSelect("other_help");
+  };
 
-    return (
-      <div className={className}>
-        <div
-          id="discover-home-category-filters"
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <button
-            type="button"
-            onClick={() => selectCategory("all")}
-            className={cn(
-              pillBase,
-              filterAccent.ring,
-              selected === "all" ? pillActive : pillIdle,
-            )}
-          >
-            <Compass className="h-4 w-4 shrink-0" strokeWidth={2.4} aria-hidden />
-            {t("discoverHome.filters.all")}
-          </button>
+  const allItems: Array<
+    | { kind: "all"; id: "all" }
+    | FilterItem
+  > = [{ kind: "all", id: "all" }, ...FLAT_FILTER_ITEMS];
 
-          {DISCOVER_HOME_CATEGORIES.filter((c) => c.id !== ALL_HELP_CATEGORY_ID).map((cat) => {
-            const isOther = cat.id === "other_help";
-            const active = selected === cat.id;
-            const subLabel =
-              isOther && otherSubFilter ? t(`otherHelpSubcategories.${otherSubFilter}`) : null;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => selectCategory(cat.id as DiscoverHomeCategoryFilter)}
-                className={cn(pillBase, filterAccent.ring, active ? pillActive : pillIdle)}
-              >
-                {categoryIconNode(cat.id, "h-4 w-4 shrink-0")}
-                <span className="truncate">
-                  {subLabel ?? t(`discoverHome.filters.${cat.id}`)}
-                </span>
-                {isOther ? <ChevronDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} /> : null}
-              </button>
-            );
-          })}
-        </div>
-
-        {selected === "other_help" && otherDropdownOpen ? (
-          <div className="mt-2 rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="px-2 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-              {t("discoverHome.filters.pickSubcategory")}
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  onOtherSubFilterChange?.(null);
-                  setOtherDropdownOpen(false);
-                }}
-                className={cn(
-                  "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                  otherSubFilter === null
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-                )}
-              >
-                {t("discoverHome.filters.allOther")}
-              </button>
-              {OTHER_HELP_SUBCATEGORIES.map((sub) => (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => {
-                    onOtherSubFilterChange?.(sub.id);
-                    setOtherDropdownOpen(false);
-                  }}
-                  className={cn(
-                    "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                    otherSubFilter === sub.id
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-                  )}
-                >
-                  {t(`otherHelpSubcategories.${sub.id}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className={className}>
-      <div
-        id="discover-home-category-filters"
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-4"
-      >
+  const renderFilterButton = (
+    item: (typeof allItems)[number],
+  ) => {
+    if (item.kind === "all") {
+      return (
         <button
+          key="all"
           type="button"
-          onClick={() => selectCategory("all")}
+          onClick={selectAll}
           className={cn(
-            "flex shrink-0 flex-col items-center gap-2 transition-transform active:scale-95 md:gap-2.5",
+            "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[5.1rem]",
             "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             filterAccent.ring,
           )}
         >
           <div
             className={cn(
-              stripCategoryCircleClass,
-              selected === "all"
-                ? filterAccent.activeCircle
-                : "text-slate-500 dark:text-zinc-400",
+              "flex aspect-square w-full items-center justify-center rounded-[1.2rem] shadow-sm",
+              selected === "all" && !otherSubFilter
+                ? filterAccent.allSelected
+                : filterAccent.allIdle,
             )}
           >
-            <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
+            <Compass className="h-8 w-8" strokeWidth={2.4} aria-hidden />
           </div>
           <span
             className={cn(
-              stripCategoryLabelClass,
-              selected === "all"
+              "max-w-full truncate text-center text-[10px] font-extrabold uppercase tracking-[0.12em]",
+              selected === "all" && !otherSubFilter
                 ? filterAccent.activeLabel
                 : "text-slate-500 dark:text-zinc-500",
             )}
@@ -232,94 +169,70 @@ export function DiscoverHomeCategoryFilterRow({
             {t("discoverHome.filters.all")}
           </span>
         </button>
+      );
+    }
 
-        {DISCOVER_HOME_CATEGORIES.filter((c) => c.id !== ALL_HELP_CATEGORY_ID).map((cat) => {
-          const isOther = cat.id === "other_help";
-          const active = selected === cat.id;
-          const subLabel =
-            isOther && otherSubFilter ? t(`otherHelpSubcategories.${otherSubFilter}`) : null;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => selectCategory(cat.id as DiscoverHomeCategoryFilter)}
-              className={cn(
-                "flex shrink-0 flex-col items-center gap-2 transition-transform active:scale-95 md:gap-2.5",
-                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                filterAccent.ring,
-              )}
-            >
-              <div
-                className={cn(
-                  stripCategoryCircleClass,
-                  active
-                    ? filterAccent.activeCircle
-                    : "text-slate-500 dark:text-zinc-400",
-                )}
-              >
-                <span className={stripCategoryIconShellClass}>
-                  {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
-                </span>
-              </div>
-              <span
-                className={cn(
-                  stripCategoryLabelClass,
-                  "inline-flex max-w-[5.5rem] items-center gap-0.5 truncate",
-                  active ? filterAccent.activeLabel : "text-slate-500 dark:text-zinc-500",
-                )}
-              >
-                <span className="truncate">
-                  {subLabel ?? t(`discoverHome.filters.${cat.id}`)}
-                </span>
-                {isOther ? <ChevronDown className="h-3 w-3 shrink-0" strokeWidth={3} /> : null}
-              </span>
-            </button>
-          );
-        })}
+    const active =
+      item.kind === "main"
+        ? selected === item.id
+        : selected === "other_help" && otherSubFilter === item.id;
+    const label =
+      item.kind === "main"
+        ? t(`discoverHome.filters.${item.id}`)
+        : t(`otherHelpSubcategories.${item.id}`);
+
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() =>
+          item.kind === "main" ? selectMain(item.id) : selectSub(item.id)
+        }
+        className={cn(
+          "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[5.1rem]",
+          "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          filterAccent.ring,
+        )}
+      >
+        <div
+          className={cn(
+            "aspect-square w-full overflow-hidden rounded-[1.2rem] shadow-sm transition-[box-shadow,transform]",
+            active && filterAccent.selectedRing,
+          )}
+        >
+          <CategoryBadgeBox categoryId={item.id} />
+        </div>
+        <span
+          className={cn(
+            "line-clamp-2 max-w-full text-center text-[10px] font-extrabold uppercase leading-tight tracking-[0.08em]",
+            active
+              ? filterAccent.activeLabel
+              : "text-slate-500 dark:text-zinc-500",
+          )}
+        >
+          {label}
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div className={className}>
+      {/* Mobile: single horizontal scroll row */}
+      <div
+        id="discover-home-category-filters"
+        className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden"
+      >
+        {allItems.map((item) => renderFilterButton(item))}
       </div>
 
-      {selected === "other_help" && otherDropdownOpen ? (
-        <div className="mt-2 rounded-2xl border border-zinc-200/70 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="px-2 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-            {t("discoverHome.filters.pickSubcategory")}
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                onOtherSubFilterChange?.(null);
-                setOtherDropdownOpen(false);
-              }}
-              className={cn(
-                "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                otherSubFilter === null
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-              )}
-            >
-              {t("discoverHome.filters.allOther")}
-            </button>
-            {OTHER_HELP_SUBCATEGORIES.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                onClick={() => {
-                  onOtherSubFilterChange?.(sub.id);
-                  setOtherDropdownOpen(false);
-                }}
-                className={cn(
-                  "rounded-xl px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                  otherSubFilter === sub.id
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-                )}
-              >
-                {t(`otherHelpSubcategories.${sub.id}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {/* Desktop: fill width first, wrap to a second row only when needed */}
+      <div
+        id="discover-home-category-filters-desktop"
+        className="hidden flex-wrap justify-start gap-x-3 gap-y-3.5 md:flex"
+      >
+        {allItems.map((item) => renderFilterButton(item))}
+      </div>
     </div>
   );
 }

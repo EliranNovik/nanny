@@ -24,7 +24,7 @@ import {
 } from "@/lib/inboxHiddenChats";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MessagesPageSkeleton } from "@/components/loading/PageSkeletons";
 import {
   MessageCircle,
   Bell,
@@ -638,140 +638,26 @@ export default function MessagesPage() {
   }
 
   if (loading) {
-    return (
-      <div
-        data-messages-page=""
-        className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-[var(--messages-bg,#ffffff)] dark:bg-background"
-      >
-        <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-[340px] md:flex">
-          <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
-            <div className="flex w-full items-center gap-3">
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-3 w-40" />
-              </div>
-            </div>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:pt-0">
-            <div className="w-full min-w-0 max-w-full space-y-0.5">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="flex w-full items-center gap-3 px-4 py-4">
-                  <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-3 w-2/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="hidden min-h-0 flex-1 flex-col items-center justify-center overflow-hidden bg-transparent md:flex">
-          <div className="text-center">
-            <Skeleton className="mx-auto mb-4 h-16 w-16 rounded-full" />
-            <Skeleton className="mx-auto mb-2 h-6 w-32" />
-            <Skeleton className="mx-auto h-4 w-64" />
-          </div>
-        </div>
-      </div>
-    );
+    return <MessagesPageSkeleton />;
   }
 
   // Show contact panel with conversation list and chat inline
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background md:bg-orange-50/40 dark:md:bg-[#0c0a09]"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-white md:h-full md:max-h-full dark:bg-[#0c0a09]"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
           "relative h-full min-h-0 flex-shrink-0 flex-col overflow-hidden bg-[var(--messages-bg,#ffffff)]",
           isTablet
-            ? "flex w-[340px] border-r border-black/10 dark:border-white/10"
+            ? "flex w-[340px] border-r-0"
             : "w-full",
           !isTablet && mobileView !== "contacts" ? "hidden" : "flex",
         )}
       >
-        {/* Desktop: inbox section tabs in sidebar header. Mobile uses floating header + global bottom nav. */}
-        <div className={isTablet ? "contents" : "hidden"}>
-          <div
-            className={cn(
-              "z-40 flex shrink-0 flex-col bg-white/82 px-5 pb-3 pt-3 backdrop-blur-xl backdrop-saturate-150 dark:bg-black/75",
-            )}
-          >
-            <h1 className="mb-3 text-[28px] font-extrabold leading-tight tracking-tight">
-              {t("messagesPage.messages")}
-            </h1>
-            <div
-              className={cn(
-                "flex w-auto gap-0.5 rounded-full p-1 md:min-w-0 md:flex-1 md:gap-0",
-                glassBadgeClass,
-              )}
-              role="tablist"
-              aria-label={t("messagesPage.inboxSections")}
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={inboxTab === "messages"}
-                aria-label={
-                  inboxUnreadTotal > 0
-                    ? t("messagesPage.messagesUnread", {
-                        count: inboxUnreadTotal,
-                      })
-                    : t("messagesPage.messages")
-                }
-                onClick={() => setInboxTab("messages")}
-                className={cn(
-                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
-                  inboxTab === "messages"
-                    ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
-                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
-                )}
-              >
-                <MessageCircle className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
-                <span className="hidden md:inline">{t("messagesPage.messages")}</span>
-                {inboxUnreadTotal > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground md:static md:translate-none">
-                    {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
-                  </span>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={inboxTab === "news"}
-                aria-label={
-                  visibleActivityAlerts.length > 0
-                    ? t("messagesPage.newsItems", {
-                        count: visibleActivityAlerts.length,
-                      })
-                    : t("messagesPage.news")
-                }
-                onClick={() => setInboxTab("news")}
-                className={cn(
-                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
-                  inboxTab === "news"
-                    ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
-                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
-                )}
-              >
-                <Bell className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
-                <span className="hidden md:inline">{t("messagesPage.news")}</span>
-                {visibleActivityAlerts.length > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15 md:static md:translate-none">
-                    {visibleActivityAlerts.length > 99
-                      ? "99+"
-                      : visibleActivityAlerts.length}
-                  </span>
-                ) : null}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Messages list or activity / news list — scrolls under mobile floating header */}
+        {/* Messages list or activity / news list — title + tabs scroll with the list on desktop */}
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0">
           {mobileView === "contacts" ? (
             <MessagesInboxFloatingHeader
@@ -797,6 +683,77 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(3.125rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
             )}
           >
+            {/* Desktop: title + Messages/News tabs scroll with inbox content */}
+            <div className="hidden flex-col px-5 pb-3 pt-3 md:flex">
+              <h1 className="mb-3 text-[28px] font-extrabold leading-tight tracking-tight">
+                {t("messagesPage.messages")}
+              </h1>
+              <div
+                className={cn(
+                  "flex w-auto gap-0.5 rounded-full p-1 md:min-w-0 md:flex-1 md:gap-0",
+                  glassBadgeClass,
+                )}
+                role="tablist"
+                aria-label={t("messagesPage.inboxSections")}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inboxTab === "messages"}
+                  aria-label={
+                    inboxUnreadTotal > 0
+                      ? t("messagesPage.messagesUnread", {
+                          count: inboxUnreadTotal,
+                        })
+                      : t("messagesPage.messages")
+                  }
+                  onClick={() => setInboxTab("messages")}
+                  className={cn(
+                    "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
+                    inboxTab === "messages"
+                      ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
+                      : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
+                  )}
+                >
+                  <MessageCircle className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
+                  <span className="hidden md:inline">{t("messagesPage.messages")}</span>
+                  {inboxUnreadTotal > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground md:static md:translate-none">
+                      {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inboxTab === "news"}
+                  aria-label={
+                    visibleActivityAlerts.length > 0
+                      ? t("messagesPage.newsItems", {
+                          count: visibleActivityAlerts.length,
+                        })
+                      : t("messagesPage.news")
+                  }
+                  onClick={() => setInboxTab("news")}
+                  className={cn(
+                    "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
+                    inboxTab === "news"
+                      ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
+                      : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
+                  )}
+                >
+                  <Bell className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
+                  <span className="hidden md:inline">{t("messagesPage.news")}</span>
+                  {visibleActivityAlerts.length > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15 md:static md:translate-none">
+                      {visibleActivityAlerts.length > 99
+                        ? "99+"
+                        : visibleActivityAlerts.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </div>
             {inboxTab === "messages" ? (
               chatInboxRows.length === 0 ? (
               <>
@@ -970,8 +927,8 @@ export default function MessagesPage() {
                         "messages-conversation-row border border-transparent",
                         isActive &&
                           (isTablet
-                            ? "border-transparent bg-black/[0.06] dark:bg-white/10"
-                            : "border-orange-200/80 bg-orange-50/90 dark:border-orange-900/40 dark:bg-orange-950/25"),
+                            ? "border-transparent bg-black/[0.06] dark:bg-[#27272a]"
+                            : "border-orange-200/80 bg-orange-50/90 dark:border-transparent dark:bg-[#27272a]"),
                         convo.unread_count > 0 && !isActive && "is-unread",
                       )}
                       onClick={() =>
@@ -1289,7 +1246,7 @@ export default function MessagesPage() {
                 />
 
                 <div className="relative min-h-0 flex-1 overflow-hidden">
-                  <div className="messages-chat-container h-full min-h-0">
+                  <div className="messages-chat-container h-full min-h-0 bg-white dark:bg-transparent">
                     <ChatPage
                       key={conversationId || "none"}
                       conversationId={conversationId}

@@ -1,15 +1,15 @@
 import { Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { DiscoverHomeContent } from "@/components/discover/DiscoverHomeContent";
+import { HomePageSkeleton } from "@/components/loading/PageSkeletons";
 
 export default function ClientHomePage() {
   const { profile, loading } = useAuth();
 
   if (loading && !profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 dark:bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+      <div className="min-h-screen bg-white dark:bg-background">
+        <HomePageSkeleton />
       </div>
     );
   }

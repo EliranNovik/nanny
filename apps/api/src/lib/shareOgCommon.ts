@@ -8,6 +8,7 @@ const SERVICE_CATEGORY_LABELS: Record<string, string> = {
   cooking: "Cooking",
   pickup_delivery: "Pick up & delivery",
   nanny: "Nanny",
+  home_maintenance: "Home Maintenance",
   technical_help: "Technical Help",
   other_help: "Other help",
 };

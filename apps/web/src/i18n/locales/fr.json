@@ -379,7 +379,7 @@
       "cooking": "Repas à la maison",
       "pickup_delivery": "Courses et livraison",
       "nanny": "Garde d'enfants de confiance",
-      "technical_help": "Réparations et support technique",
+      "home_maintenance": "Réparations et entretien",
       "other_help": "Autre chose"
     },
     "careFrequency": {
@@ -476,7 +476,6 @@
     "selectLabel": "Choisir une catégorie",
     "selectPlaceholder": "Sélectionner une catégorie…",
     "beauty_personal_care": "Beauté et soins personnels",
-    "technical_help": "Aide technique",
     "heavy_lifting_moving": "Manutention et déménagement",
     "coaching_lessons": "Coaching et cours",
     "shopping_errands": "Courses et commissions",
@@ -484,7 +483,7 @@
     "elderly_help": "Aide aux personnes âgées",
     "paperwork_bureaucracy": "Paperasse et démarches administratives",
     "event_help": "Aide pour événements",
-    "home_maintenance": "Entretien de la maison",
+    "technical_help": "Aide technique",
     "digital_creative": "Aide numérique et créative",
     "religious_community": "Aide religieuse / communautaire",
     "customOption": "Autre (aucun de ceux-ci)",
@@ -574,7 +573,7 @@
       "cooking": "Cuisine",
       "pickup_delivery": "Livraison",
       "nanny": "Nounou",
-      "technical_help": "Technique",
+      "home_maintenance": "Maison",
       "other_help": "Autre",
       "allOther": "Tout autre",
       "pickSubcategory": "Filtrer par type",
@@ -724,6 +723,7 @@
       "cooking": "Cuisine",
       "pickup_delivery": "Courses et livraison",
       "nanny": "Garde d'enfants",
+      "home_maintenance": "Entretien de la maison",
       "technical_help": "Aide technique",
       "other_help": "Autre aide",
       "help_request": "Demande d'aide"
@@ -810,6 +810,7 @@
         "cooking": "Cherche quelqu’un pour cuisiner{{when}}{{location}}.",
         "nanny": "Cherche une baby-sitter responsable{{when}}{{location}}.",
         "pickup_delivery": "Cherche de l’aide pour courses et livraison{{when}}{{location}}.",
+        "home_maintenance": "Cherche de l’aide pour l’entretien de la maison{{when}}{{location}}.",
         "technical_help": "Cherche de l’aide technique{{when}}{{location}}.",
         "other_help": "Cherche quelqu’un de disponible{{when}}{{location}}.",
         "default": "Cherche {{category}}{{when}}{{location}}."

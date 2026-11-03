@@ -12,7 +12,7 @@ export function useAuthenticatedShellLayout({
   search,
   isAdmin,
 }: ShellLayoutInput) {
-  const { isTablet, isLandscape } = useTabletViewport();
+  const { isTablet, isLandscape, isMdUp } = useTabletViewport();
   const { feedPanelOpen, profilePanelOpen } = useDesktopSidePanel();
   const isHome =
     pathname === "/client/home" || pathname === "/freelancer/home";
@@ -29,35 +29,45 @@ export function useAuthenticatedShellLayout({
   const isFindHelpers =
     pathname === "/client/helpers" ||
     pathname.startsWith("/client/helpers/");
+  const isIsolatedPostDetail =
+    pathname.startsWith("/offers/") || pathname.startsWith("/open-requests/");
   const isMessageThread =
     pathname.startsWith("/messages/") ||
     (pathname === "/messages" &&
       new URLSearchParams(search).has("conversation"));
 
+  /** Web chrome uses `md` (768px) so header/sidebar never vanish in the 600–767 gap. */
+  const desktopShell = isMdUp;
   const effectiveFeedPanelOpen = isLandscape || feedPanelOpen;
   const effectiveProfilePanelOpen = isLandscape || profilePanelOpen;
   const showRail =
     !isAdmin &&
-    isTablet &&
+    desktopShell &&
     (isHome ||
       isFindHelpers ||
       isPublicProfile ||
       isProfileSettings ||
+      isIsolatedPostDetail ||
       (isFeed && (!effectiveFeedPanelOpen || isLandscape)) ||
       (isProfile && (isLandscape || !effectiveProfilePanelOpen)) ||
       isMessages);
   const showBottomTabs =
     !isAdmin &&
-    (!isTablet ||
+    (!desktopShell ||
       (isFeed && !showRail) ||
       (isProfile && !showRail));
 
+  /** Light-mode rail: white on home, public profile, and settings; grey elsewhere (e.g. feed/messages). */
+  const whiteRail = isHome || isPublicProfile || isProfileSettings;
+
   return {
     isTablet,
+    isMdUp,
     isLandscape,
     isMessageThread,
     showRail,
     showBottomTabs,
-    tabletChatDock: isTablet && isMessages && isMessageThread,
+    whiteRail,
+    tabletChatDock: desktopShell && isMessages && isMessageThread,
   };
 }

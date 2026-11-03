@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Eye, Hand, Loader2, Users } from "lucide-react";
+import { CalendarDays, Eye, Hand, Loader2, PlayCircle, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { FeedPost } from "@/components/profile/ProfilePostsFeed";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
+import { getServiceCategoryImage } from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +17,8 @@ type PanelItem = {
   postTypeId: string;
   title: string;
   createdAt: string;
+  mediaType: "image" | "video" | null;
+  thumbUrl: string | null;
 };
 
 function firstName(name: string) {
@@ -30,6 +34,38 @@ function relativeDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(date);
 }
 
+function firstHttpUrl(value: unknown): string | null {
+  if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const found = firstHttpUrl(entry);
+      if (found) return found;
+    }
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of ["url", "src", "image", "path"]) {
+      const found = firstHttpUrl(record[key]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function requestThumbUrl(row: DiscoverOpenHelpRequestRow): string | null {
+  const details = row.service_details;
+  if (details && typeof details === "object") {
+    const fromImages = firstHttpUrl(
+      (details as { images?: unknown }).images ??
+        (details as { photos?: unknown }).photos ??
+        (details as { media?: unknown }).media,
+    );
+    if (fromImages) return fromImages;
+  }
+  if (row.service_type) return getServiceCategoryImage(row.service_type);
+  return null;
+}
+
 export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -43,7 +79,7 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
       const [profilePostsResult, requestsResult] = await Promise.all([
         supabase
           .from("profile_posts")
-          .select("id, caption, created_at, post_type_id, ai_generated_copy")
+          .select("id, caption, created_at, post_type_id, ai_generated_copy, media_type, storage_path")
           .eq("author_id", authorId)
           .order("created_at", { ascending: false })
           .limit(60),
@@ -54,12 +90,27 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
 
       const profileItems: PanelItem[] = (profilePostsResult.data ?? []).map((row) => {
         const copy = row.ai_generated_copy as { title?: string } | null;
+        const storagePath =
+          typeof row.storage_path === "string" && row.storage_path.trim()
+            ? row.storage_path.trim()
+            : null;
+        const mediaType =
+          row.media_type === "video" || row.media_type === "image"
+            ? row.media_type
+            : storagePath
+              ? "image"
+              : null;
         return {
           id: String(row.id),
           source: "post",
           postTypeId: String(row.post_type_id || "community"),
-          title: copy?.title?.trim() || String(row.caption || "").trim() || t("feed.postType.community", { defaultValue: "Community" }),
+          title:
+            copy?.title?.trim() ||
+            String(row.caption || "").trim() ||
+            t("feed.postType.community", { defaultValue: "Community" }),
           createdAt: String(row.created_at),
+          mediaType,
+          thumbUrl: storagePath ? publicProfileMediaPublicUrl(storagePath) : null,
         };
       });
       const requestItems: PanelItem[] = ((requestsResult.data ?? []) as DiscoverOpenHelpRequestRow[])
@@ -68,12 +119,21 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
           id: row.id,
           source: "job_request",
           postTypeId: "request_help",
-          title: String(row.notes || "").trim() || t("feed.postType.request_help", { defaultValue: "Request" }),
+          title:
+            String(row.notes || "").trim() ||
+            t("feed.postType.request_help", { defaultValue: "Request" }),
           createdAt: String(row.created_at || ""),
+          mediaType: null,
+          thumbUrl: requestThumbUrl(row),
         }));
 
       return [...profileItems, ...requestItems]
-        .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id && candidate.source === item.source) === index)
+        .filter(
+          (item, index, all) =>
+            all.findIndex(
+              (candidate) => candidate.id === item.id && candidate.source === item.source,
+            ) === index,
+        )
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
   });
@@ -108,7 +168,9 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-3.5">
         {isPending ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
+          </div>
         ) : items.length === 0 ? (
           <p className="py-10 text-center text-sm font-medium text-zinc-500">
             {t("postDetailPanel.empty", { defaultValue: "No posts yet" })}
@@ -117,31 +179,82 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
           <div className="space-y-3">
             {items.map((item) => {
               const selected = currentKey === `${item.source}:${item.id}`;
-              const Icon = item.postTypeId === "request_help" ? Hand : item.postTypeId === "event" ? CalendarDays : Users;
+              const Icon =
+                item.postTypeId === "request_help"
+                  ? Hand
+                  : item.postTypeId === "event"
+                    ? CalendarDays
+                    : Users;
               return (
                 <button
                   key={`${item.source}:${item.id}`}
                   type="button"
                   disabled={selected}
-                  onClick={() => navigate(item.source === "job_request" ? `/open-requests/${item.id}` : `/offers/${item.id}`)}
+                  onClick={() =>
+                    navigate(
+                      item.source === "job_request"
+                        ? `/open-requests/${item.id}`
+                        : `/offers/${item.id}`,
+                    )
+                  }
                   className={cn(
                     "w-full rounded-[22px] border-[1.5px] bg-white p-3 text-start shadow-sm transition-transform hover:scale-[1.01] dark:bg-zinc-900",
                     selected ? "border-orange-500" : "border-transparent",
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                      <Icon className="h-5 w-5" aria-hidden />
+                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                      {item.thumbUrl ? (
+                        item.mediaType === "video" ? (
+                          <>
+                            <video
+                              src={item.thumbUrl}
+                              className="absolute inset-0 h-full w-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                              <PlayCircle
+                                className="h-6 w-6 text-white drop-shadow"
+                                strokeWidth={2.1}
+                                aria-hidden
+                              />
+                            </span>
+                          </>
+                        ) : (
+                          <img
+                            src={item.thumbUrl}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-orange-600 dark:text-orange-400">
+                          <Icon className="h-5 w-5" aria-hidden />
+                        </span>
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 text-[15px] font-bold leading-5 text-zinc-900 dark:text-zinc-100">{item.title}</span>
+                      <span className="line-clamp-2 text-[15px] font-bold leading-5 text-zinc-900 dark:text-zinc-100">
+                        {item.title}
+                      </span>
                       <span className="mt-2 flex items-center justify-between gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                        <span>{t(`feed.postType.${item.postTypeId}`, { defaultValue: item.postTypeId })}</span>
+                        <span>
+                          {t(`feed.postType.${item.postTypeId}`, {
+                            defaultValue: item.postTypeId,
+                          })}
+                        </span>
                         {selected ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] font-bold text-orange-600 dark:text-orange-400">
-                            <Eye className="h-3 w-3" /> {t("postDetailPanel.viewing", { defaultValue: "Viewing" })}
+                            <Eye className="h-3 w-3" />{" "}
+                            {t("postDetailPanel.viewing", { defaultValue: "Viewing" })}
                           </span>
-                        ) : relativeDate(item.createdAt, i18n.language)}
+                        ) : (
+                          relativeDate(item.createdAt, i18n.language)
+                        )}
                       </span>
                     </span>
                   </div>

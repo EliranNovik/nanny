@@ -11,11 +11,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   Baby,
   HelpCircle,
+  Home,
   LayoutGrid,
   Sparkles,
   Truck,
   UtensilsCrossed,
-  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,8 +38,8 @@ const THEMES: Record<DiscoverHomeCategoryId, Theme> = {
     pillGradient: "bg-gradient-to-r from-violet-500 to-indigo-600",
   },
   nanny: { pillGradient: "bg-gradient-to-r from-sky-500 to-blue-600" },
-  technical_help: {
-    pillGradient: "bg-gradient-to-r from-slate-600 to-slate-800",
+  home_maintenance: {
+    pillGradient: "bg-gradient-to-r from-orange-500 to-amber-600",
   },
   other_help: {
     pillGradient:
@@ -53,7 +53,7 @@ const ICONS: Record<DiscoverHomeCategoryId, LucideIcon> = {
   cooking: UtensilsCrossed,
   pickup_delivery: Truck,
   nanny: Baby,
-  technical_help: Wrench,
+  home_maintenance: Home,
   other_help: HelpCircle,
 };
 

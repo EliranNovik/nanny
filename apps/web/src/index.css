@@ -43,20 +43,24 @@
   }
 
   .app-desktop-side-panel {
-    @apply fixed bottom-4 start-4 top-4 z-[200] w-[220px];
+    /* Flush under the fixed desktop header (no floating card). */
+    @apply fixed bottom-0 start-0 z-[200] w-[220px];
+    top: 4rem;
   }
 
   .app-tablet-nav-rail {
-    top: calc(env(safe-area-inset-top, 0px) + 12px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    top: 4rem;
+    bottom: 0;
   }
 
   .app-tablet-rail-offset {
     padding-inline-start: 108px;
   }
 
-  html:has([data-messages-page]) .app-desktop-side-panel {
-    @apply md:top-4;
+  /* Messages: no app header — rail runs full height. */
+  html:has([data-messages-page]) .app-desktop-side-panel,
+  html:has([data-messages-page]) .app-tablet-nav-rail {
+    top: 0;
   }
 }
 
@@ -78,7 +82,7 @@
     /* Bottom nav sits flush on the viewport; safe area is padding inside the bar. */
     --app-nav-bottom-inset: 0px;
     --app-plus-menu-bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-    --app-bottom-nav-height: 2.875rem;
+    --app-bottom-nav-height: 2.75rem;
     --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     --app-mobile-sheet-bottom: var(--app-bottom-nav-stack);
     /* Mobile fixed header strip: safe-top + 4rem bar (BottomNav). */
@@ -406,8 +410,39 @@
     flex-direction: column;
   }
 
+  /* Desktop: fill space under the fixed header so the split pane doesn't overflow. */
+  @media (min-width: 768px) {
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page]) > div {
+      display: flex;
+      min-height: 0 !important;
+      flex: 1 1 auto;
+      height: auto !important;
+    }
+
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      .app-tablet-rail-offset,
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      .app-side-panel-offset {
+      display: flex;
+      min-height: 0;
+      flex: 1 1 auto;
+      flex-direction: column;
+      height: auto;
+      /* Match the 76px icon rail — default tablet offset (108px) left a visible gap. */
+      padding-inline-start: 76px;
+    }
+
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      [data-messages-page] {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100% !important;
+      max-height: 100% !important;
+    }
+  }
+
   /**
-   * Messages does NOT show the BottomNav DesktopHeader, so don't reserve header clearance.
+   * Messages: no BottomNav DesktopHeader — don't reserve header clearance.
    */
   .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page]) {
     padding-top: 0 !important;
@@ -424,9 +459,9 @@
   }
 
   .dark [data-messages-page] {
-    --messages-bg: #27272a;
-    --messages-surface: hsl(var(--muted));
-    --messages-muted: hsl(var(--muted));
+    --messages-bg: #18181b;
+    --messages-surface: #18181b;
+    --messages-muted: #18181b;
     --messages-text: hsl(var(--foreground));
     --messages-text-muted: hsl(var(--muted-foreground));
     --messages-border: hsl(var(--border));
@@ -760,7 +795,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: 48px;
+    height: 40px;
     margin: 10px 16px 12px;
     padding: 0 12px;
     border-radius: 14px;
@@ -769,13 +804,13 @@
   }
 
   .dark [data-messages-page] .messages-inbox-search {
-    background: #3f3f46;
-    border-color: rgba(255, 255, 255, 0.08);
+    background: #27272a;
+    border-color: rgba(255, 255, 255, 0.06);
   }
 
   @media (min-width: 768px) {
     [data-messages-page] .messages-inbox-search {
-      height: 3.5rem;
+      height: 2.75rem;
       margin: 0;
       border-radius: 1rem;
       border: none;
@@ -1388,13 +1423,12 @@
       max-width: none;
       margin-inline: 0;
       border-radius: 0;
-      padding: 2px 0 calc(2px + env(safe-area-inset-bottom, 0px));
+      padding: 0 0 env(safe-area-inset-bottom, 0px);
       background: #ffffff;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
       border: none;
       border-top: 1px solid rgba(0, 0, 0, 0.06);
-      box-shadow: none;
       box-shadow: none;
     }
 
@@ -1404,9 +1438,9 @@
     }
 
     .bottom-nav-mobile-shell--flat .bottom-nav-mobile-items-row {
-      min-height: 46px;
-      padding-top: 2px;
-      padding-bottom: 2px;
+      min-height: 2.75rem;
+      padding-top: 0.125rem;
+      padding-bottom: 0.125rem;
     }
 
     .dark .bottom-nav-mobile-shell--flat {
@@ -1502,11 +1536,9 @@
   /* Chrome, Safari and Opera */
 }
 
-/* Premium chat thread background + desktop scrollbar */
+/* Chat thread background + desktop scrollbar */
 .chat-screen {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(249, 115, 22, 0.045), transparent 38%),
-    #fbfaf8;
+  background: #ffffff;
 }
 
 .dark .chat-screen {

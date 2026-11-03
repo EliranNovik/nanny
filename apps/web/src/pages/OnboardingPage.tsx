@@ -13,6 +13,7 @@ import {
   ChefHat,
   HelpingHand,
   HeartHandshake,
+  Home,
   Sparkles,
   Truck,
   Wrench,
@@ -52,7 +53,7 @@ const CATEGORY_ICONS = {
   cooking: ChefHat,
   pickup_delivery: Truck,
   nanny: Baby,
-  technical_help: Wrench,
+  home_maintenance: Home,
   other_help: HelpingHand,
 } as const;
 
@@ -61,7 +62,7 @@ const CATEGORY_ICON_COLORS: Record<string, string> = {
   cooking: "bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300",
   pickup_delivery: "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300",
   nanny: "bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300",
-  technical_help: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+  home_maintenance: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
   other_help: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
 };
 

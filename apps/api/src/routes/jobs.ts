@@ -3,7 +3,6 @@ import { z } from "zod";
 import { supabaseAdmin } from "../supabase";
 import { findCandidates } from "../logic/match";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { assertKycApproved } from "../lib/kycGate";
 import {
   buildPostTextInputFromJob,
   generatePostText,
@@ -88,7 +87,7 @@ type MapDebugConfirmed = Record<string, unknown>;
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const VALID_SERVICE_TYPES = [
-  "cleaning", "cooking", "pickup_delivery", "nanny", "other_help",
+  "cleaning", "cooking", "pickup_delivery", "nanny", "home_maintenance", "other_help",
 ] as const;
 
 const VALID_CARE_FREQUENCIES = ["one_time", "part_time", "regularly"] as const;
@@ -233,12 +232,6 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const kyc = await assertKycApproved(user.id);
-  if (!kyc.ok) {
-    res.status(403).json({ error: kyc.error, code: kyc.code });
-    return;
-  }
-
   const payload = parsed.data;
 
   // INTEGRITY: budget_max must be >= budget_min if both present
@@ -267,14 +260,6 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     .single();
 
   if (jobErr) {
-    if (jobErr.message.includes("KYC_REQUIRED")) {
-      res.status(403).json({
-        error:
-          "Verify your identity before posting a request. Complete verification from your account.",
-        code: "KYC_REQUIRED",
-      });
-      return;
-    }
     res.status(500).json({ error: jobErr.message });
     return;
   }

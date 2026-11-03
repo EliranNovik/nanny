@@ -5,7 +5,7 @@ export const SERVICE_CATEGORY_IDS = [
   "cooking",
   "pickup_delivery",
   "nanny",
-  "technical_help",
+  "home_maintenance",
   "other_help",
 ] as const;
 
@@ -21,37 +21,37 @@ export const SERVICE_CATEGORIES: {
     id: "cleaning",
     label: "Cleaning",
     description: "Professional home care",
-    imageSrc: "/cleaning-mar22.png",
+    imageSrc: "/category-icons/cleaning.png?v=20261102b",
   },
   {
     id: "cooking",
     label: "Cooking",
     description: "Meals at home",
-    imageSrc: "/cooking-mar22.png",
+    imageSrc: "/category-icons/cooking.png?v=20261102b",
   },
   {
     id: "pickup_delivery",
     label: "Pick up & delivery",
     description: "Errands & courier",
-    imageSrc: "/pexels-roman-odintsov-12725452.jpg",
+    imageSrc: "/category-icons/pickup_delivery.png?v=20261102b",
   },
   {
     id: "nanny",
     label: "Nanny",
     description: "Trusted childcare",
-    imageSrc: "/nanny-mar22.png",
+    imageSrc: "/category-icons/nanny.png?v=20261102b",
   },
   {
-    id: "technical_help",
-    label: "Technical Help",
-    description: "Repairs & tech support",
-    imageSrc: "/pexels-tima-miroshnichenko-6197046.jpg",
+    id: "home_maintenance",
+    label: "Home Maintenance",
+    description: "Repairs & upkeep",
+    imageSrc: "/category-icons/home_maintenance.png?v=20261102b",
   },
   {
     id: "other_help",
     label: "Other help",
     description: "Anything else",
-    imageSrc: "/other-mar22.png",
+    imageSrc: "/category-icons/other_help.png?v=20261102b",
   },
 ];
 
@@ -100,6 +100,7 @@ export function serviceCategoryLabel(id?: string | null): string {
   if (!id) return "Help request";
   return (
     SERVICE_CATEGORIES.find((c) => c.id === id)?.label ??
+    OTHER_HELP_SUBCATEGORIES.find((s) => s.id === id)?.label ??
     id.replace(/_/g, " ")
   );
 }
@@ -118,7 +119,7 @@ export const OTHER_HELP_SUBCATEGORIES: { id: string; label: string }[] = [
   { id: "elderly_help", label: "Elderly Help" },
   { id: "paperwork_bureaucracy", label: "Paperwork & Bureaucracy Help" },
   { id: "event_help", label: "Event Help" },
-  { id: "home_maintenance", label: "Home Maintenance" },
+  { id: "technical_help", label: "Technical Help" },
   { id: "digital_creative", label: "Digital & Creative Help" },
   { id: "religious_community", label: "Religious / Community Help" },
 ];

@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 import {
   Baby,
   HelpCircle,
+  Home,
   LayoutGrid,
   Sparkles,
   Truck,
   UtensilsCrossed,
-  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,7 +26,7 @@ const ICONS: Record<DiscoverHomeCategoryId, LucideIcon> = {
   cooking: UtensilsCrossed,
   pickup_delivery: Truck,
   nanny: Baby,
-  technical_help: Wrench,
+  home_maintenance: Home,
   other_help: HelpCircle,
 };
 

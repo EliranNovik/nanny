@@ -45,10 +45,12 @@ function OfferCategoryIcon({
 export function DiscoverHomeOffersForYou({
   className,
   categoryFilter = "all",
+  otherSubFilter = null,
   viewerLocation = null,
 }: {
   className?: string;
   categoryFilter?: DiscoverHomeCategoryFilter;
+  otherSubFilter?: string | null;
   viewerLocation?: ViewerLocation | null;
 }) {
   const { t, i18n } = useTranslation();
@@ -67,11 +69,17 @@ export function DiscoverHomeOffersForYou({
       return offers.filter((offer) => {
         const id = (offer.categoryId ?? "").toLowerCase();
         const custom = (offer.customCategory ?? "").toLowerCase();
-        return id === "other_help" || Boolean(OTHER_HELP_SUBCATEGORY_UI[id] || OTHER_HELP_SUBCATEGORY_UI[custom]);
+        if (otherSubFilter) {
+          return id === otherSubFilter || custom === otherSubFilter;
+        }
+        return (
+          id === "other_help" ||
+          Boolean(OTHER_HELP_SUBCATEGORY_UI[id] || OTHER_HELP_SUBCATEGORY_UI[custom])
+        );
       });
     }
     return offers.filter((offer) => offer.categoryId === categoryFilter);
-  }, [offers, categoryFilter]);
+  }, [offers, categoryFilter, otherSubFilter]);
 
   const openOffer = (postId: string) => {
     navigate(isolatedOfferPostPath(postId));

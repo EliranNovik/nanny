@@ -8,8 +8,6 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useKycGate } from "@/context/KycGateContext";
-import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -115,34 +113,85 @@ const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
   imageSrc: c.imageSrc,
 }));
 
-/** Step 1 main category tiles — colored boxes with category illustrations. */
+/** Step 1 tiles — box fill matches each badge PNG background. */
 const SERVICE_TYPE_META: Record<
   string,
   { idle: string; selected: string }
 > = {
   cleaning: {
-    idle: "bg-sky-50 text-sky-950 dark:bg-sky-500/10 dark:text-sky-50",
-    selected: "bg-sky-600 text-white",
+    idle: "bg-[#aed8ef] text-slate-900 dark:bg-[#aed8ef] dark:text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
   },
   cooking: {
-    idle: "bg-amber-50 text-amber-950 dark:bg-amber-500/10 dark:text-amber-50",
-    selected: "bg-amber-500 text-white",
+    idle: "bg-[#fabb97] text-slate-900 dark:bg-[#fabb97] dark:text-slate-900",
+    selected: "bg-[#e07840] text-white",
   },
   pickup_delivery: {
-    idle: "bg-indigo-50 text-indigo-950 dark:bg-indigo-500/10 dark:text-indigo-50",
-    selected: "bg-indigo-600 text-white",
+    idle: "bg-[#ddccf5] text-slate-900 dark:bg-[#ddccf5] dark:text-slate-900",
+    selected: "bg-[#8f6fd4] text-white",
   },
   nanny: {
-    idle: "bg-rose-50 text-rose-950 dark:bg-rose-500/10 dark:text-rose-50",
-    selected: "bg-rose-500 text-white",
+    idle: "bg-[#bbd0b5] text-slate-900 dark:bg-[#bbd0b5] dark:text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
   },
-  technical_help: {
-    idle: "bg-slate-100 text-slate-900 dark:bg-slate-500/10 dark:text-slate-50",
-    selected: "bg-slate-700 text-white",
+  home_maintenance: {
+    idle: "bg-[#f3d5b5] text-slate-900 dark:bg-[#f3d5b5] dark:text-slate-900",
+    selected: "bg-[#c9955a] text-white",
   },
   other_help: {
-    idle: "bg-emerald-50 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-50",
-    selected: "bg-emerald-600 text-white",
+    idle: "bg-[#e5dbf6] text-slate-900 dark:bg-[#e5dbf6] dark:text-slate-900",
+    selected: "bg-[#8b6fc7] text-white",
+  },
+};
+
+/** Other-help subcategory tiles — box fill matches each badge PNG background. */
+const OTHER_HELP_SUBCATEGORY_META: Record<
+  string,
+  { idle: string; selected: string }
+> = {
+  beauty_personal_care: {
+    idle: "bg-[#fad6d2] text-slate-900 dark:bg-[#fad6d2] dark:text-slate-900",
+    selected: "bg-[#d47a72] text-white",
+  },
+  heavy_lifting_moving: {
+    idle: "bg-[#dbcefa] text-slate-900 dark:bg-[#dbcefa] dark:text-slate-900",
+    selected: "bg-[#8f6fd4] text-white",
+  },
+  coaching_lessons: {
+    idle: "bg-[#aad3eb] text-slate-900 dark:bg-[#aad3eb] dark:text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  shopping_errands: {
+    idle: "bg-[#fdf1e1] text-slate-900 dark:bg-[#fdf1e1] dark:text-slate-900",
+    selected: "bg-[#d4a06a] text-white",
+  },
+  pet_help: {
+    idle: "bg-[#fcc19e] text-slate-900 dark:bg-[#fcc19e] dark:text-slate-900",
+    selected: "bg-[#e07840] text-white",
+  },
+  elderly_help: {
+    idle: "bg-[#bbd0b2] text-slate-900 dark:bg-[#bbd0b2] dark:text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
+  },
+  paperwork_bureaucracy: {
+    idle: "bg-[#afc7d4] text-slate-900 dark:bg-[#afc7d4] dark:text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  event_help: {
+    idle: "bg-[#d7c9ee] text-slate-900 dark:bg-[#d7c9ee] dark:text-slate-900",
+    selected: "bg-[#8b6fc7] text-white",
+  },
+  technical_help: {
+    idle: "bg-[#abc2cf] text-slate-900 dark:bg-[#abc2cf] dark:text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  digital_creative: {
+    idle: "bg-[#afd6e9] text-slate-900 dark:bg-[#afd6e9] dark:text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  religious_community: {
+    idle: "bg-[#c6d7bf] text-slate-900 dark:bg-[#c6d7bf] dark:text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
   },
 };
 
@@ -331,7 +380,6 @@ export default function CreateJobPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { openKycRequiredDialog } = useKycGate();
   const appliedServiceFromUrl = useRef(false);
   const { addToast } = useToast();
   const { t } = useTranslation();
@@ -667,7 +715,7 @@ export default function CreateJobPage() {
           return !!jobData.service_details.kids_count;
         } else if (jobData.service_type === "other_help") {
           return !!jobData.service_details.other_type;
-        } else if (jobData.service_type === "technical_help") {
+        } else if (jobData.service_type === "home_maintenance") {
           return true;
         }
         return false;
@@ -753,11 +801,6 @@ export default function CreateJobPage() {
   }
 
   async function handleSubmit() {
-    if (needsKycVerification(profile)) {
-      openKycRequiredDialog("start_request");
-      return;
-    }
-
     setLoading(true);
     setError("");
 
@@ -861,9 +904,6 @@ export default function CreateJobPage() {
     } catch (err) {
       console.error("[CreateJobPage] Error creating job:", err);
       const message = err instanceof Error ? err.message : "Failed to create job";
-      if (message.toLowerCase().includes("verify")) {
-        openKycRequiredDialog("start_request");
-      }
       setError(message);
       setLoading(false);
     }
@@ -1101,31 +1141,35 @@ export default function CreateJobPage() {
             {step === 1 && otherHelpSubOpen && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                  {OTHER_HELP_TYPES.map((type) => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => {
-                        updateServiceDetail("other_type", type.id);
-                        setStep(2);
-                      }}
-                      className={cn(
-                        "group flex h-full flex-col items-center justify-start gap-2 rounded-2xl p-3.5 text-center shadow-sm transition-all",
-                        JOB_CHOICE_IDLE,
-                        jobData.service_details.other_type === type.id
-                          ? JOB_CHOICE_SELECTED
-                          : JOB_CHOICE_HOVER,
-                      )}
-                    >
-                      <TypeHelpIllustration
-                        categoryId={type.id}
-                        className="h-16 w-16 shrink-0"
-                      />
-                      <span className="text-base font-bold leading-snug">
-                        {t(`otherHelpSubcategories.${type.id}`)}
-                      </span>
-                    </button>
-                  ))}
+                  {OTHER_HELP_TYPES.map((type) => {
+                    const meta =
+                      OTHER_HELP_SUBCATEGORY_META[type.id] ??
+                      SERVICE_TYPE_META.other_help;
+                    const selected =
+                      jobData.service_details.other_type === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => {
+                          updateServiceDetail("other_type", type.id);
+                          setStep(2);
+                        }}
+                        className={cn(
+                          "group flex h-full flex-col items-center justify-start gap-2 rounded-2xl p-3.5 text-center shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.97]",
+                          selected ? meta.selected : meta.idle,
+                        )}
+                      >
+                        <TypeHelpIllustration
+                          categoryId={type.id}
+                          className="h-16 w-16 shrink-0"
+                        />
+                        <span className="text-base font-bold leading-snug">
+                          {t(`otherHelpSubcategories.${type.id}`)}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <Button
@@ -1629,8 +1673,8 @@ export default function CreateJobPage() {
                   </div>
                 )}
 
-                {/* Technical Help — free-form description */}
-                {jobData.service_type === "technical_help" && (
+                {/* Home Maintenance — free-form description */}
+                {jobData.service_type === "home_maintenance" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       {t("createJob.technical.label")}

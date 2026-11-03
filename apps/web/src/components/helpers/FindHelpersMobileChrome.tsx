@@ -19,33 +19,81 @@ export type FindHelpersQuickFilter =
 
 export type FindHelpersMobilePanel = "none" | "categories" | "location";
 
+/** Box fill matches each badge PNG background. */
 const CATEGORY_TILE: Record<
   ServiceCategoryId,
   { idle: string; selected: string }
 > = {
   cleaning: {
-    idle: "bg-sky-50 text-sky-950 dark:bg-sky-500/10 dark:text-sky-50",
-    selected: "bg-sky-600 text-white",
+    idle: "bg-[#aed8ef] text-slate-900 dark:bg-[#aed8ef] dark:text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
   },
   cooking: {
-    idle: "bg-amber-50 text-amber-950 dark:bg-amber-500/10 dark:text-amber-50",
-    selected: "bg-amber-500 text-white",
+    idle: "bg-[#fabb97] text-slate-900 dark:bg-[#fabb97] dark:text-slate-900",
+    selected: "bg-[#e07840] text-white",
   },
   pickup_delivery: {
-    idle: "bg-indigo-50 text-indigo-950 dark:bg-indigo-500/10 dark:text-indigo-50",
-    selected: "bg-indigo-600 text-white",
+    idle: "bg-[#ddccf5] text-slate-900 dark:bg-[#ddccf5] dark:text-slate-900",
+    selected: "bg-[#8f6fd4] text-white",
   },
   nanny: {
-    idle: "bg-rose-50 text-rose-950 dark:bg-rose-500/10 dark:text-rose-50",
-    selected: "bg-rose-500 text-white",
+    idle: "bg-[#bbd0b5] text-slate-900 dark:bg-[#bbd0b5] dark:text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
   },
-  technical_help: {
-    idle: "bg-slate-100 text-slate-900 dark:bg-slate-500/10 dark:text-slate-50",
-    selected: "bg-slate-700 text-white",
+  home_maintenance: {
+    idle: "bg-[#f3d5b5] text-slate-900 dark:bg-[#f3d5b5] dark:text-slate-900",
+    selected: "bg-[#c9955a] text-white",
   },
   other_help: {
-    idle: "bg-emerald-50 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-50",
-    selected: "bg-emerald-600 text-white",
+    idle: "bg-[#e5dbf6] text-slate-900 dark:bg-[#e5dbf6] dark:text-slate-900",
+    selected: "bg-[#8b6fc7] text-white",
+  },
+};
+
+const OTHER_SUBCATEGORY_TILE: Record<string, { idle: string; selected: string }> = {
+  beauty_personal_care: {
+    idle: "bg-[#fad6d2] text-slate-900",
+    selected: "bg-[#d47a72] text-white",
+  },
+  heavy_lifting_moving: {
+    idle: "bg-[#dbcefa] text-slate-900",
+    selected: "bg-[#8f6fd4] text-white",
+  },
+  coaching_lessons: {
+    idle: "bg-[#aad3eb] text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  shopping_errands: {
+    idle: "bg-[#fdf1e1] text-slate-900",
+    selected: "bg-[#d4a06a] text-white",
+  },
+  pet_help: {
+    idle: "bg-[#fcc19e] text-slate-900",
+    selected: "bg-[#e07840] text-white",
+  },
+  elderly_help: {
+    idle: "bg-[#bbd0b2] text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
+  },
+  paperwork_bureaucracy: {
+    idle: "bg-[#afc7d4] text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  event_help: {
+    idle: "bg-[#d7c9ee] text-slate-900",
+    selected: "bg-[#8b6fc7] text-white",
+  },
+  technical_help: {
+    idle: "bg-[#abc2cf] text-slate-900",
+    selected: "bg-[#5a7d8f] text-white",
+  },
+  digital_creative: {
+    idle: "bg-[#afd6e9] text-slate-900",
+    selected: "bg-[#3d8eb8] text-white",
+  },
+  religious_community: {
+    idle: "bg-[#c6d7bf] text-slate-900",
+    selected: "bg-[#6a8f5a] text-white",
   },
 };
 
@@ -393,6 +441,8 @@ export function FindHelpersMobileChrome({
             <div className="grid grid-cols-2 gap-2.5">
               {OTHER_HELP_SUBCATEGORIES.map((sub) => {
                 const selected = selectedOtherSubs.has(sub.id);
+                const meta =
+                  OTHER_SUBCATEGORY_TILE[sub.id] ?? CATEGORY_TILE.other_help;
                 return (
                   <button
                     key={sub.id}
@@ -401,9 +451,7 @@ export function FindHelpersMobileChrome({
                     onClick={() => onToggleOtherSub(sub.id)}
                     className={cn(
                       "flex flex-col items-center justify-start gap-2 rounded-2xl p-3.5 text-center",
-                      selected
-                        ? "bg-emerald-600 text-white"
-                        : "bg-zinc-800 text-zinc-100",
+                      selected ? meta.selected : meta.idle,
                     )}
                   >
                     <span className="relative isolate block h-14 w-14 overflow-hidden rounded-full">

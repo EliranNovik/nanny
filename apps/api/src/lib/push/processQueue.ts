@@ -12,6 +12,7 @@ type QueueRow = {
   title: string;
   body: string;
   data: Record<string, unknown> | null;
+  notification_type?: string | null;
   dedupe_key: string | null;
   attempts: number;
 };
@@ -166,7 +167,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
 
   const { data: rows, error } = await supabaseAdmin
     .from("push_notification_queue")
-    .select("id, user_id, title, body, data, dedupe_key, attempts")
+    .select("id, user_id, title, body, data, notification_type, dedupe_key, attempts")
     .eq("status", "pending")
     .lte("scheduled_for", now)
     .order("scheduled_for", { ascending: true })
@@ -260,8 +261,22 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       continue;
     }
 
-    const data = stringifyData(await withActorPhoto(row, photoCache));
+    const enriched = await withActorPhoto(row, photoCache);
+    // Ensure type/sound fallbacks work even on rows queued before SQL 147.
+    if (!nonEmptyString(enriched.notification_type) && nonEmptyString(row.notification_type)) {
+      enriched.notification_type = row.notification_type;
+    }
+    if (!nonEmptyString(enriched.type) && nonEmptyString(row.notification_type)) {
+      enriched.type = row.notification_type;
+    }
+    const data = stringifyData(enriched);
     const payload = { title: row.title, body: row.body, data };
+    pushLog("Queue row audio fields", {
+      queue_id: row.id,
+      notification_type: row.notification_type ?? null,
+      sound: data.sound ?? null,
+      android_channel_id: data.android_channel_id ?? null,
+    });
     const invalidTokens: string[] = [];
     let successCount = 0;
     const errorParts: string[] = [];

@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { normalizePrivateKey } from "./normalizePrivateKey";
 import { pushError, pushLog, pushWarn, tokenPreview } from "./log";
+import { resolvePushAudio } from "./pushSound";
 
 let initialized = false;
 let initError: string | null = null;
@@ -118,6 +119,13 @@ export async function sendFcmToTokens(
 
   const rawImage = data.image?.trim();
   const imageUrl = rawImage && /^https?:\/\//i.test(rawImage) ? rawImage : undefined;
+  const { sound, androidChannelId } = resolvePushAudio(data);
+
+  pushLog("FCM audio", {
+    sound,
+    android_channel_id: androidChannelId,
+    type: data.type ?? data.notification_type ?? null,
+  });
 
   const message: admin.messaging.MulticastMessage = {
     tokens,
@@ -128,17 +136,18 @@ export async function sendFcmToTokens(
     },
     data,
     // Android / web FCM only — native iOS APNs tokens are sent via apns.ts, not FCM.
+    // On Android 8+, channel_id selects the sound configured in the app.
     android: {
       priority: "high",
       notification: {
-        channelId: "tebnu_default",
-        sound: "default",
+        channelId: androidChannelId,
+        sound,
         ...(imageUrl ? { imageUrl } : {}),
       },
     },
     apns: {
       payload: {
-        aps: { mutableContent: true, sound: "default" },
+        aps: { mutableContent: true, sound },
       },
       ...(imageUrl ? { fcmOptions: { imageUrl } } : {}),
     },

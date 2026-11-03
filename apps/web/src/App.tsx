@@ -52,6 +52,8 @@ import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import FreelancerAvailabilityLivePage from "./pages/freelancer/FreelancerAvailabilityLivePage";
 import DashboardPage from "@/pages/client/DashboardPage";
 import RecentActivityPage from "@/pages/RecentActivityPage";
+import MyRequestsPage from "@/pages/MyRequestsPage";
+import MyOffersPage from "@/pages/MyOffersPage";
 import ClientHomePage from "@/pages/client/ClientHomePage";
 import HelpersPage from "@/pages/client/HelpersPage";
 import HelpersMatchPage from "@/pages/client/HelpersMatchPage";
@@ -116,7 +118,6 @@ import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { LegalAcceptanceGate } from "@/components/LegalAcceptanceGate";
-import { AnalyticsConsent } from "@/components/AnalyticsConsent";
 import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 
 // Protected route wrapper
@@ -248,6 +249,11 @@ function KeepAlivePages() {
           <div
             key={route}
             aria-hidden={!isActive}
+            className={
+              isActive && route === "/messages"
+                ? "flex min-h-0 flex-1 flex-col md:h-full"
+                : undefined
+            }
             style={isActive ? undefined : { display: "none", visibility: "hidden", pointerEvents: "none" }}
           >
             {route === "/client/helpers" && <HelpersPage />}
@@ -268,14 +274,17 @@ function PageLayoutWithHeader() {
   const { pathname, search } = useLocation();
   const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
-  const { showRail } = useAuthenticatedShellLayout({
+  const { showRail, whiteRail } = useAuthenticatedShellLayout({
     pathname,
     search,
     isAdmin: isAdminPath,
   });
+  const isMessagesPath =
+    pathname === "/messages" || pathname.startsWith("/messages/");
+  const railNarrow =
+    desktopSidePanelCollapsed || isMessagesPath;
   const shouldHideDesktopFooter =
-    pathname === "/messages" ||
-    pathname.startsWith("/messages/") ||
+    isMessagesPath ||
     pathname.startsWith("/chat/") ||
     pathname === "/admin" ||
     pathname.startsWith("/admin/");
@@ -294,6 +303,11 @@ function PageLayoutWithHeader() {
   return (
     <div className={cn(
       "app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content",
+      /* Light mode: match rail so the padding strip isn't a different color. */
+      showRail &&
+        (whiteRail && !isMessagesPath
+          ? "bg-white dark:bg-background"
+          : "bg-[#F2F2F7] dark:bg-background"),
       isAdminPath
         ? "min-h-[100dvh] md:h-[100dvh] md:min-h-0 md:overflow-hidden"
         : "min-h-[100dvh] min-h-[-webkit-fill-available]",
@@ -306,7 +320,7 @@ function PageLayoutWithHeader() {
             "min-w-0 app-mobile-scroll-top-clearance",
             isAdminPath && "md:h-full md:min-h-0 md:overflow-hidden",
             !isAdminPath && showRail
-              ? desktopSidePanelCollapsed
+              ? railNarrow
                 ? "app-tablet-rail-offset"
                 : "app-side-panel-offset"
               : isAdminPath
@@ -425,6 +439,22 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/my-requests"
+          element={
+            <ProtectedRoute>
+              <MyRequestsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-offers"
+          element={
+            <ProtectedRoute>
+              <MyOffersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/client/helpers"
           element={
             <ProtectedRoute>
@@ -468,9 +498,7 @@ function AppRoutes() {
           path="/client/create"
           element={
             <ProtectedRoute>
-              <KycRestrictedRoute action="start_request">
-                <CreateJobPage />
-              </KycRestrictedRoute>
+              <CreateJobPage />
             </ProtectedRoute>
           }
         />
@@ -766,7 +794,6 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <AppSafeAreaSync />
             <DocumentLocaleSync />
-            <AnalyticsConsent />
             <ToastProvider>
               <AuthProvider>
                 <GuestAuthPromptProvider>

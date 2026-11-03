@@ -2,6 +2,7 @@ import http2 from "http2";
 import { createPrivateKey, sign } from "crypto";
 import { normalizePrivateKey } from "./normalizePrivateKey";
 import { pushError, pushLog, pushWarn, tokenPreview } from "./log";
+import { resolvePushAudio } from "./pushSound";
 
 const APNS_HOST_SANDBOX = "https://api.sandbox.push.apple.com";
 const APNS_HOST_PRODUCTION = "https://api.push.apple.com";
@@ -271,15 +272,22 @@ export async function sendApnsToTokens(
   });
 
   const jwt = createApnsJwt(config);
+  const { sound } = resolvePushAudio(payload.data);
+
+  pushLog("APNs audio", {
+    sound,
+    type: payload.data?.type ?? payload.data?.notification_type ?? null,
+  });
 
   // Custom keys live alongside `aps` so the app can deep-link from data.link / data.type.
+  // `aps.sound` must match the filename bundled in the iOS app (e.g. tebnu_request.mp3).
   const body: Record<string, unknown> = {
     aps: {
       alert: {
         title: payload.title,
         body: payload.body,
       },
-      sound: "default",
+      sound,
       badge: 1,
       // Lets the Notification Service Extension swap in actor_photo_url / image (communication-style avatar).
       "mutable-content": 1,

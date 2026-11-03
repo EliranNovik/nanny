@@ -139,13 +139,12 @@ const plusButtonClassName = cn(
 );
 
 function MobileTabItem({
-  active,
-  label,
   children,
   iconClassName,
 }: {
-  active: boolean;
-  label: string;
+  active?: boolean;
+  /** Kept for call-site clarity; labels are icon-only on mobile. */
+  label?: string;
   children: ReactNode;
   iconClassName?: string;
 }) {
@@ -153,22 +152,12 @@ function MobileTabItem({
     <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
       <div
         className={cn(
-          "bottom-nav-mobile-icon-slot relative flex h-9 w-full shrink-0 items-center justify-center overflow-visible md:h-7",
+          "bottom-nav-mobile-icon-slot relative flex h-8 w-full shrink-0 items-center justify-center overflow-visible md:h-7",
           iconClassName,
         )}
       >
         {children}
       </div>
-      <span
-        className={cn(
-          "bottom-nav-mobile-tab-label max-w-[4.75rem] truncate text-center text-[10px] font-medium leading-[11px]",
-          active
-            ? "text-zinc-950 dark:text-white"
-            : "text-zinc-950/78 dark:text-white/75",
-        )}
-      >
-        {label}
-      </span>
     </div>
   );
 }
@@ -249,6 +238,7 @@ export function BottomNav() {
   const isAdminPage = pathnameNorm === "/admin" || pathnameNorm.startsWith("/admin/");
   const {
     isTablet,
+    isMdUp,
     showBottomTabs,
     tabletChatDock,
   } = useAuthenticatedShellLayout({
@@ -308,8 +298,11 @@ export function BottomNav() {
     pathnameNorm.startsWith("/messages/") ||
     isHelpersFindPage ||
     (isFreelancerJobsMatch && !matchSearchChromeVisible);
-  const hideDesktopAppHeader =
+  const isMessagesDesktopRoute =
     pathnameNorm === "/messages" || pathnameNorm.startsWith("/messages/");
+  const hideDesktopAppHeader = isMessagesDesktopRoute;
+  const desktopBrandCollapsed =
+    desktopSidePanelCollapsed || isMessagesDesktopRoute;
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -414,7 +407,7 @@ export function BottomNav() {
     (isCommunityFeedPage && communityFeedOverlayOpen) ||
     /^\/open-requests\/[^/]+$/.test(pathnameNorm) ||
     /^\/offers\/[^/]+$/.test(pathnameNorm) ||
-    (!isTablet &&
+    (!isMdUp &&
       (/^\/messages\/[^/]+$/.test(pathnameNorm) ||
         (pathnameNorm === "/messages" && !!jobsSearchParams.get("conversation"))));
 
@@ -609,10 +602,8 @@ export function BottomNav() {
               type="button"
               className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
               onClick={() => {
-                guardKycAction("start_request", () => {
-                  navigate("/client/create");
-                  setDesktopAppMenuOpen(false);
-                });
+                navigate("/client/create");
+                setDesktopAppMenuOpen(false);
               }}
             >
               <ClipboardList
@@ -890,9 +881,7 @@ export function BottomNav() {
           className={plusMenuItemClassName}
           onClick={() => {
             setPlusMenuOpen(false);
-            guardKycAction("start_request", () =>
-              navigate("/client/create"),
-            );
+            navigate("/client/create");
           }}
         >
           <span className={plusMenuIconWrapClassName}>
@@ -938,9 +927,7 @@ export function BottomNav() {
         className={plusMenuItemClassName}
         onClick={() => {
           setPlusMenuOpen(false);
-          guardKycAction("share_post", () =>
-            navigate("/community/feed?compose=1"),
-          );
+          navigate("/community/feed?compose=1");
         }}
       >
         <span className={plusMenuIconWrapClassName}>
@@ -988,24 +975,47 @@ export function BottomNav() {
     </div>
   );
 
-  /** Desktop only: full-width top bar with menu, logo, search, notifications */
-  const DesktopHeader = hideDesktopAppHeader || !isTablet ? null : (
+  /** Desktop only: full-width top bar — CSS `md` decides visibility (not isTablet). */
+  const DesktopHeader = hideDesktopAppHeader ? null : (
     <header
       data-desktop-header-strip=""
       className={cn(
-        "hidden md:block fixed inset-x-0 top-0 z-50 w-full border-0 shadow-none",
+        "hidden md:block fixed inset-x-0 top-0 z-[210] w-full border-0 shadow-none",
         isAdminPage
           ? "bg-zinc-100 dark:bg-zinc-950"
           : "bg-white dark:bg-zinc-950",
       )}
     >
-      <div
-        className={cn(
-          "flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6",
-          showDesktopBrandChrome &&
-            (desktopSidePanelCollapsed ? "md:ps-[108px]" : "md:ps-[244px]"),
-        )}
-      >
+      <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+        {showDesktopBrandChrome && !isAdminPage ? (
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-start",
+              desktopBrandCollapsed
+                ? isMessagesDesktopRoute
+                  ? "w-[76px] justify-center ps-0"
+                  : "w-[108px] ps-4"
+                : "w-[236px] ps-5",
+            )}
+          >
+            <Link
+              to={headerBackHomeFallback}
+              className="flex items-center gap-0 rounded-lg py-1 transition-opacity hover:opacity-80"
+              aria-label={t("common.home")}
+            >
+              <img
+                src={BRAND_LOGO_SRC}
+                alt=""
+                className="h-9 w-auto shrink-0 md:h-10"
+                loading="eager"
+                decoding="async"
+              />
+              <span className="-ms-1 text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:-ms-1.5">
+                tebnu
+              </span>
+            </Link>
+          </div>
+        ) : null}
         <div className="grid h-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <div className="flex min-w-0 items-center gap-2 ps-1">
             {isDiscoverHome ? (
@@ -1030,21 +1040,6 @@ export function BottomNav() {
                   />
                 </div>
               )}
-              {showDesktopBrandChrome && !isAdminPage ? (
-                <Link
-                  to={headerBackHomeFallback}
-                  className="flex shrink-0 items-center"
-                  aria-label={t("common.home")}
-                >
-                  <img
-                    src={BRAND_LOGO_SRC}
-                    alt="Tebnu"
-                    className="h-10 w-auto shrink-0 md:h-11"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </Link>
-              ) : null}
               {!isAdminPage && DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch />
@@ -1129,7 +1124,7 @@ export function BottomNav() {
     ? publicProfileHeaderGlassIconBtnClass
     : signedInHeaderIconBtnClass;
 
-  const MobileSignedInHeader = !isTablet && !hideMobileAppHeaderChrome ? (
+  const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
     <header
       data-mobile-header-strip
       className={cn(
@@ -1450,6 +1445,7 @@ export function BottomNav() {
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                     )}
+                    aria-label={t("common.home")}
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.home")}>
@@ -1498,6 +1494,7 @@ export function BottomNav() {
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                     )}
+                    aria-label={t("common.messages")}
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
