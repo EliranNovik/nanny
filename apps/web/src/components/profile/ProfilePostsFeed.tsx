@@ -3864,7 +3864,7 @@ function PostCard({
   post,
   currentUserId,
   onLikeToggle,
-  isOwnFeed,
+  isOwnFeed: _isOwnFeed,
   onDeleted,
   onListingStatusChange,
   globalVideoUnmuted,
