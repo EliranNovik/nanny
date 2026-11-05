@@ -139,11 +139,16 @@ export const mediaUrl = {
   card: (url: string | null | undefined) =>
     storageImageUrl(url, { width: 480, quality: 80 }),
 
-  /** 800px — hero images, full-width mobile */
+  /** 800px — hero images, full-width mobile (contain so flyers aren't cropped) */
   hero: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 800, quality: 85 }),
+    storageImageUrl(url, { width: 800, quality: 85, resize: "contain" }),
 
   /** 1200px — lightbox / modal full-screen view */
   full: (url: string | null | undefined) =>
-    storageImageUrl(url, { width: 1200, quality: 88, format: "webp" }),
+    storageImageUrl(url, {
+      width: 1200,
+      quality: 88,
+      format: "webp",
+      resize: "contain",
+    }),
 };

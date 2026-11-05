@@ -519,8 +519,8 @@ export default function GlobalPostsPage() {
     <PageFrame
       variant="fullBleed"
       className={cn(
-        user ? "bg-[#F2F2F7]" : "bg-[#FAF6EF]",
-        "dark:bg-black",
+        user ? "bg-white" : "bg-[#FAF6EF]",
+        "dark:bg-[#1c1c1e]",
       )}
       frameName="community-feed"
       data-community-feed-page={user ? "" : undefined}

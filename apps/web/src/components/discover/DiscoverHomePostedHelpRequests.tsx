@@ -38,11 +38,11 @@ import {
   openHelpRequestScheduleLine,
   openHelpRequestTitle,
 } from "@/lib/openHelpRequestDisplay";
-import { jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import {
   categoryIllustrationSrc,
   helpCategoryIdFromServiceDetails,
 } from "@/lib/discoverCategoryTileIcons";
+import { jobRequestImageUrls } from "@/lib/openHelpRequestFeedPost";
 import { postServiceCategoryLabel } from "@/lib/serviceCategories";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 
@@ -78,12 +78,16 @@ function NearbyRequestRow({
   onAccept: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const attachment = jobAttachmentImageUrls({
-    service_details: row.service_details ?? undefined,
-  })[0];
+  const attachment =
+    jobRequestImageUrls(
+      (row.service_details as Record<string, unknown> | null | undefined) ?? null,
+    )[0] ?? null;
+  const authorPhoto = row.client_photo_url?.trim() || null;
+  // Prefer request media, then profile photo; otherwise same category
+  // illustration as the home filter row (matches Offers for you).
   const image =
     attachment ||
-    row.client_photo_url ||
+    authorPhoto ||
     categoryIllustrationSrc(
       row.service_type,
       helpCategoryIdFromServiceDetails(row.service_details),

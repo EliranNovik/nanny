@@ -7,7 +7,6 @@ import type { User } from "@supabase/supabase-js";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/toast";
@@ -166,6 +165,61 @@ export function JobRequestCommentsSidePanel({
       )}
       aria-label="Request comments"
     >
+      <div className="px-1 pb-4">
+        {user ? (
+          <div className="flex items-center gap-2.5">
+            <input
+              type="text"
+              placeholder={t("feed.writeComment")}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void submitComment();
+                }
+              }}
+              maxLength={4000}
+              {...bidirectionalInputProps(
+                draft,
+                "h-12 min-w-0 flex-1 rounded-full border border-border/60 bg-muted/30 px-5 text-[15px] outline-none focus-visible:ring-0 disabled:opacity-60",
+              )}
+              disabled={submitting}
+              aria-label={t("feed.writeComment")}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="h-12 w-12 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={submitting || !draft.trim()}
+              onClick={() => void submitComment()}
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 translate-x-[1px]" />
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2 px-3">
+            <p className="text-center text-sm text-muted-foreground">
+              Join the community to comment and connect with others.
+            </p>
+            <Button
+              type="button"
+              className={cn(
+                "h-10 w-full rounded-xl font-bold",
+                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
+              )}
+              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
+            >
+              Sign in / Register
+            </Button>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
         <div className="min-w-0">
           <div className="truncate text-base font-black text-foreground">{headerLabel}</div>
@@ -255,60 +309,6 @@ export function JobRequestCommentsSidePanel({
           )}
         </div>
       </ScrollArea>
-
-      <div className="border-t border-border/60 bg-background/80 px-1 pt-3 pb-2">
-        {user ? (
-          <div className="flex items-end gap-2">
-            <Textarea
-              placeholder={t("feed.writeComment")}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void submitComment();
-                }
-              }}
-              maxLength={4000}
-              rows={2}
-              {...bidirectionalInputProps(
-                draft,
-                "min-h-[2.5rem] flex-1 resize-none bg-muted/30 text-sm rounded-2xl border border-border/60 px-4 py-3 focus-visible:ring-0 focus-visible:ring-offset-0",
-              )}
-              disabled={submitting}
-            />
-            <Button
-              type="button"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
-              disabled={submitting || !draft.trim()}
-              onClick={() => void submitComment()}
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 translate-x-[1px]" />
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2 px-3">
-            <p className="text-center text-sm text-muted-foreground">
-              Join the community to comment and connect with others.
-            </p>
-            <Button
-              type="button"
-              className={cn(
-                "h-10 w-full rounded-xl font-bold",
-                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
-              )}
-              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
-            >
-              Sign in / Register
-            </Button>
-          </div>
-        )}
-      </div>
     </aside>
   );
 }

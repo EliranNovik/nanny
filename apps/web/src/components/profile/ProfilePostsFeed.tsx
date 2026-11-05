@@ -17,7 +17,6 @@ import {
   X,
   Loader2,
   AtSign,
-  Trash2,
   LayoutGrid,
   Sparkles,
   BadgeCheck,
@@ -117,6 +116,15 @@ import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useProfilePostsFeedRealtime } from "@/hooks/useProfilePostsFeedRealtime";
 import { FavoritesPostsSidePanel } from "@/components/discover/FavoritesPostsSidePanel";
 import {
+  isProfileOfferOrRequestPost,
+  ProfileOfferRequestListRow,
+} from "@/components/profile/ProfileOfferRequestListRow";
+import { PostOwnerActionsMenu } from "@/components/profile/PostOwnerActionsMenu";
+import {
+  editOpenRequestPath,
+  editProfilePostPath,
+} from "@/lib/editPostPaths";
+import {
   mapOpenHelpRequestToFeedPost,
   jobRequestMatchesFeedFilters,
   type JobRequestFeedPost,
@@ -156,15 +164,16 @@ import {
   feedPostTypeCategorySubtitleText,
   feedPostTypeId,
   globalFeedCtaLabel,
-  globalFeedCardSurfaceClass,
+  globalFeedCardSurfaceForMedia,
   globalFeedMobileCardClass,
+  globalFeedMobileCardClassForMedia,
   globalFeedMobileCardPadClass,
   globalFeedMobileCommentsComposerWrapClass,
   globalFeedMobileCommentsInputClass,
   globalFeedMobileCommentsInputShellClass,
   globalFeedMobileCommentsSendBtnClass,
   globalFeedMobileCommentsSheetClass,
-  globalFeedMobileEngagementRowClass,
+  globalFeedMobileEngagementRowClassForMedia,
   globalFeedMobilePostTypeBadgeClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
@@ -595,9 +604,9 @@ function ReelsStyleCommentComposer({
     <div className="flex items-center gap-3">
       <div
         className={cn(
-          "min-w-0 flex-1 rounded-full px-4 py-2.5",
+          "min-w-0 flex-1 rounded-full px-4 py-3.5",
           isFeedVariant
-            ? cn(globalFeedMobileCommentsInputShellClass, "md:rounded-full md:bg-zinc-800/95 md:px-4 md:py-2.5 md:dark:bg-zinc-700/90")
+            ? cn(globalFeedMobileCommentsInputShellClass, "md:rounded-full md:bg-zinc-800/95 md:px-4 md:py-3.5 md:dark:bg-zinc-700/90")
             : "bg-zinc-800/95 dark:bg-zinc-700/90",
         )}
       >
@@ -617,7 +626,7 @@ function ReelsStyleCommentComposer({
           {...bidirectionalInputProps(
             draft,
             cn(
-              "w-full border-0 bg-transparent py-0.5 text-[15px] outline-none disabled:opacity-60",
+              "w-full border-0 bg-transparent py-1 text-[15px] outline-none disabled:opacity-60",
               isFeedVariant
                 ? cn(globalFeedMobileCommentsInputClass, "md:text-white md:placeholder:text-white/45")
                 : "text-white placeholder:text-white/45",
@@ -1109,9 +1118,9 @@ function CommentsDialog({
               globalFeedMobileCommentsSheetClass,
             )}
           >
+            {commentsComposer}
             {commentsHeader}
             {commentsBody}
-            {commentsComposer}
           </div>
         </MobileSnapBottomSheet>
       </div>
@@ -1129,6 +1138,7 @@ function CommentsDialog({
           "md:max-w-md md:rounded-2xl",
         )}
       >
+        {commentsComposer}
         <DialogHeader className="shrink-0 px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
@@ -1137,7 +1147,6 @@ function CommentsDialog({
         </DialogHeader>
 
         {commentsBody}
-        {commentsComposer}
       </DialogContent>
     </Dialog>
   );
@@ -1256,6 +1265,61 @@ function CommentsSidePanel({
         className,
       )}
     >
+      <div className="px-1 pb-4">
+        {user ? (
+          <div className="flex items-center gap-2.5">
+            <input
+              type="text"
+              placeholder={t("feed.writeComment")}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void submitComment();
+                }
+              }}
+              maxLength={4000}
+              {...bidirectionalInputProps(
+                draft,
+                "h-12 min-w-0 flex-1 rounded-full border border-border/60 bg-muted/30 px-5 text-[15px] outline-none focus-visible:ring-0 disabled:opacity-60",
+              )}
+              disabled={submitting}
+              aria-label={t("feed.writeComment")}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="h-12 w-12 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={submitting || !draft.trim()}
+              onClick={() => void submitComment()}
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 translate-x-[1px]" />
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2 px-3">
+            <p className="text-center text-sm text-muted-foreground">
+              Join the community to comment and connect with others.
+            </p>
+            <Button
+              type="button"
+              className={cn(
+                "h-10 w-full rounded-xl font-bold",
+                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
+              )}
+              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
+            >
+              Sign in / Register
+            </Button>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1366,60 +1430,6 @@ function CommentsSidePanel({
           )}
         </div>
       </ScrollArea>
-
-      <div className="border-t border-border/60 bg-background/80 px-1 pt-3 pb-2">
-        {user ? (
-          <div className="flex items-end gap-2">
-            <Textarea
-              placeholder={t("feed.writeComment")}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void submitComment();
-                }
-              }}
-              maxLength={4000}
-              rows={2}
-              {...bidirectionalInputProps(
-                draft,
-                "min-h-[2.5rem] flex-1 resize-none bg-muted/30 text-sm rounded-2xl border border-border/60 px-4 py-3 focus-visible:ring-0 focus-visible:ring-offset-0",
-              )}
-              disabled={submitting}
-            />
-            <Button
-              type="button"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
-              disabled={submitting || !draft.trim()}
-              onClick={() => void submitComment()}
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 translate-x-[1px]" />
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2 px-3">
-            <p className="text-center text-sm text-muted-foreground">
-              Join the community to comment and connect with others.
-            </p>
-            <Button
-              type="button"
-              className={cn(
-                "h-10 w-full rounded-xl font-bold",
-                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
-              )}
-              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
-            >
-              Sign in / Register
-            </Button>
-          </div>
-        )}
-      </div>
     </aside>
   );
 }
@@ -3365,7 +3375,7 @@ function FeedPostCardSkeleton({
         "overflow-hidden",
         globalFeedLayout
           ? cn(
-              "rounded-2xl bg-white dark:bg-zinc-800/65 md:dark:bg-zinc-900",
+              "rounded-2xl bg-white shadow-none max-md:shadow-[0_8px_28px_-12px_rgba(15,23,42,0.18)] dark:bg-zinc-800/80 dark:shadow-none md:dark:bg-zinc-900",
               globalFeedMobileCardClass,
             )
           : "rounded-none bg-transparent md:rounded-2xl",
@@ -3432,9 +3442,12 @@ function normalizeFreeTextBreaks(text: string): string {
 function FeedExpandableFreeText({
   text,
   className,
+  fullText = false,
 }: {
   text: string;
   className?: string;
+  /** Post detail: show the whole caption; feed keeps a single-line clamp. */
+  fullText?: boolean;
 }) {
   const displayText = useMemo(() => normalizeFreeTextBreaks(text), [text]);
 
@@ -3442,7 +3455,7 @@ function FeedExpandableFreeText({
     <p
       {...bidirectionalTextProps(
         displayText,
-        cn(postFreeTextClassName, "line-clamp-1", className),
+        cn(postFreeTextClassName, !fullText && "line-clamp-1", className),
       )}
     >
       {renderCaptionWithMentions(displayText)}
@@ -3722,13 +3735,13 @@ function PostMediaCarousel({
                     e.stopPropagation();
                     onOpenReels();
                   }}
-                  className="block h-full w-full overflow-hidden focus-visible:outline-none"
+                  className="flex min-h-full w-full items-center justify-center overflow-hidden focus-visible:outline-none"
                   aria-label={`View image ${index + 1} of ${items.length}`}
                 >
                   <img
                     src={url}
                     alt=""
-                    className={cn("h-full w-full", mediaObjectClass(index))}
+                    className={mediaObjectClass(index)}
                     loading="lazy"
                     decoding="async"
                     onLoad={(e) => {
@@ -3762,7 +3775,7 @@ function PostMediaCarousel({
                   loop
                   muted={!videoUnmuted}
                   preload={index <= activeIndex + 1 ? "metadata" : "none"}
-                  className={cn("h-full w-full cursor-pointer", mediaObjectClass(index))}
+                  className={cn("cursor-pointer", mediaObjectClass(index))}
                   onLoadedMetadata={(e) => {
                     const el = e.currentTarget;
                     const w = el.videoWidth || 0;
@@ -3864,7 +3877,7 @@ function PostCard({
   discoverWideLayout = false,
   plainCard = false,
   globalFeedLayout = false,
-  guestDesktopLightLayout = false,
+  guestDesktopLightLayout: _guestDesktopLightLayout = false,
   viewerLocation = null,
   isolateFocusedPost = false,
 }: PostCardProps) {
@@ -4025,7 +4038,10 @@ function PostCard({
   const hasMedia = Boolean(mediaUrl);
 
   const postMediaItems = useMemo(
-    () => (post.source === "post" ? getProfilePostMediaItems(post) : []),
+    () =>
+      post.source === "post" || post.source === "job_request"
+        ? getProfilePostMediaItems(post)
+        : [],
     [post],
   );
   const hasMultipleMedia = postMediaItems.length > 1;
@@ -4164,77 +4180,47 @@ function PostCard({
       ? "max-md:mx-0 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl md:mx-3.5 md:w-[calc(100%-1.75rem)] md:overflow-hidden md:rounded-xl"
       : "max-md:mx-2 max-md:w-[calc(100%-1rem)] max-md:overflow-hidden max-md:rounded-2xl md:mx-3.5 md:w-[calc(100%-1.75rem)] md:overflow-hidden md:rounded-xl"
     : "max-md:mx-2 max-md:w-[calc(100%-1rem)] max-md:overflow-hidden max-md:rounded-2xl";
-  const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
-    ? { aspectRatio: String(mediaAspectRatio) }
-    : undefined;
-  const isGlobalFeedPortrait = isGlobalFeed && !isLandscape;
-  // Global feed: fixed 2:3 frame for portrait (a bit taller than 3:4).
-  const globalFeedPortraitBoxClass = isGlobalFeedPortrait ? "aspect-[2/3] w-full" : null;
-  // Mobile media sizing:
-  // - Portrait: near full screen (Instagram-like); discover/profile feeds use shorter caps
-  // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
-  const mobilePortraitMaxHeight = isGlobalFeed
-    ? null
+  // Height caps live on the media element so the box can shrink-wrap.
+  // Fixed-height + object-cover was zooming flyers and clipping the sides.
+  const mobileMediaMaxH = isGlobalFeed
+    ? "max-md:max-h-[min(78dvh,46rem)]"
     : isDiscover
-    ? "max-md:max-h-[min(76dvh,44rem)]"
-    : isProfile
-      ? "max-md:max-h-[min(78dvh,42rem)]"
-      : "max-md:max-h-[min(90dvh,54rem)]";
-  const mobilePortraitFallbackHeight = isGlobalFeed
-    ? "aspect-[2/3]"
+      ? "max-md:max-h-[min(76dvh,44rem)]"
+      : isProfile
+        ? "max-md:max-h-[min(78dvh,42rem)]"
+        : "max-md:max-h-[min(90dvh,54rem)]";
+  const desktopMediaMaxH = isGlobalFeed
+    ? "md:max-h-[min(70vh,42rem)]"
     : isDiscover
-    ? "max-md:h-[min(74dvh,42rem)]"
-    : isProfile
-      ? "max-md:h-[min(74dvh,40rem)]"
-      : "max-md:h-[min(86dvh,50rem)]";
-  const mobileMediaBoxClass =
-    globalFeedPortraitBoxClass
-      ? cn(mobileMediaInsetClass, globalFeedPortraitBoxClass)
-      : isGlobalFeed && isLandscape
-        ? cn(mobileMediaInsetClass, "aspect-[3/4]")
-      : mediaAspectRatio
-        ? cn(
-          mobileMediaInsetClass,
-          // Portrait media can otherwise become extremely tall when width is full.
-          !isLandscape && mobilePortraitMaxHeight,
-        )
-        : isLandscape
-          ? mobileMediaInsetClass
-          : cn(
-            mobileMediaInsetClass,
-            mobilePortraitFallbackHeight,
-          );
-  const feedMediaAspectStyle: React.CSSProperties | undefined =
-    isGlobalFeed ? undefined : mediaAspectStyle;
-  const mobileMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
+      ? "md:max-h-[min(62vh,36rem)]"
+      : isProfile
+        ? "md:max-h-[min(68vh,40rem)]"
+        : "md:max-h-[min(82vh,52rem)]";
+  const mobileMediaBoxClass = cn(
+    mobileMediaInsetClass,
+    "flex w-full items-center justify-center",
+    // Placeholder frame only until natural ratio is known (then box shrink-wraps the media).
+    !mediaAspectRatio && "aspect-[2/3]",
+  );
 
-  // Desktop media sizing:
-  // - Portrait: height-capped box with width derived from aspect ratio (no side letterboxing)
-  // - Landscape: full width, sized to the media's real aspect ratio
-  // Desktop: slightly taller global-feed frames without dominating the viewport.
-  const portraitDesktopSizingClass = isGlobalFeed
-    ? "md:aspect-[3/4] md:h-auto md:max-h-[50rem] md:w-full md:overflow-hidden"
-    : isDiscover
-    ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
-    : isProfile
-      ? "md:h-[min(68vh,40rem)] md:max-h-[min(68vh,40rem)] md:w-auto md:max-w-full"
-      : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
-  const desktopMediaBoxClass = isGlobalFeed
-    ? "md:rounded-xl md:aspect-[3/4] md:h-auto md:max-h-[50rem] md:w-full md:overflow-hidden"
-    : mediaAspectRatio
-    ? cn(
-      "md:rounded-xl",
-      isLandscape ? "md:w-full" : portraitDesktopSizingClass,
-    )
-    : isLandscape
-      ? "md:w-full md:rounded-xl"
-      : cn("md:rounded-xl", portraitDesktopSizingClass);
-  const portraitMediaObjectClass = "object-cover object-center";
-  const landscapeMediaObjectClass = isGlobalFeed
-    ? "object-contain md:h-full md:w-full md:object-cover md:object-center"
-    : "object-contain";
-  const mediaBoxBgClass =
-    isLandscape || isGlobalFeedPortrait ? "bg-black/90 dark:bg-black/80" : "bg-transparent";
+  const desktopMediaBoxClass = cn(
+    "md:flex md:w-full md:items-center md:justify-center md:overflow-hidden md:rounded-xl",
+    !mediaAspectRatio && "md:aspect-[3/4]",
+  );
+  // Multi-image carousel needs a definite height; single media shrink-wraps via the img max-height.
+  const mediaBoxStyle: React.CSSProperties | undefined =
+    hasMultipleMedia && mediaAspectRatio
+      ? { aspectRatio: String(mediaAspectRatio) }
+      : undefined;
+  /** Full media visible — scale down to width/height caps, never cover-crop. */
+  const mediaFitClass = cn(
+    "h-auto w-auto max-w-full object-contain object-center",
+    mobileMediaMaxH,
+    desktopMediaMaxH,
+  );
+  const portraitMediaObjectClass = mediaFitClass;
+  const landscapeMediaObjectClass = mediaFitClass;
+  const mediaBoxBgClass = "bg-zinc-100 dark:bg-zinc-900";
   // Feed column is always full width so the header type badge aligns across post types.
   // Portrait media alone shrinks below the header.
   const desktopDiscoverFeedColumnClass = isDiscover
@@ -4250,16 +4236,9 @@ function PostCard({
       "md:mx-3.5 md:w-[calc(100%-1.75rem)] md:max-w-none"
     : isDiscover && hasMedia
       ? discoverWideLayout
-        ? isLandscape
-          ? "md:w-full md:max-w-none"
-          : "md:w-full md:max-w-[720px]"
-        : isLandscape
-          ? "md:w-full md:max-w-[820px]"
-          : "md:w-fit md:max-w-[520px]"
+        ? "md:w-full md:max-w-none"
+        : "md:w-full md:max-w-[820px]"
       : null;
-  const desktopMediaStyle: React.CSSProperties | undefined = isGlobalFeed
-    ? undefined
-    : feedMediaAspectStyle;
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -5055,6 +5034,21 @@ function PostCard({
     onOpenMediaReels(post.id);
   }
 
+  function openEditPostPage() {
+    if (post.source === "job_request") {
+      navigate(editOpenRequestPath(post.id));
+      return;
+    }
+    if (post.source === "post") {
+      navigate(editProfilePostPath(post.id));
+    }
+  }
+
+  const canShowOwnerMenu =
+    Boolean(currentUserId) &&
+    currentUserId === post.author_id &&
+    (post.source === "post" || post.source === "job_request");
+
   function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!isGlobalFeed || !canOpenPostDetail || isolateFocusedPost) return;
     const target = e.target;
@@ -5148,6 +5142,9 @@ function PostCard({
     const engagementBtnPx = isGlobalFeed ? "px-2.5 md:px-3" : "px-3 md:px-3.5";
     const engagementLabelClass = "hidden md:inline";
     const engagementDisabled = post.source === "availability";
+    // Idle engagement icons: black in light mode, white in dark mode.
+    const engagementIdleClass =
+      "text-zinc-900 hover:bg-black/5 dark:text-white dark:hover:bg-white/10";
     const row = (
       <div
         className={cn(
@@ -5162,7 +5159,7 @@ function PostCard({
             ? cn(
                 cardPadX,
                 "mt-1 pb-3.5 pt-2",
-                globalFeedMobileEngagementRowClass,
+                globalFeedMobileEngagementRowClassForMedia(hasMedia),
               )
             : cn("mt-1.5 bg-transparent", cardMarginX, isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0"),
         )}
@@ -5180,7 +5177,7 @@ function PostCard({
                 btnPad,
                 post.liked_by_me
                   ? "text-rose-500"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500 dark:text-white dark:hover:text-rose-400",
+                  : cn(engagementIdleClass, "hover:text-rose-500 dark:hover:text-rose-400"),
                 (liking || engagementDisabled) && "pointer-events-none opacity-50",
               )}
               aria-label={post.liked_by_me ? "Unlike" : "Like"}
@@ -5198,7 +5195,9 @@ function PostCard({
             type="button"
             onClick={() => setCommentsOpen(true)}
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400 md:gap-2",
+              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              engagementIdleClass,
+              "hover:text-orange-600 dark:hover:text-orange-400",
               engagementTextClass,
               engagementBtnPx,
               btnPad,
@@ -5230,7 +5229,9 @@ function PostCard({
                 : undefined
             }
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400 md:gap-2",
+              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              engagementIdleClass,
+              "hover:text-orange-600 dark:hover:text-orange-400",
               engagementTextClass,
               engagementBtnPx,
               btnPad,
@@ -5271,7 +5272,7 @@ function PostCard({
               btnPad,
               jobSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+                : cn(engagementIdleClass, "hover:text-orange-600 dark:hover:text-orange-400"),
             )}
           >
             {jobSaveBusy ? (
@@ -5309,7 +5310,7 @@ function PostCard({
               btnPad,
               authorSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400"
+                : cn(engagementIdleClass, "hover:text-orange-600 dark:hover:text-orange-400"),
             )}
           >
             {favoriteBusy ? (
@@ -5517,6 +5518,35 @@ function PostCard({
     </div>
   ) : null;
 
+  // Public profile posts tab: offers + requests use the compact home-tab box layout.
+  if (isProfile && isProfileOfferOrRequestPost(post) && !isolateFocusedPost) {
+    return (
+      <div
+        id={
+          post.source === "post" || post.source === "job_request"
+            ? feedItemDomId(post.source, post.id)
+            : undefined
+        }
+        className={cn("relative", isFocused && "scroll-mt-24 scroll-mb-28")}
+      >
+        <ProfileOfferRequestListRow
+          post={post}
+          onOpen={openPostFromCard}
+        />
+        {canShowOwnerMenu ? (
+          <div className="absolute end-3 top-3 z-10">
+            <PostOwnerActionsMenu
+              size="sm"
+              onEdit={openEditPostPage}
+              onDelete={post.source === "post" ? () => void handleDelete() : undefined}
+              deleting={deleting}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       id={
@@ -5550,10 +5580,8 @@ function PostCard({
         isGlobalFeed
           ? cn(
               "rounded-2xl",
-              globalFeedMobileCardClass,
-              guestDesktopLightLayout
-                ? "bg-white shadow-none ring-0 dark:bg-zinc-800/65 md:dark:bg-zinc-900 dark:shadow-none dark:ring-0"
-                : globalFeedCardSurfaceClass,
+              globalFeedMobileCardClassForMedia(hasMedia),
+              globalFeedCardSurfaceForMedia(hasMedia),
             )
           : isDiscover || isPlainCard
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
@@ -5628,9 +5656,9 @@ function PostCard({
               !postTypeId && "bg-zinc-100 dark:bg-zinc-800",
             )}
           />
-          {isOwnFeed && post.source === "post" ? (
+          {canShowOwnerMenu ? (
             <div className="flex shrink-0 items-center gap-1">
-              {isProfile && listingStatusType ? (
+              {isProfile && listingStatusType && post.source === "post" ? (
                 <button
                   type="button"
                   disabled={listingStatusUpdating || deleting}
@@ -5662,19 +5690,12 @@ function PostCard({
                   )}
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={handleDelete}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
-                aria-label="Delete post"
-              >
-                {deleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </button>
+              <PostOwnerActionsMenu
+                size="sm"
+                onEdit={openEditPostPage}
+                onDelete={post.source === "post" ? () => void handleDelete() : undefined}
+                deleting={deleting}
+              />
             </div>
           ) : null}
         </div>
@@ -5748,9 +5769,9 @@ function PostCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-start pt-0.5">
-          {isOwnFeed && post.source === "post" ? (
+          {canShowOwnerMenu ? (
             <>
-              {isProfile && listingStatusType ? (
+              {isProfile && listingStatusType && post.source === "post" ? (
                 <button
                   type="button"
                   disabled={listingStatusUpdating || deleting}
@@ -5782,15 +5803,11 @@ function PostCard({
                   )}
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={handleDelete}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
-                aria-label="Delete post"
-              >
-                {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-              </button>
+              <PostOwnerActionsMenu
+                onEdit={openEditPostPage}
+                onDelete={post.source === "post" ? () => void handleDelete() : undefined}
+                deleting={deleting}
+              />
             </>
           ) : null}
         </div>
@@ -5808,8 +5825,10 @@ function PostCard({
             mobileMediaBoxClass,
             desktopMediaBoxClass,
             desktopDiscoverMediaColumnClass,
+            mobileMediaMaxH,
+            desktopMediaMaxH,
           )}
-          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
+          style={mediaBoxStyle}
         >
           <PostMediaCarousel
             items={postMediaItems}
@@ -5967,21 +5986,19 @@ function PostCard({
             desktopMediaBoxClass,
             desktopDiscoverMediaColumnClass,
           )}
-          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
           <button
             type="button"
             onClick={openPostFromCard}
-            className="block h-full w-full overflow-hidden focus-visible:outline-none"
+            className="flex w-full items-center justify-center overflow-hidden focus-visible:outline-none"
             aria-label={isGlobalFeed ? "View post" : "View image full screen"}
           >
             <img
               src={mediaUrl}
               alt=""
-              className={cn(
-                "h-full w-full",
-                isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass,
-              )}
+              className={
+                isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass
+              }
               loading="lazy"
               decoding="async"
               onLoad={(e) => {
@@ -6056,7 +6073,6 @@ function PostCard({
             desktopMediaBoxClass,
             desktopDiscoverMediaColumnClass,
           )}
-          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
           <video
             ref={videoRef}
@@ -6066,10 +6082,9 @@ function PostCard({
             loop
             muted={!videoUnmutedByUser}
             preload="metadata"
-            className={cn(
-              "h-full w-full",
-              isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass,
-            )}
+            className={
+              isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass
+            }
             onLoadedMetadata={(e) => {
               const el = e.currentTarget;
               const w = el.videoWidth || 0;
@@ -6273,6 +6288,7 @@ function PostCard({
                   {displayTextOnlyBody ? (
                     <FeedExpandableFreeText
                       text={displayTextOnlyBody}
+                      fullText={isolateFocusedPost}
                       className="mt-2 text-[17px]"
                     />
                   ) : null}
@@ -6354,6 +6370,7 @@ function PostCard({
                     {displayPostDescription ? (
                       <FeedExpandableFreeText
                         text={displayPostDescription}
+                        fullText={isolateFocusedPost}
                         className={cn("text-[17px]", displayPostTitle && "mt-1")}
                       />
                     ) : null}

@@ -159,6 +159,10 @@ export function openHelpRequestTitle(
   },
   t?: TFunction,
 ): string {
+  // Prefer author free text when present (same as offers-for-you cards).
+  const freeText = job.notes?.trim() || "";
+  if (freeText) return freeText;
+
   if (t) {
     const customCategory =
       typeof job.service_details?.other_type === "string"

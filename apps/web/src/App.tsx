@@ -104,6 +104,7 @@ import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
 import IsolatedFeedPostPage from "@/pages/IsolatedFeedPostPage";
+import EditFeedPostPage from "@/pages/EditFeedPostPage";
 import {
   LegacySharedPostRedirect,
   LegacySharedRequestRedirect,
@@ -283,15 +284,50 @@ function PageLayoutWithHeader() {
     pathname === "/messages" || pathname.startsWith("/messages/");
   const railNarrow =
     desktopSidePanelCollapsed || isMessagesPath;
+  // Sidebar "Explore" opens /community/feed (dedicated /explore routes also count).
+  const isExplorePath =
+    pathname === "/community/feed" ||
+    pathname.startsWith("/community/") ||
+    pathname.startsWith("/public/posts") ||
+    pathname === "/client/explore" ||
+    pathname === "/freelancer/explore";
+  const isProfileSettingsPath =
+    /^\/(client|freelancer)\/profile\/(personal|services|appearance|account|language|availability|about|languages|experience|rates)(\/|$)/.test(
+      pathname,
+    );
+  const isProfilePath =
+    !isProfileSettingsPath &&
+    (pathname === "/client/profile" ||
+      pathname.startsWith("/client/profile/") ||
+      pathname === "/freelancer/profile" ||
+      pathname.startsWith("/freelancer/profile/") ||
+      pathname.startsWith("/profile/"));
+  const isFindHelperPath =
+    pathname === "/client/helpers" ||
+    pathname.startsWith("/client/helpers/") ||
+    pathname === "/freelancer/jobs/match" ||
+    pathname.startsWith("/freelancer/jobs/");
+  const isPostDetailPath =
+    pathname.startsWith("/offers/") ||
+    pathname.startsWith("/open-requests/") ||
+    pathname.startsWith("/posts/") ||
+    pathname.startsWith("/requests/") ||
+    pathname.startsWith("/p/") ||
+    pathname.startsWith("/r/");
+  const isHomePath =
+    pathname === "/client/home" || pathname === "/freelancer/home";
   const shouldHideDesktopFooter =
     isMessagesPath ||
+    isExplorePath ||
+    isProfilePath ||
+    isFindHelperPath ||
+    isPostDetailPath ||
+    isHomePath ||
     pathname.startsWith("/chat/") ||
     pathname === "/admin" ||
     pathname.startsWith("/admin/");
-  const shouldShowMobileFooter =
-    pathname === "/community/feed" ||
-    pathname === "/client/home" ||
-    pathname === "/freelancer/home";
+  // Show marketing footer on profile settings pages (desktop + mobile).
+  const shouldShowMobileFooter = isProfileSettingsPath;
 
   // When on a keep-alive route, render the persistent page instead of the Outlet
   const isKeepAliveRoute = KEEP_ALIVE_ROUTES.some(
@@ -409,6 +445,22 @@ function AppRoutes() {
         <Route path="/community/feed" element={<GlobalPostsPage />} />
         <Route path="/offers/:id" element={<IsolatedFeedPostPage kind="offer" />} />
         <Route path="/open-requests/:id" element={<IsolatedFeedPostPage kind="request" />} />
+        <Route
+          path="/posts/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditFeedPostPage kind="post" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/open-requests/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditFeedPostPage kind="request" />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/posts/:id" element={<SharedPostLandingPage />} />
         <Route path="/requests/:id" element={<SharedRequestLandingPage />} />
         <Route path="/p/:id" element={<LegacySharedPostRedirect />} />

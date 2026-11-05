@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 export type DiscoverOfferForYou = {
   id: string;
   title: string;
+  /** User free-text caption — preferred over generated/localized titles when set. */
+  caption: string | null;
   categoryId: string | null;
   customCategory: string | null;
   categoryLabel: string;
@@ -119,10 +121,11 @@ export async function fetchDiscoverOffersForYou(
       row.custom_category,
     );
     const categoryLabel = postServiceCategoryLabel(categoryId, custom);
-    const caption = (row.caption ?? "").trim();
+    const caption = (row.caption ?? "").trim() || null;
+    // Prefer free text as the display title when the author wrote one.
     const title =
-      generatedTitle(row.ai_generated_copy) ||
       caption ||
+      generatedTitle(row.ai_generated_copy) ||
       categoryLabel;
     const profile = profileMap.get(row.author_id);
     const authorName = firstName(profile?.full_name) || "Member";
@@ -147,6 +150,7 @@ export async function fetchDiscoverOffersForYou(
     offers.push({
       id: row.id,
       title,
+      caption,
       categoryId,
       customCategory: custom,
       categoryLabel,

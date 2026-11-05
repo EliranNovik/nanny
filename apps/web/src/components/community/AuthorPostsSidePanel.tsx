@@ -2,12 +2,16 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Eye, Hand, Loader2, PlayCircle, Users } from "lucide-react";
+import { Eye, Loader2, PlayCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { FeedPost } from "@/components/profile/ProfilePostsFeed";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
+  categoryIllustrationSrc,
+  helpCategoryIdFromServiceDetails,
+} from "@/lib/discoverCategoryTileIcons";
+import { jobRequestImageUrls } from "@/lib/openHelpRequestFeedPost";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
-import { getServiceCategoryImage } from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -34,36 +38,34 @@ function relativeDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(date);
 }
 
-function firstHttpUrl(value: unknown): string | null {
-  if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const found = firstHttpUrl(entry);
-      if (found) return found;
-    }
+function categoryIdFromPostMeta(
+  postTypeId: string,
+  meta: Record<string, unknown> | null | undefined,
+  customCategory: string | null | undefined,
+): string | null {
+  if (typeof meta?.service === "string" && meta.service.trim()) return meta.service.trim();
+  if (typeof meta?.category === "string" && meta.category.trim()) return meta.category.trim();
+  if (typeof meta?.custom_category === "string" && meta.custom_category.trim()) {
+    return meta.custom_category.trim();
   }
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    for (const key of ["url", "src", "image", "path"]) {
-      const found = firstHttpUrl(record[key]);
-      if (found) return found;
-    }
-  }
-  return null;
+  if (customCategory?.trim()) return customCategory.trim();
+  if (postTypeId === "event") return "event_help";
+  if (postTypeId === "community") return "other_help";
+  return postTypeId || null;
 }
 
-function requestThumbUrl(row: DiscoverOpenHelpRequestRow): string | null {
+function requestThumbUrl(row: DiscoverOpenHelpRequestRow): string {
   const details = row.service_details;
   if (details && typeof details === "object") {
-    const fromImages = firstHttpUrl(
-      (details as { images?: unknown }).images ??
-        (details as { photos?: unknown }).photos ??
-        (details as { media?: unknown }).media,
-    );
+    const fromImages = jobRequestImageUrls(
+      details as Record<string, unknown>,
+    )[0];
     if (fromImages) return fromImages;
   }
-  if (row.service_type) return getServiceCategoryImage(row.service_type);
-  return null;
+  return categoryIllustrationSrc(
+    row.service_type,
+    helpCategoryIdFromServiceDetails(row.service_details),
+  );
 }
 
 export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
@@ -79,7 +81,9 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
       const [profilePostsResult, requestsResult] = await Promise.all([
         supabase
           .from("profile_posts")
-          .select("id, caption, created_at, post_type_id, ai_generated_copy, media_type, storage_path")
+          .select(
+            "id, caption, created_at, post_type_id, ai_generated_copy, media_type, storage_path, post_metadata, custom_category",
+          )
           .eq("author_id", authorId)
           .order("created_at", { ascending: false })
           .limit(60),
@@ -100,17 +104,29 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
             : storagePath
               ? "image"
               : null;
+        const postTypeId = String(row.post_type_id || "community");
+        const meta =
+          row.post_metadata && typeof row.post_metadata === "object"
+            ? (row.post_metadata as Record<string, unknown>)
+            : null;
+        const categoryId = categoryIdFromPostMeta(
+          postTypeId,
+          meta,
+          typeof row.custom_category === "string" ? row.custom_category : null,
+        );
         return {
           id: String(row.id),
           source: "post",
-          postTypeId: String(row.post_type_id || "community"),
+          postTypeId,
           title:
-            copy?.title?.trim() ||
             String(row.caption || "").trim() ||
+            copy?.title?.trim() ||
             t("feed.postType.community", { defaultValue: "Community" }),
           createdAt: String(row.created_at),
           mediaType,
-          thumbUrl: storagePath ? publicProfileMediaPublicUrl(storagePath) : null,
+          thumbUrl: storagePath
+            ? publicProfileMediaPublicUrl(storagePath)
+            : categoryIllustrationSrc(categoryId),
         };
       });
       const requestItems: PanelItem[] = ((requestsResult.data ?? []) as DiscoverOpenHelpRequestRow[])
@@ -179,12 +195,6 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
           <div className="space-y-3">
             {items.map((item) => {
               const selected = currentKey === `${item.source}:${item.id}`;
-              const Icon =
-                item.postTypeId === "request_help"
-                  ? Hand
-                  : item.postTypeId === "event"
-                    ? CalendarDays
-                    : Users;
               return (
                 <button
                   key={`${item.source}:${item.id}`}
@@ -204,37 +214,34 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
                 >
                   <div className="flex items-start gap-3">
                     <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                      {item.thumbUrl ? (
-                        item.mediaType === "video" ? (
-                          <>
-                            <video
-                              src={item.thumbUrl}
-                              className="absolute inset-0 h-full w-full object-cover"
-                              muted
-                              playsInline
-                              preload="metadata"
-                            />
-                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-                              <PlayCircle
-                                className="h-6 w-6 text-white drop-shadow"
-                                strokeWidth={2.1}
-                                aria-hidden
-                              />
-                            </span>
-                          </>
-                        ) : (
-                          <img
+                      {item.mediaType === "video" && item.thumbUrl ? (
+                        <>
+                          <video
                             src={item.thumbUrl}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
                             className="absolute inset-0 h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
                           />
-                        )
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                            <PlayCircle
+                              className="h-6 w-6 text-white drop-shadow"
+                              strokeWidth={2.1}
+                              aria-hidden
+                            />
+                          </span>
+                        </>
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center text-orange-600 dark:text-orange-400">
-                          <Icon className="h-5 w-5" aria-hidden />
-                        </span>
+                        <img
+                          src={
+                            item.thumbUrl ||
+                            categoryIllustrationSrc("other_help")
+                          }
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
                       )}
                     </span>
                     <span className="min-w-0 flex-1">

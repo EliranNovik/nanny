@@ -9,6 +9,11 @@ export const PUBLIC_PROFILE_MEDIA_BUCKET = "public-profile-media";
  * kept for cases where you need the original unmodified URL (e.g. downloads, video src).
  */
 export function publicProfileMediaPublicUrl(storagePath: string): string {
+  // Job-request (and other) media may already be absolute public URLs
+  // (e.g. job-images bucket). Pass those through unchanged.
+  if (/^https?:\/\//i.test(storagePath) || storagePath.startsWith("data:")) {
+    return storagePath;
+  }
   const { data } = supabase.storage
     .from(PUBLIC_PROFILE_MEDIA_BUCKET)
     .getPublicUrl(storagePath);

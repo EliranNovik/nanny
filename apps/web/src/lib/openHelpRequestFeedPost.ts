@@ -1,13 +1,56 @@
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import type { ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { parseGeneratedPostCopy } from "@/lib/generatedPostCopy";
+import type { ProfilePostMediaItem } from "@/lib/profilePostMedia";
+
+/** Public image URLs stored on job_requests.service_details.images (and aliases). */
+export function jobRequestImageUrls(
+  serviceDetails: Record<string, unknown> | null | undefined,
+): string[] {
+  if (!serviceDetails || typeof serviceDetails !== "object") return [];
+  const raw =
+    serviceDetails.images ?? serviceDetails.photos ?? serviceDetails.media;
+  if (!Array.isArray(raw)) return [];
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    let candidate: string | null = null;
+    if (typeof entry === "string" && entry.trim()) {
+      candidate = entry.trim();
+    } else if (entry && typeof entry === "object") {
+      const record = entry as Record<string, unknown>;
+      for (const key of ["url", "src", "image", "path"]) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim()) {
+          candidate = value.trim();
+          break;
+        }
+      }
+    }
+    if (!candidate || seen.has(candidate)) continue;
+    // Prefer absolute URLs (job-images / profile-media public URLs).
+    if (!/^https?:\/\//i.test(candidate) && !candidate.includes("/")) continue;
+    seen.add(candidate);
+    urls.push(candidate);
+  }
+  return urls;
+}
+
+export function jobRequestMediaItems(
+  serviceDetails: Record<string, unknown> | null | undefined,
+): ProfilePostMediaItem[] {
+  return jobRequestImageUrls(serviceDetails).map((storage_path) => ({
+    storage_path,
+    media_type: "image" as const,
+  }));
+}
 
 export type JobRequestFeedPost = {
   id: string;
   author_id: string;
   caption: string | null;
-  media_type: null;
-  storage_path: null;
+  media_type: "image" | "video" | null;
+  storage_path: string | null;
   tagged_user_ids: string[];
   created_at: string;
   author?: ProfileSnippet;
@@ -33,6 +76,7 @@ export type JobRequestFeedPost = {
     time_duration?: string | null;
     budget?: number | null;
     rate_type?: string | null;
+    media_items?: ProfilePostMediaItem[];
   };
   row: DiscoverOpenHelpRequestRow;
   ai_generated_copy: ReturnType<typeof parseGeneratedPostCopy>;
@@ -44,13 +88,17 @@ export function mapOpenHelpRequestToFeedPost(
 ): JobRequestFeedPost {
   const generatedCopy = parseGeneratedPostCopy(row.ai_generated_copy);
   const caption = row.notes?.trim() || null;
+  const imageUrls = jobRequestImageUrls(
+    (row.service_details as Record<string, unknown> | null | undefined) ?? null,
+  );
+  const primaryImage = imageUrls[0] ?? null;
 
   return {
     id: row.id,
     author_id: row.client_id ?? "",
     caption,
-    media_type: null,
-    storage_path: null,
+    media_type: primaryImage ? "image" : null,
+    storage_path: primaryImage,
     tagged_user_ids: [],
     created_at: row.created_at ?? new Date().toISOString(),
     author:
@@ -89,6 +137,14 @@ export function mapOpenHelpRequestToFeedPost(
       time_duration: row.time_duration,
       budget: row.budget_min ?? row.budget_max ?? null,
       rate_type: row.budget_rate_type === "per_hour" ? "per_hour" : "fixed",
+      ...(imageUrls.length > 1
+        ? {
+            media_items: imageUrls.slice(1).map((storage_path) => ({
+              storage_path,
+              media_type: "image" as const,
+            })),
+          }
+        : {}),
     },
     row,
     ai_generated_copy: generatedCopy,

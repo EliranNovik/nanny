@@ -299,6 +299,22 @@ export function feedPostDescription(
 export const globalFeedCardSurfaceClass =
   "bg-white shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
 
+/**
+ * Card surface by media presence:
+ * - Light desktop: flat white (no shadow); mobile text-only keep a soft shadow
+ * - Dark: media posts sit flush on the grey page (no box); text-only keep a boxed surface
+ */
+export function globalFeedCardSurfaceForMedia(hasMedia: boolean): string {
+  if (hasMedia) {
+    return "bg-white shadow-none dark:bg-transparent dark:shadow-none dark:ring-0";
+  }
+  return cn(
+    "bg-white shadow-none md:shadow-none md:ring-0",
+    "max-md:shadow-[0_8px_28px_-12px_rgba(15,23,42,0.18)] max-md:ring-1 max-md:ring-black/[0.04]",
+    "dark:bg-zinc-800/80 dark:shadow-none dark:ring-0 md:dark:bg-zinc-900",
+  );
+}
+
 export function globalFeedPostTypeAccentClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
@@ -753,16 +769,28 @@ export function globalFeedPostTypeBadgeClass(typeId: string): string {
   );
 }
 
-/** Mobile global feed scroll area — grey canvas behind edge-to-edge post cards. */
+/** Mobile global feed scroll area — white (light) / grey (dark) behind posts. */
 export const globalFeedMobileFeedAreaClass =
-  "max-md:bg-[#f5f5f5] dark:max-md:bg-[#101214]";
+  "max-md:bg-white dark:max-md:bg-[#1c1c1e]";
 
 /** Mobile global feed page background — mirrors native DiscoverPalette background. */
 export const globalFeedMobilePageClass = globalFeedMobileFeedAreaClass;
 
 /** Mobile global feed card shell — full width, rounded top and bottom. */
 export const globalFeedMobileCardClass =
-  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#181b1f]";
+  "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-[#2c2c2e]";
+
+/** Mobile card shell when the post has media — flush on dark canvas, boxed in light. */
+export function globalFeedMobileCardClassForMedia(hasMedia: boolean): string {
+  if (hasMedia) {
+    return "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl max-md:shadow-none max-md:ring-0 max-md:bg-white dark:max-md:bg-transparent";
+  }
+  return cn(
+    "max-md:mb-2.5 max-md:w-full max-md:overflow-hidden max-md:rounded-2xl",
+    "max-md:bg-white max-md:shadow-[0_8px_24px_-10px_rgba(15,23,42,0.16)] max-md:ring-1 max-md:ring-black/[0.04]",
+    "dark:max-md:bg-[#2c2c2e] dark:max-md:shadow-none dark:max-md:ring-0",
+  );
+}
 
 /** Mobile card inner horizontal padding. */
 export const globalFeedMobileCardPadClass = "max-md:px-1";
@@ -798,17 +826,24 @@ export function globalFeedMobilePostTypeBadgeClass(typeId: string): string {
 
 /** Mobile engagement row — flush with card surface. */
 export const globalFeedMobileEngagementRowClass =
-  "max-md:rounded-none max-md:bg-white dark:max-md:bg-[#181b1f]";
+  "max-md:rounded-none max-md:bg-white dark:max-md:bg-[#2c2c2e]";
+
+export function globalFeedMobileEngagementRowClassForMedia(hasMedia: boolean): string {
+  if (hasMedia) {
+    return "max-md:rounded-none max-md:bg-white dark:max-md:bg-transparent";
+  }
+  return globalFeedMobileEngagementRowClass;
+}
 
 /** Mobile comments bottom sheet shell. */
 export const globalFeedMobileCommentsSheetClass =
   "max-md:bg-white max-md:text-zinc-900 dark:max-md:bg-[#101214] dark:max-md:text-zinc-100";
 
 export const globalFeedMobileCommentsComposerWrapClass =
-  "max-md:bg-white max-md:pt-2.5 dark:max-md:bg-[#101214] max-md:border-t max-md:border-zinc-100 dark:max-md:border-zinc-800/80";
+  "max-md:bg-white max-md:pb-1 max-md:pt-3 dark:max-md:bg-[#101214] max-md:border-b max-md:border-zinc-100 dark:max-md:border-zinc-800/80";
 
 export const globalFeedMobileCommentsInputShellClass =
-  "max-md:rounded-full max-md:bg-[#f5f5f5] dark:max-md:bg-zinc-800";
+  "max-md:min-h-[52px] max-md:rounded-full max-md:bg-[#f5f5f5] dark:max-md:bg-zinc-800";
 
 export const globalFeedMobileCommentsInputClass =
   "max-md:text-[15px] max-md:font-medium max-md:text-zinc-900 max-md:placeholder:text-zinc-400 dark:max-md:text-zinc-100 dark:max-md:placeholder:text-zinc-500";

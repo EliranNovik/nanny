@@ -15,10 +15,10 @@ import {
   listingCityPart,
   localizedListingTitle,
 } from "@/lib/localizedListingCopy";
-import { requestHeroWaveToneClass } from "@/components/discover/DiscoverRequestHeroWaves";
 import {
   HIRE_CATEGORY_TILE_UI,
   OTHER_HELP_SUBCATEGORY_UI,
+  categoryIllustrationSrc,
   resolveHelpCategoryIconId,
 } from "@/lib/discoverCategoryTileIcons";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
@@ -40,6 +40,11 @@ function OfferCategoryIcon({
     (id && isServiceCategoryId(id) ? HIRE_CATEGORY_TILE_UI[id] : null);
   const Icon = ui?.Icon ?? HelpCircle;
   return <Icon className={className} aria-hidden />;
+}
+
+function trimUrl(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function DiscoverHomeOffersForYou({
@@ -127,8 +132,14 @@ export function DiscoverHomeOffersForYou({
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
           {visibleOffers.map((offer) => {
-            const iconId = resolveHelpCategoryIconId(offer.categoryId, offer.customCategory);
-            const listingImageUrl = offer.imageUrl || offer.authorPhotoUrl;
+            const postMediaUrl = trimUrl(offer.imageUrl);
+            const authorPhotoUrl = trimUrl(offer.authorPhotoUrl);
+            // Prefer post media, then profile photo; otherwise use the same
+            // category illustration as the home filter row.
+            const listingImageUrl =
+              postMediaUrl ||
+              authorPhotoUrl ||
+              categoryIllustrationSrc(offer.categoryId, offer.customCategory);
             const viewerLat = viewerLocation?.lat;
             const viewerLng = viewerLocation?.lng;
             const hasCoords =
@@ -145,11 +156,15 @@ export function DiscoverHomeOffersForYou({
               t,
               listingCityPart(offer.locationLabel),
             );
-            const offerTitle = localizedListingTitle(t, {
-              kind: "offer",
-              categoryLabel: feedCategoryLabel(t, offer.categoryId, offer.customCategory),
-              location: localizedLocation,
-            }) || offer.title;
+            const freeTextTitle = offer.caption?.trim() || "";
+            const offerTitle =
+              freeTextTitle ||
+              localizedListingTitle(t, {
+                kind: "offer",
+                categoryLabel: feedCategoryLabel(t, offer.categoryId, offer.customCategory),
+                location: localizedLocation,
+              }) ||
+              offer.title;
             const locationLine = localizedLocation
               ? km != null
                 ? t("discover.offerLocationFromYou", {
@@ -175,29 +190,13 @@ export function DiscoverHomeOffersForYou({
                 )}
               >
                 <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                  {listingImageUrl ? (
-                    <img
-                      src={listingImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover object-center"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <div
-                      className={cn(
-                        "flex h-full w-full items-center justify-center",
-                        requestHeroWaveToneClass(iconId ?? offer.categoryId),
-                        "text-white",
-                      )}
-                    >
-                      <OfferCategoryIcon
-                        categoryId={offer.categoryId}
-                        customCategory={offer.customCategory}
-                        className="h-10 w-10 text-white"
-                      />
-                    </div>
-                  )}
+                  <img
+                    src={listingImageUrl}
+                    alt=""
+                    className="h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
 
                 <div className="min-w-0 flex-1">
