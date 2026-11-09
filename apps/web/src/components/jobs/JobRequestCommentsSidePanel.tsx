@@ -202,16 +202,13 @@ export function JobRequestCommentsSidePanel({
             </Button>
           </div>
         ) : (
-          <div className="space-y-2 px-3">
-            <p className="text-center text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-2.5 px-3 py-1">
+            <p className="max-w-sm text-center text-sm text-muted-foreground">
               Join the community to comment and connect with others.
             </p>
             <Button
               type="button"
-              className={cn(
-                "h-10 w-full rounded-xl font-bold",
-                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
-              )}
+              className="h-9 rounded-full bg-black px-5 text-sm font-semibold text-white hover:bg-black/90 focus-visible:ring-white/30"
               onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
               Sign in / Register

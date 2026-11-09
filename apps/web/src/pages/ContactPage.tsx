@@ -15,8 +15,11 @@ export default function ContactPage() {
     path: "/contact",
   });
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+    <div className="flex min-h-screen flex-col bg-[#FAF6EF] text-slate-900 dark:bg-[#09090b] dark:text-zinc-100">
+      <LandingSiteHeader
+        {...guestSiteHeaderChromeProps}
+        className="!bg-[#FAF6EF] dark:!bg-background"
+      />
       <main className="flex-1 px-4 pb-12 pt-8">
         <ContactUsContent />
       </main>

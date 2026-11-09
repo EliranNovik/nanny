@@ -142,7 +142,7 @@ export function ContactUsContent() {
     return (
       <div className="relative w-full max-w-2xl mx-auto">
         <Blob className="-right-16 -top-16 h-56 w-56 bg-gradient-to-br from-orange-400 to-rose-500" />
-        <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-10 text-center shadow-xl backdrop-blur dark:border-transparent dark:bg-slate-950/60">
+        <div className="relative overflow-hidden rounded-[2rem] bg-white p-10 text-center dark:bg-zinc-900">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-9 w-9" strokeWidth={2} />
           </div>
@@ -181,12 +181,10 @@ export function ContactUsContent() {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-12 pb-4">
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/60 p-8 shadow-lg backdrop-blur-sm dark:border-transparent dark:bg-slate-950/40 md:p-10">
-        <Blob className="-right-20 -top-20 h-64 w-64 bg-gradient-to-br from-orange-400/80 to-rose-500/60" />
-        <Blob className="-bottom-16 -left-12 h-48 w-48 bg-gradient-to-tr from-primary/40 to-amber-300/50" />
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#FFE8C9] via-[#FFF3DE] to-[#FFDDE2] p-8 dark:from-[#32150d] dark:via-[#1d1111] dark:to-[#251021] md:p-10">
         <div className="relative max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-700 dark:border-transparent dark:bg-orange-500/15 dark:text-orange-300">
-            <MessageCircle className="h-3.5 w-3.5" />
+            <MessageCircle className="h-5 w-5" />
             {t("contactPage.badge")}
           </div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">
@@ -200,9 +198,9 @@ export function ContactUsContent() {
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
         <aside className="space-y-6">
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-gradient-to-br from-orange-50/90 to-white p-6 shadow-md dark:border-transparent dark:from-orange-950/30 dark:to-slate-950/50">
+          <div className="rounded-[1.75rem] bg-gradient-to-br from-orange-50/90 to-white p-6 dark:from-orange-950/30 dark:to-slate-950/50">
             <div className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 text-white">
                 <HeartHandshake className="h-6 w-6" />
               </div>
               <div>
@@ -216,7 +214,7 @@ export function ContactUsContent() {
             </div>
           </div>
 
-          <div className="space-y-4 rounded-[1.75rem] border border-slate-200/80 bg-card/80 p-6 shadow-sm dark:border-transparent">
+          <div className="space-y-4 rounded-[1.75rem] bg-white p-6 dark:bg-zinc-900">
             <div className="flex items-start gap-3">
               <Mail
                 className="mt-0.5 h-5 w-5 shrink-0 text-primary"
@@ -253,7 +251,7 @@ export function ContactUsContent() {
 
         <div
           id="contact-form"
-          className="scroll-mt-24 rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-transparent dark:bg-slate-950/70 md:p-8"
+          className="scroll-mt-24 rounded-[1.75rem] bg-white p-6 dark:bg-zinc-900 md:p-8"
         >
           <h2 className="text-xl font-black text-slate-900 dark:text-white">
             {t("contactPage.formTitle")}

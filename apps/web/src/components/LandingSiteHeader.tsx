@@ -588,12 +588,26 @@ export function LandingSiteHeader({
             )}
           >
             {centerContent ? (
-              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden -translate-y-1/2 justify-center px-20 sm:px-24 md:flex md:px-36">
-                <div className="pointer-events-auto min-w-0 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 top-1/2 z-[2] hidden justify-center px-20 sm:px-24 md:flex md:px-36",
+                  "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  hideDesktopNavLinks
+                    ? "-translate-y-1/2 opacity-100"
+                    : "-translate-y-[38%] opacity-0",
+                )}
+              >
+                <div
+                  className={cn(
+                    "min-w-0 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                    hideDesktopNavLinks ? "pointer-events-auto" : "pointer-events-none",
+                  )}
+                >
                   {centerContent}
                 </div>
               </div>
-            ) : user ? (
+            ) : null}
+            {centerContent && user ? null : user ? (
               <div className="flex min-w-0 items-center gap-4 md:gap-8">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar className={cn("h-9 w-9 flex-shrink-0 border", signedInAvatarBorderClass)}>
@@ -628,9 +642,23 @@ export function LandingSiteHeader({
                   {postFeedLinkDesktop}
                 </div>
               </div>
-            ) : hideDesktopNavLinks ? null : (
-              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden -translate-y-1/2 justify-center md:flex">
-                <div className={cn("pointer-events-auto flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
+            ) : (
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 top-1/2 z-[1] hidden justify-center md:flex",
+                  "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  centerContent && hideDesktopNavLinks
+                    ? "-translate-y-[62%] opacity-0"
+                    : "-translate-y-1/2 opacity-100",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center gap-6 lg:gap-8",
+                    navContainerTextClass,
+                    centerContent && hideDesktopNavLinks ? "pointer-events-none" : "pointer-events-auto",
+                  )}
+                >
                 <Link to="/about" className={navTabClass("/about")}>
                   {t("siteNav.aboutUs")}
                 </Link>

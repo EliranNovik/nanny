@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
@@ -94,9 +94,115 @@ type FeedMainContentProps = {
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
   onOpenSort?: () => void;
+  /** Desktop: the search field has moved into the guest header. */
+  searchDockedInHeader?: boolean;
   feedSortOrder?: "newest" | "oldest";
   rankingSort?: "most_liked" | "most_commented" | "most_shared" | "near_me" | null;
 };
+
+function GuestFeedSearchBar({
+  value,
+  onChange,
+  onClear,
+  onOpenSort,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+  onOpenSort?: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-11 w-full items-center gap-2 rounded-full border-0 bg-zinc-100 px-4 shadow-none outline-none ring-0",
+        "dark:bg-zinc-800",
+        className,
+      )}
+    >
+      <Search className="h-5 w-5 shrink-0 text-orange-500" />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search people or keywords"
+        className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground"
+      />
+      {value ? (
+        <button type="button" onClick={onClear} className="text-muted-foreground" aria-label="Clear search">
+          <X className="h-4 w-4" />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onOpenSort}
+        className="flex h-9 w-9 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+        aria-label="Sort posts"
+      >
+        <SlidersHorizontal className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+/** Reserves the column in the centered row, while the list itself stays fixed and scrolls alone. */
+function GuestFixedInsightsColumn({ children }: { children: ReactNode }) {
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState({ left: 0, width: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const slot = slotRef.current;
+    if (!slot) return;
+    const measure = () => {
+      const rect = slot.getBoundingClientRect();
+      setFrame((current) => {
+        const next = { left: rect.left, width: rect.width, ready: rect.width > 0 };
+        if (
+          current.ready === next.ready &&
+          Math.abs(current.left - next.left) < 0.5 &&
+          Math.abs(current.width - next.width) < 0.5
+        ) {
+          return current;
+        }
+        return next;
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(slot);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return (
+    <>
+      <div
+        ref={slotRef}
+        className={cn("hidden shrink-0 md:block", FAVORITES_SIDE_PANEL_WIDTH_CLASS)}
+        aria-hidden
+      />
+      <div
+        className={cn(
+          "fixed z-30 hidden min-h-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain md:flex",
+          "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "bg-white px-1 pb-6 pt-3 dark:bg-[#101214]",
+          !frame.ready && "invisible",
+        )}
+        style={{
+          top: "4.5rem",
+          height: "calc(100dvh - 4.5rem)",
+          left: frame.left,
+          width: frame.width,
+        }}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
 
 function FeedMainContent({
   user,
@@ -127,6 +233,7 @@ function FeedMainContent({
   searchQuery = "",
   onSearchQueryChange,
   onOpenSort,
+  searchDockedInHeader = false,
   feedSortOrder = "newest",
   rankingSort = null,
 }: FeedMainContentProps) {
@@ -149,53 +256,46 @@ function FeedMainContent({
       ) : null}
       <div
         className={cn(
-          "md:flex md:items-start md:gap-5 lg:gap-8 xl:gap-10",
-          guestDesktopLightLayout && "md:min-w-0 md:flex-1 md:pb-8 md:pt-6",
+          "md:flex md:items-start",
+          guestDesktopLightLayout
+            ? "md:min-w-0 md:flex-1 md:justify-center md:px-4 md:pb-8 md:pt-6 lg:px-8"
+            : "md:gap-5 lg:gap-8 xl:gap-10",
         )}
       >
         <div
           className={cn(
-            "min-w-0 w-full md:flex-1",
+            guestDesktopLightLayout
+              ? "md:flex md:w-fit md:max-w-full md:items-start md:gap-6 lg:gap-10"
+              : "contents",
+          )}
+        >
+        <div
+          className={cn(
+            "min-w-0 w-full",
+            guestDesktopLightLayout
+              ? "md:w-[42rem] md:max-w-full md:shrink lg:w-[46rem] xl:w-[50rem] 2xl:w-[54rem]"
+              : "md:flex-1 md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
             !guestDesktopLightLayout && globalFeedMobileFeedAreaClass,
-            "md:max-w-[42rem] lg:max-w-[46rem] xl:max-w-[50rem] 2xl:max-w-[54rem]",
           )}
         >
           <div
+            data-guest-feed-search="flow"
             className={cn(
-              "mb-5 w-full px-2 md:px-0",
-              guestDesktopLightLayout && "md:sticky md:top-16 md:z-[70]",
+              "grid w-full px-2 transition-[grid-template-rows,opacity,margin] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] [overflow-anchor:none] motion-reduce:transition-none md:px-0",
+              guestDesktopLightLayout && searchDockedInHeader
+                ? "mb-5 md:pointer-events-none md:mb-0 md:grid-rows-[0fr] md:opacity-0"
+                : "mb-5 grid-rows-[1fr] opacity-100",
             )}
+            aria-hidden={guestDesktopLightLayout && searchDockedInHeader ? true : undefined}
           >
-            <div
-              className={cn(
-                "flex h-14 w-full items-center gap-3 rounded-full border border-zinc-200/80 bg-white px-5 shadow-sm",
-                "dark:border-transparent dark:bg-zinc-900 dark:shadow-none",
-              )}
-            >
-              <Search className="h-6 w-6 shrink-0 text-orange-500" />
-              <input
+            <div className="overflow-hidden">
+              <GuestFeedSearchBar
                 value={searchQuery}
-                onChange={(event) => onSearchQueryChange?.(event.target.value)}
-                placeholder="Search people or keywords"
-                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground"
+                onChange={(value) => onSearchQueryChange?.(value)}
+                onClear={() => onSearchQueryChange?.("")}
+                onOpenSort={onOpenSort}
+                className="h-14 gap-3 px-5"
               />
-              {searchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => onSearchQueryChange?.("")}
-                  className="text-muted-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onOpenSort}
-                className="flex h-10 w-10 items-center justify-center text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
-                aria-label="Sort posts"
-              >
-                <SlidersHorizontal className="h-5 w-5" />
-              </button>
             </div>
           </div>
 
@@ -237,7 +337,16 @@ function FeedMainContent({
           />
         </div>
 
-        {guestDesktopLightLayout || insightsPanelOpen ? (
+        {guestDesktopLightLayout ? (
+          <GuestFixedInsightsColumn>
+            <FavoritesPostsSidePanel
+              embedded
+              flushWithPage
+              postTypeIds={["community", "event"]}
+              onPostOpen={onSidePanelPostOpen}
+            />
+          </GuestFixedInsightsColumn>
+        ) : insightsPanelOpen ? (
           <>
             {/* Width spacer so the feed column doesn't sit under the fixed panel */}
             <div
@@ -252,13 +361,10 @@ function FeedMainContent({
                 "hidden min-h-0 flex-col overflow-y-auto overflow-x-hidden md:fixed md:end-0 md:top-16 md:z-30 md:flex",
                 "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                 FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-                "max-h-[calc(100dvh-4rem)]",
-                guestDesktopLightLayout
-                  ? "md:bg-white md:px-3 md:pb-6 md:pt-3 md:pe-3 lg:px-4 lg:pe-4 dark:md:bg-background"
-                  : "bg-white px-3 pe-3 pb-6 pt-3 dark:bg-background",
+                "max-h-[calc(100dvh-4rem)] bg-white px-3 pe-3 pb-6 pt-3 dark:bg-background",
               )}
             >
-              {!guestDesktopLightLayout && !insightsPanelLocked ? (
+              {!insightsPanelLocked ? (
                 <div className="mb-3 flex justify-end">
                   <button
                     type="button"
@@ -295,6 +401,7 @@ function FeedMainContent({
             <PanelRightOpen className="h-6 w-6" strokeWidth={2.25} />
           </button>
         ) : null}
+        </div>
       </div>
     </div>
   );
@@ -322,7 +429,9 @@ export default function GlobalPostsPage() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const guestSidebarOpen = true;
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
-  const [guestHeaderCompact, setGuestHeaderCompact] = useState(false);
+  const [guestHeaderCompact, setGuestHeaderCompact] = useState(
+    () => typeof window !== "undefined" && window.scrollY > 140,
+  );
   const [sortDrawerOpen, setSortDrawerOpen] = useState(false);
   const [feedSortMode, setFeedSortMode] = useState<
     "newest" | "oldest" | "most_liked" | "most_commented" | "most_shared" | "near_me"
@@ -339,11 +448,35 @@ export default function GlobalPostsPage() {
 
   useEffect(() => {
     if (user) return;
-    const updateHeaderMode = () => setGuestHeaderCompact(window.scrollY > 56);
-    updateHeaderMode();
+    let compact = window.scrollY > 140;
+    const updateHeaderMode = () => {
+      const y = window.scrollY;
+      const next = compact ? y > 24 : y > 140;
+      if (next === compact) return;
+      compact = next;
+      setGuestHeaderCompact(next);
+    };
+    setGuestHeaderCompact(compact);
     window.addEventListener("scroll", updateHeaderMode, { passive: true });
     return () => window.removeEventListener("scroll", updateHeaderMode);
   }, [user]);
+
+  useEffect(() => {
+    if (user || !window.matchMedia("(min-width: 768px)").matches) return;
+    const from = document.querySelector(
+      guestHeaderCompact
+        ? "[data-guest-feed-search='flow']"
+        : "[data-guest-feed-search='header']",
+    );
+    const active = document.activeElement;
+    if (!from || !active || !from.contains(active)) return;
+    const next = document.querySelector(
+      guestHeaderCompact
+        ? "[data-guest-feed-search='header'] input"
+        : "[data-guest-feed-search='flow'] input",
+    );
+    if (next instanceof HTMLElement) next.focus();
+  }, [guestHeaderCompact, user]);
   const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
     () => parseCommunityFeedTypeFilter(searchParams.get("type")) ?? "all",
   );
@@ -519,8 +652,7 @@ export default function GlobalPostsPage() {
     <PageFrame
       variant="fullBleed"
       className={cn(
-        user ? "bg-white" : "bg-[#FAF6EF]",
-        "dark:bg-[#1c1c1e]",
+        "bg-white dark:bg-[#101214]",
       )}
       frameName="community-feed"
       data-community-feed-page={user ? "" : undefined}
@@ -533,8 +665,19 @@ export default function GlobalPostsPage() {
           hideBackButtonMobile
           hideContactAndLegal
           hideDesktopNavLinks={guestHeaderCompact}
+          centerContent={
+            <div data-guest-feed-search="header">
+              <GuestFeedSearchBar
+                value={feedSearchQuery}
+                onChange={setFeedSearchQuery}
+                onClear={() => setFeedSearchQuery("")}
+                onOpenSort={() => setSortDrawerOpen(true)}
+                className="w-[min(34rem,100%)]"
+              />
+            </div>
+          }
           fullBleedTop
-          className="!bg-[#FAF6EF] dark:!bg-background"
+          className="!bg-white dark:!bg-[#101214]"
           onBrandClick={() => setAboutOpen(true)}
         />
       ) : null}
@@ -583,6 +726,7 @@ export default function GlobalPostsPage() {
             searchQuery={feedSearchQuery}
             onSearchQueryChange={setFeedSearchQuery}
             onOpenSort={() => setSortDrawerOpen(true)}
+            searchDockedInHeader={!user && guestHeaderCompact}
             feedSortOrder={feedSortMode === "oldest" ? "oldest" : "newest"}
             rankingSort={
               feedSortMode === "newest" || feedSortMode === "oldest"

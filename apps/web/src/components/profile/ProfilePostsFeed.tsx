@@ -1302,16 +1302,13 @@ function CommentsSidePanel({
             </Button>
           </div>
         ) : (
-          <div className="space-y-2 px-3">
-            <p className="text-center text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-2.5 px-3 py-1">
+            <p className="max-w-sm text-center text-sm text-muted-foreground">
               Join the community to comment and connect with others.
             </p>
             <Button
               type="button"
-              className={cn(
-                "h-10 w-full rounded-xl font-bold",
-                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
-              )}
+              className="h-9 rounded-full bg-black px-5 text-sm font-semibold text-white hover:bg-black/90 focus-visible:ring-white/30"
               onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
               Sign in / Register
@@ -4239,6 +4236,25 @@ function PostCard({
         ? "md:w-full md:max-w-none"
         : "md:w-full md:max-w-[820px]"
       : null;
+  const mediaCap = isGlobalFeed ? "global" : isDiscover ? "discover" : isProfile ? "profile" : "default";
+  // Single image/video: the frame matches the media. Portrait keeps a full-width
+  // gray row so only the side bars show; landscape has no bars at all.
+  const singleMediaShellClass = cn(
+    "post-media-shell relative mt-0 flex items-start justify-center overflow-hidden md:rounded-xl",
+    mobileMediaInsetClass,
+    desktopDiscoverMediaColumnClass,
+    mediaAspectRatio && !isLandscape && mediaBoxBgClass,
+  );
+  const singleMediaFrameStyle: React.CSSProperties | undefined = mediaAspectRatio
+    ? ({ ["--post-media-ratio" as string]: String(mediaAspectRatio) } as React.CSSProperties)
+    : undefined;
+  const singleMediaFillClass = mediaAspectRatio
+    ? "h-full w-full object-cover"
+    : cn(
+        "block h-auto w-full max-w-full object-contain object-center",
+        mobileMediaMaxH,
+        desktopMediaMaxH,
+      );
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -5127,7 +5143,9 @@ function PostCard({
   function renderEngagementRow() {
     const pinEngagementToMobileBottom = isolateFocusedPost;
     const btnPad = isGlobalFeed
-      ? "py-2 md:py-2.5"
+      ? pinEngagementToMobileBottom
+        ? "py-2 md:py-2.5"
+        : "py-2 md:py-1"
       : hasMedia
         ? isProfile
           ? "py-1.5"
@@ -5135,11 +5153,23 @@ function PostCard({
         : isProfile
           ? "py-2.5"
           : "py-3";
-    const iconClass = isGlobalFeed ? "h-5 w-5 md:h-6 md:w-6" : "h-6 w-6 md:h-7 md:w-7";
+    const iconClass = isGlobalFeed
+      ? pinEngagementToMobileBottom
+        ? "h-5 w-5 md:h-6 md:w-6"
+        : "h-5 w-5 md:h-4 md:w-4"
+      : "h-6 w-6 md:h-7 md:w-7";
     const engagementTextClass = isGlobalFeed
-      ? "text-[13px] font-bold md:text-[15px]"
+      ? pinEngagementToMobileBottom
+        ? "text-[13px] font-bold md:text-[15px]"
+        : "text-[13px] font-bold md:text-[12.5px] md:font-semibold"
       : "text-[15px] font-semibold md:text-[17px]";
-    const engagementBtnPx = isGlobalFeed ? "px-2.5 md:px-3" : "px-3 md:px-3.5";
+    const engagementBtnPx = isGlobalFeed
+      ? pinEngagementToMobileBottom
+        ? "px-2.5 md:px-3"
+        : "px-2.5 md:px-2"
+      : "px-3 md:px-3.5";
+    const engagementGapClass =
+      isGlobalFeed && !pinEngagementToMobileBottom ? "gap-1.5 md:gap-1" : "gap-1.5 md:gap-2";
     const engagementLabelClass = "hidden md:inline";
     const engagementDisabled = post.source === "availability";
     // Idle engagement icons: black in light mode, white in dark mode.
@@ -5171,7 +5201,8 @@ function PostCard({
               disabled={liking || engagementDisabled}
               onClick={() => void toggleLike()}
               className={cn(
-                "flex items-center gap-1.5 rounded-full transition-all md:gap-2",
+                "flex items-center rounded-full transition-all",
+                engagementGapClass,
                 engagementTextClass,
                 engagementBtnPx,
                 btnPad,
@@ -5195,7 +5226,8 @@ function PostCard({
             type="button"
             onClick={() => setCommentsOpen(true)}
             className={cn(
-              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              "flex items-center rounded-full transition-colors",
+              engagementGapClass,
               engagementIdleClass,
               "hover:text-orange-600 dark:hover:text-orange-400",
               engagementTextClass,
@@ -5229,7 +5261,8 @@ function PostCard({
                 : undefined
             }
             className={cn(
-              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              "flex items-center rounded-full transition-colors",
+              engagementGapClass,
               engagementIdleClass,
               "hover:text-orange-600 dark:hover:text-orange-400",
               engagementTextClass,
@@ -5266,7 +5299,8 @@ function PostCard({
             aria-label={jobSaved ? "Remove from saved requests" : "Save request"}
             aria-pressed={jobSaved}
             className={cn(
-              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              "flex items-center rounded-full transition-colors",
+              engagementGapClass,
               engagementTextClass,
               engagementBtnPx,
               btnPad,
@@ -5304,7 +5338,8 @@ function PostCard({
             aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
             aria-pressed={authorSaved}
             className={cn(
-              "flex items-center gap-1.5 rounded-full transition-colors md:gap-2",
+              "flex items-center rounded-full transition-colors",
+              engagementGapClass,
               engagementTextClass,
               engagementBtnPx,
               btnPad,
@@ -5978,27 +6013,26 @@ function PostCard({
         </div>
       ) : null}
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "image" && (
-        <div
-          className={cn(
-            "relative mt-0 overflow-hidden",
-            mediaBoxBgClass,
-            mobileMediaBoxClass,
-            desktopMediaBoxClass,
-            desktopDiscoverMediaColumnClass,
-          )}
-        >
+        <div className={singleMediaShellClass} data-media-cap={mediaCap}>
+          <div
+            className={mediaAspectRatio ? "post-media-frame" : "relative w-full"}
+            style={singleMediaFrameStyle}
+          >
           <button
             type="button"
             onClick={openPostFromCard}
-            className="flex w-full items-center justify-center overflow-hidden focus-visible:outline-none"
+            className={cn(
+              "overflow-hidden focus-visible:outline-none",
+              mediaAspectRatio
+                ? "absolute inset-0 block h-full w-full"
+                : "flex w-full items-center justify-center",
+            )}
             aria-label={isGlobalFeed ? "View post" : "View image full screen"}
           >
             <img
               src={mediaUrl}
               alt=""
-              className={
-                isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass
-              }
+              className={singleMediaFillClass}
               loading="lazy"
               decoding="async"
               onLoad={(e) => {
@@ -6062,18 +6096,15 @@ function PostCard({
             </div>
           ) : null}
           {portraitMediaGlassOverlay}
+          </div>
         </div>
       )}
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "video" && (
-        <div
-          className={cn(
-            "relative mt-0 overflow-hidden",
-            mediaBoxBgClass,
-            mobileMediaBoxClass,
-            desktopMediaBoxClass,
-            desktopDiscoverMediaColumnClass,
-          )}
-        >
+        <div className={singleMediaShellClass} data-media-cap={mediaCap}>
+          <div
+            className={mediaAspectRatio ? "post-media-frame" : "relative w-full"}
+            style={singleMediaFrameStyle}
+          >
           <video
             ref={videoRef}
             src={mediaUrl}
@@ -6082,9 +6113,10 @@ function PostCard({
             loop
             muted={!videoUnmutedByUser}
             preload="metadata"
-            className={
-              isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass
-            }
+            className={cn(
+              singleMediaFillClass,
+              mediaAspectRatio && "absolute inset-0",
+            )}
             onLoadedMetadata={(e) => {
               const el = e.currentTarget;
               const w = el.videoWidth || 0;
@@ -6242,6 +6274,7 @@ function PostCard({
             </div>
           ) : null}
           {portraitMediaGlassOverlay}
+          </div>
         </div>
       )}
 
@@ -6701,7 +6734,7 @@ function PostCard({
         </>
       )}
 
-      {renderEngagementRow()}
+      {isolateFocusedPost && !currentUserId ? null : renderEngagementRow()}
 
       {/* Comments dialog */}
       {!isJobRequest ? (

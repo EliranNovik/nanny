@@ -26,7 +26,6 @@ import {
   StickyNote,
   MessageCircle,
 } from "lucide-react";
-import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
@@ -1163,11 +1162,6 @@ export default function LandingPage() {
           </div>
         </section>
         )}
-
-        {/* Benefits Section */}
-        <div className="scroll-reveal py-20 opacity-0 translate-y-10 transition-all duration-1000 md:py-28">
-          <Benefits />
-        </div>
 
         {/* Recent Activity is temporarily hidden from the landing page. */}
         {false && (

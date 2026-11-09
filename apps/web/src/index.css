@@ -1001,13 +1001,93 @@
     padding-top: 0;
   }
 
+  /* Guest post detail: no header or sidebar, so don't reserve their space. */
+  .app-main-scroll-pad:has([data-guest-post-detail]) {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  /*
+   * Post detail: the page itself does not scroll. The post column and the
+   * author panel each scroll on their own, so moving one leaves the other put.
+   */
+  html:has([data-page-frame="isolated-feed-post"]),
+  html:has([data-page-frame="isolated-feed-post"]) body {
+    overflow: hidden;
+  }
+
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) {
+    display: flex;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) > div,
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-mobile-scroll-top-clearance,
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) [data-page-frame="isolated-feed-post"] {
+    display: flex;
+    min-height: 0 !important;
+    height: auto !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-mobile-scroll-top-clearance {
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  /*
+   * Feed media frame: width is the largest size that fits the column and the
+   * height cap while keeping the real aspect ratio. Landscape fills the column.
+   * Portrait stays phone-width and is centered, so only the side bars show.
+   */
+  .post-media-shell {
+    --post-media-max-h: min(90dvh, 54rem);
+  }
+  .post-media-shell[data-media-cap="global"] {
+    --post-media-max-h: min(78dvh, 46rem);
+  }
+  .post-media-shell[data-media-cap="discover"] {
+    --post-media-max-h: min(76dvh, 44rem);
+  }
+  .post-media-shell[data-media-cap="profile"] {
+    --post-media-max-h: min(78dvh, 42rem);
+  }
+  .post-media-frame {
+    position: relative;
+    width: min(100%, calc(var(--post-media-max-h) * var(--post-media-ratio)));
+    max-width: 100%;
+    aspect-ratio: var(--post-media-ratio);
+  }
+  @media (min-width: 768px) {
+    .post-media-shell {
+      --post-media-max-h: min(82vh, 52rem);
+    }
+    .post-media-shell[data-media-cap="global"] {
+      --post-media-max-h: min(70vh, 42rem);
+    }
+    .post-media-shell[data-media-cap="discover"] {
+      --post-media-max-h: min(62vh, 36rem);
+    }
+    .post-media-shell[data-media-cap="profile"] {
+      --post-media-max-h: min(68vh, 40rem);
+    }
+  }
+
   @media (min-width: 768px) {
     .app-content-below-fixed-header {
       padding-top: 4rem;
     }
 
     /* Find helpers / job match: desktop header hidden — no reserved top bar */
-    .app-content-below-fixed-header:has([data-community-feed-guest]) {
+    .app-content-below-fixed-header:has([data-community-feed-guest]),
+    .app-content-below-fixed-header:has([data-guest-post-detail]) {
       padding-top: 0;
     }
 

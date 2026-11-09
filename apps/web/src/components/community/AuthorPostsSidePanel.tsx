@@ -161,8 +161,8 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
   );
 
   return (
-    <aside className="flex h-[100dvh] w-[380px] shrink-0 flex-col border-s border-black/[0.07] bg-white dark:border-white/[0.08] dark:bg-black">
-      <header className="flex items-center gap-3 border-b border-black/[0.07] px-[18px] pb-3.5 pt-[calc(env(safe-area-inset-top,0px)+14px)] dark:border-white/[0.08]">
+    <aside className="flex h-full min-h-0 w-[380px] shrink-0 flex-col self-stretch overflow-hidden border-s border-black/[0.07] bg-white dark:border-white/[0.08] dark:bg-zinc-900">
+      <header className="flex items-center gap-3 px-[18px] pb-3.5 pt-[calc(env(safe-area-inset-top,0px)+14px)]">
         <Avatar className="h-11 w-11">
           <AvatarImage src={post.author?.photo_url || undefined} alt="" className="object-cover" />
           <AvatarFallback className="bg-orange-500/15 font-bold text-orange-600 dark:text-orange-400">
@@ -182,7 +182,7 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-3.5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {isPending ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
@@ -208,12 +208,12 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
                     )
                   }
                   className={cn(
-                    "w-full rounded-[22px] border-[1.5px] bg-white p-3 text-start shadow-sm transition-transform hover:scale-[1.01] dark:bg-zinc-900",
+                    "flex w-full items-stretch overflow-hidden rounded-[22px] border-[1.5px] bg-white p-0 text-start shadow-[0_12px_32px_-16px_rgba(24,24,27,0.45)] ring-1 ring-black/[0.04] transition-transform hover:scale-[1.01] dark:bg-zinc-950 dark:shadow-none dark:ring-white/[0.06]",
                     selected ? "border-orange-500" : "border-transparent",
                   )}
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                  <div className="flex min-h-[4.75rem] w-full items-stretch">
+                    <span className="relative w-16 shrink-0 self-stretch overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                       {item.mediaType === "video" && item.thumbUrl ? (
                         <>
                           <video
@@ -244,7 +244,7 @@ export function AuthorPostsSidePanel({ post }: { post: FeedPost }) {
                         />
                       )}
                     </span>
-                    <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 flex-1 flex-col justify-center py-3 pe-3 ps-3">
                       <span className="line-clamp-2 text-[15px] font-bold leading-5 text-zinc-900 dark:text-zinc-100">
                         {item.title}
                       </span>

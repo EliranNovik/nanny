@@ -273,6 +273,7 @@ function KeepAlivePages() {
  */
 function PageLayoutWithHeader() {
   const { pathname, search } = useLocation();
+  const { user } = useAuth();
   const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const { showRail, whiteRail } = useAuthenticatedShellLayout({
@@ -316,6 +317,8 @@ function PageLayoutWithHeader() {
     pathname.startsWith("/r/");
   const isHomePath =
     pathname === "/client/home" || pathname === "/freelancer/home";
+  /** Guests have no app header or sidebar, so post detail should use the full viewport. */
+  const guestPostDetail = !user && isPostDetailPath;
   const shouldHideDesktopFooter =
     isMessagesPath ||
     isExplorePath ||
@@ -340,7 +343,9 @@ function PageLayoutWithHeader() {
     <div className={cn(
       "app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content",
       /* Light mode: match rail so the padding strip isn't a different color. */
+      guestPostDetail && "bg-white dark:bg-[#101214]",
       showRail &&
+        !guestPostDetail &&
         (whiteRail && !isMessagesPath
           ? "bg-white dark:bg-background"
           : "bg-[#F2F2F7] dark:bg-background"),
@@ -355,7 +360,7 @@ function PageLayoutWithHeader() {
           className={cn(
             "min-w-0 app-mobile-scroll-top-clearance",
             isAdminPath && "md:h-full md:min-h-0 md:overflow-hidden",
-            !isAdminPath && showRail
+            !isAdminPath && showRail && !guestPostDetail
               ? railNarrow
                 ? "app-tablet-rail-offset"
                 : "app-side-panel-offset"

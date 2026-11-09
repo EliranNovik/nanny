@@ -73,6 +73,9 @@ const SIDE_PANEL_SECTION_CLASS = "mb-4 last:mb-0";
 const SIDE_PANEL_SECTION_HEADER_CLASS =
   "sticky top-0 z-[1] mb-1.5 flex items-center justify-between gap-2 bg-white px-1 py-1.5 dark:bg-background";
 
+const SIDE_PANEL_PAGE_HEADER_CLASS =
+  "sticky top-0 z-[1] mb-1.5 flex items-center justify-between gap-2 bg-white px-1 py-1.5 dark:bg-[#101214]";
+
 const SIDE_PANEL_POSTS_LIST_CLASS = "space-y-1.5";
 
 function categoryIdFromSidePanelPost(post: FavoritePostRow): string | null {
@@ -387,11 +390,14 @@ function ThumbCard({
   onOpen,
   showLikeCount,
   showCommentCount,
+  liftOnHover = false,
 }: {
   post: FavoritePostRow;
   onOpen: () => void;
   showLikeCount?: boolean;
   showCommentCount?: boolean;
+  /** Guest feed: light-mode card lifts off the white page. */
+  liftOnHover?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const author = post.author;
@@ -416,9 +422,11 @@ function ThumbCard({
       type="button"
       onClick={onOpen}
       className={cn(
-        "group flex w-full items-start gap-2 rounded-xl p-1.5 text-left transition-colors",
+        "group flex w-full items-start gap-2 rounded-xl p-1.5 text-left transition-all duration-200",
         "lg:gap-3 lg:rounded-2xl lg:p-2",
-        "hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]",
+        liftOnHover
+          ? "hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_36px_-16px_rgba(24,24,27,0.45)] hover:ring-1 hover:ring-black/[0.06] dark:hover:translate-y-0 dark:hover:bg-white/[0.05] dark:hover:shadow-none dark:hover:ring-white/10"
+          : "hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40",
       )}
       aria-label={t("feed.sidePanel.openAuthorsPost", { name: authorName })}
@@ -433,7 +441,7 @@ function ThumbCard({
           <>
             <video
               src={thumb}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
               muted
               playsInline
               preload="metadata"
@@ -556,6 +564,7 @@ export function FavoritesPostsSidePanel({
   postTypeIds = null,
   fixed = false,
   embedded = false,
+  flushWithPage = false,
   onPostOpen,
 }: {
   postTypeIds?: string[] | null;
@@ -563,6 +572,8 @@ export function FavoritesPostsSidePanel({
   fixed?: boolean;
   /** Fill a parent that already sets the panel width (guest community feed). */
   embedded?: boolean;
+  /** Section labels sit on the page color instead of a white panel. */
+  flushWithPage?: boolean;
   /** Focus a post in the community feed (pins to top without full page reload). */
   onPostOpen?: (postId: string) => void;
 }) {
@@ -599,6 +610,9 @@ export function FavoritesPostsSidePanel({
   const hasCommented =
     Array.isArray(commentedPosts) && commentedPosts.length > 0;
   const hasMine = Array.isArray(myPosts) && myPosts.length > 0;
+  const headerClassName = flushWithPage
+    ? SIDE_PANEL_PAGE_HEADER_CLASS
+    : SIDE_PANEL_SECTION_HEADER_CLASS;
 
   if (fixed) {
     return (
@@ -628,6 +642,8 @@ export function FavoritesPostsSidePanel({
             myLoading,
             hasMine,
             openPost,
+            headerClassName,
+            liftOnHover: flushWithPage,
           })}
         </div>
       </aside>
@@ -661,6 +677,8 @@ export function FavoritesPostsSidePanel({
           myLoading,
           hasMine,
           openPost,
+          headerClassName,
+          liftOnHover: flushWithPage,
         })}
       </div>
     </aside>
@@ -683,6 +701,8 @@ function renderPanelSections({
   myLoading,
   hasMine,
   openPost,
+  headerClassName = SIDE_PANEL_SECTION_HEADER_CLASS,
+  liftOnHover = false,
 }: {
   t: ReturnType<typeof useTranslation>["t"];
   includePersonalSections: boolean;
@@ -699,12 +719,14 @@ function renderPanelSections({
   myLoading: boolean;
   hasMine: boolean;
   openPost: (postId: string) => void;
+  headerClassName?: string;
+  liftOnHover?: boolean;
 }) {
   return (
     <>
         {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
-          <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
+          <div className={headerClassName}>
             <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <Bookmark
                 className="h-4 w-4 text-orange-500 lg:h-5 lg:w-5"
@@ -728,6 +750,7 @@ function renderPanelSections({
                 <ThumbCard
                   key={post.id}
                   post={post}
+                  liftOnHover={liftOnHover}
                   onOpen={() => openPost(post.id)}
                 />
               ))
@@ -738,7 +761,7 @@ function renderPanelSections({
 
         {/* Section 2: Most liked */}
         <section className={SIDE_PANEL_SECTION_CLASS}>
-          <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
+          <div className={headerClassName}>
             <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <Flame
                 className="h-4 w-4 text-rose-500 lg:h-5 lg:w-5"
@@ -763,6 +786,7 @@ function renderPanelSections({
                   key={post.id}
                   post={post}
                   showLikeCount
+                  liftOnHover={liftOnHover}
                   onOpen={() => openPost(post.id)}
                 />
               ))
@@ -772,7 +796,7 @@ function renderPanelSections({
 
         {/* Section 3: Most commented */}
         <section className={SIDE_PANEL_SECTION_CLASS}>
-          <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
+          <div className={headerClassName}>
             <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <MessagesSquare
                 className="h-4 w-4 text-sky-500 lg:h-5 lg:w-5"
@@ -797,6 +821,7 @@ function renderPanelSections({
                   key={post.id}
                   post={post}
                   showCommentCount
+                  liftOnHover={liftOnHover}
                   onOpen={() => openPost(post.id)}
                 />
               ))
@@ -806,7 +831,7 @@ function renderPanelSections({
 
         {includePersonalSections ? (
         <section className={SIDE_PANEL_SECTION_CLASS}>
-          <div className={SIDE_PANEL_SECTION_HEADER_CLASS}>
+          <div className={headerClassName}>
             <h3 className={cn("flex min-w-0 items-center gap-1.5 lg:gap-2", SIDE_PANEL_SECTION_TITLE_CLASS)}>
               <UserCircle2
                 className="h-4 w-4 text-emerald-500 lg:h-5 lg:w-5"
@@ -830,6 +855,7 @@ function renderPanelSections({
                 <ThumbCard
                   key={post.id}
                   post={post}
+                  liftOnHover={liftOnHover}
                   onOpen={() => openPost(post.id)}
                 />
               ))

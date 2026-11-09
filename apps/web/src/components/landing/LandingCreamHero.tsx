@@ -357,28 +357,30 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
             <span className="mr-1 hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sm:inline">
               {t("landing.creamHero.appComingSoon")}
             </span>
-            <button
-              type="button"
-              disabled
-              className="flex h-9 cursor-default items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white opacity-90 shadow-sm sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+            <a
+              href="https://testflight.apple.com/join/PesFrQ2m"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
             >
               <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
               <span>
                 <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-300">{t("landing.creamHero.getTheApp")}</span>
                 <span className="block text-xs font-bold leading-tight">iOS</span>
               </span>
-            </button>
-            <button
-              type="button"
-              disabled
-              className="flex h-9 cursor-default items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 opacity-90 shadow-sm backdrop-blur sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+            </a>
+            <a
+              href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 shadow-sm backdrop-blur transition hover:bg-white active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
             >
               <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
               <span>
                 <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-500">{t("landing.creamHero.getTheApp")}</span>
                 <span className="block text-xs font-bold leading-tight">Android</span>
               </span>
-            </button>
+            </a>
           </div>
           <div className="mt-3 flex items-center md:hidden">
             <img
