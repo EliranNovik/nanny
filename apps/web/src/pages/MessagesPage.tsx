@@ -5,7 +5,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -147,9 +147,14 @@ export default function MessagesPage() {
     () => new Set(),
   );
 
+  const { pathname } = useLocation();
+  const onMessagesRoute = pathname === "/messages" || pathname.startsWith("/messages/");
+
   // Native tablet messages always opens the newest available thread.
+  // This page stays mounted on other routes, so only touch the URL while it is showing.
   useEffect(() => {
     if (
+      onMessagesRoute &&
       isTablet &&
       !conversationId &&
       conversations.length > 0 &&
@@ -162,6 +167,7 @@ export default function MessagesPage() {
     conversations,
     inboxQuery.isPending,
     isTablet,
+    onMessagesRoute,
     setSearchParams,
   ]);
 

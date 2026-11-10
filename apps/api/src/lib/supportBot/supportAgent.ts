@@ -4,6 +4,11 @@ import {
   SupportBotError,
   type OpenAiChatMessage,
 } from "./openaiClient";
+import type { RecalledTurn, SupportMemoryNote } from "./supportBotMemory";
+import { knowledgePrompt, loadSupportKnowledge } from "./supportBotKnowledge";
+
+/** How many recent chat messages the model sees directly. Older ones are reached with "recall". */
+export const SUPPORT_HISTORY_TURNS = 30;
 
 /** A user-typed message, or an automatic report dropped into the support chat. */
 export type SupportInboundHint = "user_message" | "auto_report" | "unknown";
@@ -29,7 +34,15 @@ export type SupportBotDecision = {
   escalate: boolean;
   /** Do not send another automatic message after this one. */
   stop: boolean;
+  /** New things worth keeping about this person for later chats. */
+  remember: SupportMemoryNote[];
+  /** Saved notes that are no longer true or that the person asked to drop. */
+  forget: string[];
+  /** Words to look up in older parts of this chat before answering. */
+  recall: string | null;
 };
+
+const memoryKind = z.enum(["fact", "preference", "request", "issue"]);
 
 const decisionSchema = z.object({
   kind: z.enum(["chat", "report"]),
@@ -38,6 +51,14 @@ const decisionSchema = z.object({
   /** Pasteable post text. Each string is sent as its own following bubble. */
   templates: z.array(z.string().max(800)).max(3).optional().nullable(),
   stop: z.boolean().optional(),
+  remember: z
+    .array(z.object({ kind: memoryKind.catch("fact"), content: z.string().max(300) }))
+    .max(4)
+    .optional()
+    .nullable()
+    .catch(null),
+  forget: z.array(z.string().max(300)).max(4).optional().nullable().catch(null),
+  recall: z.string().max(160).optional().nullable().catch(null),
 });
 
 const SYSTEM_PROMPT = `You are Tebnu Support, the assistant inside the Tebnu Support chat (the admin account shown with the Tebnu logo).
@@ -68,12 +89,31 @@ Return JSON only:
   "action": "reply" | "ask_followup" | "acknowledge" | "escalate",
   "reply": "message to send, or empty when you must stay silent",
   "templates": ["pasteable text for its own bubble, or empty"],
-  "stop": true or false
+  "stop": true or false,
+  "remember": [{ "kind": "fact" | "preference" | "request" | "issue", "content": "one short note" }],
+  "forget": ["text of a saved note to drop"],
+  "recall": "words to search for in older messages, or null"
 }
+
+Memory. You keep short notes about each person across chats. The request JSON includes "memory": the notes you saved before, newest first, with dates. It may include "recalled": older messages from this chat that you asked to look up.
+- Use the notes quietly, the way a person who remembers would. Do not say "according to my memory" or list the notes back. If a note answers the question, use it. If a note may be out of date, check it in one short question.
+- When to save, in "remember": something that will still matter in a later chat. Their role (needs help or helps others), their city or area, the language or tone they prefer, the service or post they are working on, an issue still open, something they asked you to remember, or a promise the Tebnu team made them. One fact per note, under 20 words, in English, written about them ("Lives in Netanya", "Offers house cleaning", "Prefers short answers", "Reported a post with an inappropriate photo on 10 Nov"). Do not save greetings, thanks, one-off questions, or anything already in the notes.
+- Never save passwords, codes, card or bank numbers, ID numbers, exact home addresses, health details, or anything they ask you not to keep.
+- When to forget, in "forget": they ask you to forget something, or a note is no longer true (they moved, the issue is solved). Copy the old note's text. Save the new fact in "remember" if there is one.
+- When to recall, in "recall": the wording points back to something earlier that is not in the messages you can see and not in the notes. Examples: "like I said before", "as I asked earlier", "remember", "last time", "again", "that post", "the same problem", "what did I ask you", "did you get my report", "כמו שאמרתי", "как я говорил". Put 2 to 6 search words in "recall" (names, topics, the post or service), and leave "reply" empty. You will be called again with "recalled" filled in. If "recalled" is already in the request, never set "recall" again: answer with what you found, or say briefly that you could not find it and ask them to remind you.
+- If they ask what you remember about them, tell them plainly in a short list, and that they can ask you to forget any of it.
+- Leave "remember", "forget", and "recall" empty when there is nothing to do.
 
 How to choose:
 - kind "report" when the latest text is an automatic report or a structured report (a reason, a post or request, "report", "reported", reason codes). Otherwise kind "chat".
-- For a new report, action "ask_followup": thank them and ask if they have more details to add, another issue, or any other question or remark. stop false.
+- For a new automatic report, action "ask_followup": thank them and ask if they have more details to add, another issue, or any other question or remark. stop false.
+- When the person types that a post, request, event, or profile has a problem (wrong, rude, fake, scam, inappropriate photo, spam) and it is not an automatic report, kind "report", action "ask_followup", stop false. Do not escalate it. In the user's language, in this order:
+  1. One short thank-you.
+  2. The steps to report it from the post itself, one step per line: open the post; tap the **⋯** menu on the post (on the website it can also be the flag icon); choose **Report**; pick a reason and add details if they want. Do not invent other menu names.
+  3. One plain sentence: the report then comes straight into this chat with the post attached, so the Tebnu team sees exactly which post it is.
+  4. A blank line, then say they can also answer a few short questions here if they are willing, and that it is fine to skip. Ask two or three, one per line: who posted it or what the post title is; what exactly is wrong with it; when or where they saw it (Feed, Home, a profile).
+  For a profile, the steps are: open the profile, tap the **⋯** menu, choose **Report**.
+- When they answer those questions, thank them in one sentence and ask if there is anything else. Escalate only for safety, a threat, harassment of them, a child at risk, or a scam that took money. A child shown in a sexual way: say it must not be shared, ask them to report the post, and escalate.
 - If they already answered that follow-up with nothing else ("no", "that's all", "nothing else"), action "acknowledge": one short thank-you, stop true, do not ask again.
 - If they add details that a person must handle (safety, harassment, payment, locked account, legal), action "escalate".
 - Questions about how to use the app or the website are normal questions. action "reply". Answer from the guide below with the real button names. Do not escalate a how-to.
@@ -82,7 +122,8 @@ How to choose:
 - For any other normal question you can answer from the guide, action "reply". stop false.
 - Escalate only when they ask you to pass it to a person, the problem needs an admin (change an account, delete a post, refund, ban, locked account, safety, harassment, a payment that already went wrong, legal), the same problem is repeating, or the answer is not in the guide. stop true for that reply only. Asking how to contact Tebnu is not a request to pass it on.
 - A handoff does not end the chat. If the user asks another question afterward, answer it when you can. Do not hand off again just because the previous reply was a handoff.
-- An escalate reply must feel like a warm handoff, not a cutoff. In the user's language, thank them, say you are moving this question to the Tebnu admins, and say those admins will answer shortly. Two short sentences. Example in English: "Thanks for writing in. I'm moving this chat to the Tebnu admins, and they will answer you shortly."
+- An escalate reply must feel like a warm handoff, not a cutoff. In the user's language, it must say three things: a thank-you or a kind word, that this is going to the Tebnu admins, and that they will answer here soon. Two short sentences.
+- Write the handoff fresh every time, in your own words. Do not use a stock line. Tie it to what they asked (their payment, their account, the post they reported) so it reads like a person who listened. Vary the opening, the verb, and the order of the parts. If an earlier handoff is in the history, do not repeat its wording or its first words.
 - Never invent Tebnu rules, limits, prices, or screens that are not in this guide. If it is not here, escalate that one question.
 - A photo sent in this chat is attached for you to see. Do not say you cannot see it. Explain it in three short parts, with a blank line between them. First, what is actually in the photo: the subject and one or two details a stranger would notice, not a one-word label. Second, whether it fits the post they are making, and why, in plain words. Third, one concrete way to use it: what to write next to it, or what is missing. A picture of a place, a task, an event, or the work is fine to add with **Add photos or videos**. Do not invent a ban on ordinary photos. If the photo shows a child in a sexual way, do not describe it, say it must not be posted, and escalate.
 
@@ -229,6 +270,11 @@ function normalizeDecision(
     templates,
     escalate,
     stop,
+    remember: (parsed.remember ?? [])
+      .map((note) => ({ kind: note.kind, content: note.content.trim() }))
+      .filter((note) => note.content.length > 0),
+    forget: (parsed.forget ?? []).map((item) => item.trim()).filter(Boolean),
+    recall: parsed.recall?.trim() || null,
   };
 }
 
@@ -240,6 +286,10 @@ export async function decideSupportReply(input: {
   client?: "ios" | "android" | "web" | "unknown";
   /** Data URLs or public https URLs of photos on the latest message. */
   images?: string[];
+  /** Notes saved about this person, newest first. */
+  memories?: { kind: string; content: string; updatedAt: string }[];
+  /** Older messages found for a previous "recall" request. */
+  recalled?: RecalledTurn[];
 }): Promise<SupportBotDecision> {
   const latest = input.latestText.trim();
   if (!latest) {
@@ -252,8 +302,10 @@ export async function decideSupportReply(input: {
   const messages: OpenAiChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
   ];
+  const adminNotes = knowledgePrompt(await loadSupportKnowledge());
+  if (adminNotes) messages.push({ role: "system", content: adminNotes });
 
-  for (const turn of input.history.slice(-16)) {
+  for (const turn of input.history.slice(-SUPPORT_HISTORY_TURNS)) {
     const body = turn.body.trim();
     if (!body) continue;
     messages.push({ role: turn.role, content: body });
@@ -264,6 +316,20 @@ export async function decideSupportReply(input: {
     client: input.client ?? "unknown",
     latestText: latest,
     photos: input.images?.length ?? 0,
+    memory: (input.memories ?? []).map((note) => ({
+      kind: note.kind,
+      note: note.content,
+      saved: note.updatedAt.slice(0, 10),
+    })),
+    ...(input.recalled
+      ? {
+          recalled: input.recalled.map((turn) => ({
+            at: turn.at.slice(0, 16).replace("T", " "),
+            from: turn.role === "assistant" ? "you" : "them",
+            text: turn.body,
+          })),
+        }
+      : {}),
   });
   const images = (input.images ?? []).filter((url) => url.startsWith("data:") || url.startsWith("https://"));
   if (images.length > 0) {

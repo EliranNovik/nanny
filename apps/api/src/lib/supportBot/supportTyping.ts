@@ -66,6 +66,14 @@ export function beginSupportTyping(conversationId: string, adminId: string): boo
   return started;
 }
 
+/** Stop this server's pulse without telling the chat typing ended; another server owns the reply. */
+export function dropSupportTyping(conversationId: string): void {
+  const timer = pulses.get(conversationId);
+  if (!timer) return;
+  clearInterval(timer);
+  pulses.delete(conversationId);
+}
+
 export async function endSupportTyping(
   conversationId: string,
   adminId: string,

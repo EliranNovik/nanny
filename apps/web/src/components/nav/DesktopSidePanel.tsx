@@ -11,6 +11,7 @@ import {
   type LucideIcon,
   BadgeCheck,
   Bookmark,
+  Bot,
   ChevronDown,
   UsersRound,
   Home,
@@ -199,6 +200,13 @@ export function DesktopSidePanel() {
       href: "/admin/posts",
       icon: Newspaper,
       activeMatch: (p: string) => p.startsWith("/admin/posts"),
+    },
+    {
+      id: "admin-ai-bot",
+      label: "AI Bot",
+      href: "/admin/ai-bot",
+      icon: Bot,
+      activeMatch: (p: string) => p.startsWith("/admin/ai-bot"),
     },
   ];
 

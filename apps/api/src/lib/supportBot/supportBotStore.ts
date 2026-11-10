@@ -1,6 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { supabaseAdmin } from "../../supabase";
 
 type StoreError = { code?: string; message?: string } | null;
+
+const CLAIM_OWNER = randomUUID();
+const CLAIM_STALE_MS = 5 * 60_000;
+let claimsUnavailable = false;
 
 const memoryEscalated = new Set<string>();
 const memoryBotMessages = new Set<string>();
@@ -126,6 +131,47 @@ export async function wasReportHandled(reportId: string): Promise<boolean> {
     return memoryReports.has(reportId);
   }
   return Boolean(data?.report_id);
+}
+
+/**
+ * Take exclusive ownership of a piece of bot work across every running API.
+ * Returns false when another server already holds it. A claim older than
+ * CLAIM_STALE_MS is treated as abandoned (that server crashed mid-reply).
+ */
+export async function claimSupportWork(key: string): Promise<boolean> {
+  if (claimsUnavailable) return true;
+  const { error } = await supabaseAdmin
+    .from("support_bot_claims")
+    .insert({ key, owner: CLAIM_OWNER });
+  if (!error) return true;
+  if (error.code !== "23505") {
+    if (error.code === "42P01" || error.code === "PGRST205") {
+      claimsUnavailable = true;
+      console.warn(
+        "[SupportBot] support_bot_claims is missing. Run db/sql/156_support_bot_claims.sql; until then two running APIs can both reply.",
+      );
+    } else {
+      console.error("[SupportBot] Claim failed:", error.message);
+    }
+    return true;
+  }
+  const { data } = await supabaseAdmin
+    .from("support_bot_claims")
+    .update({ owner: CLAIM_OWNER, claimed_at: new Date().toISOString() })
+    .eq("key", key)
+    .lt("claimed_at", new Date(Date.now() - CLAIM_STALE_MS).toISOString())
+    .select("key");
+  return (data?.length ?? 0) > 0;
+}
+
+/** Give work back after a failed reply so a later tick (on any server) can retry it. */
+export async function releaseSupportWork(key: string): Promise<void> {
+  if (claimsUnavailable) return;
+  await supabaseAdmin
+    .from("support_bot_claims")
+    .delete()
+    .eq("key", key)
+    .eq("owner", CLAIM_OWNER);
 }
 
 export async function rememberReport(

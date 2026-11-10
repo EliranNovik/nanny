@@ -2,22 +2,34 @@ import { supabaseAdmin } from "../../supabase";
 import { classifyInboundHint } from "./classifyInbound";
 import { supportBotConfigured } from "./env";
 import { SupportBotError } from "./openaiClient";
-import { decideSupportReply } from "./supportAgent";
-import type { SupportTranscriptTurn } from "./supportAgent";
+import { decideSupportReply, SUPPORT_HISTORY_TURNS } from "./supportAgent";
+import type { SupportBotDecision, SupportTranscriptTurn } from "./supportAgent";
 import {
+  forgetSupportMemories,
+  loadSupportMemories,
+  recallFromChat,
+  saveSupportMemories,
+  touchSupportMemories,
+} from "./supportBotMemory";
+import {
+  claimSupportWork,
   escalateSupportThread,
   isBotMessage,
   markSupportHandoff,
+  releaseSupportWork,
   rememberBotMessage,
   rememberReport,
   wasReportHandled,
 } from "./supportBotStore";
-import { beginSupportTyping, endSupportTyping } from "./supportTyping";
+import { beginSupportTyping, dropSupportTyping, endSupportTyping } from "./supportTyping";
 
 const TICK_MS = 1_000;
 const BATCH_QUIET_MS = 2_500;
-const HISTORY_LIMIT = 16;
+const HISTORY_LIMIT = SUPPORT_HISTORY_TURNS;
 const LOOKBACK_MS = 30 * 60 * 1000;
+const INCOMING_LIMIT = 300;
+const WATCH_RETRY_MIN_MS = 1_000;
+const WATCH_RETRY_MAX_MS = 30_000;
 /** Invisible mark so the admin chat can tell a bot reply from a message typed by hand. */
 const AI_SENT_MARK = "\u200b\u200b\u200b";
 /** Same AI mark, plus a word joiner, only on a handoff to the Tebnu team. */
@@ -270,6 +282,65 @@ async function sendTemplateBubbles(
   }
 }
 
+type DecisionInput = Parameters<typeof decideSupportReply>[0];
+
+/**
+ * Asks the model with this person's saved notes. If its wording check says the
+ * answer is further back in the chat, searches older messages and asks once more.
+ * Then stores whatever it decided to remember or forget.
+ */
+async function decideWithMemory(
+  input: DecisionInput,
+  context: {
+    conversationId: string;
+    adminId: string;
+    userId: string;
+    sourceMessageId: string | null;
+  },
+): Promise<SupportBotDecision> {
+  const memories = await loadSupportMemories(context.userId);
+  let decision = await decideSupportReply({ ...input, memories });
+
+  if (decision.recall && !decision.escalate) {
+    const recalled = await recallFromChat(
+      context.conversationId,
+      context.adminId,
+      decision.recall,
+      HISTORY_LIMIT,
+    );
+    console.log("[SupportBot] Recall", {
+      conversationId: context.conversationId,
+      found: recalled.length,
+    });
+    const first = decision;
+    decision = await decideSupportReply({ ...input, memories, recalled });
+    decision = {
+      ...decision,
+      remember: [...first.remember, ...decision.remember],
+      forget: [...first.forget, ...decision.forget],
+      recall: null,
+    };
+  }
+
+  try {
+    if (decision.forget.length > 0) {
+      await forgetSupportMemories(context.userId, decision.forget);
+    }
+    if (decision.remember.length > 0) {
+      await saveSupportMemories(context.userId, decision.remember, context.sourceMessageId);
+      console.log("[SupportBot] Remembered", {
+        userId: context.userId,
+        notes: decision.remember.length,
+      });
+    }
+    await touchSupportMemories(memories.map((memory) => memory.id));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "memory update failed";
+    console.warn("[SupportBot] Memory update failed:", message);
+  }
+  return decision;
+}
+
 async function replyToUserMessages(
   conversationId: string,
   pending: MessageRow[],
@@ -280,6 +351,13 @@ async function replyToUserMessages(
   beginSupportTyping(conversationId, adminId);
   if (Date.now() - Date.parse(newest.created_at) < BATCH_QUIET_MS) return;
 
+  const claimKey = `msg:${newest.id}`;
+  if (!(await claimSupportWork(claimKey))) {
+    dropSupportTyping(conversationId);
+    return;
+  }
+
+  let replied = false;
   try {
   const history = await recentHistory(
     conversationId,
@@ -301,13 +379,21 @@ async function replyToUserMessages(
   const client = await latestClientPlatform(pending[pending.length - 1].sender_id);
   const images = await photosFromMessages(pending);
 
-  const decision = await decideSupportReply({
-    history: history.filter((turn) => turn.body.trim() !== latestText),
-    latestText,
-    hint,
-    client,
-    images,
-  });
+  const decision = await decideWithMemory(
+    {
+      history: history.filter((turn) => turn.body.trim() !== latestText),
+      latestText,
+      hint,
+      client,
+      images,
+    },
+    {
+      conversationId,
+      adminId,
+      userId: newest.sender_id,
+      sourceMessageId: newest.id,
+    },
+  );
 
   if (decision.reply) {
     const text = replyForClient(decision.reply, client);
@@ -323,6 +409,7 @@ async function replyToUserMessages(
   for (const message of pending) {
     await rememberBotMessage(message.id, conversationId);
   }
+  replied = true;
     console.log("[SupportBot] Replied", {
     conversationId,
     kind: decision.kind,
@@ -330,6 +417,7 @@ async function replyToUserMessages(
     client,
   });
   } finally {
+    if (!replied) await releaseSupportWork(claimKey);
     await endSupportTyping(conversationId, adminId);
   }
 }
@@ -339,12 +427,13 @@ async function handleIncomingMessages(admins: Set<string>): Promise<void> {
     .from("messages")
     .select("id, body, sender_id, created_at, conversation_id, attachment_url, attachment_type")
     .gte("created_at", lookbackStart())
-    .order("created_at", { ascending: true })
-    .limit(80);
+    // Newest first: an oldest-first cap drops the latest message once a busy window fills up.
+    .order("created_at", { ascending: false })
+    .limit(INCOMING_LIMIT);
   if (error) throw error;
 
   const byConversation = new Map<string, MessageRow[]>();
-  for (const row of (data ?? []) as MessageRow[]) {
+  for (const row of ((data ?? []) as MessageRow[]).reverse()) {
     const bucket = byConversation.get(row.conversation_id) ?? [];
     bucket.push(row);
     byConversation.set(row.conversation_id, bucket);
@@ -432,6 +521,8 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
 
     const key = `report:${report.id}`;
     if ((failures.get(key) ?? 0) >= 3) continue;
+    if (!(await claimSupportWork(key))) continue;
+    let handled = false;
     try {
       const conversationId = await findOrCreateSupportConversation(
         report.reporter_id,
@@ -442,12 +533,20 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
       beginSupportTyping(conversationId, adminId);
       try {
         const client = await latestClientPlatform(report.reporter_id);
-        const decision = await decideSupportReply({
-          history: await recentHistory(conversationId, adminId, new Set()),
-          latestText: reportText(report),
-          hint: "auto_report",
-          client,
-        });
+        const decision = await decideWithMemory(
+          {
+            history: await recentHistory(conversationId, adminId, new Set()),
+            latestText: reportText(report),
+            hint: "auto_report",
+            client,
+          },
+          {
+            conversationId,
+            adminId,
+            userId: report.reporter_id,
+            sourceMessageId: null,
+          },
+        );
         if (decision.reply) {
           const text = replyForClient(decision.reply, client);
           const reply = decision.escalate
@@ -460,6 +559,7 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
           await markSupportHandoff(conversationId);
         }
         await rememberReport(report.id, conversationId);
+        handled = true;
         failures.delete(key);
         console.log("[SupportBot] Report follow-up", {
           reportId: report.id,
@@ -472,6 +572,8 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
       failures.set(key, (failures.get(key) ?? 0) + 1);
       const message = err instanceof SupportBotError ? err.message : "Report follow-up failed";
       console.error("[SupportBot] Report follow-up failed:", message);
+    } finally {
+      if (!handled) await releaseSupportWork(key);
     }
   }
 }
@@ -502,11 +604,16 @@ async function onMessageInserted(row: MessageRow): Promise<void> {
   void tick();
 }
 
-function watchInboundMessages(): void {
-  if (inboundWatchStarted) return;
-  inboundWatchStarted = true;
-  supabaseAdmin
-    .channel("support-bot-inbound")
+let watchRetryDelay = WATCH_RETRY_MIN_MS;
+let watchRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let watchSeq = 0;
+
+function openInboundWatch(): void {
+  watchSeq += 1;
+  const seq = watchSeq;
+  // A fresh topic per attempt; reusing one that is still closing hands back the dead channel.
+  const channel = supabaseAdmin.channel(`support-bot-inbound-${seq}`);
+  channel
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "messages" },
@@ -515,12 +622,29 @@ function watchInboundMessages(): void {
       },
     )
     .subscribe((status) => {
+      if (seq !== watchSeq) return;
       if (status === "SUBSCRIBED") {
+        watchRetryDelay = WATCH_RETRY_MIN_MS;
         console.log("[SupportBot] Watching new messages for typing");
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("[SupportBot] Message watch", status);
+        return;
       }
+      if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT" && status !== "CLOSED") return;
+      if (watchRetryTimer) return;
+      console.warn("[SupportBot] Message watch", status, "- reconnecting");
+      const delay = watchRetryDelay;
+      watchRetryDelay = Math.min(delay * 2, WATCH_RETRY_MAX_MS);
+      watchRetryTimer = setTimeout(() => {
+        watchRetryTimer = null;
+        openInboundWatch();
+        void supabaseAdmin.removeChannel(channel);
+      }, delay);
     });
+}
+
+function watchInboundMessages(): void {
+  if (inboundWatchStarted) return;
+  inboundWatchStarted = true;
+  openInboundWatch();
 }
 
 async function tick(): Promise<void> {
@@ -549,6 +673,10 @@ async function tick(): Promise<void> {
 
 export function startSupportBot(): void {
   if (timer) return;
+  if (process.env.SUPPORT_BOT_ENABLED?.trim().toLowerCase() === "false") {
+    console.log("[SupportBot] Disabled on this server (SUPPORT_BOT_ENABLED=false)");
+    return;
+  }
   if (!supportBotConfigured()) {
     console.warn("[SupportBot] Not started — OPENAI_API_KEY is missing");
     return;

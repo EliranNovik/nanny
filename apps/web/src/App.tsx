@@ -99,6 +99,7 @@ import AdminCompletedJobsPage from "@/pages/admin/AdminCompletedJobsPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminStatisticsPage from "@/pages/admin/AdminStatisticsPage";
 import AdminPostsPage from "@/pages/admin/AdminPostsPage";
+import AdminAiBotPage from "@/pages/admin/AdminAiBotPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
@@ -815,6 +816,14 @@ function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <AdminPostsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/ai-bot"
+          element={
+            <ProtectedAdminRoute>
+              <AdminAiBotPage />
             </ProtectedAdminRoute>
           }
         />
