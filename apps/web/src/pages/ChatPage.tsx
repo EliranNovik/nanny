@@ -88,6 +88,7 @@ import {
 import { getTelegramLink, getWhatsAppLink } from "@/lib/socialContactLinks";
 import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { warmChatImages } from "@/lib/chatMediaCache";
 import { ChatVoiceMessage } from "@/components/chat/ChatVoiceMessage";
 import { ChatDocumentPreview } from "@/components/chat/ChatDocumentPreview";
 import { ChatSharedContactCard } from "@/components/chat/ChatSharedContactCard";
@@ -96,6 +97,13 @@ import {
   ChatBubbleMeta,
   getChatReadReceiptStatus,
 } from "@/components/chat/ChatBubbleMeta";
+import {
+  AiSentAvatar,
+  isAiSentBody,
+  messageBodyForDisplay,
+} from "@/components/chat/AiSentAvatar";
+import { ChatTypingIndicator } from "@/components/chat/ChatTypingIndicator";
+import { useChatTyping } from "@/hooks/useChatTyping";
 import {
   chatAreaBgClass,
   chatChromeBarClass,
@@ -307,6 +315,47 @@ function mergeThreadMessages(
   });
 }
 
+/** Keeps optimistic rows that the server has not echoed back yet. */
+function withPendingSends(prev: Message[], next: Message[]): Message[] {
+  const pending = prev.filter((m) => {
+    if (!m.id.startsWith("temp-")) return false;
+    const sentAt = Date.parse(m.created_at) - 60_000;
+    return !next.some(
+      (n) =>
+        n.sender_id === m.sender_id &&
+        (n.body ?? "") === (m.body ?? "") &&
+        Date.parse(n.created_at) >= sentAt,
+    );
+  });
+  return pending.length > 0 ? [...next, ...pending] : next;
+}
+
+/** Adds a live row once, replacing the matching optimistic bubble if it is ours. */
+function upsertLiveMessage(prev: Message[], incoming: Message): Message[] {
+  if (prev.some((m) => m.id === incoming.id)) {
+    return prev.filter(
+      (m) =>
+        !(
+          m.id.startsWith("temp-") &&
+          m.sender_id === incoming.sender_id &&
+          (m.body ?? "") === (incoming.body ?? "")
+        ),
+    );
+  }
+  const tempIndex = prev.findIndex(
+    (m) =>
+      m.id.startsWith("temp-") &&
+      m.sender_id === incoming.sender_id &&
+      (m.body ?? "") === (incoming.body ?? ""),
+  );
+  if (tempIndex >= 0) {
+    const next = prev.slice();
+    next[tempIndex] = incoming;
+    return next;
+  }
+  return [...prev, incoming];
+}
+
 export default function ChatPage({
   conversationId: propConversationId,
   hideBackButton = false,
@@ -319,6 +368,11 @@ export default function ChatPage({
   }>();
   const conversationId = propConversationId || paramConversationId;
   const { user, profile: currentUserProfile } = useAuth();
+  const { peerTyping, selfTyping, setTyping, clearPeerTyping } = useChatTyping({
+    conversationId,
+    userId: user?.id,
+    enabled: chatPaneVisible,
+  });
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const matchBannerActive = searchParams.get("mma") === "1";
@@ -382,6 +436,22 @@ export default function ChatPage({
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+
+  useEffect(() => {
+    const urls = messages
+      .filter(
+        (message) =>
+          message.attachment_url &&
+          (message.attachment_type === "image" ||
+            message.attachment_type?.startsWith("image/")),
+      )
+      .map((message) => message.attachment_url as string);
+    warmChatImages(urls);
+  }, [messages]);
+
+  useEffect(() => {
+    setTyping(newMessage.trim().length > 0);
+  }, [newMessage, setTyping]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [actionMessage, setActionMessage] = useState<Message | null>(null);
   const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
@@ -489,23 +559,33 @@ export default function ChatPage({
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
+  const refetchThread = threadQuery.refetch;
+  const catchUpThread = useCallback(() => {
+    if (!conversationId || !user?.id) return;
+    void refetchThread();
+  }, [conversationId, refetchThread, user?.id]);
+
+  const paneWasVisibleRef = useRef(chatPaneVisible);
+  useEffect(() => {
+    if (chatPaneVisible && !paneWasVisibleRef.current) catchUpThread();
+    paneWasVisibleRef.current = chatPaneVisible;
+  }, [catchUpThread, chatPaneVisible]);
+
   useMessagesRealtime({
     conversationIds: realtimeConvoIds,
+    onResubscribed: catchUpThread,
     onMessageChange: async (_payload) => {
       const payload = _payload as any;
-      if (payload.event === "INSERT") {
+      const eventType = payload.eventType ?? payload.event;
+      if (eventType === "INSERT") {
         const newMsg = payload.new as Message;
-        patchChatThreadMessages(queryClient, threadKey, (prev) => {
-          if (prev.some((msg) => msg.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
-        });
-        setMessages((prev) => {
-          const exists = prev.some((msg) => msg.id === newMsg.id);
-          if (exists) return prev;
-          return [...prev, newMsg];
-        });
+        patchChatThreadMessages(queryClient, threadKey, (prev) =>
+          upsertLiveMessage(prev as Message[], newMsg),
+        );
+        setMessages((prev) => upsertLiveMessage(prev, newMsg));
 
         if (newMsg.sender_id !== user?.id) {
+          clearPeerTyping();
           markMessagesAsRead([newMsg.id]);
         }
 
@@ -577,7 +657,7 @@ export default function ChatPage({
             }
           }
         }
-      } else if (payload.event === "UPDATE") {
+      } else if (eventType === "UPDATE") {
         const updatedMsg = payload.new as Message;
         patchChatThreadMessages(queryClient, threadKey, (prev) =>
           prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg)),
@@ -657,7 +737,11 @@ export default function ChatPage({
         setPaymentHourlyRate(paymentData.hourly_rate);
         setPaymentTotal(paymentData.total_amount);
 
-        if (payload.event === "UPDATE" && paymentData.status === "paid" && j.stage !== "Completed") {
+        if (
+          (payload.eventType ?? payload.event) === "UPDATE" &&
+          paymentData.status === "paid" &&
+          j.stage !== "Completed"
+        ) {
           const { error: jobError } = await supabase
             .from("job_requests")
             .update({ stage: "Completed" })
@@ -837,10 +921,9 @@ export default function ChatPage({
       const preserveOlder =
         hasLoadedOlderRef.current ||
         (prev.length > payload.messages.length && prev.length > 0);
-      const merged = mergeThreadMessages(
+      const merged = withPendingSends(
         prev,
-        payload.messages as Message[],
-        preserveOlder,
+        mergeThreadMessages(prev, payload.messages as Message[], preserveOlder),
       );
       if (
         preserveOlder &&
@@ -1089,6 +1172,12 @@ export default function ChatPage({
     }
     return true;
   }, []);
+
+  useEffect(() => {
+    if (peerTyping || (selfTyping && currentUserProfile?.is_admin)) {
+      scrollToBottom(true);
+    }
+  }, [currentUserProfile?.is_admin, peerTyping, scrollToBottom, selfTyping]);
 
   const runBottomAnchorPass = useCallback(
     (smooth = false, opts?: { force?: boolean }) => {
@@ -1709,12 +1798,12 @@ export default function ChatPage({
       setSelectedFile(selectedFile);
       console.error("Error sending message:", error);
     } else if (data) {
-      patchChatThreadMessages(queryClient, threadKey, (prev) =>
-        prev.map((msg) => (msg.id === tempId ? (data as Message) : msg)),
-      );
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempId ? data : msg)),
-      );
+      const settle = <T extends { id: string }>(prev: T[]): T[] =>
+        prev.some((msg) => msg.id === data.id)
+          ? prev.filter((msg) => msg.id !== tempId)
+          : prev.map((msg) => (msg.id === tempId ? (data as T) : msg));
+      patchChatThreadMessages(queryClient, threadKey, settle);
+      setMessages(settle);
       const updatedThread = queryClient.getQueryData(threadKey);
       if (user?.id && conversationId && updatedThread) {
         writeThreadCache(user.id, conversationId, updatedThread);
@@ -1911,16 +2000,17 @@ export default function ChatPage({
     isOwn: boolean,
     _omitHrefs?: Set<string>,
   ) {
+    const visible = messageBodyForDisplay(text);
     const textClassName = cn(
       chatBubbleBodyTextCn,
       isOwn ? "text-white" : chatReceivedMessageTextCn,
     );
     return (
       <CollapsibleChatMessage
-        text={text}
+        text={visible}
         textClassName={textClassName}
         content={linkifyMessageBody(
-          text,
+          visible,
           isOwn ? chatSentBubbleLinkCn : chatBubbleLinkCn,
         )}
         meta={bubbleMeta(msg, isOwn)}
@@ -2940,7 +3030,7 @@ export default function ChatPage({
              * header sits above the scroll area.
              */
             hideBackButton
-              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.25rem)] md:pt-[4.5rem]"
+              ? "pt-[calc(max(0.375rem,env(safe-area-inset-top,0px))+2.75rem)] md:pt-[3.25rem]"
               : "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-4",
             "px-5 md:p-4",
           )}
@@ -3082,6 +3172,11 @@ export default function ChatPage({
                           isOwn ? "flex-row-reverse" : "flex-row",
                         )}
                       >
+                        {isOwn &&
+                        currentUserProfile?.is_admin === true &&
+                        isAiSentBody(msg.body) ? (
+                          <AiSentAvatar />
+                        ) : null}
                         {!isOwn &&
                           (showReceivedAvatar ? (
                             <Avatar
@@ -3167,6 +3262,11 @@ export default function ChatPage({
                           isOwn ? "flex-row-reverse" : "flex-row",
                         )}
                       >
+                        {isOwn &&
+                        currentUserProfile?.is_admin === true &&
+                        isAiSentBody(msg.body) ? (
+                          <AiSentAvatar />
+                        ) : null}
                         {!isOwn &&
                           (showReceivedAvatar ? (
                             <Avatar
@@ -3196,118 +3296,167 @@ export default function ChatPage({
 
                         <div className={chatMediaMessageColumnCn(isOwn)}>
                           {messageAnnotations(msg, isOwn)}
-                          <div
-                            className={cn(
-                              "flex w-full min-w-0 max-w-full",
-                              isOwn ? "justify-end" : "justify-start",
-                            )}
-                          >
-                            {msg.attachment_type === "image" ||
-                            msg.attachment_type?.startsWith("image/") ? (
-                              <ChatMessageMedia
-                                src={msg.attachment_url}
-                                alt={msg.attachment_name || "Attachment"}
-                                type="image"
-                                isOwn={isOwn}
-                                footer={bubbleMeta(msg, isOwn, "media")}
-                                onImageClick={() => {
-                                  setSelectedImage(msg);
-                                  setIsImageModalOpen(true);
-                                }}
-                              />
-                            ) : msg.attachment_type === "audio" ||
-                              msg.attachment_type?.startsWith("audio/") ? (
-                              <ChatVoiceMessage
-                                src={msg.attachment_url}
-                                isOwn={isOwn}
-                                footer={bubbleMeta(msg, isOwn, "media")}
-                              />
-                            ) : (
-                              <ChatMessageMedia
-                                src={msg.attachment_url}
-                                type="video"
-                                isOwn={isOwn}
-                                footer={bubbleMeta(msg, isOwn, "media")}
-                              />
-                            )}
-                          </div>
-
-                          {(linkPreviewUrls.length > 0 || msg.body) && (
-                          <div
-                            className={cn(
-                              "flex min-w-0 w-full max-w-full pt-1",
-                              isOwn ? "justify-end" : "justify-start",
-                            )}
-                          >
-                            {linkPreviewUrls.length > 0 ? (
-                              <div
-                                className={cn(
-                                  "flex w-full min-w-0 max-w-full flex-col gap-2",
-                                  isOwn ? "items-end" : "items-start",
-                                )}
-                              >
-                                {msg.body && (
-                                    <div
-                                      className={cn(
-                                        "relative min-w-0 w-fit transition-all duration-300",
-                                        isOwn
-                                          ? chatSentBubbleCn
-                                          : chatReceivedBubbleCn,
-                                      )}
-                                    >
-                                      <TranslatableChatMessage
-                                        messageId={msg.id}
-                                        body={msg.body}
-                                        enabled={!isOwn}
-                                        variant={isOwn ? "onDark" : "default"}
-                                        className="mt-1"
-                                        renderBody={(text) =>
-                                          renderBubbleBodyText(
-                                            text,
-                                            msg,
-                                            isOwn,
-                                            previewHrefOmitSet(linkPreviewUrls),
-                                          )
-                                        }
-                                      />
-                                    </div>
-                                  )}
-                                <div className="w-full min-w-0 max-w-full">
-                                  <ChatLinkPreviewCards
-                                    urls={linkPreviewUrls}
-                                    variant={isOwn ? "sent" : "received"}
-                                    embedded={false}
-                                  />
-                                </div>
-                              </div>
-                            ) : msg.body ? (
-                              <div
-                                className={cn(
-                                  "relative min-w-0 w-fit transition-all duration-300",
-                                  isOwn
-                                    ? chatSentBubbleCn
-                                    : chatReceivedBubbleCn,
-                                )}
-                              >
-                                <TranslatableChatMessage
-                                  messageId={msg.id}
-                                  body={msg.body}
-                                  enabled={!isOwn}
-                                  variant={isOwn ? "onDark" : "default"}
-                                  className="mt-1"
-                                  renderBody={(text) =>
-                                    renderBubbleBodyText(
-                                      text,
-                                      msg,
-                                      isOwn,
-                                      previewHrefOmitSet(linkPreviewUrls),
-                                    )
+                          {(() => {
+                            const captionJoined =
+                              Boolean(msg.body?.trim()) &&
+                              linkPreviewUrls.length === 0 &&
+                              msg.attachment_type !== "audio" &&
+                              !msg.attachment_type?.startsWith("audio/");
+                            const media = (
+                              msg.attachment_type === "image" ||
+                              msg.attachment_type?.startsWith("image/") ? (
+                                <ChatMessageMedia
+                                  src={msg.attachment_url}
+                                  alt={msg.attachment_name || "Attachment"}
+                                  type="image"
+                                  isOwn={isOwn}
+                                  flushBottom={captionJoined}
+                                  footer={
+                                    captionJoined
+                                      ? undefined
+                                      : bubbleMeta(msg, isOwn, "media")
+                                  }
+                                  onImageClick={() => {
+                                    setSelectedImage(msg);
+                                    setIsImageModalOpen(true);
+                                  }}
+                                />
+                              ) : msg.attachment_type === "audio" ||
+                                msg.attachment_type?.startsWith("audio/") ? (
+                                <ChatVoiceMessage
+                                  src={msg.attachment_url}
+                                  isOwn={isOwn}
+                                  footer={bubbleMeta(msg, isOwn, "media")}
+                                />
+                              ) : (
+                                <ChatMessageMedia
+                                  src={msg.attachment_url}
+                                  type="video"
+                                  isOwn={isOwn}
+                                  flushBottom={captionJoined}
+                                  footer={
+                                    captionJoined
+                                      ? undefined
+                                      : bubbleMeta(msg, isOwn, "media")
                                   }
                                 />
+                              )
+                            );
+                            const caption = (linkPreviewUrls.length > 0 || msg.body) && (
+                              <div
+                                className={cn(
+                                  "flex min-w-0 w-full max-w-full",
+                                  !captionJoined && "pt-1",
+                                  isOwn ? "justify-end" : "justify-start",
+                                )}
+                              >
+                                {linkPreviewUrls.length > 0 ? (
+                                  <div
+                                    className={cn(
+                                      "flex w-full min-w-0 max-w-full flex-col gap-2",
+                                      isOwn ? "items-end" : "items-start",
+                                    )}
+                                  >
+                                    {msg.body && (
+                                      <div
+                                        className={cn(
+                                          "relative min-w-0 w-fit transition-all duration-300",
+                                          isOwn
+                                            ? chatSentBubbleCn
+                                            : chatReceivedBubbleCn,
+                                        )}
+                                      >
+                                        <TranslatableChatMessage
+                                          messageId={msg.id}
+                                          body={msg.body}
+                                          enabled={!isOwn}
+                                          variant={isOwn ? "onDark" : "default"}
+                                          className="mt-1"
+                                          renderBody={(text) =>
+                                            renderBubbleBodyText(
+                                              text,
+                                              msg,
+                                              isOwn,
+                                              previewHrefOmitSet(linkPreviewUrls),
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="w-full min-w-0 max-w-full">
+                                      <ChatLinkPreviewCards
+                                        urls={linkPreviewUrls}
+                                        variant={isOwn ? "sent" : "received"}
+                                        embedded={false}
+                                      />
+                                    </div>
+                                  </div>
+                                ) : msg.body ? (
+                                  <div
+                                    className={cn(
+                                      "relative min-w-0 transition-all duration-300",
+                                      captionJoined
+                                        ? "w-full rounded-t-none"
+                                        : "w-fit",
+                                      isOwn
+                                        ? chatSentBubbleCn
+                                        : chatReceivedBubbleCn,
+                                    )}
+                                    style={
+                                      captionJoined
+                                        ? {
+                                            borderTopLeftRadius: 0,
+                                            borderTopRightRadius: 0,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    <TranslatableChatMessage
+                                      messageId={msg.id}
+                                      body={msg.body}
+                                      enabled={!isOwn}
+                                      variant={isOwn ? "onDark" : "default"}
+                                      className="mt-1"
+                                      renderBody={(text) =>
+                                        renderBubbleBodyText(
+                                          text,
+                                          msg,
+                                          isOwn,
+                                          previewHrefOmitSet(linkPreviewUrls),
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ) : null}
                               </div>
-                            ) : null}
-                          </div>
-                          )}
+                            );
+                            if (!captionJoined) {
+                              return (
+                                <>
+                                  <div
+                                    className={cn(
+                                      "flex w-full min-w-0 max-w-full",
+                                      isOwn ? "justify-end" : "justify-start",
+                                    )}
+                                  >
+                                    {media}
+                                  </div>
+                                  {caption}
+                                </>
+                              );
+                            }
+                            return (
+                              <div
+                                className={cn(
+                                  "flex w-fit max-w-full flex-col",
+                                  isOwn ? "self-end" : "self-start",
+                                )}
+                              >
+                                {media}
+                                {caption}
+                              </div>
+                            );
+                          })()}
                           {messageReactionChips(msg)}
                         </div>
                         {messageActionsButton(msg)}
@@ -3342,6 +3491,11 @@ export default function ChatPage({
                         isOwn ? "flex-row-reverse" : "flex-row",
                       )}
                     >
+                      {isOwn &&
+                      currentUserProfile?.is_admin === true &&
+                      isAiSentBody(msg.body) ? (
+                        <AiSentAvatar />
+                      ) : null}
                       {!isOwn &&
                         (showReceivedAvatar ? (
                           <Avatar
@@ -3562,6 +3716,20 @@ export default function ChatPage({
                   </p>
                 </div>
               )}
+              <ChatTypingIndicator
+                own={false}
+                label="Typing"
+                visible={peerTyping}
+                className="flex w-full justify-start"
+              />
+              <ChatTypingIndicator
+                own
+                label="AI is typing"
+                visible={selfTyping && currentUserProfile?.is_admin === true}
+                className="flex w-full items-end justify-end gap-2"
+              >
+                <AiSentAvatar />
+              </ChatTypingIndicator>
               <div
                 ref={bottomAnchorRef}
                 aria-hidden

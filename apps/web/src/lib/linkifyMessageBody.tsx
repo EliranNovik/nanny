@@ -61,8 +61,89 @@ export function resolveChatHref(raw: string): string | null {
   }
 }
 
+export type ChatRichPart =
+  | { type: "text"; value: string }
+  | { type: "bold"; value: string }
+  | { type: "link"; value: string; href: string };
+
+const URL_AT_START = /^(?:https?:\/\/|www\.)[^\s<>"'{}|\\^`[\]]+/i;
+const EMAIL_AT_START = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const MD_LINK_AT_START =
+  /^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|mailto:[^)\s]+)\)/i;
+const BOLD_AT_START = /^\*\*([^*\n]+)\*\*/;
+
+/** Inbox preview: drop the chat markup and keep the words. */
+export function chatMessagePlainText(body: string): string {
+  return body
+    .replace(/\[([^\]\n]+)\]\((?:https?:\/\/|mailto:)[^)\s]+\)/gi, "$1")
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1");
+}
+
+export function splitChatRichText(text: string): ChatRichPart[] {
+  const parts: ChatRichPart[] = [];
+  let index = 0;
+  while (index < text.length) {
+    const slice = text.slice(index);
+    const markdownLink = MD_LINK_AT_START.exec(slice);
+    if (markdownLink) {
+      const rawHref = markdownLink[2];
+      const href = rawHref.toLowerCase().startsWith("mailto:")
+        ? rawHref
+        : resolveChatHref(rawHref);
+      if (href) {
+        parts.push({ type: "link", value: markdownLink[1], href });
+        index += markdownLink[0].length;
+        continue;
+      }
+    }
+    const bold = BOLD_AT_START.exec(slice);
+    if (bold) {
+      parts.push({ type: "bold", value: bold[1] });
+      index += bold[0].length;
+      continue;
+    }
+    const url = URL_AT_START.exec(slice);
+    if (url) {
+      const href = resolveChatHref(url[0]);
+      if (href) {
+        parts.push({ type: "link", value: url[0], href });
+        index += url[0].length;
+        continue;
+      }
+    }
+    const email = EMAIL_AT_START.exec(slice);
+    if (email) {
+      const raw = email[0].replace(/[),.;!?]+$/g, "");
+      if (raw) {
+        parts.push({ type: "link", value: raw, href: `mailto:${raw}` });
+        index += raw.length;
+        continue;
+      }
+    }
+
+    const rest = slice.slice(1);
+    let jump = rest.length;
+    for (const marker of [
+      rest.indexOf("["),
+      rest.indexOf("**"),
+      rest.search(/https?:\/\//i),
+      rest.search(/\bwww\./i),
+      rest.search(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i),
+    ]) {
+      if (marker >= 0 && marker < jump) jump = marker;
+    }
+    const value = slice.slice(0, jump + 1);
+    const previous = parts[parts.length - 1];
+    if (previous?.type === "text") previous.value += value;
+    else parts.push({ type: "text", value });
+    index += value.length;
+  }
+  return parts.length > 0 ? parts : [{ type: "text", value: text }];
+}
+
 /**
- * Renders `body` as text with URLs turned into anchors (`whitespace-pre-wrap` from parent).
+ * Renders `body` as text with bold, markdown links, and bare URLs.
+ * Line breaks come from the parent `whitespace-pre-wrap`.
  * When `omitAnchorsForCanonicalHrefs` is set, URLs that match a preview card href are omitted
  * inline so they are not duplicated under the bubble.
  */
@@ -72,44 +153,39 @@ export function linkifyMessageBody(
   omitAnchorsForCanonicalHrefs?: ReadonlySet<string>,
 ): React.ReactNode {
   if (!body) return null;
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  const re = new RegExp(CHAT_URL_DETECT_RE.source, CHAT_URL_DETECT_RE.flags);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    if (m.index > last) {
-      nodes.push(body.slice(last, m.index));
+  const parts = splitChatRichText(body);
+  const nodes = parts.map((part, index) => {
+    if (part.type === "bold") {
+      return (
+        <strong key={`b-${index}`} className="font-extrabold">
+          {part.value}
+        </strong>
+      );
     }
-    const raw = m[0];
-    const safe = resolveChatHref(raw);
-    if (safe) {
-      if (
+    if (part.type === "link") {
+      const hidden =
         omitAnchorsForCanonicalHrefs?.size &&
-        omitAnchorsForCanonicalHrefs.has(canonicalChatHref(safe))
-      ) {
-        last = m.index + raw.length;
-        continue;
+        !part.href.startsWith("mailto:") &&
+        omitAnchorsForCanonicalHrefs.has(canonicalChatHref(part.href));
+      if (hidden) {
+        return part.value.includes("://") || part.value.startsWith("www.")
+          ? null
+          : part.value;
       }
-      nodes.push(
+      return (
         <a
-          key={`u-${m.index}-${raw.slice(0, 32)}`}
-          href={safe}
+          key={`u-${index}`}
+          href={part.href}
           target="_blank"
           rel="noopener noreferrer"
           className={linkClassName}
         >
-          {raw}
-        </a>,
+          {part.value}
+        </a>
       );
-    } else {
-      nodes.push(raw);
     }
-    last = m.index + raw.length;
-  }
-  if (last < body.length) {
-    nodes.push(body.slice(last));
-  }
-  if (nodes.length === 0) return body;
+    return <React.Fragment key={`t-${index}`}>{part.value}</React.Fragment>;
+  });
   return <>{nodes}</>;
 }
 

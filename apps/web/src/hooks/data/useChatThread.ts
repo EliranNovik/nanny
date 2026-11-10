@@ -48,7 +48,9 @@ export function useChatThread(
     enabled: Boolean(conversationId && userId),
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,
-    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
     placeholderData: () => {
       if (!userId || !conversationId) return undefined;
       return readThreadCache<ChatThreadPayload>(userId, conversationId);

@@ -243,13 +243,13 @@ export default function AdminRequestedJobsPage() {
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-2xl border-0 bg-white shadow-xs dark:bg-zinc-900">
+          <Card className="rounded-2xl border-0 bg-white shadow-xs sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] font-bold uppercase tracking-wider">Requested Jobs</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-3 text-3xl font-extrabold text-amber-500">{filteredJobs.length}</CardContent>
           </Card>
-          <Card className="rounded-2xl border-0 bg-white shadow-xs dark:bg-zinc-900">
+          <Card className="rounded-2xl border-0 bg-white shadow-xs sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] font-bold uppercase tracking-wider">Average Budget</CardDescription>
             </CardHeader>
@@ -271,7 +271,7 @@ export default function AdminRequestedJobsPage() {
                     : job.selected_freelancer_id === person.id,
                 ),
               })}
-              className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md dark:bg-zinc-900"
+              className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900"
             >
               <CardHeader className="px-4 pb-1 pt-3">
                 <CardDescription className="text-[10px] font-bold uppercase tracking-wider">{label}</CardDescription>

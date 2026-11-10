@@ -258,7 +258,7 @@ export default function AdminCompletedJobsPage() {
 
         {/* Overview Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="rounded-2xl border-0 bg-white shadow-xs dark:bg-zinc-900">
+          <Card className="rounded-2xl border-0 bg-white shadow-xs sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Completed Contracts</CardDescription>
             </CardHeader>
@@ -266,7 +266,7 @@ export default function AdminCompletedJobsPage() {
               <span className="text-3xl font-extrabold text-blue-600 dark:text-blue-400">{totalCompleted}</span>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl border-0 bg-white shadow-xs dark:bg-zinc-900">
+          <Card className="rounded-2xl border-0 bg-white shadow-xs sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Avg Hourly Rate</CardDescription>
             </CardHeader>
@@ -281,7 +281,7 @@ export default function AdminCompletedJobsPage() {
               title: `${topClient.name} · Completed as client`,
               jobs: filteredJobs.filter((job) => job.client_id === topClient.id),
             })}
-            className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md dark:bg-zinc-900"
+            className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900"
           >
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Most Jobs as Client</CardDescription>
@@ -309,7 +309,7 @@ export default function AdminCompletedJobsPage() {
               title: `${topFreelancer.name} · Completed as freelancer`,
               jobs: filteredJobs.filter((job) => job.selected_freelancer_id === topFreelancer.id),
             })}
-            className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md dark:bg-zinc-900"
+            className="cursor-pointer rounded-2xl border-0 bg-white shadow-xs transition-shadow hover:shadow-md sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900"
           >
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Most Jobs as Freelancer</CardDescription>

@@ -21,6 +21,41 @@ function nonEmptyString(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+const SUPPORT_TEAM_PUSH_NAME = "Support Team";
+
+/** Bot replies start with invisible marks. Keep those out of the notification text. */
+function visiblePushBody(body: string): string {
+  const visible = body.replace(/^[\u200b\u2060]+/, "").trim();
+  return visible || body;
+}
+
+/**
+ * Support chats are stored as the admin account. The lock-screen title should
+ * match the chat: Support Team, not that person's name.
+ */
+async function supportTeamPush(
+  row: QueueRow,
+): Promise<{ title: string; body: string }> {
+  const type = row.notification_type || nonEmptyString(row.data?.type);
+  const senderId =
+    nonEmptyString(row.data?.sender_id) || nonEmptyString(row.data?.actor_id);
+  if (type !== "message" || !senderId) {
+    return { title: row.title, body: row.body };
+  }
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", senderId)
+    .maybeSingle();
+  if (error || data?.is_admin !== true) {
+    return { title: row.title, body: row.body };
+  }
+  return {
+    title: SUPPORT_TEAM_PUSH_NAME,
+    body: visiblePushBody(row.body),
+  };
+}
+
 function isHttpUrl(v: string | null | undefined): v is string {
   return !!v && /^https?:\/\//i.test(v);
 }
@@ -270,7 +305,8 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       enriched.type = row.notification_type;
     }
     const data = stringifyData(enriched);
-    const payload = { title: row.title, body: row.body, data };
+    const named = await supportTeamPush(row);
+    const payload = { title: named.title, body: named.body, data };
     pushLog("Queue row audio fields", {
       queue_id: row.id,
       notification_type: row.notification_type ?? null,

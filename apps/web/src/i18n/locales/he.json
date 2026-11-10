@@ -281,6 +281,8 @@
     "search": "חיפוש",
     "clearSearch": "ניקוי חיפוש",
     "unread": "לא נקראו",
+    "waiting": "ממתינים",
+    "waitingCount": "ממתינים לצוות, {{count}}",
     "favorites": "מועדפים",
     "done": "סיום",
     "remove": "הסרה",

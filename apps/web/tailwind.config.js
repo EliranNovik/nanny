@@ -107,6 +107,26 @@ export default {
           "0%, 100%": { transform: "scale(1)" },
           "50%": { transform: "scale(0.82)" },
         },
+        /** Chat typing bubble: pops in from its tail corner. */
+        "typing-bubble-in": {
+          "0%": { opacity: "0", transform: "translateY(6px) scale(0.55)" },
+          "60%": { opacity: "1", transform: "translateY(-1px) scale(1.04)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "typing-bubble-out": {
+          "0%": { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(0.6)" },
+        },
+        /** Chat typing dots: staggered wave. */
+        "typing-dot-wave": {
+          "0%, 60%, 100%": { transform: "translateY(0)", opacity: "0.45" },
+          "30%": { transform: "translateY(-4px)", opacity: "1" },
+        },
+        /** Chat typing bubble: slow breathe while waiting. */
+        "typing-bubble-breathe": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.035)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -122,6 +142,12 @@ export default {
           "dock-plus-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
         "strip-live-dot-breathe":
           "strip-live-dot-breathe 1.75s ease-in-out infinite",
+        "typing-bubble-in":
+          "typing-bubble-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "typing-bubble-out": "typing-bubble-out 0.18s ease-in both",
+        "typing-dot-wave": "typing-dot-wave 1.2s ease-in-out infinite",
+        "typing-bubble-breathe":
+          "typing-bubble-breathe 1.8s ease-in-out infinite",
       },
     },
   },

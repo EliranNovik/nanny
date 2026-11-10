@@ -4,6 +4,8 @@ import { useRealtimeSubscription } from './useRealtimeSubscription';
 interface UseMessagesRealtimeProps {
   conversationIds: string[];
   onMessageChange: (payload: any) => void;
+  /** Called after the live channel reconnects; refetch to pick up missed rows. */
+  onResubscribed?: () => void;
 }
 
 /**
@@ -15,6 +17,7 @@ interface UseMessagesRealtimeProps {
 export function useMessagesRealtime({
   conversationIds,
   onMessageChange,
+  onResubscribed,
 }: UseMessagesRealtimeProps) {
   const hasMultiple = conversationIds.length > 1;
   const filter = conversationIds.length === 1 
@@ -35,6 +38,7 @@ export function useMessagesRealtime({
       event: '*',
       filter,
       enabled: conversationIds.length > 0,
+      onResubscribed,
     },
     wrappedCallback
   );

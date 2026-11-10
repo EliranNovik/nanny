@@ -281,6 +281,8 @@
     "search": "Rechercher",
     "clearSearch": "Effacer la recherche",
     "unread": "Non lus",
+    "waiting": "En attente",
+    "waitingCount": "En attente de l’équipe, {{count}}",
     "favorites": "Favoris",
     "done": "Terminé",
     "remove": "Retirer",

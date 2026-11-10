@@ -281,6 +281,8 @@
     "search": "Search",
     "clearSearch": "Clear search",
     "unread": "Unread",
+    "waiting": "Waiting",
+    "waitingCount": "Waiting for the team, {{count}}",
     "favorites": "Favorites",
     "done": "Done",
     "remove": "Remove",

@@ -281,6 +281,8 @@
     "search": "Поиск",
     "clearSearch": "Очистить поиск",
     "unread": "Непрочитанные",
+    "waiting": "Ждут",
+    "waitingCount": "Ждут ответа команды, {{count}}",
     "favorites": "Избранное",
     "done": "Готово",
     "remove": "Удалить",

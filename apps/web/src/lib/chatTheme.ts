@@ -41,7 +41,7 @@ export const chatReceivedMessageTextCn =
 
 export const chatSentBubbleCn = cn(
   "chat-sent-bubble ml-auto max-w-full rounded-[20px] rounded-br-none px-3.5 py-2.5 text-left",
-  "bg-gradient-to-br from-[#FB923C] to-[#EA580C] text-white",
+  "bg-gradient-to-br from-[#EA580C] to-[#C2410C] text-white",
   "border-0 shadow-none dark:from-[#C2410C] dark:to-[#9A3412]",
 );
 

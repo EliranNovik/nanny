@@ -54,11 +54,10 @@ export function ChatSimpleHeader({
   return (
     <header
       className={cn(
-        "z-40 flex shrink-0 items-center gap-3 px-4 py-3 sm:px-5",
+        "z-40 flex shrink-0 items-center gap-2.5 px-3 py-1.5 sm:px-4",
         chatChromeBarClass,
         showBackButton &&
-          "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-3",
-        !showBackButton && "pt-3",
+          "pt-[max(0.375rem,env(safe-area-inset-top,0px))]",
         className,
       )}
     >
@@ -67,16 +66,16 @@ export function ChatSimpleHeader({
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="h-10 w-10 shrink-0 rounded-full text-foreground hover:bg-muted/60 dark:text-white dark:hover:bg-white/10"
+          className="h-8 w-8 shrink-0 rounded-full text-foreground hover:bg-muted/60 dark:text-white dark:hover:bg-white/10"
         >
           <HeaderBackChevron />
         </Button>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 items-center justify-start gap-3">
+      <div className="flex min-w-0 flex-1 items-center justify-start gap-2.5">
         <div className="relative inline-flex shrink-0 rounded-full">
           {isAdmin ? (
-            <Avatar className="h-14 w-14 bg-white shadow-sm ring-1 ring-slate-200">
+            <Avatar className="h-9 w-9 bg-white shadow-sm ring-1 ring-slate-200">
               <AvatarImage
                 src={photoUrl || undefined}
                 className="scale-[1.65] object-contain"
@@ -95,7 +94,7 @@ export function ChatSimpleHeader({
                   profile={profile ?? undefined}
                   className="inline-flex shrink-0 rounded-full"
                 >
-                  <Avatar className="h-[50px] w-[50px] shadow-lg shadow-violet-500/15">
+                  <Avatar className="h-8 w-8 shadow-lg shadow-violet-500/15">
                     <AvatarImage
                       src={photoUrl || undefined}
                       className="object-cover"
@@ -114,7 +113,7 @@ export function ChatSimpleHeader({
               profile={profile ?? undefined}
               className="inline-flex shrink-0 rounded-full"
             >
-              <Avatar className="h-[50px] w-[50px]">
+              <Avatar className="h-9 w-9">
                 <AvatarImage
                   src={photoUrl || undefined}
                   className="object-cover"
@@ -129,7 +128,7 @@ export function ChatSimpleHeader({
             <LiveAvatarDot />
           ) : !isAdmin ? (
             <span
-              className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-[2.5px] border-white bg-orange-500 shadow-sm dark:border-[#14161d]"
+              className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-orange-500 shadow-sm dark:border-[#14161d]"
               aria-label="Busy"
             />
           ) : null}
@@ -137,18 +136,18 @@ export function ChatSimpleHeader({
 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <h2 className="truncate text-[17px] font-bold leading-tight text-foreground dark:text-white">
+            <h2 className="truncate text-[15px] font-bold leading-tight text-foreground dark:text-white">
               {displayName}
             </h2>
             {isVerified ? (
               <BadgeCheck
-                className="h-5 w-5 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
                 aria-label={t("messagesPage.verified")}
               />
             ) : null}
           </div>
           {statusLine ? (
-            <p className="truncate text-[13px] text-muted-foreground dark:text-slate-400">
+            <p className="truncate text-[12px] leading-tight text-muted-foreground dark:text-slate-400">
               {statusLine}
             </p>
           ) : null}

@@ -11,10 +11,12 @@ interface UserSearchProps {
   variant?: "default" | "inline";
   autoFocus?: boolean;
   onResultSelect?: () => void;
+  inputClassName?: string;
 }
 
 export function UserSearch({
   className,
+  inputClassName,
   variant = "default",
   autoFocus = false,
   onResultSelect,
@@ -107,6 +109,7 @@ export function UserSearch({
             isInline
               ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
               : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 pr-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
+            inputClassName,
           )}
         />
         {query && (

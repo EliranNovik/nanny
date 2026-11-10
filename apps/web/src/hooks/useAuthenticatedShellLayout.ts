@@ -57,8 +57,9 @@ export function useAuthenticatedShellLayout({
       (isFeed && !showRail) ||
       (isProfile && !showRail));
 
-  /** Light-mode rail: white on home, public profile, and settings; grey elsewhere (e.g. feed/messages). */
-  const whiteRail = isHome || isPublicProfile || isProfileSettings;
+  /** Light-mode rail: white on home, explore, post detail, public profile, and settings; grey elsewhere (e.g. messages). */
+  const whiteRail =
+    isHome || isFeed || isIsolatedPostDetail || isPublicProfile || isProfileSettings;
 
   return {
     isTablet,

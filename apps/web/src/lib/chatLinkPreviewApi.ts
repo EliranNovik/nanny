@@ -90,7 +90,7 @@ async function fetchChatLinkPreviewUncached(
         title: "Tebnu – Your Helper for Home & Life",
         description:
           "Find trusted local helpers, discover community support, or offer your skills.",
-        image: `https://image.thum.io/get/width/1200/crop/675/noanimate/${parsed.origin}/`,
+        image: "https://www.tebnu.com/images/landing-hero-babysitting.jpg",
         imageToken: null,
         siteName: "tebnu.com",
       };

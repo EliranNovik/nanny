@@ -37,6 +37,7 @@ import {
   Check,
   BadgeCheck,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import {
   Dialog,
@@ -65,12 +66,17 @@ import {
 } from "@/components/messages/MessagesInboxFloatingHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 import { chatContactPreview } from "@/lib/chatSharePayloads";
+import { chatMessagePlainText } from "@/lib/linkifyMessageBody";
 import { maskAdminProfile } from "@/lib/adminProfiles";
+import {
+  fetchAdminHandoffWaiting,
+  type AdminHandoffWaiting,
+} from "@/lib/adminHandoffInbox";
 import { useTabletViewport } from "@/hooks/useIsTabletViewport";
 
 function trimPreviewNoise(body: string | null | undefined): string {
   if (!body) return "";
-  return body.trim().replace(/^✓+\s*/u, "").trimStart();
+  return chatMessagePlainText(body.trim().replace(/^✓+\s*/u, "").trimStart());
 }
 
 type Conversation = InboxConversation;
@@ -131,7 +137,12 @@ export default function MessagesPage() {
   const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [contactFilterUnread, setContactFilterUnread] = useState(false);
+  const [contactFilterWaiting, setContactFilterWaiting] = useState(false);
   const [contactFilterFavorites, setContactFilterFavorites] = useState(false);
+  const [handoffWaiting, setHandoffWaiting] = useState<AdminHandoffWaiting>({
+    userIds: new Set(),
+    conversationByUserId: new Map(),
+  });
   const [favoriteUserIds, setFavoriteUserIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -176,6 +187,20 @@ export default function MessagesPage() {
       cancelled = true;
     };
   }, [userSearchQuery, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || profile?.is_admin !== true) {
+      setHandoffWaiting({ userIds: new Set(), conversationByUserId: new Map() });
+      return;
+    }
+    let cancelled = false;
+    void fetchAdminHandoffWaiting(user.id).then((waiting) => {
+      if (!cancelled) setHandoffWaiting(waiting);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, profile?.is_admin, inboxQuery.dataUpdatedAt]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -276,6 +301,10 @@ export default function MessagesPage() {
     return chatInboxRows.filter((row) => {
       const convo = row.conversation;
       if (contactFilterUnread && !(convo.unread_count > 0)) return false;
+      if (contactFilterWaiting) {
+        const oid = convo.other_user_id;
+        if (!oid || !handoffWaiting.userIds.has(oid)) return false;
+      }
       if (contactFilterFavorites) {
         const oid = convo.other_user_id;
         if (!oid || !favoriteUserIds.has(oid)) return false;
@@ -289,12 +318,23 @@ export default function MessagesPage() {
     chatInboxRows,
     contactFilterFavorites,
     contactFilterUnread,
+    contactFilterWaiting,
     contactSearchQuery,
     favoriteUserIds,
+    handoffWaiting.userIds,
   ]);
+
+  const handoffWaitingCount = useMemo(() => {
+    if (profile?.is_admin !== true) return 0;
+    return chatInboxRows.filter((row) => {
+      const oid = row.conversation.other_user_id;
+      return Boolean(oid && handoffWaiting.userIds.has(oid));
+    }).length;
+  }, [chatInboxRows, handoffWaiting.userIds, profile?.is_admin]);
 
   const hasContactListFilters =
     contactFilterUnread ||
+    contactFilterWaiting ||
     contactFilterFavorites ||
     contactSearchQuery.trim().length > 0;
 
@@ -854,6 +894,23 @@ export default function MessagesPage() {
                           </span>
                         ) : null}
                       </button>
+                      {profile?.is_admin === true ? (
+                        <button
+                          type="button"
+                          aria-pressed={contactFilterWaiting}
+                          aria-label={t("messagesPage.waitingCount", {
+                            count: handoffWaitingCount,
+                          })}
+                          onClick={() => setContactFilterWaiting((v) => !v)}
+                          className={contactFilterChipClass(contactFilterWaiting)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          <span>{t("messagesPage.waiting")}</span>
+                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-primary dark:bg-primary/25">
+                            {handoffWaitingCount > 99 ? "99+" : handoffWaitingCount}
+                          </span>
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         aria-pressed={contactFilterFavorites}
@@ -901,6 +958,7 @@ export default function MessagesPage() {
                         onClick={() => {
                           setContactSearchQuery("");
                           setContactFilterUnread(false);
+                          setContactFilterWaiting(false);
                           setContactFilterFavorites(false);
                         }}
                       >
@@ -919,7 +977,13 @@ export default function MessagesPage() {
                       .join("")
                       .toUpperCase() || "?";
 
-                  const isActive = conversationId === convo.id;
+                  const waitingConversationId = convo.other_user_id
+                    ? handoffWaiting.conversationByUserId.get(convo.other_user_id)
+                    : undefined;
+                  const isActive =
+                    conversationId === convo.id ||
+                    (waitingConversationId != null &&
+                      conversationId === waitingConversationId);
                   return (
                     <div
                       key={row.key}
@@ -933,7 +997,9 @@ export default function MessagesPage() {
                       )}
                       onClick={() =>
                         handleConversationClick(
-                          convo.id,
+                          contactFilterWaiting && waitingConversationId
+                            ? waitingConversationId
+                            : convo.id,
                           convo.other_user_id,
                         )
                       }

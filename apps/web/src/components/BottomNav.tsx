@@ -1042,7 +1042,13 @@ export function BottomNav() {
               )}
               {!isAdminPage && DesktopCreateButton}
               <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
-                <UserSearch />
+                <UserSearch
+                  inputClassName={
+                    isAdminPage
+                      ? "bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
+                      : undefined
+                  }
+                />
               </div>
             </div>
           </div>

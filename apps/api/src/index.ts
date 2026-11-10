@@ -23,6 +23,8 @@ import { handleProcessPushQueue } from "./routes/pushCron";
 import { handleProcessTranslationQueue } from "./routes/translateProcessQueue";
 import { requireCronSecret } from "./middleware/cronSecret";
 import { startPushScheduler } from "./lib/push/startPushScheduler";
+import { supportBotConfigured, supportBotModel } from "./lib/supportBot";
+import { startSupportBot } from "./lib/supportBot/supportBotWorker";
 
 const app = express();
 
@@ -78,5 +80,11 @@ app.use("/api/link-preview", requireUser, linkPreviewRouter);
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {
   console.log(`🚀 API running on port ${port}`);
+  console.log(
+    supportBotConfigured()
+      ? `[SupportBot] OpenAI connected (${supportBotModel()})`
+      : "[SupportBot] OPENAI_API_KEY missing — set it in backend/.env",
+  );
   startPushScheduler();
+  startSupportBot();
 });
