@@ -117,13 +117,13 @@ function NearbyRequestRow({
           onOpen();
         }
       }}
-      className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] bg-white p-0 pe-3 text-left shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
+      className="group flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] bg-white p-0 pe-3 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0 shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
     >
-      <div className="h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-        <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
+      <div className="h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
+        <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]" loading="lazy" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-emerald-700 dark:text-emerald-400 sm:text-[13px]">
+      <div className="min-w-0 flex-1 md:px-4 md:pt-3.5">
+        <p className="truncate text-[15px] font-semibold text-emerald-700 dark:text-emerald-400 sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-emerald-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-emerald-500/15">
           {category}
         </p>
         <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
@@ -146,7 +146,7 @@ function NearbyRequestRow({
           onAccept();
         }}
         className={cn(
-          "inline-flex h-10 min-w-[88px] shrink-0 items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default",
+          "inline-flex h-10 min-w-[88px] shrink-0 items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default md:mx-4 md:mb-4 md:mt-3",
           accepted
             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
             : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
@@ -496,7 +496,7 @@ export function DiscoverHomePostedHelpRequests({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-x-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6">
             {visibleRows.map((row) => (
               <NearbyRequestRow
                 key={row.id}

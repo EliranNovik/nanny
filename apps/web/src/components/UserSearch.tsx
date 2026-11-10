@@ -12,6 +12,8 @@ interface UserSearchProps {
   autoFocus?: boolean;
   onResultSelect?: () => void;
   inputClassName?: string;
+  size?: "default" | "lg";
+  placeholder?: string;
 }
 
 export function UserSearch({
@@ -20,7 +22,10 @@ export function UserSearch({
   variant = "default",
   autoFocus = false,
   onResultSelect,
+  size = "default",
+  placeholder = "Search anything...",
 }: UserSearchProps) {
+  const isLarge = size === "lg";
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -80,14 +85,16 @@ export function UserSearch({
     <div
       ref={searchRef}
       className={cn(
-        "group relative w-full max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
+        "group relative w-full",
+        !isLarge && "max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
         className,
       )}
     >
       <div className="relative">
         <Search
           className={cn(
-            "absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 transition-colors",
+            "absolute top-1/2 -translate-y-1/2 transition-colors",
+            isLarge ? "left-5 h-6 w-6" : "left-3 h-[18px] w-[18px]",
             isInline
               ? "left-0 text-slate-400 group-focus-within:text-orange-500 dark:group-focus-within:text-orange-400"
               : "text-orange-500 dark:text-orange-400",
@@ -102,11 +109,13 @@ export function UserSearch({
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search anything..."
+          placeholder={placeholder}
           autoComplete="off"
           className={cn(
             "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
-            isInline
+            isLarge
+              ? "h-16 rounded-2xl border border-zinc-200 bg-white pl-14 pr-12 text-[17px] text-zinc-900 shadow-[0_6px_24px_rgba(15,23,42,0.07)] placeholder:text-zinc-400 focus:border-orange-300 focus:shadow-[0_8px_30px_rgba(249,115,22,0.14)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-orange-500/50"
+              : isInline
               ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
               : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 pr-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
             inputClassName,

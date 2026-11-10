@@ -17,6 +17,7 @@ import { ogJobRequestRouter } from "./routes/ogJobRequest";
 import { ogPublicProfileRouter } from "./routes/ogPublicProfile";
 import { postsRouter } from "./routes/posts";
 import { contactRouter } from "./routes/contact";
+import { aiRouter } from "./routes/ai";
 import { translateRouter } from "./routes/translate";
 import { pushRouter } from "./routes/push";
 import { handleProcessPushQueue } from "./routes/pushCron";
@@ -74,6 +75,7 @@ app.use("/api/posts", requireUser, postsRouter);
 app.use("/api/freelancer", requireUser, freelancerRouter);
 app.use("/api/dev", requireUser, devRouter);
 app.use("/api/admin", requireUser, adminRouter);
+app.use("/api/ai", requireUser, aiRouter);
 app.get("/api/link-preview/image", handleLinkPreviewImageGet);
 app.use("/api/link-preview", requireUser, linkPreviewRouter);
 

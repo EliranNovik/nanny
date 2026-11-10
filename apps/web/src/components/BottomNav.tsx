@@ -52,7 +52,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { UserSearch } from "./UserSearch";
+import { HeaderSearchToggle } from "@/components/header/HeaderSearchToggle";
+import { HeaderCategoryMenus } from "@/components/header/HeaderCategoryMenus";
 import { MobileSmartSearchOverlay } from "./MobileSmartSearchOverlay";
 import {
   FREELANCER_JOBS_TABS,
@@ -215,6 +216,7 @@ export function BottomNav() {
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [adminAccountMenuOpen, setAdminAccountMenuOpen] = useState(false);
   const adminAccountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
@@ -975,6 +977,11 @@ export function BottomNav() {
     </div>
   );
 
+  const languageInBrand =
+    showDesktopBrandChrome &&
+    !isAdminPage &&
+    !(desktopBrandCollapsed && isMessagesDesktopRoute);
+
   /** Desktop only: full-width top bar — CSS `md` decides visibility (not isTablet). */
   const DesktopHeader = hideDesktopAppHeader ? null : (
     <header
@@ -990,12 +997,13 @@ export function BottomNav() {
         {showDesktopBrandChrome && !isAdminPage ? (
           <div
             className={cn(
-              "flex shrink-0 items-center justify-start",
+              "flex shrink-0 items-center justify-start gap-4",
               desktopBrandCollapsed
                 ? isMessagesDesktopRoute
                   ? "w-[76px] justify-center ps-0"
-                  : "w-[108px] ps-4"
-                : "w-[236px] ps-5",
+                  : "min-w-[108px] ps-4"
+                : "min-w-[236px] ps-5",
+              isDiscoverHome && "pe-2",
             )}
           >
             <Link
@@ -1006,18 +1014,12 @@ export function BottomNav() {
               <img
                 src={BRAND_LOGO_SRC}
                 alt=""
-                className="h-9 w-auto shrink-0 md:h-10"
+                className="h-11 w-auto shrink-0 md:h-12"
                 loading="eager"
                 decoding="async"
               />
-              <span className="-ms-1 text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:-ms-1.5">
-                tebnu
-              </span>
             </Link>
-          </div>
-        ) : null}
-        <div className="grid h-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-          <div className="flex min-w-0 items-center gap-2 ps-1">
+            {languageInBrand ? <LanguageSwitcher className="-ms-3" menuAlign="start" /> : null}
             {isDiscoverHome ? (
               <DiscoverHomeModeSegmentedControl
                 mode={discoverHomeMode}
@@ -1028,9 +1030,16 @@ export function BottomNav() {
               />
             ) : null}
           </div>
-
+        ) : null}
+        <div className="grid h-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="flex min-w-0 items-center justify-center px-2 md:px-4">
             <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
+              {!isAdminPage && (
+                <HeaderCategoryMenus
+                  mode={discoverHomeMode}
+                  className={cn("hidden min-w-0 lg:flex", desktopSearchOpen && "lg:hidden xl:flex")}
+                />
+              )}
               {showCommunityHeaderCategoryDropdown && (
                 <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
                   <CommunityPostsCategoryNativeSelect
@@ -1041,20 +1050,22 @@ export function BottomNav() {
                 </div>
               )}
               {!isAdminPage && DesktopCreateButton}
-              <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
-                <UserSearch
-                  inputClassName={
-                    isAdminPage
-                      ? "bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
-                      : undefined
-                  }
-                />
-              </div>
+              {!(isDiscoverHome && discoverHomeMode === "hire") && (
+              <HeaderSearchToggle
+                open={desktopSearchOpen}
+                onOpenChange={setDesktopSearchOpen}
+                inputClassName={
+                  isAdminPage
+                    ? "bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
+                    : undefined
+                }
+              />
+              )}
             </div>
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-0.5">
-            {!isAdminPage && <LanguageSwitcher />}
+            {!isAdminPage && !languageInBrand && <LanguageSwitcher />}
             {isOwnPublicProfilePage ? (
               <OwnPublicProfileHeaderMenuBtn className={signedInHeaderIconBtnClass} />
             ) : (

@@ -9,6 +9,8 @@ type Props = {
   className?: string;
   triggerClassName?: string;
   variant?: "header" | "compact" | "profile";
+  /** Which edge of the trigger the menu lines up with. */
+  menuAlign?: "start" | "end";
 };
 
 const LOCALE_FLAGS: Record<string, string> = {
@@ -18,7 +20,12 @@ const LOCALE_FLAGS: Record<string, string> = {
   fr: "🇫🇷",
 };
 
-export function LanguageSwitcher({ className, triggerClassName, variant = "header" }: Props) {
+export function LanguageSwitcher({
+  className,
+  triggerClassName,
+  variant = "header",
+  menuAlign = "end",
+}: Props) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -82,7 +89,10 @@ export function LanguageSwitcher({ className, triggerClassName, variant = "heade
         <div
           role="listbox"
           aria-label={t("language.label")}
-          className="absolute end-0 top-[calc(100%+0.35rem)] z-[160] min-w-[10.5rem] overflow-hidden rounded-2xl border border-zinc-200/80 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
+          className={cn(
+            "absolute top-[calc(100%+0.35rem)] z-[160] min-w-[10.5rem] overflow-hidden rounded-2xl border border-zinc-200/80 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-zinc-900",
+            menuAlign === "start" ? "start-0" : "end-0",
+          )}
         >
           {SUPPORTED_LOCALES.map((locale) => {
             const selected = current === locale;

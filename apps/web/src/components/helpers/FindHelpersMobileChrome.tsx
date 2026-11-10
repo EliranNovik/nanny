@@ -283,10 +283,10 @@ export function FindHelpersMobileChrome({
                   aria-selected={on}
                   onClick={() => onQuickFilter(id)}
                   className={cn(
-                    "shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold md:h-11 md:py-0",
+                    "shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold transition-colors md:h-11 md:py-0",
                     on
-                      ? "bg-zinc-600 text-white"
-                      : "bg-zinc-800/80 text-zinc-300",
+                      ? "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200 dark:bg-zinc-600 dark:text-white dark:ring-0"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-800 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-200",
                   )}
                 >
                   {t(`findHelpersPage.pills.${id}`)}

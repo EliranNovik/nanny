@@ -16,6 +16,7 @@ import { jobRequestCoordinates } from "@/lib/createJobFromRequestHelpCompose";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AiPostWriterDialog, AiWriteButton } from "@/components/compose/AiPostWriterDialog";
 import {
   Dialog,
   DialogContent,
@@ -474,6 +475,7 @@ export default function CreateJobPage() {
   const [savedLocationShown, setSavedLocationShown] = useState(false);
   const [composeMedia, setComposeMedia] = useState<CreateJobMediaDraft[]>([]);
   const [customWhenDatePickerOpen, setCustomWhenDatePickerOpen] = useState(false);
+  const [aiWriterOpen, setAiWriterOpen] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const composeMediaRef = useRef(composeMedia);
   composeMediaRef.current = composeMedia;
@@ -561,8 +563,14 @@ export default function CreateJobPage() {
     const raw = searchParams.get("service");
     if (!raw || !isServiceCategoryId(raw)) return;
     appliedServiceFromUrl.current = true;
-    setJobData((prev) => ({ ...prev, service_type: raw }));
-    if (raw === "other_help") {
+    const sub = searchParams.get("sub");
+    const knownSub = raw === "other_help" && OTHER_HELP_TYPES.some((type) => type.id === sub);
+    setJobData((prev) => ({
+      ...prev,
+      service_type: raw,
+      ...(knownSub ? { service_details: { ...prev.service_details, other_type: sub as string } } : {}),
+    }));
+    if (raw === "other_help" && !knownSub) {
       setStep(1);
       setOtherHelpSubOpen(true);
     } else {
@@ -1061,7 +1069,12 @@ export default function CreateJobPage() {
         )}
       </div>
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-8 pt-2 md:pt-0">
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-8 pt-2 md:pt-0",
+          aiWriterOpen && "md:ml-6 md:mr-[464px] md:w-auto lg:ml-[max(1.5rem,calc((100vw-440px-42rem)/2))]",
+        )}
+      >
         <div className="hidden md:block">
           {showCategoryHero ? (
             <div className="relative w-full h-36 md:h-40 rounded-3xl overflow-hidden shadow-lg border border-slate-200/10 dark:border-white/10 flex flex-col justify-end p-6 md:p-8">
@@ -1472,11 +1485,52 @@ export default function CreateJobPage() {
                 <p className="text-sm text-muted-foreground">
                   {t("createJob.additional.hint")}
                 </p>
+                <AiWriteButton
+                  onClick={() => setAiWriterOpen(true)}
+                  hint={t("aiWriter.ctaHintRequest", {
+                    defaultValue: "Get a clear description helpers can act on",
+                  })}
+                />
                 <Textarea
                   placeholder={t("createJob.additional.placeholder")}
                   value={jobData.additional_notes}
                   onChange={(e) => updateField("additional_notes", e.target.value)}
                   className="min-h-[140px] resize-none rounded-2xl border-slate-200/90 bg-white text-base dark:border-white/[0.12] dark:bg-white/[0.04]"
+                />
+                <AiPostWriterDialog
+                  open={aiWriterOpen}
+                  onOpenChange={setAiWriterOpen}
+                  postType="request"
+                  firstName={profile?.full_name?.trim().split(/\s+/)[0] || null}
+                  draft={{
+                    description: jobData.additional_notes,
+                    location: jobData.location_city || undefined,
+                    details: {
+                      Category: jobData.service_type
+                        ? t(`feed.categories.${jobData.service_type}`, {
+                            defaultValue: jobData.service_type.replace(/_/g, " "),
+                          })
+                        : "",
+                      Frequency: jobData.care_frequency.replace(/_/g, " "),
+                      Duration: jobData.time_duration.replace(/_/g, " "),
+                      When:
+                        jobData.when_timeframe === "custom" && jobData.custom_when_date
+                          ? `${jobData.custom_when_date} ${jobData.custom_when_time}`.trim()
+                          : jobData.when_timeframe.replace(/_/g, " "),
+                      Budget: jobData.budget_amount
+                        ? `₪${jobData.budget_amount} ${jobData.budget_rate_type === "fixed" ? "fixed" : "per hour"}`
+                        : "",
+                      ...Object.fromEntries(
+                        Object.entries(jobData.service_details)
+                          .filter(
+                            ([key, value]) =>
+                              typeof value === "string" && value.trim() && !/_(lat|lng)$/.test(key),
+                          )
+                          .map(([key, value]) => [key.replace(/_/g, " "), String(value)]),
+                      ),
+                    },
+                  }}
+                  onApply={({ post }) => updateField("additional_notes", post)}
                 />
               </div>
             )}
@@ -1753,11 +1807,19 @@ export default function CreateJobPage() {
 
             {/* Bottom Navigation Actions (Steps 2-9 only) */}
             {step > 1 && (
-              <div className="mt-10 flex flex-col gap-3 pb-8 px-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mt-10 flex flex-row items-stretch gap-3 pb-8 px-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="order-1 h-14 shrink-0 rounded-xl bg-slate-100 px-5 text-base font-bold text-slate-600 hover:bg-slate-200 active:scale-[0.98] dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-white/10 sm:px-7"
+                  onClick={handleHeaderBack}
+                >
+                  <HeaderBackChevron className="mr-1.5" /> {t("createJob.nav.back")}
+                </Button>
                 <Button
                   type="button"
                   className={cn(
-                    "h-16 w-full text-lg font-black transition-all shadow-xl active:scale-[0.98]",
+                    "order-2 h-14 min-w-0 flex-1 rounded-xl text-base font-black transition-all shadow-xl active:scale-[0.98] sm:text-lg",
                     step === TOTAL_STEPS
                       ? postNowOrangeBase
                       : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-950/20 border-b-4 border-emerald-800 active:border-b-0 active:translate-y-[2px]"
@@ -1791,15 +1853,6 @@ export default function CreateJobPage() {
                       <ChevronRight className="ml-2 h-6 w-6" />
                     </>
                   )}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-14 w-full text-lg font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98]"
-                  onClick={handleHeaderBack}
-                >
-                  <HeaderBackChevron className="mr-2" /> {t("createJob.nav.back")}
                 </Button>
               </div>
             )}

@@ -89,6 +89,70 @@ export async function apiPost<T = unknown>(
   }
 }
 
+/**
+ * POST that answers with server-sent events. Calls onEvent for each event until
+ * the stream ends. Throws on HTTP errors with the server's message.
+ */
+export async function apiPostStream(
+  path: string,
+  body: unknown,
+  onEvent: (event: string, data: unknown) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const headers = await authHeader();
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream", ...headers },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err: any) {
+    if (err?.name === "AbortError") throw err;
+    throw new Error("Cannot connect to server. Please try again.");
+  }
+  if (!res.ok || !res.body) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      message = err.error || message;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(message);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let split = buffer.indexOf("\n\n");
+    while (split >= 0) {
+      const block = buffer.slice(0, split);
+      buffer = buffer.slice(split + 2);
+      split = buffer.indexOf("\n\n");
+      let event = "message";
+      const data: string[] = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+      }
+      if (data.length === 0) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(data.join("\n"));
+      } catch {
+        continue;
+      }
+      onEvent(event, parsed);
+    }
+  }
+}
+
 export async function apiPublicPost<T = unknown>(
   path: string,
   body: unknown,

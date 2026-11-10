@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -26,10 +26,21 @@ import {
   Bell,
   Briefcase,
   Check,
+  ChevronRight,
   MessageSquare,
+  PenLine,
   Sparkles,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AiIcon } from "@/components/ai/AiIcon";
+import { useReportIssue } from "@/context/ReportIssueContext";
+import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
+import {
+  AI_FEATURES_ANNOUNCEMENT_ID,
+  closeAnnouncement,
+  isAnnouncementOpen,
+} from "@/lib/featureAnnouncements";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export type { NotificationAlert } from "@/lib/inboxActivityAlerts";
@@ -227,6 +238,82 @@ function NotificationListRow({
   );
 }
 
+function AiFeaturesAnnouncement({
+  onClose,
+  onTryWriter,
+  onTrySupport,
+}: {
+  onClose: () => void;
+  onTryWriter: () => void;
+  onTrySupport: () => void;
+}) {
+  const features = [
+    {
+      icon: PenLine,
+      title: "Write with AI",
+      body: "Tell it what you want to share. It writes the title and post for you.",
+      cta: "Try it",
+      onClick: onTryWriter,
+    },
+    {
+      icon: MessageSquare,
+      title: "AI support chat",
+      body: "Ask anything about Tebnu and get an answer in seconds, day or night.",
+      cta: "Open chat",
+      onClick: onTrySupport,
+    },
+  ];
+
+  return (
+    <div className="px-3 pb-1 pt-2">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-50 via-white to-rose-50 p-4 ring-1 ring-orange-200/70 dark:from-orange-500/10 dark:via-zinc-900 dark:to-rose-500/10 dark:ring-orange-500/25">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close announcement"
+          className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-3 pr-8">
+          <AiIcon className="h-11 w-11 shadow-sm" />
+          <div className="min-w-0">
+            <span className="inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+              Beta
+            </span>
+            <p className="mt-1 text-[17px] font-bold leading-tight text-foreground">
+              Meet your AI helpers
+            </p>
+          </div>
+        </div>
+        <div className="mt-3.5 space-y-2">
+          {features.map(({ icon: Icon, title, body, cta, onClick }) => (
+            <button
+              key={title}
+              type="button"
+              onClick={onClick}
+              className="group flex w-full items-start gap-3 rounded-xl bg-white/80 p-3 text-left shadow-sm ring-1 ring-black/[0.04] transition-colors hover:bg-white dark:bg-zinc-800/70 dark:ring-white/[0.06] dark:hover:bg-zinc-800"
+            >
+              <Icon
+                className="mt-0.5 h-7 w-7 shrink-0 text-orange-500 dark:text-orange-400"
+                strokeWidth={1.9}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold leading-snug text-foreground">{title}</span>
+                <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">{body}</span>
+                <span className="mt-1.5 inline-flex items-center gap-0.5 text-[13px] font-bold text-orange-600 dark:text-orange-400">
+                  {cta}
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotificationSkeletonRow({ index }: { index: number }) {
   return (
     <div
@@ -258,10 +345,12 @@ function NotificationsPanel({
   onCancelSelect,
   onMarkSelectedRead,
   onClearAll,
+  announcement,
   headerClassName,
   listClassName,
   footerClassName,
 }: {
+  announcement?: ReactNode;
   alerts: NotificationAlert[];
   loading: boolean;
   selecting: boolean;
@@ -334,6 +423,7 @@ function NotificationsPanel({
           listClassName,
         )}
       >
+        {announcement}
         {loading ? (
           <div className="py-1">
             {Array.from({ length: 5 }, (_, i) => (
@@ -341,7 +431,12 @@ function NotificationsPanel({
             ))}
           </div>
         ) : alerts.length === 0 ? (
-          <div className="flex flex-col items-center px-6 py-16 text-center">
+          <div
+            className={cn(
+              "flex flex-col items-center px-6 text-center",
+              announcement ? "py-10" : "py-16",
+            )}
+          >
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
               <Sparkles className="h-7 w-7 text-muted-foreground/70" />
             </div>
@@ -404,6 +499,14 @@ export function NotificationsModal({
   const [presented, setPresented] = useState(false);
   const alertsRef = useRef<NotificationAlert[]>([]);
   alertsRef.current = alerts;
+  const { openReportModal } = useReportIssue();
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+
+  useEffect(() => {
+    setAnnouncementOpen(
+      !!user?.id && isAnnouncementOpen(user.id, AI_FEATURES_ANNOUNCEMENT_ID),
+    );
+  }, [user?.id, open]);
 
   const fetchAlerts = useCallback(
     async (silent = false) => {
@@ -546,8 +649,28 @@ export function NotificationsModal({
     setSelectedIds(new Set());
   };
 
+  const handleCloseAnnouncement = () => {
+    if (user?.id) closeAnnouncement(user.id, AI_FEATURES_ANNOUNCEMENT_ID);
+    setAnnouncementOpen(false);
+  };
+
   const panel = (
     <NotificationsPanel
+      announcement={
+        announcementOpen ? (
+          <AiFeaturesAnnouncement
+            onClose={handleCloseAnnouncement}
+            onTryWriter={() => {
+              onOpenChange(false);
+              navigate(`${GLOBAL_POSTS_PATH}?compose=1`);
+            }}
+            onTrySupport={() => {
+              onOpenChange(false);
+              openReportModal();
+            }}
+          />
+        ) : null
+      }
       alerts={alerts}
       loading={loading}
       selecting={selecting}

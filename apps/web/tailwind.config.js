@@ -127,6 +127,19 @@ export default {
           "0%, 100%": { transform: "scale(1)" },
           "50%": { transform: "scale(1.035)" },
         },
+        /** AI writer: light sweep across the "Thinking" / "Creating" label. */
+        "ai-shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        "ai-caret": {
+          "0%, 45%": { opacity: "1" },
+          "50%, 100%": { opacity: "0" },
+        },
+        "ai-message-in": {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -148,6 +161,9 @@ export default {
         "typing-dot-wave": "typing-dot-wave 1.2s ease-in-out infinite",
         "typing-bubble-breathe":
           "typing-bubble-breathe 1.8s ease-in-out infinite",
+        "ai-shimmer": "ai-shimmer 2.2s linear infinite",
+        "ai-caret": "ai-caret 1s steps(1) infinite",
+        "ai-message-in": "ai-message-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

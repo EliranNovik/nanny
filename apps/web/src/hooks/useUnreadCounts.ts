@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { fetchInboxActivityAlerts } from "@/lib/inboxActivityAlerts";
+import { openAnnouncementCount } from "@/lib/featureAnnouncements";
 
 const ACTIVITY_INBOX_DEBOUNCE_MS = 220;
 
@@ -29,7 +30,7 @@ export function useUnreadCounts() {
           const rows = await fetchInboxActivityAlerts(user, profile, {
             includeUnreadMessageAlerts: true,
           });
-          setActivityInboxCount(rows.length);
+          setActivityInboxCount(rows.length + openAnnouncementCount(user.id));
         } catch (error) {
           console.error("Error fetching activity inbox count:", error);
         }

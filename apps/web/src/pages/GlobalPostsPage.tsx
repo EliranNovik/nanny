@@ -42,6 +42,7 @@ import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { queryKeys } from "@/hooks/data/keys";
 import {
   ALL_HELP_CATEGORY_ID,
+  otherHelpSubcategoryLabel,
   type DiscoverHomeCategoryId,
 } from "@/lib/serviceCategories";
 import {
@@ -511,6 +512,7 @@ export default function GlobalPostsPage() {
   const focusRequestId = parseJobRequestShareId(rawRequestParam) ?? scrollToRequestId;
   const typeParam = searchParams.get("type");
   const categoryParam = searchParams.get("category");
+  const subParam = searchParams.get("sub");
 
   useEffect(() => {
     if (focusPostId || focusRequestId) return;
@@ -536,9 +538,11 @@ export default function GlobalPostsPage() {
   }, [typeParam]);
 
   useEffect(() => {
-    setCategoryFilter(parseCommunityFeedCategory(categoryParam) ?? ALL_HELP_CATEGORY_ID);
-    if (!categoryParam) setOtherSubFilter(null);
-  }, [categoryParam]);
+    const category = parseCommunityFeedCategory(categoryParam) ?? ALL_HELP_CATEGORY_ID;
+    setCategoryFilter(category);
+    if (category !== "other_help") setOtherSubFilter(null);
+    else if (subParam && otherHelpSubcategoryLabel(subParam)) setOtherSubFilter(subParam);
+  }, [categoryParam, subParam]);
 
   const handleCategoryFilterChange = useCallback(
     (id: DiscoverHomeCategoryId) => {

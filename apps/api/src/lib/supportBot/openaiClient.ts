@@ -28,6 +28,75 @@ type ChatCompletionResponse = {
   error?: { message?: string };
 };
 
+/** Plain-text completion, delivered piece by piece through onDelta as the model writes it. */
+export async function streamChatCompletion(
+  messages: OpenAiChatMessage[],
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const apiKey = loadOpenAiApiKey();
+  if (!apiKey) {
+    throw new SupportBotError("OPENAI_API_KEY is not set.", "missing_key");
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90_000);
+  signal?.addEventListener("abort", () => controller.abort(), { once: true });
+  try {
+  const response = await fetch(CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: supportBotModel(),
+      reasoning_effort: "low",
+      stream: true,
+      messages,
+    }),
+    signal: controller.signal,
+  });
+
+  if (!response.ok || !response.body) {
+    const payload = (await response.json().catch(() => null)) as ChatCompletionResponse | null;
+    throw new SupportBotError(
+      payload?.error?.message || `OpenAI request failed (${response.status})`,
+      "openai_error",
+    );
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      newline = buffer.indexOf("\n");
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") return;
+      try {
+        const chunk = JSON.parse(data) as {
+          choices?: Array<{ delta?: { content?: string | null } }>;
+        };
+        const text = chunk.choices?.[0]?.delta?.content;
+        if (text) onDelta(text);
+      } catch {
+        /* keep-alive or partial line */
+      }
+    }
+  }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function createSupportChatCompletion(
   messages: OpenAiChatMessage[],
 ): Promise<string> {

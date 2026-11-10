@@ -50,7 +50,11 @@ type Props = {
   exploreLiveHelpPath?: string;
   createRequestPath?: string;
   className?: string;
+  /** "hero": compact glass cards that sit on top of the desktop hero photo. */
+  variant?: "section" | "hero";
 };
+
+const HERO_MAX_VISIBLE = 2;
 
 const HELPING_NOW_STATUSES = ["locked", "active"] as const;
 
@@ -142,6 +146,7 @@ function jobCategoryId(job: JobRow): string | null {
 export function DiscoverHomeMyLiveHelpJobs({
   mode,
   className,
+  variant = "section",
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -163,6 +168,80 @@ export function DiscoverHomeMyLiveHelpJobs({
     mode === "hire"
       ? "focus-visible:ring-orange-500/70"
       : "focus-visible:ring-emerald-500/70";
+
+  const openJob = (job: JobRow) => {
+    trackEvent(
+      mode === "hire" ? "discover_my_help_live_open" : "discover_my_live_help_open",
+      { job_id: job.id },
+    );
+    navigate(
+      mode === "hire"
+        ? `/client/jobs/${encodeURIComponent(job.id)}/live`
+        : `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`,
+    );
+  };
+
+  const otherNameFor = (job: JobRow) => {
+    const otherId =
+      mode === "hire" ? String(job.selected_freelancer_id ?? "") : String(job.client_id ?? "");
+    return (
+      ((otherId ? profileMap[otherId]?.full_name : "") || "").trim() ||
+      (mode === "hire" ? "Helper" : "Client")
+    );
+  };
+
+  if (variant === "hero") {
+    const visible = jobs.slice(0, HERO_MAX_VISIBLE);
+    const hidden = jobs.length - visible.length;
+    return (
+      <section className={cn("flex w-full flex-col gap-2", className)} aria-label={title}>
+        <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.45)]">
+          <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70 motion-reduce:animate-none" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+          </span>
+          {title}
+          {hidden > 0 ? <span className="font-semibold text-white/80">· +{hidden}</span> : null}
+        </p>
+        {visible.map((job) => (
+          <button
+            key={job.id}
+            type="button"
+            onClick={() => openJob(job)}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white/95 p-1.5 pe-3 text-left shadow-sm backdrop-blur-sm transition hover:bg-white hover:shadow-md",
+              "dark:border-white/10 dark:bg-[#1d1f21]/95 dark:shadow-none",
+              "focus-visible:outline-none focus-visible:ring-2",
+              ringClass,
+            )}
+          >
+            <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+              <img
+                src={categoryIllustrationSrc(jobCategoryId(job))}
+                alt=""
+                className="h-full w-full object-cover object-center"
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13.5px] font-semibold leading-tight text-foreground">
+                {jobCategoryLabel(job)}
+              </span>
+              <span className="mt-0.5 block truncate text-[12px] font-medium text-muted-foreground">
+                {mode === "hire" ? "Helper" : "Helping"} · {otherNameFor(job)}
+              </span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              Live
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl-flip-icon" />
+          </button>
+        ))}
+      </section>
+    );
+  }
 
   return (
     <section className={cn("w-full", className)} aria-label={title}>

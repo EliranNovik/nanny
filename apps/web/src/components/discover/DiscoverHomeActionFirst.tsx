@@ -68,6 +68,7 @@ import { LiveTimer } from "@/components/LiveTimer";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
 import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
+import { UserSearch } from "@/components/UserSearch";
 import { DiscoverHomeOffersForYou } from "@/components/discover/DiscoverHomeOffersForYou";
 import { DiscoverHomeCategoryFilterRow } from "@/components/discover/DiscoverHomeCategoryFilterRow";
 import {
@@ -85,10 +86,10 @@ type Props = {
 
 /** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
-  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[320px]";
+  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[268px]";
 
 const heroStackClassName =
-  "relative z-10 flex min-h-0 flex-1 flex-col justify-end px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:w-[min(62%,38rem)] md:px-10 md:pb-[8.5rem] md:pt-12";
+  "relative z-10 flex min-h-0 flex-1 flex-col justify-end px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:w-[min(62%,38rem)] md:px-10 md:pb-[6.5rem] md:pt-9";
 
 const heroTopBlockClassName = "flex max-w-2xl flex-col gap-3.5 md:gap-4";
 
@@ -138,6 +139,16 @@ export function DiscoverHomeActionFirst({
   const [categoryFilter, setCategoryFilter] =
     useState<DiscoverHomeCategoryFilter>("all");
   const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
+
+  const selectCategoryAndScroll = useCallback((id: DiscoverHomeCategoryFilter) => {
+    setCategoryFilter(id);
+    window.requestAnimationFrame(() => {
+      const target = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-discover-results]"),
+      ).find((el) => el.offsetParent !== null);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
@@ -834,6 +845,7 @@ export function DiscoverHomeActionFirst({
           "bottom-5 end-6",
         )}
       >
+        <DiscoverHomeMyLiveHelpJobs mode={isHire ? "hire" : "work"} variant="hero" />
         {isHire
           ? renderMyContentSummaryCard("requests")
           : renderMyContentSummaryCard("offers")}
@@ -961,12 +973,12 @@ export function DiscoverHomeActionFirst({
               variant="hire"
               layout="pills"
               selected={categoryFilter}
-              onSelect={setCategoryFilter}
+              onSelect={selectCategoryAndScroll}
               otherSubFilter={otherSubFilter}
               onOtherSubFilterChange={setOtherSubFilter}
               className="px-4 pt-3 pb-3"
             />
-            <div className="w-full px-4 pt-1 pb-2">
+            <div data-discover-results="" className="w-full scroll-mt-24 px-4 pt-1 pb-2">
               <DiscoverHomeOffersForYou
                 categoryFilter={categoryFilter}
                 otherSubFilter={otherSubFilter}
@@ -983,17 +995,19 @@ export function DiscoverHomeActionFirst({
             <DiscoverHomeCategoryFilterRow
               variant="work"
               selected={categoryFilter}
-              onSelect={setCategoryFilter}
+              onSelect={selectCategoryAndScroll}
               otherSubFilter={otherSubFilter}
               onOtherSubFilterChange={setOtherSubFilter}
               className="px-4 pt-3 pb-5"
             />
-            <DiscoverHomePostedHelpRequests
-              enabled
-              categoryFilter={categoryFilter}
-              otherSubFilter={otherSubFilter}
-              className="w-full px-4 pt-3 pb-2"
-            />
+            <div data-discover-results="" className="scroll-mt-24">
+              <DiscoverHomePostedHelpRequests
+                enabled
+                categoryFilter={categoryFilter}
+                otherSubFilter={otherSubFilter}
+                className="w-full px-4 pt-3 pb-2"
+              />
+            </div>
             <div className="px-4">{renderExplorePromoBanner()}</div>
           </>
         )}
@@ -1045,6 +1059,11 @@ export function DiscoverHomeActionFirst({
                 {renderHeroMyContentSummary()}
               </div>
             </section>
+            <UserSearch
+              size="lg"
+              placeholder="Search helpers, categories or people…"
+              className="relative z-[30]"
+            />
           </div>
           
           <section
@@ -1095,42 +1114,44 @@ export function DiscoverHomeActionFirst({
 
         <div className="min-h-0 w-full overflow-hidden pt-2 flex flex-col gap-2">
           <div className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}>
-            <DiscoverHomeMyLiveHelpJobs mode="hire" className="pb-3" />
             <DiscoverHomeCategoryFilterRow
               variant="hire"
               layout="pills"
               selected={categoryFilter}
-              onSelect={setCategoryFilter}
+              onSelect={selectCategoryAndScroll}
               otherSubFilter={otherSubFilter}
               onOtherSubFilterChange={setOtherSubFilter}
               className="pb-3"
             />
-            <DiscoverHomeOffersForYou
-              categoryFilter={categoryFilter}
-              otherSubFilter={otherSubFilter}
-              viewerLocation={viewerLocation}
-            />
+            <div data-discover-results="" className="scroll-mt-24">
+              <DiscoverHomeOffersForYou
+                categoryFilter={categoryFilter}
+                otherSubFilter={otherSubFilter}
+                viewerLocation={viewerLocation}
+              />
+            </div>
             {renderExplorePromoBanner()}
           </div>
         </div>
 
         <div className={cn("min-w-0 px-0.5 pt-2", isHire && "hidden")}>
-          <DiscoverHomeMyLiveHelpJobs mode="work" className="pb-3" />
           <DiscoverHomeCategoryFilterRow
             variant="work"
             selected={categoryFilter}
-            onSelect={setCategoryFilter}
+            onSelect={selectCategoryAndScroll}
             otherSubFilter={otherSubFilter}
             onOtherSubFilterChange={setOtherSubFilter}
             className="pb-3"
           />
         </div>
-        <DiscoverHomePostedHelpRequests
-          enabled
-          categoryFilter={categoryFilter}
-          otherSubFilter={otherSubFilter}
-          className={cn("px-1 pt-2 pb-1", isHire && "hidden")}
-        />
+        <div data-discover-results="" className={cn("scroll-mt-24", isHire && "hidden")}>
+          <DiscoverHomePostedHelpRequests
+            enabled
+            categoryFilter={categoryFilter}
+            otherSubFilter={otherSubFilter}
+            className="px-1 pt-2 pb-1"
+          />
+        </div>
         {!isHire ? <div className="px-1">{renderExplorePromoBanner()}</div> : null}
       </div>
 

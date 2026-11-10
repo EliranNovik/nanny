@@ -25,6 +25,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { NotificationListener } from "@/components/NotificationListener";
 import { IncomingRequestToastListener } from "@/components/IncomingRequestToastListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { AiFeaturesPopup } from "@/components/AiFeaturesPopup";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
 import { useIsMinMd } from "@/hooks/useIsMinMd";
@@ -873,6 +874,7 @@ export default function App() {
                       <AppRoutes />
                       <BottomNav />
                       <ReportIssueModal />
+                      <AiFeaturesPopup />
                     </ReportIssueProvider>
                     </DesktopSidePanelProvider>
                   </DiscoverHomeScrollHeaderProvider>

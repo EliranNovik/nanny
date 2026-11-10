@@ -143,24 +143,24 @@ export function DiscoverHomeCategoryFilterRow({
           type="button"
           onClick={selectAll}
           className={cn(
-            "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[5.1rem]",
-            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[6.1rem] md:gap-2",
+            "focus-visible:outline-none focus-visible:rounded-2xl md:focus-visible:rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             filterAccent.ring,
           )}
         >
           <div
             className={cn(
-              "flex aspect-square w-full items-center justify-center rounded-[1.2rem] shadow-sm",
+              "flex aspect-square w-full items-center justify-center rounded-[1.2rem] shadow-sm md:rounded-full",
               selected === "all" && !otherSubFilter
                 ? filterAccent.allSelected
                 : filterAccent.allIdle,
             )}
           >
-            <Compass className="h-8 w-8" strokeWidth={2.4} aria-hidden />
+            <Compass className="h-8 w-8 md:h-10 md:w-10" strokeWidth={2.4} aria-hidden />
           </div>
           <span
             className={cn(
-              "max-w-full truncate text-center text-[10px] font-extrabold uppercase tracking-[0.12em]",
+              "max-w-full truncate text-center text-[10px] font-extrabold uppercase md:text-[11px] tracking-[0.12em]",
               selected === "all" && !otherSubFilter
                 ? filterAccent.activeLabel
                 : "text-slate-500 dark:text-zinc-500",
@@ -189,14 +189,14 @@ export function DiscoverHomeCategoryFilterRow({
           item.kind === "main" ? selectMain(item.id) : selectSub(item.id)
         }
         className={cn(
-          "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[5.1rem]",
-          "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "flex w-[4.85rem] shrink-0 snap-start flex-col items-center gap-1.5 transition-transform active:scale-95 md:w-[6.1rem] md:gap-2",
+          "focus-visible:outline-none focus-visible:rounded-2xl md:focus-visible:rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           filterAccent.ring,
         )}
       >
         <div
           className={cn(
-            "aspect-square w-full overflow-hidden rounded-[1.2rem] shadow-sm transition-[box-shadow,transform]",
+            "aspect-square w-full overflow-hidden rounded-[1.2rem] shadow-sm md:rounded-full transition-[box-shadow,transform]",
             active && filterAccent.selectedRing,
           )}
         >
@@ -204,7 +204,7 @@ export function DiscoverHomeCategoryFilterRow({
         </div>
         <span
           className={cn(
-            "line-clamp-2 max-w-full text-center text-[10px] font-extrabold uppercase leading-tight tracking-[0.08em]",
+            "line-clamp-2 max-w-full text-center text-[10px] font-extrabold uppercase md:text-[11px] leading-tight tracking-[0.08em]",
             active
               ? filterAccent.activeLabel
               : "text-slate-500 dark:text-zinc-500",
@@ -229,7 +229,7 @@ export function DiscoverHomeCategoryFilterRow({
       {/* Desktop: fill width first, wrap to a second row only when needed */}
       <div
         id="discover-home-category-filters-desktop"
-        className="hidden flex-wrap justify-start gap-x-3 gap-y-3.5 md:flex"
+        className="hidden flex-wrap justify-start gap-x-4 gap-y-4 md:flex"
       >
         {allItems.map((item) => renderFilterButton(item))}
       </div>

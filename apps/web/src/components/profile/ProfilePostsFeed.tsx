@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -52,6 +52,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AiPostWriterDialog,
+  AiWriteButton,
+  type AiPostType,
+} from "@/components/compose/AiPostWriterDialog";
 import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
   mobileSheetSafePaddingBottom,
@@ -174,7 +179,6 @@ import {
   globalFeedMobileCommentsSendBtnClass,
   globalFeedMobileCommentsSheetClass,
   globalFeedMobileEngagementRowClassForMedia,
-  globalFeedMobilePostTypeBadgeClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
   feedWhenDisplayLabel,
@@ -205,7 +209,6 @@ import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHel
 import {
   requestPostAccentTextClass,
   requestPostAccentTextStrongClass,
-  requestPostBadgeClass,
   requestPostBudgetTextClass,
   requestPostCtaClass,
   requestPostCtaPendingClass,
@@ -343,13 +346,6 @@ export type PostComment = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const FEED_POST_TYPE_IDS = [
-  "request_help",
-  "offer_service",
-  "community",
-  "event",
-] as const;
-
 /** Select value used when the user wants to type a free-form "Other" category. */
 const OTHER_CATEGORY_CUSTOM_VALUE = "__custom__";
 
@@ -371,13 +367,6 @@ function feedCategoryLabel(
   }
   if (!categoryId) return t("feed.categories.help_request");
   return categoryId.replace(/_/g, " ");
-}
-
-function feedPostTypeBadgeLabel(t: TFunction, typeId: string, typeName?: string) {
-  if ((FEED_POST_TYPE_IDS as readonly string[]).includes(typeId)) {
-    return t(`feed.postType.${typeId}`);
-  }
-  return typeName ?? typeId;
 }
 
 function feedContactLabel(t: TFunction, fullName: string | null | undefined): string {
@@ -1492,74 +1481,6 @@ function formatEventPostDateTime(date: Date, time: string): string {
   return format(dt, "EEEE, MMMM d 'at' h:mm a");
 }
 
-function postTypeBadgeClassName(
-  typeId: string,
-  size: "default" | "lg" = "default",
-) {
-  return cn(
-    "inline-flex items-center font-black uppercase tracking-wider border-0 shadow-none",
-    size === "lg"
-      ? "gap-2.5 rounded-lg px-4 py-2 text-[15px]"
-      : "gap-2 rounded-md px-4 py-1.5 text-[14px]",
-    typeId === "request_help" && requestPostBadgeClass,
-    typeId === "offer_service" &&
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-    typeId === "community" &&
-      "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-    typeId === "event" &&
-      "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400",
-  );
-}
-
-function PostTypeBadge({
-  typeId,
-  typeName,
-  className,
-  size = "default",
-  compact = false,
-  mobileGlobalFeed = false,
-}: {
-  typeId: string;
-  typeName?: string;
-  className?: string;
-  size?: "default" | "lg";
-  compact?: boolean;
-  mobileGlobalFeed?: boolean;
-}) {
-  const { t } = useTranslation();
-  const meta = POST_TYPE_METADATA[typeId];
-  const Icon = meta?.icon ?? Sparkles;
-
-  if (compact) {
-    return (
-      <span
-        className={cn(
-          postTypeBadgeClassName(typeId, "default"),
-          "px-3.5 py-1 text-[13px] tracking-wide",
-          mobileGlobalFeed && globalFeedMobilePostTypeBadgeClass(typeId),
-          className,
-        )}
-      >
-        {feedPostTypeBadgeLabel(t, typeId, typeName)}
-      </span>
-    );
-  }
-
-  return (
-    <span className={cn(postTypeBadgeClassName(typeId, size), className)}>
-      <Icon
-        className={cn(
-          "h-5 w-5 shrink-0",
-          meta?.iconColor ?? "text-orange-500",
-        )}
-        strokeWidth={2.25}
-        aria-hidden
-      />
-      {feedPostTypeBadgeLabel(t, typeId, typeName)}
-    </span>
-  );
-}
-
 function ProfilePostListingStatusIcon({
   status,
   className,
@@ -1737,7 +1658,23 @@ export function ComposeModal({
   const [communityTitle, setCommunityTitle] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [customCategoryText, setCustomCategoryText] = useState("");
-  const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
+  const captionRef = useRef<HTMLTextAreaElement | null>(null);
+  const [aiWriterOpen, setAiWriterOpen] = useState(false);
+  const aiPostType: AiPostType | null =
+    selectedPostTypeId === "community" || selectedPostTypeId === "event"
+      ? selectedPostTypeId
+      : selectedPostTypeId === "request_help"
+        ? "request"
+        : selectedPostTypeId === "offer_service"
+          ? "offer"
+          : null;
+
+  useLayoutEffect(() => {
+    const el = captionRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [caption, selectedPostTypeId, open]);
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const isMobileViewport = useIsMobileViewport();
   useCommunityFeedOverlayLock(open && isMobileViewport);
@@ -1809,7 +1746,6 @@ export function ComposeModal({
     setCommunityTitle("");
     setCustomCategory("");
     setCustomCategoryText("");
-    setCaptionEditorOpen(false);
   }
 
   function handleClose() {
@@ -2314,28 +2250,51 @@ export function ComposeModal({
       <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
         {t("composePost.postPreview")}
       </div>
-      <div className="rounded-2xl border-0 bg-zinc-100 dark:bg-zinc-800/55 overflow-hidden p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={authorProfile.photo_url ?? undefined} />
-              <AvatarFallback className="text-xs font-bold">
-                {(authorProfile.full_name ?? "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-foreground">
+      <div className="overflow-hidden rounded-2xl bg-white p-4 space-y-3 shadow-[0_8px_28px_-12px_rgba(15,23,42,0.18)] ring-1 ring-black/[0.04] dark:bg-zinc-900 dark:shadow-none dark:ring-white/[0.06]">
+        <div className="flex items-start gap-3">
+          <PostAuthorAvatar
+            authorName={authorProfile.full_name ?? "?"}
+            photoUrl={authorProfile.photo_url ?? undefined}
+            liveUntil={authorProfile.live_until}
+            variant="card"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-[19px] font-bold leading-tight text-foreground">
                 {authorProfile.full_name ?? "You"}
               </span>
-              <span className="text-[11px] text-muted-foreground">Preview</span>
+              {authorProfile.is_verified ? (
+                <BadgeCheck className="h-5 w-5 shrink-0" fill="#0ea5e9" color="#ffffff" aria-label="Verified" />
+              ) : null}
             </div>
+            <p className="truncate text-[15px] font-medium leading-tight text-muted-foreground">
+              {formatDistanceToNow(new Date(), {
+                addSuffix: true,
+                locale: dateFnsLocaleFor(i18n.language),
+              })}
+              {selectedPostTypeId === "event" && eventLocation.address ? (
+                <>
+                  <span aria-hidden> · </span>
+                  {feedLocationDisplayLabel(t, eventLocation.address)}
+                </>
+              ) : null}
+            </p>
           </div>
-
           {(() => {
             const pt = postTypes.find((p) => p.id === selectedPostTypeId);
             if (!pt) return null;
             return (
-              <PostTypeBadge typeId={pt.id} typeName={pt.name} />
+              <PostTypeCategorySubtitle
+                postTypeId={pt.id}
+                typeName={pt.name}
+                className={cn(
+                  "ms-auto shrink-0 rounded-full px-2.5 py-1 text-[11px]",
+                  pt.id === "request_help" && "bg-orange-500/12 dark:bg-orange-500/20",
+                  pt.id === "offer_service" && "bg-emerald-500/12 dark:bg-emerald-500/20",
+                  pt.id === "event" && "bg-violet-500/12 dark:bg-violet-500/20",
+                  pt.id === "community" && "bg-blue-500/12 dark:bg-blue-500/20",
+                )}
+              />
             );
           })()}
         </div>
@@ -2375,11 +2334,36 @@ export function ComposeModal({
           </div>
         ) : null}
 
-        {caption.trim() && (
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {caption}
-          </p>
-        )}
+        {(() => {
+          const previewTitle =
+            selectedPostTypeId === "community"
+              ? communityTitle.trim()
+              : selectedPostTypeId === "event"
+                ? eventName.trim()
+                : "";
+          if (!previewTitle && !caption.trim()) return null;
+          return (
+            <div>
+              {previewTitle ? (
+                <h3
+                  {...bidirectionalTextProps(
+                    previewTitle,
+                    "text-[16px] font-bold leading-snug text-foreground",
+                  )}
+                >
+                  {previewTitle}
+                </h3>
+              ) : null}
+              {caption.trim() ? (
+                <FeedExpandableFreeText
+                  text={caption}
+                  fullText
+                  className={cn("text-[14px]", previewTitle && "mt-1")}
+                />
+              ) : null}
+            </div>
+          );
+        })()}
 
         {(() => {
           const hasMeta =
@@ -2388,17 +2372,12 @@ export function ComposeModal({
             (selectedPostTypeId === "offer_service" &&
               (offerServiceCategory || postLocation.address || offerRate || resolvedCustomCategory.trim())) ||
             (selectedPostTypeId === "event" &&
-              (eventName ||
-                eventDate ||
-                eventTime ||
-                eventLocation.address ||
-                eventHelpersNeeded)) ||
-            (selectedPostTypeId === "community" && communityTitle);
+              (eventDate || eventTime || eventLocation.address || eventHelpersNeeded));
 
           if (!hasMeta) return null;
 
           return (
-            <div className="p-3.5 rounded-2xl border border-zinc-100 bg-zinc-50/50 dark:border-zinc-900 dark:bg-zinc-950/40 space-y-2">
+            <div className="space-y-2 rounded-2xl bg-zinc-100/90 p-3.5 dark:bg-zinc-800/55">
               {selectedPostTypeId === "request_help" && (
                 <>
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
@@ -2494,12 +2473,6 @@ export function ComposeModal({
 
               {selectedPostTypeId === "event" && (
                 <div className="space-y-1.5 text-xs">
-                  {eventName && (
-                    <div className="flex items-center gap-1.5 font-extrabold text-[13px] text-violet-600 dark:text-violet-400">
-                      <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                      <span>{eventName}</span>
-                    </div>
-                  )}
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {(eventDate || eventTime) && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
@@ -2531,12 +2504,6 @@ export function ComposeModal({
                 </div>
               )}
 
-              {selectedPostTypeId === "community" && communityTitle && (
-                <div className="flex items-center gap-1.5 font-extrabold text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                  <Users className="h-3.5 w-3.5 shrink-0" />
-                  <span>{communityTitle}</span>
-                </div>
-              )}
             </div>
           );
         })()}
@@ -2939,6 +2906,30 @@ export function ComposeModal({
                   </>
                 )}
 
+                {aiPostType ? (
+                  <AiWriteButton
+                    onClick={() => setAiWriterOpen(true)}
+                    disabled={submitting}
+                    hint={
+                      aiPostType === "event"
+                        ? t("aiWriter.ctaHintEvent", {
+                            defaultValue: "Describe your event and get the name and text",
+                          })
+                        : aiPostType === "community"
+                          ? t("aiWriter.ctaHintCommunity", {
+                              defaultValue: "Say what you want to share and get a ready post",
+                            })
+                          : aiPostType === "request"
+                            ? t("aiWriter.ctaHintRequest", {
+                                defaultValue: "Get a clear description helpers can act on",
+                              })
+                            : t("aiWriter.ctaHintOffer", {
+                                defaultValue: "Get a description that brings messages",
+                              })
+                    }
+                  />
+                ) : null}
+
                 {/* 3. Event Specific Fields */}
                 {selectedPostTypeId === "event" && (
                   <>
@@ -3052,70 +3043,97 @@ export function ComposeModal({
                   </>
                 )}
 
-                {/* Tell us more / Description — opens expanded editor */}
+                {/* Tell us more / Description — grows with its text */}
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[13px] font-bold text-foreground">{t("composePost.tellMore")}</label>
+                  <label htmlFor="compose-caption" className="text-[13px] font-bold text-foreground">
+                    {t("composePost.tellMore")}
+                  </label>
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setCaptionEditorOpen(true)}
+                    <Textarea
+                      id="compose-caption"
+                      ref={captionRef}
+                      placeholder={captionPlaceholder}
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value)}
+                      maxLength={500}
+                      rows={4}
+                      {...bidirectionalInputProps(
+                        caption,
+                        "min-h-[6.5rem] resize-none overflow-hidden focus-visible:ring-offset-0 w-full rounded-xl border border-input bg-muted/40 px-3.5 pt-3.5 pb-7 text-sm leading-relaxed outline-none transition-colors hover:border-orange-400/70 focus-visible:ring-1 focus-visible:ring-orange-500 focus-visible:border-orange-500 font-medium text-foreground dark:bg-zinc-800/60 placeholder:text-muted-foreground/60 disabled:opacity-60",
+                      )}
                       disabled={submitting}
-                      className={cn(
-                        "w-full rounded-xl border border-input bg-muted/40 p-3.5 text-left text-sm font-medium text-foreground outline-none transition-colors",
-                        "hover:border-orange-400/70 focus-visible:ring-1 focus-visible:ring-orange-500 focus-visible:border-orange-500",
-                        "dark:bg-zinc-800/60 min-h-[6.5rem] disabled:opacity-60",
-                      )}
-                    >
-                      {caption.trim() ? (
-                        <span className="line-clamp-4 whitespace-pre-wrap">{caption}</span>
-                      ) : (
-                        <span className="text-muted-foreground/60">{captionPlaceholder}</span>
-                      )}
-                    </button>
+                    />
                     <div className="pointer-events-none absolute right-3.5 bottom-2 text-[10px] font-bold text-muted-foreground">
                       {caption.length}/500
                     </div>
                   </div>
                 </div>
 
-                <Dialog open={captionEditorOpen} onOpenChange={setCaptionEditorOpen}>
-                  <DialogContent
-                    className="flex max-h-[min(92dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
-                    aria-describedby={undefined}
-                  >
-                    <DialogHeader className="border-b border-border/60 px-5 py-4">
-                      <DialogTitle className="text-base font-bold">{t("composePost.tellMore")}</DialogTitle>
-                    </DialogHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                      <Textarea
-                        placeholder={captionPlaceholder}
-                        value={caption}
-                        onChange={(e) => setCaption(e.target.value)}
-                        maxLength={500}
-                        rows={14}
-                        autoFocus
-                        {...bidirectionalInputProps(
-                          caption,
-                          "min-h-[min(52dvh,22rem)] resize-none w-full rounded-xl border border-input bg-muted/40 p-4 text-base leading-relaxed outline-none focus-visible:ring-1 focus-visible:ring-orange-500 focus-visible:border-orange-500 font-medium text-foreground dark:bg-zinc-800/60 placeholder:text-muted-foreground/60",
-                        )}
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between border-t border-border/60 px-5 py-4">
-                      <span className="text-xs font-bold tabular-nums text-muted-foreground">
-                        {caption.length}/500
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="rounded-full px-5 font-bold"
-                        onClick={() => setCaptionEditorOpen(false)}
-                      >
-                        {t("composePost.done")}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                {aiPostType ? (
+                  <AiPostWriterDialog
+                    open={aiWriterOpen}
+                    onOpenChange={setAiWriterOpen}
+                    postType={aiPostType}
+                    firstName={authorProfile.full_name?.trim().split(/\s+/)[0] || null}
+                    draft={{
+                      title:
+                        aiPostType === "event"
+                          ? eventName
+                          : aiPostType === "community"
+                            ? communityTitle
+                            : undefined,
+                      description: caption,
+                      ...(aiPostType === "event"
+                        ? {
+                            eventDate: eventDate ? format(eventDate, "EEEE, MMMM d, yyyy") : undefined,
+                            eventTime: eventTime || undefined,
+                            helpersNeeded: eventHelpersNeeded || undefined,
+                            location: eventLocation.address || undefined,
+                          }
+                        : {}),
+                      ...(aiPostType === "request"
+                        ? {
+                            location: postLocation.address || pickupFrom.address || undefined,
+                            details: {
+                              Category: requestHelpCategory
+                                ? feedCategoryLabel(t, requestHelpCategory, resolvedCustomCategory)
+                                : "",
+                              When:
+                                timeframe === "custom" && customWhenDate
+                                  ? format(customWhenDate, "EEEE, MMMM d") +
+                                    (customWhenTime ? ` ${customWhenTime}` : "")
+                                  : (feedWhenLabel(t, { timeframe }) ?? ""),
+                              Budget: budgetAmount
+                                ? `₪${budgetAmount} ${feedRateTypeLabel(t, budgetRateType)}`
+                                : "",
+                              "Pick up": pickupFrom.address,
+                              "Drop off": pickupTo.address,
+                            },
+                          }
+                        : {}),
+                      ...(aiPostType === "offer"
+                        ? {
+                            location: postLocation.address || undefined,
+                            details: {
+                              Service: offerServiceCategory
+                                ? feedCategoryLabel(t, offerServiceCategory, resolvedCustomCategory)
+                                : "",
+                              Rate: offerRate
+                                ? `₪${offerRate} ${feedRateTypeLabel(t, offerRateType)}`
+                                : "",
+                            },
+                          }
+                        : {}),
+                    }}
+                    onApply={({ title, post }) => {
+                      if (title) {
+                        if (aiPostType === "event") setEventName(title);
+                        else if (aiPostType === "community") setCommunityTitle(title);
+                      }
+                      setCaption(post.slice(0, 500));
+                    }}
+                  />
+                ) : null}
 
                 {/* Photos upload — mobile only (desktop uses right panel) */}
                 <div className="sm:hidden">{photoUploadSection}</div>
@@ -3286,6 +3304,9 @@ export function ComposeModal({
           selectedPostTypeId
             ? "sm:max-w-4xl sm:h-[min(92vh,780px)] sm:max-h-[min(92vh,780px)]"
             : "sm:max-w-lg sm:max-h-[min(92vh,720px)]",
+          "transition-[left,transform,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          aiWriterOpen &&
+            "md:left-6 md:translate-x-0 md:max-w-[min(56rem,calc(100vw-440px-3rem))]",
         )}
       >
         {/* Custom header — X (left), "Create Post" (center), Post button (right) */}
