@@ -3,7 +3,11 @@ import { classifyInboundHint } from "./classifyInbound";
 import { supportBotConfigured } from "./env";
 import { SupportBotError } from "./openaiClient";
 import { decideSupportReply, SUPPORT_HISTORY_TURNS } from "./supportAgent";
-import type { SupportBotDecision, SupportTranscriptTurn } from "./supportAgent";
+import type {
+  SupportBotDecision,
+  SupportTranscriptTurn,
+  SupportUserProfile,
+} from "./supportAgent";
 import {
   forgetSupportMemories,
   loadSupportMemories,
@@ -226,6 +230,46 @@ async function latestClientPlatform(
   return "unknown";
 }
 
+const VERIFICATION_LABEL: Record<string, string> = {
+  approved: "verified",
+  in_progress: "started, not finished",
+  in_review: "submitted, waiting for review",
+  pending_review: "submitted, waiting for review",
+  declined: "declined",
+  expired: "expired, needs to be done again",
+  abandoned: "started, not finished",
+  skipped: "skipped",
+  not_started: "not started",
+};
+
+/**
+ * The only profile facts the bot may see. Select an explicit, short column list:
+ * phone, WhatsApp, Telegram, email, and ids must never reach the model.
+ */
+async function userProfileSummary(userId: string): Promise<SupportUserProfile | null> {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name, is_verified, kyc_status, role, created_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const fullName = String(data.full_name ?? "").trim().slice(0, 80) || null;
+  const status = String(data.kyc_status ?? "");
+  return {
+    fullName,
+    firstName: fullName?.split(/\s+/)[0] ?? null,
+    verified: data.is_verified === true || status === "approved",
+    verification: VERIFICATION_LABEL[status] ?? (data.is_verified ? "verified" : "unknown"),
+    role:
+      data.role === "freelancer"
+        ? "helps others"
+        : data.role === "client"
+          ? "needs help"
+          : null,
+    memberSince: data.created_at ? String(data.created_at).slice(0, 10) : null,
+  };
+}
+
 function chatAttachmentPath(url: string): string | null {
   try {
     const pathname = new URL(url).pathname;
@@ -386,6 +430,7 @@ async function replyToUserMessages(
       hint,
       client,
       images,
+      profile: await userProfileSummary(newest.sender_id),
     },
     {
       conversationId,
@@ -539,6 +584,7 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
             latestText: reportText(report),
             hint: "auto_report",
             client,
+            profile: await userProfileSummary(report.reporter_id),
           },
           {
             conversationId,

@@ -10,6 +10,17 @@ import { knowledgePrompt, loadSupportKnowledge } from "./supportBotKnowledge";
 /** How many recent chat messages the model sees directly. Older ones are reached with "recall". */
 export const SUPPORT_HISTORY_TURNS = 30;
 
+/** The person's own account facts the bot may mention. Nothing private: no contact details, email, or ids. */
+export type SupportUserProfile = {
+  fullName: string | null;
+  firstName: string | null;
+  verified: boolean;
+  /** Plain words, e.g. "verified", "submitted, waiting for review", "not started". */
+  verification: string;
+  role: "needs help" | "helps others" | null;
+  memberSince: string | null;
+};
+
 /** A user-typed message, or an automatic report dropped into the support chat. */
 export type SupportInboundHint = "user_message" | "auto_report" | "unknown";
 
@@ -104,6 +115,14 @@ Memory. You keep short notes about each person across chats. The request JSON in
 - If they ask what you remember about them, tell them plainly in a short list, and that they can ask you to forget any of it.
 - Leave "remember", "forget", and "recall" empty when there is nothing to do.
 
+Their account. The request JSON includes "profile" for the person you are talking to, when it is known: fullName, firstName, verified, verification (plain words), role ("needs help" or "helps others"), and memberSince.
+- Answer simple questions about it directly: "what is my name", "am I verified", "is my verification done", "when did I join". action "reply". Do not escalate those.
+- If they are not verified, say what the status means in plain words and how to finish it: **Verify identity** from the profile header, or in Settings. Add the matching Verify link when client is not "ios".
+- To change their name, point to Settings, then **Personal & contact**.
+- You do not see their phone, WhatsApp, Telegram, email, address, or any id, and you must not guess them. If they ask, say you cannot see that here and tell them where they can check it themselves: Settings, then **Personal & contact**.
+- Only talk about this person's own profile. Never share details of anyone else's account.
+- If "profile" is null, say you cannot see their account details right now.
+
 How to choose:
 - kind "report" when the latest text is an automatic report or a structured report (a reason, a post or request, "report", "reported", reason codes). Otherwise kind "chat".
 - For a new automatic report, action "ask_followup": thank them and ask if they have more details to add, another issue, or any other question or remark. stop false.
@@ -124,10 +143,10 @@ How to choose:
 - A handoff does not end the chat. If the user asks another question afterward, answer it when you can. Do not hand off again just because the previous reply was a handoff.
 - An escalate reply must feel like a warm handoff, not a cutoff. In the user's language, it must say three things: a thank-you or a kind word, that this is going to the Tebnu admins, and that they will answer here soon. Two short sentences.
 - Write the handoff fresh every time, in your own words. Do not use a stock line. Tie it to what they asked (their payment, their account, the post they reported) so it reads like a person who listened. Vary the opening, the verb, and the order of the parts. If an earlier handoff is in the history, do not repeat its wording or its first words.
-- Never invent Tebnu rules, limits, prices, or screens that are not in this guide. If it is not here, escalate that one question.
+- Never invent Tebnu rules, limits, prices, or screens that are not in this guide or in the Knowledge base from the Tebnu team. If it is in neither, escalate that one question.
 - A photo sent in this chat is attached for you to see. Do not say you cannot see it. Explain it in three short parts, with a blank line between them. First, what is actually in the photo: the subject and one or two details a stranger would notice, not a one-word label. Second, whether it fits the post they are making, and why, in plain words. Third, one concrete way to use it: what to write next to it, or what is missing. A picture of a place, a task, an event, or the work is fine to add with **Add photos or videos**. Do not invent a ban on ordinary photos. If the photo shows a child in a sexual way, do not describe it, say it must not be posted, and escalate.
 
-How Tebnu works:
+How Tebnu works (a short fallback; when the Knowledge base from the Tebnu team describes Tebnu, answer from that instead):
 Tebnu connects people who need help with people nearby who can help. Creating an account, browsing, posting, and messaging are free. A helper can charge or volunteer. The two people agree the price themselves. Tebnu does not take, hold, or guarantee payments. Posting a request does not book anyone. The person who posted chooses whom to contact.
 
 App sitemap. This is where things are in the phone app. Answer a how-to from this map, in the user's language, with the tab and button names in **bold**. Do not recite a route like /(app)/create unless the person asks for the technical path. If a place is only a sheet, say it opens on that screen. Do not invent a screen that is not here. On the website, add the matching link from the list above when one exists.
@@ -290,6 +309,7 @@ export async function decideSupportReply(input: {
   memories?: { kind: string; content: string; updatedAt: string }[];
   /** Older messages found for a previous "recall" request. */
   recalled?: RecalledTurn[];
+  profile?: SupportUserProfile | null;
 }): Promise<SupportBotDecision> {
   const latest = input.latestText.trim();
   if (!latest) {
@@ -314,6 +334,7 @@ export async function decideSupportReply(input: {
   const latestPayload = JSON.stringify({
     hint: input.hint ?? "unknown",
     client: input.client ?? "unknown",
+    profile: input.profile ?? null,
     latestText: latest,
     photos: input.images?.length ?? 0,
     memory: (input.memories ?? []).map((note) => ({
