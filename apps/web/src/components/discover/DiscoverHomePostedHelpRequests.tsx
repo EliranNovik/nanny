@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
+import { ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -23,15 +23,16 @@ import {
 import {
   DiscoverOpenHelpRequestsSeeMoreButton,
 } from "@/components/discover/DiscoverOpenHelpRequestCard";
+import { haversineDistanceKm } from "@/lib/geo";
+import type { ViewerLocation } from "@/lib/globalFeedPostUi";
+import { HomeListingSortButton } from "@/components/discover/HomeListingSortButton";
 import {
-  discoverNearbyRequestCardCarouselItemClass,
-  discoverRequestCardsCarouselContainerClass,
-} from "@/components/discover/discoverRequestCarouselCardShared";
-import {
-  applyOpenHelpRequestDiscoverSort,
   filterOpenHelpRequestsByCategory,
+  matchesListingFilters,
+  EMPTY_LISTING_FILTERS,
   type DiscoverHomeCategoryFilter,
-  type DiscoverOpenHelpRequestSort,
+  type DiscoverHomeListingFilters,
+  type DiscoverHomeListingSort,
 } from "@/lib/discoverHomeCategoryFilter";
 import {
   formatOpenHelpRequestBudget,
@@ -49,13 +50,6 @@ import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 
 const MAX_VISIBLE = 8;
 
-const SORT_OPTIONS: DiscoverOpenHelpRequestSort[] = [
-  "newest",
-  "oldest",
-  "today",
-  "now",
-];
-
 function canActAsHelper(
   profile: { role?: string; is_available_for_jobs?: boolean } | null | undefined,
 ): boolean {
@@ -63,6 +57,27 @@ function canActAsHelper(
   if (profile.role === "freelancer") return true;
   if (profile.role === "client" && profile.is_available_for_jobs === true) return true;
   return false;
+}
+
+const HOME_LISTING_GRID_CLASS =
+  "grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4 min-[1440px]:grid-cols-5";
+
+function RequestCardSkeleton() {
+  return (
+    <div className="flex items-center gap-3 overflow-hidden rounded-[20px] bg-white pe-3 shadow-[0_5px_20px_rgba(15,23,42,0.08)] dark:bg-[#1d1f21] md:flex-col md:items-stretch md:pe-0">
+      <div className="h-[112px] w-[112px] shrink-0 animate-pulse bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full" />
+      <div className="min-w-0 flex-1 space-y-2 py-1 md:px-4 md:pb-4 md:pt-3.5">
+        <div className="h-6 w-24 animate-pulse rounded-full bg-emerald-100 dark:bg-emerald-500/15" />
+        <div className="h-4 w-4/5 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-4 w-3/5 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-700/80" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-100 dark:bg-zinc-700/60" />
+        <div className="hidden gap-2 pt-1 md:flex">
+          <div className="h-10 flex-[2] animate-pulse rounded-full bg-emerald-200/80 dark:bg-emerald-500/25" />
+          <div className="h-10 w-16 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function NearbyRequestRow({
@@ -210,6 +225,11 @@ type Props = {
   className?: string;
   categoryFilter?: DiscoverHomeCategoryFilter;
   otherSubFilter?: string | null;
+  viewerLocation?: ViewerLocation | null;
+  listingSort?: DiscoverHomeListingSort;
+  onListingSortChange?: (next: DiscoverHomeListingSort) => void;
+  listingFilters?: DiscoverHomeListingFilters;
+  onListingFiltersChange?: (next: DiscoverHomeListingFilters) => void;
 };
 
 export function DiscoverHomePostedHelpRequests({
@@ -217,6 +237,11 @@ export function DiscoverHomePostedHelpRequests({
   className,
   categoryFilter = "all",
   otherSubFilter = null,
+  viewerLocation = null,
+  listingSort = "newest",
+  onListingSortChange,
+  listingFilters = EMPTY_LISTING_FILTERS,
+  onListingFiltersChange,
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -226,12 +251,9 @@ export function DiscoverHomePostedHelpRequests({
   const { addToast } = useToast();
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
   const [acceptedJobIds, setAcceptedJobIds] = useState<Set<string>>(() => new Set());
-  const [sortBy, setSortBy] = useState<DiscoverOpenHelpRequestSort>("newest");
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => loadDismissedOpenHelpRequestIds(user?.id),
   );
-  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   const { data: openRequests = [], isLoading: loading } = useDiscoverOpenHelpRequests(
     enabled,
@@ -262,10 +284,88 @@ export function DiscoverHomePostedHelpRequests({
     setDismissedJobIds(loadDismissedOpenHelpRequestIds(user?.id));
   }, [user?.id]);
 
-  const sortedRequests = useMemo(
-    () => applyOpenHelpRequestDiscoverSort(filteredRequests, sortBy),
-    [filteredRequests, sortBy],
-  );
+  const sortedRequests = useMemo(() => {
+    const lat = viewerLocation?.lat;
+    const lng = viewerLocation?.lng;
+    const rows = filteredRequests.filter((row) => {
+      const distanceKm =
+        row.location_lat != null &&
+        row.location_lng != null &&
+        typeof lat === "number" &&
+        typeof lng === "number" &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+          ? haversineDistanceKm(lat, lng, row.location_lat, row.location_lng)
+          : null;
+      return matchesListingFilters(
+        {
+          createdAt: row.created_at,
+          when: row.when_timeframe ?? null,
+          categoryId: row.service_type,
+          customCategory: helpCategoryIdFromServiceDetails(row.service_details),
+          rating:
+            row.client_average_rating != null ? Number(row.client_average_rating) : null,
+          distanceKm,
+        },
+        listingFilters,
+      );
+    });
+    const postedAt = (row: (typeof rows)[number]) =>
+      new Date(row.created_at ?? 0).getTime();
+    const whenRank = (row: (typeof filteredRequests)[number]) => {
+      if (row.when_timeframe === "now") return 0;
+      if (row.when_timeframe === "today") return 1;
+      return 2;
+    };
+    const distanceKm = (row: (typeof filteredRequests)[number]) => {
+      const lat = viewerLocation?.lat;
+      const lng = viewerLocation?.lng;
+      if (
+        row.location_lat == null ||
+        row.location_lng == null ||
+        typeof lat !== "number" ||
+        typeof lng !== "number" ||
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        return null;
+      }
+      return haversineDistanceKm(lat, lng, row.location_lat, row.location_lng);
+    };
+    return [...rows].sort((a, b) => {
+      if (listingSort === "oldest") return postedAt(a) - postedAt(b);
+      if (listingSort === "when") {
+        const rank = whenRank(a) - whenRank(b);
+        if (rank !== 0) return rank;
+        return postedAt(b) - postedAt(a);
+      }
+      if (listingSort === "reviews") {
+        const ratingDiff = (b.client_average_rating ?? -1) - (a.client_average_rating ?? -1);
+        if (ratingDiff !== 0) return ratingDiff;
+        return postedAt(b) - postedAt(a);
+      }
+      if (listingSort === "category") {
+        const aLabel = postServiceCategoryLabel(
+          a.service_type,
+          helpCategoryIdFromServiceDetails(a.service_details),
+        );
+        const bLabel = postServiceCategoryLabel(
+          b.service_type,
+          helpCategoryIdFromServiceDetails(b.service_details),
+        );
+        return aLabel.localeCompare(bLabel);
+      }
+      if (listingSort === "nearest") {
+        const aKm = distanceKm(a);
+        const bKm = distanceKm(b);
+        if (aKm == null && bKm == null) return postedAt(b) - postedAt(a);
+        if (aKm == null) return 1;
+        if (bKm == null) return -1;
+        return aKm - bKm;
+      }
+      return postedAt(b) - postedAt(a);
+    });
+  }, [filteredRequests, listingFilters, listingSort, viewerLocation]);
 
   const visibleRows = useMemo(
     () => (isAdmin ? sortedRequests : sortedRequests.slice(0, MAX_VISIBLE)),
@@ -327,23 +427,6 @@ export function DiscoverHomePostedHelpRequests({
       cancelled = true;
     };
   }, [enabled, user?.id, visibleJobIdsKey]);
-
-  useEffect(() => {
-    if (!sortMenuOpen) return;
-    const onDoc = (event: MouseEvent) => {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
-        setSortMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [sortMenuOpen]);
-
-  const handleSortChange = useCallback((next: DiscoverOpenHelpRequestSort) => {
-    setSortBy(next);
-    setSortMenuOpen(false);
-    trackEvent("discover_posted_help_requests_sort", { sort: next });
-  }, []);
 
   const handleAccept = useCallback(
     async (jobId: string, clientName: string | null | undefined) => {
@@ -419,19 +502,10 @@ export function DiscoverHomePostedHelpRequests({
   if (loading) {
     return (
       <section className={cn("w-full", className)} aria-label="Posted help requests">
-        <div className="mb-5 space-y-1">
-          <div className="h-6 w-56 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-          <div className="h-4 w-40 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
-        </div>
-        <div className={discoverRequestCardsCarouselContainerClass}>
-          {Array.from({ length: 4 }, (_, i) => (
-            <div
-              key={i}
-              className={cn(
-                discoverNearbyRequestCardCarouselItemClass,
-                "h-52 animate-pulse rounded-[1.75rem] bg-zinc-200/70 dark:bg-zinc-800/70",
-              )}
-            />
+        <div className="mb-5 h-7 w-56 animate-pulse rounded bg-emerald-100 dark:bg-emerald-500/15" />
+        <div className={HOME_LISTING_GRID_CLASS}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <RequestCardSkeleton key={i} />
           ))}
         </div>
       </section>
@@ -439,8 +513,6 @@ export function DiscoverHomePostedHelpRequests({
   }
 
   if (undismissedRequests.length === 0) return null;
-
-  const sortLabel = t(`common.${sortBy}`);
 
   return (
     <section className={cn("w-full", className)} aria-label="Posted help requests">
@@ -470,56 +542,15 @@ export function DiscoverHomePostedHelpRequests({
             {t("discover.exploreMore")}
             <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
           </button>
-          <div ref={sortMenuRef} className="relative hidden md:block">
-            <button
-              type="button"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-sm font-bold text-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900",
-                sortMenuOpen && "ring-2 ring-emerald-500/30",
-              )}
-              aria-label={`${t("common.sort")}: ${sortLabel}`}
-              aria-expanded={sortMenuOpen}
-              aria-haspopup="listbox"
-              onClick={() => setSortMenuOpen((open) => !open)}
-            >
-              {t("common.sort")}: {sortLabel}
-              <ChevronDown
-                className={cn(
-                  "h-3.5 w-3.5 text-muted-foreground transition-transform",
-                  sortMenuOpen && "rotate-180",
-                )}
-                aria-hidden
-              />
-            </button>
-            {sortMenuOpen ? (
-              <div
-                role="listbox"
-                aria-label="Sort open requests"
-                className="absolute right-0 top-[calc(100%+0.35rem)] z-20 min-w-[9.5rem] overflow-hidden rounded-2xl border border-zinc-200/80 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-zinc-900"
-              >
-                {SORT_OPTIONS.map((option) => {
-                  const selected = sortBy === option;
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      onClick={() => handleSortChange(option)}
-                      className={cn(
-                        "flex w-full items-center px-3.5 py-2.5 text-left text-sm font-semibold transition-colors",
-                        selected
-                          ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                          : "text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/80",
-                      )}
-                    >
-                      {t(`common.${option}`)}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
+          {onListingSortChange ? (
+            <HomeListingSortButton
+              value={listingSort}
+              onChange={onListingSortChange}
+              filters={listingFilters}
+              onFiltersChange={onListingFiltersChange}
+              tone="emerald"
+            />
+          ) : null}
         </div>
       </div>
 
@@ -530,7 +561,7 @@ export function DiscoverHomePostedHelpRequests({
               sort:
                 categoryFilter !== "all" && filteredRequests.length === 0
                   ? t(`discoverHome.filters.${categoryFilter}`)
-                  : sortLabel,
+                  : "this filter",
             })}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -539,7 +570,7 @@ export function DiscoverHomePostedHelpRequests({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4 min-[1440px]:grid-cols-5">
             {visibleRows.map((row) => (
               <NearbyRequestRow
                 key={row.id}

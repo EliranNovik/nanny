@@ -1903,7 +1903,7 @@ export default function PublicProfilePage() {
       <div
         className={cn(
           "hidden md:block md:pe-[400px] bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
-          currentUser ? "pt-20 md:pt-24" : "pt-6 md:pt-8",
+          currentUser ? "pt-16 md:pt-2" : "pt-6 md:pt-2",
         )}
       >
         <div className="app-desktop-shell px-4">

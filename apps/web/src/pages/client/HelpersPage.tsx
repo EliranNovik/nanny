@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { publicProfileMediaUrl } from "@/lib/publicProfileMedia";
 import {
   HelperResultProfileCard,
+  type HelperOfferPreview,
   type PublicProfileGalleryRow,
 } from "@/components/helpers/HelperResultProfileCard";
 import {
@@ -28,7 +30,7 @@ import {
   type FindHelpersMobilePanel,
   type FindHelpersQuickFilter,
 } from "@/components/helpers/FindHelpersMobileChrome";
-import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
+import { isFreelancerInActive24hLiveWindow, isFreelancerLiveWindowActive } from "@/lib/freelancerLiveWindow";
 import { useToast } from "@/components/ui/toast";
 import { browserLocationPromptAllowed } from "@/lib/location";
 import {
@@ -36,8 +38,10 @@ import {
   respondsWithinCardLabel,
 } from "@/lib/liveCanStart";
 import {
+  getServiceCategoryImage,
   isServiceCategoryId,
   OTHER_HELP_SUBCATEGORIES,
+  postServiceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { haversineDistanceKm } from "@/lib/geo";
@@ -50,13 +54,28 @@ import {
 import {
   BigRadiusSlider,
   RADIUS_MAX,
-  RADIUS_MIN,
-  RADIUS_STEP,
 } from "@/components/search/BigRadiusSlider";
 import { setMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
+
+function HelperBrowseCardSkeleton() {
+  return (
+    <div className="flex min-h-[22rem] w-full flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)] dark:bg-zinc-800">
+      <div className="aspect-video w-full shrink-0 animate-pulse bg-zinc-200 dark:bg-zinc-700" />
+      <div className="flex flex-1 flex-col gap-2.5 px-3.5 py-3">
+        <div className="h-5 w-2/3 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-100 dark:bg-zinc-700/70" />
+        <div className="flex gap-2 pt-1">
+          <div className="h-7 w-24 animate-pulse rounded-full bg-emerald-50 dark:bg-zinc-700" />
+          <div className="h-7 w-16 animate-pulse rounded-full bg-emerald-50 dark:bg-zinc-700" />
+        </div>
+        <div className="mt-auto h-10 w-full animate-pulse rounded-full bg-orange-200/90 dark:bg-orange-500/25" />
+      </div>
+    </div>
+  );
+}
 
 /**
  * Prefer great-circle km from the logged-in user’s saved map pin when both have coords;
@@ -129,6 +148,8 @@ type FreelancerRow = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
+  /** Service categories, including other-help subcategory ids. */
+  categories?: string[] | null;
   city: string | null;
   location_lat: number | null;
   location_lng: number | null;
@@ -515,6 +536,83 @@ function HelpersMapBlock({
   );
 }
 
+const RAIL_INITIAL_COLORS = [
+  "bg-rose-500",
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-lime-600",
+  "bg-emerald-500",
+  "bg-teal-500",
+  "bg-sky-500",
+  "bg-blue-600",
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-fuchsia-500",
+  "bg-pink-500",
+] as const;
+
+function railInitialColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = Math.imul(31, hash) + seed.charCodeAt(i);
+  }
+  return RAIL_INITIAL_COLORS[Math.abs(hash) % RAIL_INITIAL_COLORS.length]!;
+}
+
+function railInitials(name: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 1).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+}
+
+function HelperRailAvatar({
+  name,
+  photoUrl,
+  seed,
+  label,
+  ringClass,
+  onClick,
+}: {
+  name: string | null;
+  photoUrl: string | null;
+  seed: string;
+  label: string;
+  ringClass: string;
+  onClick: () => void;
+}) {
+  const photo = photoUrl?.trim() || "";
+  const displayName = name?.trim() || label;
+  return (
+    <button
+      type="button"
+      title={displayName}
+      aria-label={`${label}: ${displayName}`}
+      onClick={onClick}
+      className="flex w-full flex-col items-center gap-1"
+    >
+      <span
+        className={cn(
+          "flex h-11 w-11 items-center justify-center overflow-hidden rounded-full ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900",
+          photo ? "bg-zinc-200 dark:bg-zinc-700" : railInitialColor(seed),
+          ringClass,
+        )}
+      >
+        {photo ? (
+          <img src={photo} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-[13px] font-black leading-none text-white">
+            {railInitials(name)}
+          </span>
+        )}
+      </span>
+      <span className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight text-zinc-800 dark:text-zinc-100">
+        {displayName}
+      </span>
+    </button>
+  );
+}
+
 /** App route `/client/helpers` — same as {@link CLIENT_HELPERS_PAGE_PATH} in `@/lib/clientAppPaths`. */
 export default function HelpersPage() {
   const navigate = useNavigate();
@@ -532,7 +630,7 @@ export default function HelpersPage() {
   const [center, setCenter] = useState<{ lat: number; lng: number }>(
     DEFAULT_CENTER,
   );
-  const [radiusKm, setRadiusKm] = useState(25);
+  const [radiusKm, setRadiusKm] = useState(RADIUS_MAX);
   const [searchQuery, setSearchQuery] = useState("");
   /** Debounced value used for API fetch + geocode (avoids hammering while typing). */
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -551,8 +649,6 @@ export default function HelpersPage() {
   /** True when the current debounced query was resolved as a place — map shows radius for everyone there. */
   const [geocodeMatchedPlace, setGeocodeMatchedPlace] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
-  /** Apply saved profile search radius once when it loads (does not override after user moves slider). */
-  const appliedProfileRadiusRef = useRef(false);
   /** First coords from profile — used when clearing search to restore map center. */
   const profileCenterSnapshotRef = useRef<{ lat: number; lng: number } | null>(
     null,
@@ -563,6 +659,9 @@ export default function HelpersPage() {
   const geocodeRequestIdRef = useRef(0);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [favoriteProfiles, setFavoriteProfiles] = useState<
+    { id: string; full_name: string | null; photo_url: string | null }[]
+  >([]);
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
   /** Multi-select: show helpers live in any of these categories (OR). Empty = all categories. */
   const [selectedCategories, setSelectedCategories] = useState<
@@ -601,6 +700,9 @@ export default function HelpersPage() {
   /** Gallery rows from `public_profile_media`, keyed by helper user id. */
   const [galleryByUserId, setGalleryByUserId] = useState<
     Record<string, PublicProfileGalleryRow[]>
+  >({});
+  const [offerPreviewsByUserId, setOfferPreviewsByUserId] = useState<
+    Record<string, HelperOfferPreview[]>
   >({});
 
   const toggleCategory = useCallback((id: ServiceCategoryId) => {
@@ -665,6 +767,30 @@ export default function HelpersPage() {
   useEffect(() => {
     void loadFavorites();
   }, [loadFavorites]);
+
+  const favoriteIdsKey = useMemo(
+    () => [...favoriteIds].sort().join(","),
+    [favoriteIds],
+  );
+
+  useEffect(() => {
+    if (!favoriteIdsKey) {
+      setFavoriteProfiles([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url")
+        .in("id", favoriteIdsKey.split(","));
+      if (cancelled || error) return;
+      setFavoriteProfiles(data ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [favoriteIdsKey]);
 
   const toggleFavorite = useCallback(
     async (favoriteUserId: string, e: React.MouseEvent) => {
@@ -765,19 +891,6 @@ export default function HelpersPage() {
     return () => window.clearTimeout(id);
   }, [searchQuery]);
 
-  useEffect(() => {
-    if (appliedProfileRadiusRef.current) return;
-    if (profile?.service_radius == null) return;
-    const r = Number(profile.service_radius);
-    if (Number.isNaN(r)) return;
-    const clamped = Math.min(
-      RADIUS_MAX,
-      Math.max(RADIUS_MIN, Math.round(r / RADIUS_STEP) * RADIUS_STEP),
-    );
-    setRadiusKm(clamped);
-    appliedProfileRadiusRef.current = true;
-  }, [profile?.service_radius]);
-
   const runSearch = useCallback(
     async (opts?: {
       radiusKm?: number;
@@ -805,6 +918,26 @@ export default function HelpersPage() {
 
         let rows = data as HelperResult[];
         if (user?.id) rows = rows.filter((r) => r.id !== user.id);
+
+        if (rows.length > 0) {
+          const { data: categoryRows } = await supabase
+            .from("profiles")
+            .select("id, categories")
+            .in(
+              "id",
+              rows.map((row) => row.id),
+            );
+          const categoriesById = new Map(
+            (categoryRows ?? []).map((row) => [
+              row.id as string,
+              (row.categories as string[] | null) ?? [],
+            ]),
+          );
+          rows = rows.map((row) => ({
+            ...row,
+            categories: categoriesById.get(row.id) ?? [],
+          }));
+        }
 
         setResults(rows);
 
@@ -1021,6 +1154,16 @@ export default function HelpersPage() {
     return list;
   }, [helpersMatchingCategories, nameQuery, quickFilter, profile]);
 
+  const availableNowRail = useMemo(
+    () =>
+      displayedHelpers.filter(
+        (h) =>
+          isFreelancerLiveWindowActive(h.freelancer_profiles) ||
+          h.is_available_for_jobs !== false,
+      ),
+    [displayedHelpers],
+  );
+
   const galleryFetchKey = useMemo(
     () =>
       helpersMatchingCategories
@@ -1070,6 +1213,85 @@ export default function HelpersPage() {
       cancelled = true;
     };
   }, [galleryFetchKey]);
+
+  const mediaHelperKey = useMemo(
+    () =>
+      Object.entries(galleryByUserId)
+        .filter(([, rows]) => rows.length > 0)
+        .map(([id]) => id)
+        .sort()
+        .join(","),
+    [galleryByUserId],
+  );
+
+  useEffect(() => {
+    const ids = mediaHelperKey ? mediaHelperKey.split(",") : [];
+    if (ids.length === 0) {
+      setOfferPreviewsByUserId({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("profile_posts")
+        .select(
+          "id, author_id, caption, media_type, storage_path, created_at, post_metadata, custom_category",
+        )
+        .in("author_id", ids)
+        .eq("post_type_id", "offer_service")
+        .order("created_at", { ascending: false })
+        .limit(Math.min(ids.length * 8, 400));
+      if (cancelled) return;
+      if (error) {
+        console.warn("HelpersPage offer previews:", error);
+        setOfferPreviewsByUserId({});
+        return;
+      }
+      const grouped: Record<string, HelperOfferPreview[]> = {};
+      for (const row of data ?? []) {
+        const authorId = row.author_id as string;
+        const list = grouped[authorId] ?? [];
+        if (list.length >= 2) continue;
+        const meta = (row.post_metadata ?? null) as {
+          service?: string | null;
+          custom_category?: string | null;
+        } | null;
+        const categoryId =
+          (typeof meta?.service === "string" && meta.service) || null;
+        const custom =
+          (typeof meta?.custom_category === "string" && meta.custom_category.trim()) ||
+          (typeof row.custom_category === "string" && row.custom_category.trim()) ||
+          null;
+        const title =
+          (typeof row.caption === "string" && row.caption.trim()) ||
+          postServiceCategoryLabel(categoryId, custom);
+        const hasImage =
+          row.media_type === "image" &&
+          typeof row.storage_path === "string" &&
+          row.storage_path.trim().length > 0;
+        const imageUrl = hasImage
+          ? publicProfileMediaUrl(row.storage_path as string, {
+              width: 480,
+              quality: 76,
+              resize: "cover",
+            })
+          : getServiceCategoryImage(
+              categoryId && isServiceCategoryId(categoryId) ? categoryId : "other_help",
+            );
+        list.push({
+          id: row.id as string,
+          title,
+          imageUrl,
+          photo: hasImage,
+        });
+        grouped[authorId] = list;
+      }
+      setOfferPreviewsByUserId(grouped);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaHelperKey]);
 
   useEffect(() => {
     setMatchSearchChromeVisible(false);
@@ -1251,11 +1473,6 @@ export default function HelpersPage() {
       ) {
         setCenter(parsed.center);
       }
-      if (typeof parsed.radiusKm === "number" && Number.isFinite(parsed.radiusKm)) {
-        setRadiusKm(parsed.radiusKm);
-        // Prevent profile radius from overwriting a restored radius.
-        appliedProfileRadiusRef.current = true;
-      }
       if (typeof parsed.searchQuery === "string") setSearchQuery(parsed.searchQuery);
       if (typeof parsed.geocodeMatchedPlace === "boolean")
         setGeocodeMatchedPlace(parsed.geocodeMatchedPlace);
@@ -1350,6 +1567,7 @@ export default function HelpersPage() {
         helper={{ ...h, distanceKm: km }}
         distanceFromViewerPin={fromViewerPin}
         gallery={galleryByUserId[h.id] ?? []}
+        offerPreviews={offerPreviewsByUserId[h.id] ?? []}
         viewerId={user?.id}
         favoriteIds={favoriteIds}
         favoriteBusyId={favoriteBusyId}
@@ -1368,6 +1586,25 @@ export default function HelpersPage() {
     );
   };
 
+  const favoriteRail = useMemo(() => {
+    const byId = new Map<
+      string,
+      { id: string; full_name: string | null; photo_url: string | null }
+    >();
+    for (const person of favoriteProfiles) {
+      if (favoriteIds.has(person.id)) byId.set(person.id, person);
+    }
+    for (const helper of helpersMatchingCategories) {
+      if (!favoriteIds.has(helper.id)) continue;
+      byId.set(helper.id, {
+        id: helper.id,
+        full_name: helper.full_name,
+        photo_url: helper.photo_url,
+      });
+    }
+    return [...byId.values()];
+  }, [favoriteProfiles, favoriteIds, helpersMatchingCategories]);
+
   return (
     <div
       data-find-helpers-page=""
@@ -1377,10 +1614,51 @@ export default function HelpersPage() {
         "max-md:h-[100dvh] max-md:overflow-hidden max-md:pb-0 md:pb-8",
       )}
     >
+      <aside
+        className="fixed end-3 top-20 bottom-4 z-[220] hidden w-[6.5rem] flex-col items-center justify-center md:flex"
+        aria-label={t("findHelpersPage.sideRail", {
+          defaultValue: "Available now and favorites",
+        })}
+      >
+        <div className="flex max-h-full w-full flex-col items-center gap-4 overflow-y-auto rounded-[28px] bg-white/95 px-2 py-3 shadow-lg ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              {t("common.now")}
+            </p>
+            {availableNowRail.map((h) => (
+                <HelperRailAvatar
+                    key={`now-${h.id}`}
+                    name={h.full_name}
+                    photoUrl={h.photo_url}
+                    seed={h.id}
+                    label={t("common.now")}
+                    ringClass="ring-emerald-500"
+                    onClick={() => onProfileOpen(h.id)}
+                  />
+            ))}
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+              {t("common.saved")}
+            </p>
+            {favoriteRail.map((person) => (
+                <HelperRailAvatar
+                    key={`saved-${person.id}`}
+                    name={person.full_name}
+                    photoUrl={person.photo_url}
+                    seed={person.id}
+                    label={t("common.saved")}
+                    ringClass="ring-orange-500"
+                    onClick={() => onProfileOpen(person.id)}
+                  />
+            ))}
+          </div>
+        </div>
+      </aside>
       <div
         className={cn(
           "app-desktop-shell max-md:!px-0",
-          "max-md:h-full max-md:space-y-0 max-md:pt-0 md:space-y-0 md:pt-0",
+          "max-md:h-full max-md:space-y-0 max-md:pt-0 md:space-y-0 md:pt-0 md:pe-32",
         )}
       >
         <div
@@ -1491,8 +1769,8 @@ export default function HelpersPage() {
             }
           />
           {(!hasSearched || loadingFetch) && displayedHelpers.length === 0 ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center md:hidden">
-              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            <div className="flex min-h-0 flex-1 items-stretch px-3 pt-2 md:hidden">
+              <HelperBrowseCardSkeleton />
             </div>
           ) : displayedHelpers.length === 0 && hasSearched ? (
             <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-sm font-medium text-zinc-400 md:hidden">
@@ -1524,8 +1802,10 @@ export default function HelpersPage() {
 
           <div className="hidden md:block md:pb-8">
             {(!hasSearched || loadingFetch) && displayedHelpers.length === 0 ? (
-              <div className="flex min-h-[40vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              <div className="grid grid-cols-3 items-stretch gap-[14px] px-[14px] lg:gap-5 min-[1680px]:grid-cols-4">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <HelperBrowseCardSkeleton key={i} />
+                ))}
               </div>
             ) : displayedHelpers.length === 0 && hasSearched ? (
               <div
@@ -1537,13 +1817,13 @@ export default function HelpersPage() {
             ) : (
               <div
                 ref={resultsAnchorRef}
-                className="grid grid-cols-3 items-stretch gap-[14px] px-[14px] lg:gap-5"
+                className="grid grid-cols-3 items-stretch gap-[14px] px-[14px] lg:gap-5 min-[1680px]:grid-cols-4"
               >
                 {displayedHelpers.map((h) => (
                   <div
                     key={h.id}
                     id={`helper-result-${h.id}`}
-                    className="flex min-h-0 h-full flex-col"
+                    className="contents"
                   >
                     {renderBrowseCard(h)}
                   </div>

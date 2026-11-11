@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Search, X, Loader2, Sparkles } from "lucide-react";
@@ -16,6 +16,8 @@ interface UserSearchProps {
   placeholder?: string;
   /** Open the results beside the field, lined up with it, instead of underneath. */
   resultsBeside?: boolean;
+  /** Sits inside the field, on the right. */
+  endSlot?: ReactNode;
 }
 
 export function UserSearch({
@@ -27,6 +29,7 @@ export function UserSearch({
   size = "default",
   placeholder = "Search anything...",
   resultsBeside = false,
+  endSlot,
 }: UserSearchProps) {
   const isLarge = size === "lg";
   const [query, setQuery] = useState("");
@@ -117,25 +120,31 @@ export function UserSearch({
           className={cn(
             "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isLarge
-              ? "h-16 rounded-full border-0 bg-zinc-100 pl-14 pr-12 text-[17px] text-zinc-900 shadow-none placeholder:text-zinc-400 focus:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+              ? "h-16 rounded-full border-0 bg-zinc-100 pl-14 text-[17px] text-zinc-900 shadow-none placeholder:text-zinc-400 focus:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
               : isInline
-              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
-              : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 pr-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
+              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
+              : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
+            endSlot ? (isLarge ? "pr-16" : "pr-14") : isLarge ? "pr-12" : "pr-10",
             inputClassName,
           )}
         />
-        {query && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              inputRef.current?.focus();
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
-          >
-            <X className="h-3.5 w-3.5 text-slate-400" />
-          </button>
-        )}
+        {query || endSlot ? (
+          <div className="absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus();
+                }}
+                className="rounded-full p-1 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+              >
+                <X className="h-3.5 w-3.5 text-slate-400" />
+              </button>
+            ) : null}
+            {endSlot}
+          </div>
+        ) : null}
       </div>
 
       {showPanel && (

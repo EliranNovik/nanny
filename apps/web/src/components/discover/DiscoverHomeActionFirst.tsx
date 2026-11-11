@@ -48,8 +48,9 @@ import {
   navigateToHelpersBrowse,
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
-import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
-import { isOtherHelpSubcategoryId } from "@/lib/discoverHomeCategoryFilter";
+import type { DiscoverHomeCategoryFilter, DiscoverHomeListingSort } from "@/lib/discoverHomeCategoryFilter";
+import { isOtherHelpSubcategoryId, EMPTY_LISTING_FILTERS } from "@/lib/discoverHomeCategoryFilter";
+import type { DiscoverHomeListingFilters } from "@/lib/discoverHomeCategoryFilter";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
 import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
@@ -73,6 +74,7 @@ import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMy
 import { UserSearch } from "@/components/UserSearch";
 import { DiscoverHomeOffersForYou } from "@/components/discover/DiscoverHomeOffersForYou";
 import { DiscoverHomeCategoryFilterRow } from "@/components/discover/DiscoverHomeCategoryFilterRow";
+import { HomeListingSortButton } from "@/components/discover/HomeListingSortButton";
 import {
   categoryIllustrationSrc,
   helpCategoryIdFromServiceDetails,
@@ -153,6 +155,8 @@ export function DiscoverHomeActionFirst({
     pickedCategory && pickedCategory.search === location.search
       ? pickedCategory.sub
       : (urlCategory?.sub ?? null);
+  const [listingSort, setListingSort] = useState<DiscoverHomeListingSort>("newest");
+  const [listingFilters, setListingFilters] = useState<DiscoverHomeListingFilters>(EMPTY_LISTING_FILTERS);
   const { user, profile } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
@@ -1041,6 +1045,10 @@ export function DiscoverHomeActionFirst({
                 categoryFilter={categoryFilter}
                 otherSubFilter={otherSubFilter}
                 viewerLocation={viewerLocation}
+                listingSort={listingSort}
+                onListingSortChange={setListingSort}
+                listingFilters={listingFilters}
+                onListingFiltersChange={setListingFilters}
               />
               {renderExplorePromoBanner()}
             </div>
@@ -1063,6 +1071,11 @@ export function DiscoverHomeActionFirst({
                 enabled
                 categoryFilter={categoryFilter}
                 otherSubFilter={otherSubFilter}
+                viewerLocation={viewerLocation}
+                listingSort={listingSort}
+                onListingSortChange={setListingSort}
+                listingFilters={listingFilters}
+                onListingFiltersChange={setListingFilters}
                 className="w-full px-4 pt-3 pb-2"
               />
             </div>
@@ -1192,6 +1205,15 @@ export function DiscoverHomeActionFirst({
                   size="lg"
                   placeholder="Search offers, events, or people…"
                   className="relative z-[30] mx-0 w-full max-w-none"
+                  endSlot={
+                    <HomeListingSortButton
+                      value={listingSort}
+                      onChange={setListingSort}
+                      filters={listingFilters}
+                      onFiltersChange={setListingFilters}
+                      tone="orange"
+                    />
+                  }
                 />
               }
             />
@@ -1200,6 +1222,11 @@ export function DiscoverHomeActionFirst({
                 categoryFilter={categoryFilter}
                 otherSubFilter={otherSubFilter}
                 viewerLocation={viewerLocation}
+                listingSort={listingSort}
+                onListingSortChange={setListingSort}
+                listingFilters={listingFilters}
+                onListingFiltersChange={setListingFilters}
+                showSortButton={false}
               />
             </div>
             {renderExplorePromoBanner()}
@@ -1221,6 +1248,11 @@ export function DiscoverHomeActionFirst({
             enabled
             categoryFilter={categoryFilter}
             otherSubFilter={otherSubFilter}
+            viewerLocation={viewerLocation}
+            listingSort={listingSort}
+            onListingSortChange={setListingSort}
+            listingFilters={listingFilters}
+            onListingFiltersChange={setListingFilters}
             className="px-1 pt-2 pb-1"
           />
         </div>

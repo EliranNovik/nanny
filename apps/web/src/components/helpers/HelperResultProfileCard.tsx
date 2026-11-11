@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,6 +17,7 @@ import {
   Baby,
   Home,
   Wrench,
+  Plus,
   Star,
   Tag,
   HelpCircle,
@@ -36,7 +37,34 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
-import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
+import { isolatedOfferPostPath } from "@/lib/profilePostShare";
+import {
+  otherHelpSubcategoryLabel,
+  serviceCategoryLabel,
+} from "@/lib/serviceCategories";
+
+/** Drop district and other middle place parts. Cards show city and country. */
+function cityCountryLabel(raw: string | null | undefined): string | null {
+  const parts = (raw ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  const city = parts[0];
+  const country = parts
+    .slice(1)
+    .filter(
+      (part) =>
+        !/district|county|region|province|governorate|prefecture|oblast|department|округ|район|область|מחוז|נפה/i.test(
+          part,
+        ),
+    )
+    .at(-1);
+  if (!country || country.localeCompare(city, undefined, { sensitivity: "accent" }) === 0) {
+    return city;
+  }
+  return `${city}, ${country}`;
+}
 import { canStartInCardLabel } from "@/lib/liveCanStart";
 
 export type PublicProfileGalleryRow = {
@@ -185,9 +213,18 @@ function getTelegramLink(username: string) {
   return `https://t.me/${username.replace(/^@/, "")}`;
 }
 
+export type HelperOfferPreview = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  /** Real offer photo. Category art stays fully visible instead. */
+  photo?: boolean;
+};
+
 type HelperResultProfileCardProps = {
   helper: HelperResult;
   gallery: PublicProfileGalleryRow[];
+  offerPreviews?: HelperOfferPreview[];
   viewerId: string | undefined;
   favoriteIds: Set<string>;
   favoriteBusyId: string | null;
@@ -207,6 +244,7 @@ type HelperResultProfileCardProps = {
 export function HelperResultProfileCard({
   helper: h,
   gallery,
+  offerPreviews = [],
   viewerId,
   favoriteIds,
   favoriteBusyId,
@@ -223,7 +261,11 @@ export function HelperResultProfileCard({
   const { addToast } = useToast();
   const { user: currentUser, profile: currentProfile } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const categoryRowRef = useRef<HTMLDivElement>(null);
+  const categoryMeasureRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(99);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [chatOpening, setChatOpening] = useState(false);
   const [reviewsSheetOpen, setReviewsSheetOpen] = useState(false);
   const [helperReviews, setHelperReviews] = useState<ProfileReviewItem[]>([]);
@@ -242,15 +284,58 @@ export function HelperResultProfileCard({
   );
 
   const liveCategories = useMemo(() => {
-    const liveIds = h.freelancer_profiles?.live_categories;
-    if (!liveIds || liveIds.length === 0) return [];
-    return liveIds
+    const ids = [
+      ...(h.categories ?? []),
+      ...(h.freelancer_profiles?.live_categories ?? []),
+    ]
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean);
+    const unique = [...new Set(ids)];
+    const hasSubcategory = unique.some((id) => otherHelpSubcategoryLabel(id));
+    return unique
+      .filter((id) => !(id === "other_help" && hasSubcategory))
       .map((id) => {
-        const c = SERVICE_CATEGORIES.find((c) => c.id === id);
-        return c ? { id: c.id, label: c.label } : null;
-      })
-      .filter(Boolean) as { id: string; label: string }[];
-  }, [h.freelancer_profiles?.live_categories]);
+        const subLabel = otherHelpSubcategoryLabel(id);
+        return {
+          id,
+          label: subLabel
+            ? t(`otherHelpSubcategories.${id}`, { defaultValue: subLabel })
+            : t(`feed.categories.${id}`, { defaultValue: serviceCategoryLabel(id) }),
+        };
+      });
+  }, [h.categories, h.freelancer_profiles?.live_categories, t]);
+
+  useLayoutEffect(() => {
+    const row = categoryRowRef.current;
+    const measure = categoryMeasureRef.current;
+    if (!row || !measure) return;
+    const fit = () => {
+      const badges = [...measure.querySelectorAll<HTMLElement>("[data-cat-badge]")];
+      const widths = badges.map((el) => el.offsetWidth);
+      if (widths.length === 0 || window.innerWidth < 768) {
+        setVisibleCategoryCount(widths.length);
+        return;
+      }
+      const gap = 8;
+      const plus = 32;
+      const available = row.clientWidth;
+      let used = 0;
+      let count = 0;
+      for (let i = 0; i < widths.length; i++) {
+        const gapBefore = count > 0 ? gap : 0;
+        const remains = i < widths.length - 1;
+        const reserve = remains ? gap + plus : 0;
+        if (used + gapBefore + widths[i] + reserve > available) break;
+        used += gapBefore + widths[i];
+        count += 1;
+      }
+      setVisibleCategoryCount(Math.max(1, count));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [liveCategories]);
 
   const rateLabel =
     h.freelancer_profiles?.hourly_rate_min != null &&
@@ -322,13 +407,12 @@ export function HelperResultProfileCard({
 
   const syncIndex = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || slides.length === 0) return;
+    if (!el) return;
+    const count = el.children.length || slides.length;
+    if (count === 0) return;
     const w = el.clientWidth;
     if (w <= 0) return;
-    const idx = Math.min(
-      slides.length - 1,
-      Math.max(0, Math.round(el.scrollLeft / w)),
-    );
+    const idx = Math.min(count - 1, Math.max(0, Math.round(el.scrollLeft / w)));
     setActiveIndex(idx);
   }, [slides.length]);
 
@@ -360,7 +444,8 @@ export function HelperResultProfileCard({
       e?.stopPropagation();
       const el = scrollRef.current;
       if (!el) return;
-      const i = Math.min(slides.length - 1, Math.max(0, nextIndex));
+      const count = el.children.length || slides.length;
+      const i = Math.min(Math.max(count - 1, 0), Math.max(0, nextIndex));
       el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
       setActiveIndex(i);
     },
@@ -524,7 +609,7 @@ export function HelperResultProfileCard({
       ? h.average_rating.toFixed(1)
       : null;
   const browseLocation = [
-    h.city?.trim() || null,
+    cityCountryLabel(h.city),
     distanceMeta
       ? distanceFromViewerPin
         ? t("findHelpersPage.distanceFromYou", { distance: distanceMeta })
@@ -534,229 +619,295 @@ export function HelperResultProfileCard({
     .filter(Boolean)
     .join(" • ");
 
+  const profilePhotoSrc = h.photo_url?.trim() || "";
+  const mediaSlides = slides.filter((slide) => slide.key !== "profile-photo");
+  const coverProfile = mediaSlides.length === 0;
+  const favoriteButton = viewerId ? (
+    <button
+      type="button"
+      title={favoriteIds.has(h.id) ? "Remove from favorites" : "Save to favorites"}
+      aria-label={favoriteIds.has(h.id) ? "Remove from favorites" : "Add to favorites"}
+      aria-pressed={favoriteIds.has(h.id)}
+      disabled={favoriteBusyId === h.id}
+      onClick={(e) => void onToggleFavorite(h.id, e)}
+      className={cn(
+        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-700 dark:text-white",
+        coverProfile
+          ? "absolute right-3 top-3 z-10 bg-white/90 shadow-sm dark:bg-zinc-900/80"
+          : "bg-zinc-100 dark:bg-zinc-700",
+      )}
+    >
+      {favoriteBusyId === h.id ? (
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      ) : (
+        <Heart
+          className={cn("h-4 w-4", favoriteIds.has(h.id) && "fill-red-500 text-red-500")}
+          strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
+        />
+      )}
+    </button>
+  ) : null;
+
   if (variant === "browse") {
     return (
     <>
-      <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)] dark:bg-zinc-800 dark:shadow-lg dark:shadow-black/30 md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-[0_18px_44px_rgba(15,23,42,0.18)] dark:md:hover:shadow-2xl dark:md:hover:shadow-black/40">
-        <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-900 md:aspect-square md:flex-none">
-          {slides.length === 0 ? (
-            <ProfilePhotoPlaceholder name={h.full_name} seed={h.id} />
-          ) : showStrip ? (
-            <div
-              ref={scrollRef}
-              onScroll={() => {
-                window.requestAnimationFrame(syncIndex);
-              }}
-              className={cn(
-                "absolute inset-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
-                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-              )}
-            >
-              {slides.map((slide) => (
-                <div
-                  key={slide.key}
-                  className="relative h-full w-full min-w-full shrink-0 snap-start overflow-hidden"
-                >
-                  {slide.kind === "video" ? (
-                    <video
-                      src={slide.src}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <img
-                      src={slide.src}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                      draggable={false}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : slides[0]!.kind === "video" ? (
-            <video
-              src={slides[0]!.src}
-              className="absolute inset-0 h-full w-full object-cover"
-              muted
-              playsInline
-              preload="metadata"
-            />
-          ) : (
-            <img
-              src={slides[0]!.src}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              draggable={false}
-            />
-          )}
-
+      <article
+        role="link"
+        tabIndex={0}
+        onClick={() => onOpenProfile(h.id)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          if (e.target !== e.currentTarget) return;
+          e.preventDefault();
+          onOpenProfile(h.id);
+        }}
+        className="flex h-full min-h-0 w-full cursor-pointer flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)] outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70 dark:bg-zinc-800 dark:shadow-lg dark:shadow-black/30 md:h-auto md:self-stretch md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-[0_18px_44px_rgba(15,23,42,0.18)] dark:md:hover:shadow-2xl dark:md:hover:shadow-black/40"
+      >
+        {coverProfile ? (
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/85 via-black/40 to-transparent"
-            aria-hidden
-          />
-
-          {isLive24h ? (
-            <div className="pointer-events-none absolute left-3 top-3 z-10">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full",
-                  "bg-black/50 px-3 py-1.5 text-[12px] font-semibold tracking-tight text-white/95",
-                  "shadow-lg shadow-black/30 backdrop-blur-xl",
-                  "supports-[backdrop-filter]:bg-black/40",
-                )}
-                role="status"
-                aria-label="Available now for jobs"
-              >
-                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/35 motion-reduce:animate-none" />
-                  <span className="relative block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)] ring-2 ring-emerald-400/35" />
-                </span>
-                Available now
+            className={cn(
+              "relative aspect-video w-full shrink-0 overflow-hidden",
+              profilePhotoSrc ? "bg-zinc-200" : photoPlaceholderColorClass(h.id),
+            )}
+          >
+            {profilePhotoSrc ? (
+              <img
+                src={profilePhotoSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover object-center"
+              />
+            ) : (
+              <span className="absolute inset-0 flex items-center justify-center text-6xl font-black tracking-tight text-white">
+                {initialsFromName(h.full_name)}
               </span>
-            </div>
-          ) : null}
+            )}
+            {favoriteButton}
+          </div>
+        ) : null}
 
-          {showStrip ? (
-            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
-              <div className="flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 backdrop-blur-md">
-                {slides.map((_, idx) => (
-                  <span
-                    // eslint-disable-next-line react/no-array-index-key
-                    key={idx}
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      idx === activeIndex ? "bg-white" : "bg-white/35",
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {showStrip && activeIndex > 0 ? (
-            <button
-              type="button"
-              aria-label="Previous photo"
-              className={cn(mediaGlassArrowBtn, "left-2.5")}
-              onClick={(e) => goToSlide(activeIndex - 1, e)}
-            >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.4} aria-hidden />
-            </button>
-          ) : null}
-          {showStrip && activeIndex < slides.length - 1 ? (
-            <button
-              type="button"
-              aria-label="Next photo"
-              className={cn(mediaGlassArrowBtn, "right-2.5")}
-              onClick={(e) => goToSlide(activeIndex + 1, e)}
-            >
-              <ChevronRight className="h-5 w-5" strokeWidth={2.4} aria-hidden />
-            </button>
-          ) : null}
-
-          {viewerId ? (
-            <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                title={
-                  favoriteIds.has(h.id)
-                    ? "Remove from favorites"
-                    : "Save to favorites"
-                }
-                aria-label={
-                  favoriteIds.has(h.id)
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
-                aria-pressed={favoriteIds.has(h.id)}
-                disabled={favoriteBusyId === h.id}
-                onClick={(e) => void onToggleFavorite(h.id, e)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md"
-              >
-                {favoriteBusyId === h.id ? (
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                ) : (
-                  <Heart
-                    className={cn(
-                      "h-5 w-5",
-                      favoriteIds.has(h.id) && "fill-red-500 text-red-500",
-                    )}
-                    strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
-                  />
-                )}
-              </button>
-            </div>
-          ) : null}
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-3.5">
-            <p className="text-[28px] font-black leading-none tracking-tight text-white">
+        <div className="flex items-start gap-3 px-3.5 pb-1 pt-3.5">
+          {coverProfile ? null : (
+          <span
+            className={cn(
+              "flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-800",
+              profilePhotoSrc ? "bg-zinc-200" : photoPlaceholderColorClass(h.id),
+            )}
+          >
+            {profilePhotoSrc ? (
+              <img src={profilePhotoSrc} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-lg font-black leading-none text-white">
+                {initialsFromName(h.full_name)}
+              </span>
+            )}
+          </span>
+          )}
+          <div className="min-w-0 flex-1 pt-1">
+            <p className="truncate text-[18px] font-black leading-none tracking-tight text-zinc-900 dark:text-white">
               {h.full_name || t("findHelpersPage.helperFallback")}
             </p>
             {isNewHelper || browseLocation || ratingLabel ? (
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] font-semibold uppercase tracking-wide text-white/80">
-                {isNewHelper ? (
-                  <span>{t("findHelpersPage.newHelper")}</span>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-300">
+                {isLive24h ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">Available now</span>
                 ) : null}
+                {isLive24h && (isNewHelper || browseLocation) ? <span aria-hidden>•</span> : null}
+                {isNewHelper ? <span>{t("findHelpersPage.newHelper")}</span> : null}
                 {isNewHelper && browseLocation ? <span aria-hidden>•</span> : null}
                 {browseLocation ? <span>{browseLocation}</span> : null}
                 {ratingLabel ? (
                   <>
-                    {(isNewHelper || browseLocation) ? (
-                      <span aria-hidden>•</span>
-                    ) : null}
+                    {(isNewHelper || browseLocation || isLive24h) ? <span aria-hidden>•</span> : null}
                     <button
                       type="button"
                       onClick={(e) => void openReviews(e)}
                       disabled={reviewsLoading}
                       aria-label={`View all ${reviewCount} reviews`}
-                      className="pointer-events-auto inline-flex items-center gap-1 normal-case tracking-normal outline-none transition-opacity hover:opacity-80 active:opacity-70 focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
+                      className="pointer-events-auto inline-flex items-center gap-1 normal-case tracking-normal text-zinc-800 outline-none transition-opacity hover:opacity-80 dark:text-white"
                     >
                       {reviewsLoading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                       ) : (
-                        <Star
-                          className="h-3.5 w-3.5 shrink-0 fill-white text-white"
-                          aria-hidden
-                        />
+                        <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
                       )}
                       <span>{ratingLabel}</span>
-                      <span className="font-semibold text-white/75">
-                        ({reviewCount})
-                      </span>
+                      <span className="font-semibold text-zinc-400">({reviewCount})</span>
                     </button>
                   </>
                 ) : null}
               </p>
             ) : null}
           </div>
+          {coverProfile ? null : favoriteButton}
         </div>
 
-        <div className="flex shrink-0 flex-col space-y-3.5 px-4 pb-4 pt-3.5">
-          <div
-            className={cn(
-              "flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden md:min-h-[2.125rem]",
-              "touch-pan-x overscroll-x-contain",
-              "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-              liveCategories.length === 0 && "max-md:hidden",
-            )}
-          >
-            {liveCategories.map((cat) => (
-              <span
-                key={cat.id}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:bg-zinc-700/80 dark:text-white"
+        <div className="flex min-h-0 flex-1 flex-col space-y-2 px-3.5 pb-3 pt-2">
+          {liveCategories.length > 0 ? (
+          <div className="relative">
+            <div
+              ref={categoryMeasureRef}
+              className="pointer-events-none absolute left-0 top-0 -z-10 flex w-max gap-2 opacity-0"
+              aria-hidden
+            >
+              {liveCategories.map((cat) => (
+                <span
+                  key={cat.id}
+                  data-cat-badge=""
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide"
+                >
+                  <CategoryIcon id={cat.id} className="h-3.5 w-3.5" />
+                  {cat.label}
+                </span>
+              ))}
+            </div>
+            <div
+              ref={categoryRowRef}
+              className={cn(
+                "flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden",
+                "touch-pan-x overscroll-x-contain md:overflow-hidden",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              )}
+            >
+              {liveCategories.map((cat, index) => (
+                <span
+                  key={cat.id}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:bg-zinc-700/80 dark:text-white",
+                    index >= visibleCategoryCount && "md:hidden",
+                  )}
+                >
+                  <CategoryIcon id={cat.id} className="h-3.5 w-3.5 text-emerald-400" />
+                  {cat.label}
+                </span>
+              ))}
+              {visibleCategoryCount < liveCategories.length ? (
+                <button
+                  type="button"
+                  aria-label="More categories"
+                  aria-expanded={categoriesOpen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCategoriesOpen((open) => !open);
+                  }}
+                  className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 md:inline-flex dark:bg-zinc-700 dark:text-white"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : null}
+            </div>
+            {categoriesOpen && visibleCategoryCount < liveCategories.length ? (
+              <div
+                className="mt-1.5 hidden flex-wrap gap-1.5 md:flex"
+                onClick={(e) => e.stopPropagation()}
               >
-                <CategoryIcon id={cat.id} className="h-3.5 w-3.5 text-emerald-400" />
-                {t(`feed.categories.${cat.id}`, { defaultValue: cat.label })}
-              </span>
-            ))}
+                {liveCategories.slice(visibleCategoryCount).map((cat) => (
+                  <span
+                    key={cat.id}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:bg-zinc-700/80 dark:text-white"
+                  >
+                    <CategoryIcon id={cat.id} className="h-3.5 w-3.5 text-emerald-400" />
+                    {cat.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
+          ) : null}
+
+          {mediaSlides.length > 0 ? (
+            <div
+              className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                ref={scrollRef}
+                onScroll={() => {
+                  window.requestAnimationFrame(syncIndex);
+                }}
+                className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {mediaSlides.map((slide) => (
+                  <div
+                    key={slide.key}
+                    className="relative h-full w-full min-w-full shrink-0 snap-start overflow-hidden"
+                  >
+                    {slide.kind === "video" ? (
+                      <video
+                        src={slide.src}
+                        className="absolute inset-0 h-full w-full object-cover object-center"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={slide.src}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover object-center"
+                        draggable={false}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              {mediaSlides.length > 1 && activeIndex > 0 ? (
+                <button
+                  type="button"
+                  aria-label="Previous photo"
+                  className="absolute left-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white md:left-2 md:h-10 md:w-10"
+                  onClick={(e) => goToSlide(activeIndex - 1, e)}
+                >
+                  <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : null}
+              {mediaSlides.length > 1 && activeIndex < mediaSlides.length - 1 ? (
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white md:right-2 md:h-10 md:w-10"
+                  onClick={(e) => goToSlide(activeIndex + 1, e)}
+                >
+                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {mediaSlides.length > 0 && offerPreviews.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              {offerPreviews.slice(0, 2).map((offer) => (
+                <button
+                  key={offer.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(isolatedOfferPostPath(offer.id));
+                  }}
+                  className="flex min-w-0 items-center gap-2.5 rounded-2xl bg-zinc-50 p-1.5 text-left ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-700"
+                  aria-label={offer.title}
+                >
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                    <img
+                      src={offer.imageUrl}
+                      alt=""
+                      className={cn(
+                        "absolute inset-0 h-full w-full",
+                        offer.photo ? "object-cover object-center" : "object-contain p-0.5",
+                      )}
+                    />
+                  </span>
+                  <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-semibold leading-snug text-zinc-800 dark:text-zinc-100">
+                    {offer.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <p
             className={cn(
-              "line-clamp-3 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-200 md:min-h-[4.125rem]",
+              "line-clamp-2 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-200",
+              "md:line-clamp-none md:min-h-[2.6rem] md:flex-1 md:overflow-hidden md:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.2rem),transparent)]",
               !h.freelancer_profiles?.bio && "max-md:hidden",
             )}
           >
@@ -776,20 +927,14 @@ export function HelperResultProfileCard({
               </>
             ) : null}
           </p>
+        </div>
 
-          <div className="mt-auto flex items-center gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={() => onOpenProfile(h.id)}
-              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-full bg-orange-500 px-4 text-[15px] font-bold text-white transition-colors hover:bg-orange-400 active:bg-orange-600"
-            >
-              {t("findHelpersPage.viewProfile")}
-            </button>
+          <div className="mt-auto px-3.5 pb-3 pt-2">
             <button
               type="button"
               onClick={(e) => void openDirectChat(e)}
               disabled={chatOpening}
-              className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-zinc-100 px-4 text-[13px] font-bold uppercase tracking-wide text-zinc-800 transition-colors hover:bg-zinc-200 active:bg-zinc-300 disabled:pointer-events-none disabled:opacity-60 dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600 dark:active:bg-zinc-800"
+              className="inline-flex h-10 w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-[13px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-orange-400 active:bg-orange-600 disabled:pointer-events-none disabled:opacity-60"
             >
               {chatOpening ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -803,7 +948,6 @@ export function HelperResultProfileCard({
               {t("findHelpersPage.message")}
             </button>
           </div>
-        </div>
       </article>
       {reviewsSheet}
     </>
@@ -1093,7 +1237,7 @@ export function HelperResultProfileCard({
                 ) : null}
               </div>
               <span className="line-clamp-1 max-w-full shrink-0 text-[15px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.45)] sm:max-w-[min(100%,12rem)]">
-                {h.city?.trim() || "—"}
+                {cityCountryLabel(h.city) || "—"}
               </span>
             </div>
           </div>

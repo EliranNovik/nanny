@@ -30,6 +30,7 @@ import {
   Menu,
   Pencil,
   Search,
+  Settings,
   Plus,
   X,
   ClipboardList,
@@ -841,9 +842,9 @@ export function BottomNav() {
       type="button"
       onClick={() => navigate(profilePath)}
       className={className}
-      aria-label={t("common.profile")}
+      aria-label={t("common.settings", { defaultValue: "Settings" })}
     >
-      <Menu className="h-7 w-7" strokeWidth={2} aria-hidden />
+      <Settings className="h-7 w-7" strokeWidth={2} aria-hidden />
     </button>
   );
 

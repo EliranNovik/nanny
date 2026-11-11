@@ -32,29 +32,26 @@ function firstName(name: string) {
 }
 
 const authorPostsAsideClass =
-  "flex h-full min-h-0 w-[420px] shrink-0 flex-col self-stretch overflow-hidden border-s border-zinc-200/80 bg-zinc-50/80 dark:border-white/[0.08] dark:bg-zinc-950";
+  "flex h-full min-h-0 w-[260px] shrink-0 flex-col self-stretch overflow-hidden border-s border-zinc-200/80 bg-zinc-50/80 dark:border-white/[0.08] dark:bg-zinc-950";
 
 /** Holds the right column while the post detail is still loading. */
 export function AuthorPostsSidePanelSkeleton() {
   return (
     <aside className={authorPostsAsideClass} aria-hidden>
-      <header className="flex items-center gap-3 px-[18px] pb-3.5 pt-[calc(env(safe-area-inset-top,0px)+14px)]">
-        <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </header>
-      <div className="min-h-0 flex-1 space-y-3 overflow-hidden px-3.5 pt-2">
-        {Array.from({ length: 5 }, (_, index) => (
-          <div
-            key={index}
-            className="flex items-stretch overflow-hidden rounded-[24px] bg-white ring-1 ring-black/[0.05] dark:bg-zinc-900 dark:ring-white/[0.06]"
-          >
-            <Skeleton className="h-32 w-32 shrink-0 rounded-none" />
-            <span className="flex min-w-0 flex-1 flex-col justify-center gap-2 px-3">
+      <div className="min-h-0 flex-1 space-y-5 overflow-hidden px-3.5 pt-[calc(env(safe-area-inset-top,0px)+14px)]">
+        <header className="flex items-center gap-3 pb-1">
+          <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </header>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index}>
+            <Skeleton className="aspect-[16/10] w-full rounded-2xl" />
+            <span className="flex flex-col gap-2 px-0.5 pt-2.5">
               <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-24" />
             </span>
           </div>
         ))}
@@ -234,27 +231,26 @@ export function AuthorPostsSidePanel({
 
   return (
     <aside className={authorPostsAsideClass}>
-      <header className="flex items-center gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+18px)]">
-        <Avatar className="h-12 w-12 ring-2 ring-white dark:ring-zinc-800">
-          <AvatarImage src={post.author?.photo_url || undefined} alt="" className="object-cover" />
-          <AvatarFallback className="bg-orange-500/15 text-base font-bold text-orange-600 dark:text-orange-400">
-            {authorName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <h2 className="truncate text-[19px] font-extrabold tracking-[-0.3px] text-zinc-900 dark:text-zinc-50">
-            {t("postDetailPanel.title", {
-              name: firstName(authorName),
-              defaultValue: `Posts by ${firstName(authorName)}`,
-            })}
-          </h2>
-          <p className="mt-0.5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
-            {isPending ? " " : countLabel}
-          </p>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-[calc(env(safe-area-inset-top,0px)+18px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <header className="mb-4 flex items-center gap-3">
+          <Avatar className="h-12 w-12 ring-2 ring-white dark:ring-zinc-800">
+            <AvatarImage src={post.author?.photo_url || undefined} alt="" className="object-cover" />
+            <AvatarFallback className="bg-orange-500/15 text-base font-bold text-orange-600 dark:text-orange-400">
+              {authorName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <h2 className="truncate text-[19px] font-extrabold tracking-[-0.3px] text-zinc-900 dark:text-zinc-50">
+              {t("postDetailPanel.title", {
+                name: firstName(authorName),
+                defaultValue: `Posts by ${firstName(authorName)}`,
+              })}
+            </h2>
+            <p className="mt-0.5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
+              {isPending ? " " : countLabel}
+            </p>
+          </div>
+        </header>
         {isPending ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
@@ -264,7 +260,7 @@ export function AuthorPostsSidePanel({
             {t("postDetailPanel.empty", { defaultValue: "No posts yet" })}
           </p>
         ) : (
-          <div className="space-y-3.5">
+          <div className="space-y-5">
             {items.map((item) => {
               const selected = currentKey === `${item.source}:${item.id}`;
               return (
@@ -279,12 +275,14 @@ export function AuthorPostsSidePanel({
                         : `/offers/${item.id}`,
                     )
                   }
-                  className={cn(
-                    "flex w-full items-stretch overflow-hidden rounded-[24px] bg-white p-0 text-start shadow-[0_10px_28px_-18px_rgba(24,24,27,0.55)] ring-1 ring-black/[0.05] transition-shadow hover:shadow-[0_16px_34px_-16px_rgba(24,24,27,0.45)] dark:bg-zinc-900 dark:shadow-none dark:ring-white/[0.07]",
-                    selected && "ring-2 ring-orange-500",
-                  )}
+                  className="flex w-full flex-col bg-transparent p-0 text-start"
                 >
-                  <span className="relative min-h-32 w-32 shrink-0 self-stretch overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                  <span
+                    className={cn(
+                      "relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800",
+                      selected && "ring-2 ring-orange-500",
+                    )}
+                  >
                     {item.mediaType === "video" && item.thumbUrl ? (
                       <>
                         <video
@@ -315,12 +313,12 @@ export function AuthorPostsSidePanel({
                       />
                     )}
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col justify-center py-3.5 pe-3 ps-3">
+                  <span className="flex min-w-0 flex-col px-0.5 pt-2.5">
                     <span className="line-clamp-2 text-[15px] font-bold leading-5 text-zinc-900 dark:text-zinc-100">
                       {item.title}
                     </span>
                     <span className="mt-2 flex items-center justify-between gap-2">
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-600 ring-1 ring-black/[0.05] dark:bg-zinc-800 dark:text-zinc-300 dark:ring-white/[0.08]">
                         {t(`feed.postType.${item.postTypeId}`, {
                           defaultValue: item.postTypeId,
                         })}

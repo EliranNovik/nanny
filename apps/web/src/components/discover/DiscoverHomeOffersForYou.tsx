@@ -22,8 +22,35 @@ import {
   resolveHelpCategoryIconId,
 } from "@/lib/discoverCategoryTileIcons";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
-import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
+import type { DiscoverHomeCategoryFilter, DiscoverHomeListingSort, DiscoverHomeListingFilters } from "@/lib/discoverHomeCategoryFilter";
+import { matchesListingFilters, EMPTY_LISTING_FILTERS } from "@/lib/discoverHomeCategoryFilter";
 import { cn } from "@/lib/utils";
+import { HomeListingSortButton } from "@/components/discover/HomeListingSortButton";
+
+const HOME_LISTING_GRID_CLASS =
+  "grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4 min-[1440px]:grid-cols-5";
+
+function HomeListingCardSkeleton({ tone }: { tone: "orange" | "emerald" }) {
+  const accent = tone === "orange" ? "bg-orange-100 dark:bg-orange-500/15" : "bg-emerald-100 dark:bg-emerald-500/15";
+  const button = tone === "orange" ? "bg-orange-200/80 dark:bg-orange-500/25" : "bg-emerald-200/80 dark:bg-emerald-500/25";
+  return (
+    <div className="flex items-center gap-3 overflow-hidden rounded-[20px] bg-white pe-3 shadow-[0_5px_20px_rgba(15,23,42,0.08)] dark:bg-[#1d1f21] md:flex-col md:items-stretch md:pe-0">
+      <div className="h-[112px] w-[112px] shrink-0 animate-pulse bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full" />
+      <div className="min-w-0 flex-1 space-y-2 py-1 md:px-4 md:pb-4 md:pt-3.5">
+        <div className={cn("h-6 w-24 animate-pulse rounded-full", accent)} />
+        <div className="h-4 w-4/5 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-4 w-3/5 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-700/80" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-100 dark:bg-zinc-700/60" />
+        {tone === "emerald" ? (
+          <div className="hidden gap-2 pt-1 md:flex">
+            <div className={cn("h-10 flex-[2] animate-pulse rounded-full", button)} />
+            <div className="h-10 w-16 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function OfferCategoryIcon({
   categoryId,
@@ -52,11 +79,21 @@ export function DiscoverHomeOffersForYou({
   categoryFilter = "all",
   otherSubFilter = null,
   viewerLocation = null,
+  listingSort = "newest",
+  onListingSortChange,
+  listingFilters = EMPTY_LISTING_FILTERS,
+  onListingFiltersChange,
+  showSortButton = true,
 }: {
   className?: string;
   categoryFilter?: DiscoverHomeCategoryFilter;
   otherSubFilter?: string | null;
   viewerLocation?: ViewerLocation | null;
+  listingSort?: DiscoverHomeListingSort;
+  onListingSortChange?: (next: DiscoverHomeListingSort) => void;
+  listingFilters?: DiscoverHomeListingFilters;
+  onListingFiltersChange?: (next: DiscoverHomeListingFilters) => void;
+  showSortButton?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -93,6 +130,75 @@ export function DiscoverHomeOffersForYou({
     );
   }, [offers, categoryFilter, otherSubFilter]);
 
+  const filteredOffers = useMemo(() => {
+    const lat = viewerLocation?.lat;
+    const lng = viewerLocation?.lng;
+    return visibleOffers.filter((offer) => {
+      const distanceKm =
+        offer.locationLat != null &&
+        offer.locationLng != null &&
+        typeof lat === "number" &&
+        typeof lng === "number" &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+          ? haversineDistanceKm(lat, lng, offer.locationLat, offer.locationLng)
+          : null;
+      return matchesListingFilters(
+        {
+          createdAt: offer.createdAt,
+          when: null,
+          categoryId: offer.categoryId,
+          customCategory: offer.customCategory,
+          rating: offer.authorRating,
+          distanceKm,
+        },
+        listingFilters,
+      );
+    });
+  }, [listingFilters, viewerLocation, visibleOffers]);
+
+  const sortedOffers = useMemo(() => {
+    const postedAt = (offer: (typeof visibleOffers)[number]) =>
+      new Date(offer.createdAt).getTime();
+    const distanceKm = (offer: (typeof visibleOffers)[number]) => {
+      const lat = viewerLocation?.lat;
+      const lng = viewerLocation?.lng;
+      if (
+        offer.locationLat == null ||
+        offer.locationLng == null ||
+        typeof lat !== "number" ||
+        typeof lng !== "number" ||
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        return null;
+      }
+      return haversineDistanceKm(lat, lng, offer.locationLat, offer.locationLng);
+    };
+    return [...filteredOffers].sort((a, b) => {
+      if (listingSort === "oldest") return postedAt(a) - postedAt(b);
+      if (listingSort === "reviews") {
+        const ratingDiff = (b.authorRating ?? -1) - (a.authorRating ?? -1);
+        if (ratingDiff !== 0) return ratingDiff;
+        return postedAt(b) - postedAt(a);
+      }
+      if (listingSort === "category") {
+        return feedCategoryLabel(t, a.categoryId, a.customCategory).localeCompare(
+          feedCategoryLabel(t, b.categoryId, b.customCategory),
+        );
+      }
+      if (listingSort === "nearest") {
+        const aKm = distanceKm(a);
+        const bKm = distanceKm(b);
+        if (aKm == null && bKm == null) return postedAt(b) - postedAt(a);
+        if (aKm == null) return 1;
+        if (bKm == null) return -1;
+        return aKm - bKm;
+      }
+      return postedAt(b) - postedAt(a);
+    });
+  }, [filteredOffers, listingSort, t, viewerLocation]);
+
   const openOffer = (postId: string) => {
     navigate(isolatedOfferPostPath(postId));
   };
@@ -100,17 +206,10 @@ export function DiscoverHomeOffersForYou({
   if (isLoading) {
     return (
       <section className={cn("w-full", className)} aria-label={t("discover.offersForYou")}>
-        <div className="mb-5 h-7 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="flex items-center gap-3.5">
-              <div className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-4 w-36 animate-pulse rounded bg-zinc-200/70 dark:bg-zinc-800/70" />
-                <div className="h-5 w-52 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
-                <div className="h-4 w-40 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
-              </div>
-            </div>
+        <div className="mb-5 h-7 w-48 animate-pulse rounded bg-orange-100 dark:bg-orange-500/15" />
+        <div className={HOME_LISTING_GRID_CLASS}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <HomeListingCardSkeleton key={i} tone="orange" />
           ))}
         </div>
       </section>
@@ -121,11 +220,22 @@ export function DiscoverHomeOffersForYou({
 
   return (
     <section className={cn("w-full", className)} aria-label={t("discover.offersForYou")}>
-      <h2 className="mb-5 text-[24px] font-black tracking-tight text-orange-700 dark:text-orange-400 sm:text-2xl">
-        {t("discover.offersForYou")}
-      </h2>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="min-w-0 text-[24px] font-black tracking-tight text-orange-700 dark:text-orange-400 sm:text-2xl">
+          {t("discover.offersForYou")}
+        </h2>
+        {showSortButton && onListingSortChange ? (
+          <HomeListingSortButton
+            value={listingSort}
+            onChange={onListingSortChange}
+            filters={listingFilters}
+            onFiltersChange={onListingFiltersChange}
+            tone="orange"
+          />
+        ) : null}
+      </div>
 
-      {visibleOffers.length === 0 ? (
+      {sortedOffers.length === 0 ? (
         <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/60">
           <p className="text-[15px] font-semibold text-foreground sm:text-sm">
             {t("discover.noSortMatch", {
@@ -137,8 +247,8 @@ export function DiscoverHomeOffersForYou({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4">
-          {visibleOffers.map((offer) => {
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4 min-[1440px]:grid-cols-5">
+          {sortedOffers.map((offer) => {
             const postMediaUrl = trimUrl(offer.imageUrl);
             const authorPhotoUrl = trimUrl(offer.authorPhotoUrl);
             // Prefer post media, then profile photo; otherwise use the same
@@ -191,7 +301,7 @@ export function DiscoverHomeOffersForYou({
                 type="button"
                 onClick={() => openOffer(offer.id)}
                 className={cn(
-                  "group flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0",
+                  "group flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left md:h-auto md:flex-col md:items-stretch md:gap-0 md:self-stretch md:pe-0",
                   "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
@@ -224,7 +334,7 @@ export function DiscoverHomeOffersForYou({
                   ) : null}
                 </div>
 
-                <div className="min-w-0 flex-1 md:px-4 md:pb-4 md:pt-3.5">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col md:px-4 md:pb-4 md:pt-3.5">
                   <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-orange-700 dark:text-orange-400 sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-orange-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-orange-500/15">
                     <OfferCategoryIcon
                       categoryId={offer.categoryId}
@@ -238,14 +348,19 @@ export function DiscoverHomeOffersForYou({
                   <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
                     {offerTitle}
                   </p>
-                  {locationLine ? (
-                    <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
-                      {locationLine}
+                  <div className="md:mt-auto md:pt-2">
+                    <p
+                      className={cn(
+                        "truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px] md:min-h-[1.15rem]",
+                        !locationLine && "max-md:hidden",
+                      )}
+                    >
+                      {locationLine || "\u00a0"}
                     </p>
-                  ) : null}
-                  <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
-                    {offer.authorName} • {timeAgo}
-                  </p>
+                    <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
+                      {offer.authorName} • {timeAgo}
+                    </p>
+                  </div>
                 </div>
 
                 <ChevronRight

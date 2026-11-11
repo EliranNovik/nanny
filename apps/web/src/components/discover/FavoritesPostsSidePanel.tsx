@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { useDiscoverSidePostsLive } from "@/hooks/useCommunityPostsLive";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
+import { publicProfileMediaUrl } from "@/lib/publicProfileMedia";
 import { avatarUrl } from "@/lib/imageTransform";
 import { getServiceCategoryImage } from "@/lib/serviceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -87,8 +87,15 @@ function categoryIdFromSidePanelPost(post: FavoritePostRow): string | null {
 }
 
 function sidePanelThumbUrl(post: FavoritePostRow): string {
-  if (post.storage_path) {
-    return publicProfileMediaPublicUrl(post.storage_path);
+  const path = post.storage_path?.trim();
+  // Side-panel thumbs are ~190px wide. A small WebP loads far faster than the original file.
+  if (path && post.media_type !== "video") {
+    return publicProfileMediaUrl(path, {
+      width: 384,
+      height: 256,
+      quality: 68,
+      resize: "cover",
+    });
   }
   return getServiceCategoryImage(categoryIdFromSidePanelPost(post));
 }
@@ -437,32 +444,22 @@ function ThumbCard({
           SIDE_PANEL_THUMB_CLASS,
         )}
       >
+        <img
+          src={thumb}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+        />
         {isVideo ? (
-          <>
-            <video
-              src={thumb}
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
-              muted
-              playsInline
-              preload="metadata"
+          <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/15">
+            <PlayCircle
+              className="h-9 w-9 text-white drop-shadow-md"
+              strokeWidth={2.25}
+              aria-hidden
             />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-              <PlayCircle
-                className="h-9 w-9 text-white drop-shadow-md"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            </div>
-          </>
-        ) : (
-          <img
-            src={thumb}
-            alt=""
-            loading="eager"
-            decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
-          />
-        )}
+          </div>
+        ) : null}
         {showLikeCount && typeof post.like_count === "number" && post.like_count > 0 ? (
           <span className="pointer-events-none absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
             <Heart className="h-3 w-3 fill-rose-400 text-rose-400" strokeWidth={0} aria-hidden />
