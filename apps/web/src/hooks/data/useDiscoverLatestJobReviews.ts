@@ -23,13 +23,14 @@ export type DiscoverLatestJobReview = {
 
 const capLimit = (n: number) => Math.max(1, Math.min(20, Math.floor(n)));
 
-export function useDiscoverLatestJobReviews(limit: number) {
+export function useDiscoverLatestJobReviews(limit: number, enabled = true) {
   const { user } = useAuth();
   const capped = capLimit(limit);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DiscoverLatestJobReview[]>([]);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setLoading(true);
     void (async () => {
@@ -87,7 +88,7 @@ export function useDiscoverLatestJobReviews(limit: number) {
     return () => {
       cancelled = true;
     };
-  }, [capped, user?.id]);
+  }, [capped, user?.id, enabled]);
 
   return { loading, rows };
 }

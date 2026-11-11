@@ -70,42 +70,298 @@
     <link rel="apple-touch-icon" sizes="192x192" href="/brand-mark.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="/brand-mark.png" />
     
-    <!-- Fonts -->
+    <!-- Fonts. Non-blocking so the first screen is not held on the stylesheet. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
-    
-    <!-- Leaflet CSS for fallback maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" />
+    </noscript>
+
+    <link rel="preload" as="image" href="/images/landing-hero-babysitting.jpg" fetchpriority="high" />
     
     <title>Tebnu - Your Helper for Home & Life</title>
   </head>
   <body>
     <div id="root">
-      <!-- Replaced on React mount; mobile keeps the logo splash. Desktop skips it so landing paints immediately. -->
+      <!-- Cream first paint: headline and actions only. The photo, phone, and store buttons arrive with the app. -->
       <style>
+        html, body { margin: 0; background: #ffffff; }
+        #boot-splash { display: none; }
+        #boot-splash.is-home {
+          position: relative;
+          box-sizing: border-box;
+          min-height: 100svh;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+          padding: 5rem 1.25rem 0;
+          background: #FAF6EF;
+          font-family: "DM Sans", system-ui, sans-serif;
+        }
+        #boot-splash .bar {
+          position: absolute;
+          z-index: 2;
+          top: 0; left: 0; right: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 52px;
+          padding: max(0.4rem, env(safe-area-inset-top)) 0.5rem 0.4rem;
+          box-sizing: border-box;
+        }
+        #boot-splash .brand { display: none; align-items: center; color: #09090b; text-decoration: none; }
+        #boot-splash .brand img { height: 3.5rem; width: auto; }
+        #boot-splash .brand b { margin-left: -0.3rem; font-weight: 900; font-size: 1.25rem; letter-spacing: -0.04em; }
+        #boot-splash .menu { display: inline-flex; width: 2.25rem; height: 2.25rem; flex-direction: column; justify-content: center; gap: 5px; }
+        #boot-splash .menu i { display: block; height: 2px; width: 1.35rem; border-radius: 2px; background: #18181b; }
+        #boot-splash nav { display: none; }
+        #boot-splash nav a { color: #09090b; font-weight: 700; font-size: 0.875rem; text-decoration: none; padding: 0.25rem 0.6rem; }
+        #boot-splash .bar-right { display: flex; align-items: center; gap: 0.35rem; }
+        #boot-splash .signin, #boot-splash .register {
+          display: inline-flex; align-items: center; height: 2.25rem;
+          font-weight: 700; font-size: 0.875rem; text-decoration: none;
+        }
+        #boot-splash .signin { color: #09090b; padding: 0 0.75rem; border-radius: 999px; }
+        #boot-splash .register { padding: 0 0.85rem; border-radius: 999px; background: #ea580c; color: #fff; }
+        #boot-splash .loader {
+          position: absolute;
+          z-index: 1;
+          right: 18vw;
+          bottom: 18%;
+          width: 11rem;
+          height: 7.75rem;
+          overflow: hidden;
+          border-radius: 1.25rem;
+          background: rgba(226, 236, 220, 0.62);
+        }
+        #boot-splash .loader .map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.8; }
+        #boot-splash .loader .radar {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 4.5rem;
+          height: 4.5rem;
+          margin: -2.25rem 0 0 -2.25rem;
+        }
+        #boot-splash .loader .rings,
+        #boot-splash .loader .sweep {
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+        }
+        #boot-splash .loader .rings {
+          border: 1px solid rgba(5, 150, 105, 0.32);
+          box-shadow: inset 0 0 0 10px rgba(16, 185, 129, 0.08), inset 0 0 0 20px rgba(16, 185, 129, 0.05);
+        }
+        #boot-splash .loader .sweep {
+          background: conic-gradient(from 0deg, transparent 0 62%, rgba(16,185,129,0.04) 76%, rgba(5,150,105,0.42) 100%);
+          animation: boot-spin 2.6s linear infinite;
+        }
+        #boot-splash .loader .dot {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 0.5rem;
+          height: 0.5rem;
+          margin: -0.25rem 0 0 -0.25rem;
+          border-radius: 999px;
+          background: #059669;
+          box-shadow: 0 0 0 4px rgba(16,185,129,0.28);
+        }
+        @keyframes boot-spin { to { transform: rotate(360deg); } }
+        #boot-splash .copy { width: 100%; max-width: 36rem; }
+        #boot-splash .logo { display: flex; align-items: center; margin-bottom: 0.5rem; }
+        #boot-splash .logo img { height: 2.25rem; width: auto; }
+        #boot-splash .logo span { margin-left: -0.25rem; color: #09090b; font-weight: 900; font-size: 1.125rem; letter-spacing: -0.04em; }
+        #boot-splash h1 {
+          margin: 0;
+          width: calc(100vw - 2.5rem);
+          max-width: 100%;
+          color: #09090b;
+          font-weight: 900;
+          font-size: 2.6rem;
+          line-height: 0.98;
+          letter-spacing: -0.045em;
+        }
+        #boot-splash p {
+          margin: 1rem 0 0;
+          color: #52525b;
+          font-weight: 500;
+          font-size: 1.125rem;
+          line-height: 1.375;
+        }
+        #boot-splash .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; margin-top: 1.75rem; }
+        #boot-splash a.find {
+          display: inline-flex; align-items: center; gap: 0.5rem; height: 3.25rem; padding: 0 1.75rem;
+          border-radius: 999px; background: #F97316; color: #fff; text-decoration: none;
+          font-weight: 600; font-size: 1rem;
+          box-shadow: 0 14px 30px -14px rgba(249,115,22,0.9);
+        }
+        #boot-splash a.find svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; display: block; }
+        #boot-splash a.offer {
+          color: #18181b; font-weight: 500; font-size: 1rem;
+          text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 7px;
+        }
+        @media (min-width: 430px) {
+          #boot-splash h1 { font-size: 3rem; }
+        }
+        @media (min-width: 640px) {
+          #boot-splash { padding: 5rem 2.5rem 0; }
+          #boot-splash h1 { width: auto; font-size: 4.5rem; }
+          #boot-splash p { margin-top: 1.5rem; font-size: 1.5rem; }
+          #boot-splash .actions { gap: 1rem 2rem; margin-top: 2.25rem; }
+          #boot-splash a.find { height: 3.5rem; gap: 0.625rem; padding: 0 2rem; font-size: 1.125rem; }
+          #boot-splash a.offer { font-size: 1.125rem; }
+        }
         @media (min-width: 768px) {
-          #boot-splash { display: none !important; }
+          #boot-splash { justify-content: center; padding: 12vh 4.7vw 6vh; }
+          #boot-splash .bar { min-height: 64px; padding: 0.45rem 0.65rem; }
+          #boot-splash .brand {
+            display: flex;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.9);
+            padding: 0 0.7rem 0 0.1rem;
+            box-shadow: 0 0 0 1px rgba(24,24,27,0.06), 0 8px 20px -14px rgba(24,24,27,0.4);
+          }
+          #boot-splash .brand img { height: 3.5rem; }
+          #boot-splash .brand b { font-size: 1.05rem; }
+          #boot-splash .menu { display: none; }
+          #boot-splash nav {
+            display: flex; position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%); gap: 1.5rem;
+          }
+          #boot-splash .signin, #boot-splash .register { height: 2.5rem; }
+          #boot-splash .register { padding: 0 1rem; }
+          #boot-splash .loader {
+            right: 26vw;
+            bottom: auto;
+            top: 50%;
+            width: 18rem;
+            height: 12.5rem;
+            margin-top: -6.25rem;
+            border-radius: 1.75rem;
+          }
+          #boot-splash .loader .radar { width: 8.5rem; height: 8.5rem; margin: -4.25rem 0 0 -4.25rem; }
+          #boot-splash .loader .rings {
+            box-shadow: inset 0 0 0 18px rgba(16, 185, 129, 0.08), inset 0 0 0 36px rgba(16, 185, 129, 0.05);
+          }
+          #boot-splash .copy { max-width: 50vw; }
+          #boot-splash .logo { display: none; }
+          #boot-splash h1 { font-size: clamp(3.5rem, 7.4vw, 8.75rem); line-height: 0.96; }
+          #boot-splash p { margin-top: 2.2vw; font-size: clamp(1.125rem, 2.15vw, 2rem); }
+          #boot-splash .actions { gap: 1rem 2.8vw; margin-top: 3.4vw; }
+          #boot-splash a.find {
+            height: clamp(3.25rem, 4.7vw, 5rem);
+            gap: 0.9vw;
+            padding: 0 2.5vw;
+            font-size: clamp(1.05rem, 1.85vw, 1.75rem);
+          }
+          #boot-splash a.find svg { width: 1.6vw; height: 1.6vw; }
+          #boot-splash a.offer { font-size: clamp(1.05rem, 1.6vw, 1.5rem); }
+        }
+        @media (min-width: 1024px) {
+          #boot-splash .brand img { height: 4rem; }
+          #boot-splash .brand b { font-size: 1.15rem; }
+          #boot-splash nav { gap: 2rem; }
+        }
+        html[dir="rtl"] #boot-splash a.find svg { transform: scaleX(-1); }
+        html[dir="rtl"] #boot-splash .loader { right: auto; left: 18vw; }
+        @media (min-width: 768px) {
+          html[dir="rtl"] #boot-splash .loader { left: 26vw; right: auto; }
         }
       </style>
-      <div
-        id="boot-splash"
-        style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:24px;box-sizing:border-box;"
-      >
-        <img
-          src="/brand-mark.png"
-          alt="Tebnu"
-          width="280"
-          height="280"
-          decoding="async"
-          style="max-width:min(280px,85vw);max-height:40vh;width:auto;height:auto;object-fit:contain;"
-        />
-        <p style="margin:16px 0 0;max-width:28rem;text-align:center;font:500 16px/1.45 system-ui,sans-serif;color:#475569;">
-          Tebnu is a local help app. Find trusted helpers for home, childcare, cooking, errands, and more — or offer your skills nearby.
-        </p>
+      <div id="boot-splash">
+        <header class="bar">
+          <div style="display:flex;align-items:center;min-width:0;">
+            <span class="menu" aria-hidden="true"><i></i><i></i><i></i></span>
+            <a class="brand" href="/">
+              <img src="/brand-mark.png" alt="" />
+              <b>tebnu</b>
+            </a>
+          </div>
+          <nav>
+            <a id="boot-about" href="/about">About Us</a>
+            <a id="boot-feed" href="/community/feed">Post Feed</a>
+            <a id="boot-home" href="/">Home</a>
+          </nav>
+          <div class="bar-right">
+            <a class="signin" id="boot-signin" href="/login">Sign in</a>
+            <a class="register" id="boot-register" href="/onboarding">Register</a>
+          </div>
+        </header>
+        <div class="loader" aria-hidden="true">
+          <svg class="map" viewBox="0 0 240 160" preserveAspectRatio="none">
+            <g fill="none" stroke="#fff" stroke-linecap="round">
+              <path d="M-8 40 H250" stroke-width="8" />
+              <path d="M-8 104 H250" stroke-width="7" />
+              <path d="M62 -8 V170" stroke-width="7" />
+              <path d="M168 -8 V170" stroke-width="7" />
+              <path d="M-8 74 H250" stroke-width="3" />
+              <path d="M116 -8 V170" stroke-width="3" />
+            </g>
+            <g fill="#d7e3cf">
+              <rect x="74" y="50" width="34" height="20" rx="3" />
+              <rect x="182" y="24" width="38" height="20" rx="3" />
+              <rect x="126" y="114" width="30" height="22" rx="3" />
+            </g>
+          </svg>
+          <span class="radar"><span class="rings"></span><span class="sweep"></span><span class="dot"></span></span>
+        </div>
+        <div class="copy">
+          <div class="logo">
+            <img src="/brand-mark.png" alt="" />
+            <span>tebnu</span>
+          </div>
+          <h1 id="boot-title">Help is closer than you think.</h1>
+          <p id="boot-sub">Ask once. Nearby helpers respond.</p>
+          <div class="actions">
+            <a class="find" href="/onboarding?role=client"><span id="boot-find">Find help</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>
+            <a class="offer" id="boot-offer" href="/onboarding?role=freelancer">Offer help</a>
+          </div>
+        </div>
       </div>
+      <script>
+        (function () {
+          var path = (location.pathname || "/").replace(/\/$/, "") || "/";
+          var splash = document.getElementById("boot-splash");
+          if (path !== "/") {
+            if (splash) splash.remove();
+            return;
+          }
+          if (splash) splash.className = "is-home";
+          var stored = "";
+          try { stored = localStorage.getItem("i18nextLng") || ""; } catch (e) {}
+          var lang = (stored || navigator.language || "en").slice(0, 2);
+          var copy = {
+            en: ["Help is closer than you think.", "Ask once. Nearby helpers respond.", "Find help", "Offer help", "About Us", "Post Feed", "Home", "Sign in", "Register"],
+            he: ["עזרה קרובה יותר ממה שחשבתם.", "מבקשים פעם אחת. עוזרים בסביבה עונים.", "מצאו עזרה", "הציעו עזרה", "אודותינו", "פיד פוסטים", "בית", "התחברות", "הרשמה"],
+            fr: ["L'aide est plus proche que vous ne le pensez.", "Demandez une fois. Les aidants à proximité répondent.", "Trouver de l'aide", "Proposer de l'aide", "À propos", "Fil d'actus", "Accueil", "Connexion", "S'inscrire"],
+            ru: ["Помощь ближе, чем вы думаете.", "Попросите один раз. Помощники рядом откликнутся.", "Найти помощь", "Предложить помощь", "О нас", "Лента", "Главная", "Войти", "Регистрация"]
+          };
+          var row = copy[lang] || copy.en;
+          var title = document.getElementById("boot-title");
+          var sub = document.getElementById("boot-sub");
+          var find = document.getElementById("boot-find");
+          var offer = document.getElementById("boot-offer");
+          var about = document.getElementById("boot-about");
+          var feed = document.getElementById("boot-feed");
+          var home = document.getElementById("boot-home");
+          var signIn = document.getElementById("boot-signin");
+          var register = document.getElementById("boot-register");
+          if (title) title.textContent = row[0];
+          if (sub) sub.textContent = row[1];
+          if (find) find.textContent = row[2];
+          if (offer) offer.textContent = row[3];
+          if (about) about.textContent = row[4];
+          if (feed) feed.textContent = row[5];
+          if (home) home.textContent = row[6];
+          if (signIn) signIn.textContent = row[7];
+          if (register) register.textContent = row[8];
+          if (lang === "he") document.documentElement.setAttribute("dir", "rtl");
+        })();
+      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

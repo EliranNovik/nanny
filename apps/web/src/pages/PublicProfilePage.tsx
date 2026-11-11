@@ -1877,6 +1877,7 @@ export default function PublicProfilePage() {
         "min-h-screen bg-background pb-24 md:pb-8",
         globalFeedMobilePageClass,
       )}
+      data-profile-page=""
       data-public-profile-page=""
       data-public-profile-guest={!currentUser ? "" : undefined}
     >
@@ -1902,7 +1903,7 @@ export default function PublicProfilePage() {
       {/* Desktop Hero section — hidden on mobile */}
       <div
         className={cn(
-          "hidden md:block md:pe-[400px] bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
+          "profile-beside-about hidden md:block bg-white dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
           currentUser ? "pt-16 md:pt-2" : "pt-6 md:pt-2",
         )}
       >
@@ -2642,7 +2643,7 @@ export default function PublicProfilePage() {
       ══════════════════════════════════════════════════════════ */}
       <div
         className={cn(
-          "hidden py-8 dark:bg-background md:block md:pe-[400px]",
+          "profile-beside-about hidden py-8 dark:bg-background md:block",
           profileMediaTab === "images" ||
           profileMediaTab === "videos" ||
           profileMediaTab === "posts"
@@ -2779,7 +2780,14 @@ export default function PublicProfilePage() {
 
           {/* Native iPad About panel */}
           {effectiveProfilePanelOpen ? (
-          <aside className="fixed end-0 top-16 z-30 flex h-[calc(100dvh-4rem)] w-[400px] shrink-0 flex-col overflow-hidden border-s border-black/5 bg-white dark:border-white/10 dark:bg-[#1C1C1E]">
+          <aside
+            className={cn(
+              "fixed z-30 flex w-[400px] shrink-0 flex-col overflow-hidden border-s border-black/5 bg-white dark:border-white/10 dark:bg-[#1C1C1E]",
+              currentUser
+                ? "end-0 top-16 h-[calc(100dvh-4rem)] md:end-3 md:top-[4.75rem] md:h-[calc(100dvh-4rem-1.5rem)] md:rounded-e-[1.75rem]"
+                : "end-0 top-16 h-[calc(100dvh-4rem)]",
+            )}
+          >
             <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 pb-8">
             <div className="flex items-center gap-2.5 pt-1">
               <UserCircle className="h-5 w-5 text-orange-600" aria-hidden />

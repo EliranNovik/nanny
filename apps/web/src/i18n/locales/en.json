@@ -962,7 +962,9 @@
       "phoneFromYou": "from you",
       "pushNow": "Now",
       "pushTitle": "Babysitting & childcare · Today",
-      "pushBody": "New request from Fabian in Tel Aviv"
+      "pushBody": "New request from Fabian in Tel Aviv",
+      "acceptTitle": "Maya accepted your request",
+      "acceptBody": "I can help with babysitting today."
     },
     "verifiedUsers": "Verified users",
     "localHelpers": "Local helpers",

@@ -246,6 +246,7 @@ export function BottomNav() {
   const {
     isTablet,
     isMdUp,
+    showRail,
     showBottomTabs,
     tabletChatDock,
   } = useAuthenticatedShellLayout({
@@ -996,7 +997,9 @@ export function BottomNav() {
         "hidden md:block fixed inset-x-0 top-0 z-[210] w-full border-0 shadow-none",
         isAdminPage
           ? "bg-zinc-100 dark:bg-zinc-950"
-          : "bg-white dark:bg-zinc-950",
+          : showRail && !!user
+            ? "bg-[#F4F4F5] dark:bg-[#0c0a09]"
+            : "bg-white dark:bg-zinc-950",
       )}
     >
       <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">

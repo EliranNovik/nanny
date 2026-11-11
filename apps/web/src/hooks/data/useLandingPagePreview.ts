@@ -4,23 +4,38 @@ import {
   type LandingActivityItem,
 } from "@/lib/fetchLandingRecentActivity";
 import {
-  fetchLandingHeroPosts,
-  type LandingHeroPost,
-} from "@/lib/fetchLandingHeroPosts";
-import {
   useDiscoverLatestJobReviews,
   type DiscoverLatestJobReview,
 } from "@/hooks/data/useDiscoverLatestJobReviews";
 
+/** Let the first screen paint before the below-the-fold queries start. */
+function useAfterFirstPaint() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const start = () => setReady(true);
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      const id = idleWindow.requestIdleCallback(start, { timeout: 900 });
+      return () => idleWindow.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(start, 280);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return ready;
+}
+
 export function useLandingPagePreview() {
+  const ready = useAfterFirstPaint();
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityItems, setActivityItems] = useState<LandingActivityItem[]>([]);
-  const [heroPostsLoading, setHeroPostsLoading] = useState(true);
-  const [heroPosts, setHeroPosts] = useState<LandingHeroPost[]>([]);
   const { loading: reviewsLoading, rows: reviewRows } =
-    useDiscoverLatestJobReviews(12);
+    useDiscoverLatestJobReviews(12, ready);
 
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     setActivityLoading(true);
     void fetchLandingRecentActivity()
@@ -38,27 +53,7 @@ export function useLandingPagePreview() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHeroPostsLoading(true);
-    void fetchLandingHeroPosts(12)
-      .then((items) => {
-        if (!cancelled) setHeroPosts(items);
-      })
-      .catch((err) => {
-        console.warn("[useLandingPagePreview] hero posts", err);
-        if (!cancelled) setHeroPosts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setHeroPostsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [ready]);
 
   const reviews: DiscoverLatestJobReview[] = reviewRows.filter(
     (r) =>
@@ -68,11 +63,9 @@ export function useLandingPagePreview() {
   );
 
   return {
-    activityLoading,
+    activityLoading: !ready || activityLoading,
     activityItems,
-    heroPostsLoading,
-    heroPosts,
-    reviewsLoading,
+    reviewsLoading: !ready || reviewsLoading,
     reviews,
   };
 }

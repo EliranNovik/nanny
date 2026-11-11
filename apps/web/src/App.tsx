@@ -28,7 +28,6 @@ import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { AiFeaturesPopup } from "@/components/AiFeaturesPopup";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
-import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DocumentLocaleSync } from "@/components/i18n/DocumentLocaleSync";
 
@@ -204,26 +203,18 @@ function RedirectJobOpenToRequest() {
 function RootRoute() {
   const { user, loading } = useAuth();
   const navigationType = useNavigationType();
-  const isDesktop = useIsMinMd();
 
-  if (loading && !user) {
-    if (isDesktop) return <LandingPage />;
-    return <AppBootSplash />;
+  // Paint the landing page immediately. Signed-in visitors are sent home only
+  // after the session is known, so guests are not held on the boot splash.
+  if (!loading && user && navigationType !== "PUSH") {
+    return (
+      <ProtectedRoute>
+        <RoleRedirect />
+      </ProtectedRoute>
+    );
   }
 
-  if (!user) {
-    return <LandingPage />;
-  }
-
-  if (navigationType === "PUSH") {
-    return <LandingPage />;
-  }
-
-  return (
-    <ProtectedRoute>
-      <RoleRedirect />
-    </ProtectedRoute>
-  );
+  return <LandingPage />;
 }
 
 /**
@@ -279,7 +270,7 @@ function PageLayoutWithHeader() {
   const { user } = useAuth();
   const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
-  const { showRail, whiteRail } = useAuthenticatedShellLayout({
+  const { showRail } = useAuthenticatedShellLayout({
     pathname,
     search,
     isAdmin: isAdminPath,
@@ -345,13 +336,12 @@ function PageLayoutWithHeader() {
     <div className={cn(
       "app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content",
       isAdminPath && "app-admin-shell",
-      /* Light mode: match rail so the padding strip isn't a different color. */
+      /* Canvas matches the sidebar so the main card's margins read as one frame. */
       guestPostDetail && "bg-white dark:bg-[#101214]",
       showRail &&
         !guestPostDetail &&
-        (whiteRail && !isMessagesPath
-          ? "bg-white dark:bg-background"
-          : "bg-[#F2F2F7] dark:bg-background"),
+        !!user &&
+        "bg-[#F4F4F5] dark:bg-[#0c0a09]",
       isAdminPath
         ? "min-h-[100dvh] md:h-[100dvh] md:min-h-0 md:overflow-hidden"
         : "min-h-[100dvh] min-h-[-webkit-fill-available]",
@@ -372,10 +362,21 @@ function PageLayoutWithHeader() {
                 : "",
           )}
         >
-          {/* Always-mounted keep-alive pages */}
-          <KeepAlivePages />
-          {/* Normal outlet — hidden when a keep-alive route is active */}
-          {!isKeepAliveRoute && <Outlet />}
+          <div
+            className={cn(
+              !!user &&
+                showRail &&
+                !guestPostDetail &&
+                !isMessagesPath &&
+                !isAdminPath &&
+                "app-main-card",
+            )}
+          >
+            {/* Always-mounted keep-alive pages */}
+            <KeepAlivePages />
+            {/* Normal outlet — hidden when a keep-alive route is active */}
+            {!isKeepAliveRoute && <Outlet />}
+          </div>
         </div>
         {!shouldHideDesktopFooter ? (
           <div

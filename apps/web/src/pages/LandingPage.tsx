@@ -505,16 +505,6 @@ export default function LandingPage() {
     description: DEFAULT_DESCRIPTION,
     path: "/",
   });
-  useEffect(() => {
-    const href = "/Cozy Bedtime Storytelling Moment.png";
-    if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = href;
-    link.fetchPriority = "high";
-    document.head.appendChild(link);
-  }, []);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   // Dark mode is intentionally disabled on the landing page for now.

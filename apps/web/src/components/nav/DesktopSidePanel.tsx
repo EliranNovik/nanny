@@ -78,7 +78,7 @@ export function DesktopSidePanel() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [adminMenuOpen, setAdminMenuOpen]);
-  const { showRail, whiteRail, isMdUp } = useAuthenticatedShellLayout({
+  const { showRail, isMdUp } = useAuthenticatedShellLayout({
     pathname,
     search,
     isAdmin: isAdminPage,
@@ -94,10 +94,8 @@ export function DesktopSidePanel() {
   const iconRail = !adminDrawer && !isMessagesPage && collapsed;
   const railBg = adminDrawer
     ? "bg-white dark:bg-zinc-900"
-    : whiteRail
-      ? "bg-white dark:bg-background"
-      : "bg-[#F2F2F7] dark:bg-background";
-  const lightRail = whiteRail || adminDrawer;
+    : "bg-[#F4F4F5] dark:bg-[#0c0a09]";
+  const lightRail = adminDrawer;
   const navHover = lightRail
     ? "hover:bg-zinc-100 dark:hover:bg-white/10"
     : "hover:bg-white/90 dark:hover:bg-white/10";
@@ -106,8 +104,8 @@ export function DesktopSidePanel() {
     : "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none";
   const navigate = useNavigate();
   const mountedRef = useRef(false);
-  const [savedProfilesOpen, setSavedProfilesOpen] = useState(true);
-  const [savedPostsOpen, setSavedPostsOpen] = useState(true);
+  const [savedProfilesOpen, setSavedProfilesOpen] = useState(false);
+  const [savedPostsOpen, setSavedPostsOpen] = useState(false);
   const [savedProfiles, setSavedProfiles] = useState<SavedProfileRow[]>([]);
   const [savedPosts, setSavedPosts] = useState<SavedPostRow[]>([]);
   const [savedProfilesLoading, setSavedProfilesLoading] = useState(false);

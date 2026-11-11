@@ -952,7 +952,9 @@
       "phoneFromYou": "de vous",
       "pushNow": "À l’instant",
       "pushTitle": "Baby-sitting et garde d’enfants · Aujourd’hui",
-      "pushBody": "Nouvelle demande de Fabian à Tel-Aviv"
+      "pushBody": "Nouvelle demande de Fabian à Tel-Aviv",
+      "acceptTitle": "Maya a accepté votre demande",
+      "acceptBody": "Je peux aider pour la garde d'enfants aujourd'hui."
     },
     "verifiedUsers": "Membres vérifiés",
     "localHelpers": "Aidants locaux",

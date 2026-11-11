@@ -714,7 +714,7 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-white md:h-full md:max-h-full dark:bg-black md:dark:bg-[#0c0a09]"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-white md:h-full md:max-h-full md:bg-[#F4F4F5] dark:bg-black md:dark:bg-[#0c0a09]"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
@@ -1372,6 +1372,7 @@ export default function MessagesPage() {
       <div
         className={cn(
           "min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950",
+          "md:my-3 md:me-3 md:rounded-[1.75rem] md:shadow-[0_10px_30px_-18px_rgba(24,24,27,0.35)]",
           isTablet || mobileView === "chat" ? "flex" : "hidden",
         )}
       >

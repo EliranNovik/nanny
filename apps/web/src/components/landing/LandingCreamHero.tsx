@@ -24,6 +24,46 @@ type Props = {
   className?: string;
 };
 
+const HERO_MEDIA = [
+  "/images/landing-hero-babysitting.jpg",
+  "/images/landing-phone-nanny.jpg",
+  "/images/helper_profile_1.png",
+  "/images/helper_profile_2.png",
+  "/images/helper_profile_3.png",
+  "/images/helper_profile_4.png",
+  BRAND_LOGO_SRC,
+];
+
+/** Photo, phone, and store buttons appear together, after the headline has had a moment. */
+function useHeroMediaReady() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      setReady(true);
+    };
+    const cap = window.setTimeout(finish, 4000);
+    let pending = HERO_MEDIA.length;
+    const tick = () => {
+      pending -= 1;
+      if (pending <= 0) finish();
+    };
+    for (const src of HERO_MEDIA) {
+      const img = new Image();
+      img.onload = tick;
+      img.onerror = tick;
+      img.src = src;
+    }
+    return () => {
+      settled = true;
+      window.clearTimeout(cap);
+    };
+  }, []);
+  return ready;
+}
+
 /** Desktop phone scale: ~62% of viewport height, capped by width so it never crowds the copy. */
 function usePhoneScale() {
   const compute = () => {
@@ -46,14 +86,27 @@ function HeroPhoto() {
     <img
       src="/images/landing-hero-babysitting.jpg"
       alt=""
+      width={1152}
+      height={864}
       className="h-full w-full object-cover object-center"
       loading="eager"
       decoding="async"
+      {...{ fetchpriority: "high" }}
     />
   );
 }
 
-function RequestPushNotification({ className }: { className?: string }) {
+function RequestPushNotification({
+  className,
+  title,
+  body,
+  photo = "/images/helper_profile_2.png",
+}: {
+  className?: string;
+  title?: string;
+  body?: string;
+  photo?: string;
+}) {
   const { t } = useTranslation();
   return (
     <div
@@ -64,7 +117,7 @@ function RequestPushNotification({ className }: { className?: string }) {
     >
       <span className="relative mt-0.5 shrink-0">
         <img
-          src="/images/helper_profile_2.png"
+          src={photo}
           alt=""
           className="h-12 w-12 rounded-full object-cover ring-1 ring-black/5"
         />
@@ -82,10 +135,10 @@ function RequestPushNotification({ className }: { className?: string }) {
           </span>
         </div>
         <p className="mt-0.5 truncate text-[14px] font-bold leading-tight text-zinc-950">
-          {t("landing.creamHero.pushTitle")}
+          {title ?? t("landing.creamHero.pushTitle")}
         </p>
         <p className="mt-1 text-[12px] font-medium leading-snug text-zinc-600">
-          {t("landing.creamHero.pushBody")}
+          {body ?? t("landing.creamHero.pushBody")}
         </p>
       </div>
     </div>
@@ -169,9 +222,12 @@ function PhoneMockup() {
           <div className="mt-1 text-center">
             <div className="mx-auto flex max-w-[14rem] items-center justify-center gap-2 px-2">
               <img
-                src="/category-icons/nanny.png?v=20261102b"
+                src="/images/landing-phone-nanny.jpg"
                 alt=""
+                width={160}
+                height={160}
                 className="h-11 w-11 shrink-0 rounded-full object-cover"
+                decoding="async"
               />
               <p className="text-left text-[1.25rem] font-black leading-[1.05] tracking-tight text-emerald-600">
                 {t("landing.creamHero.phoneCategory")}
@@ -303,11 +359,22 @@ function StandingPhone({ scale }: { scale: number }) {
 export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }: Props) {
   const { t } = useTranslation();
   const phoneScale = usePhoneScale();
+  const mediaReady = useHeroMediaReady();
+  const [loaderOn, setLoaderOn] = useState(true);
+  useEffect(() => {
+    if (!mediaReady) return;
+    const id = window.setTimeout(() => setLoaderOn(false), 560);
+    return () => window.clearTimeout(id);
+  }, [mediaReady]);
+  const reveal = (delayMs: number) =>
+    mediaReady
+      ? { className: "landing-reveal", style: { animationDelay: `${delayMs}ms` } as const }
+      : { className: "opacity-0", style: undefined };
 
   return (
     <div className={cn("relative overflow-hidden", LANDING_CREAM_BG, className)}>
       {/* Desktop artwork — measured against the reference layout */}
-      <div className="pointer-events-none absolute inset-0 hidden md:block" aria-hidden>
+      <div className={cn("pointer-events-none absolute inset-0 hidden md:block", reveal(0).className)} style={reveal(0).style} aria-hidden>
         {/* tabletop */}
         <div className="absolute bottom-0 left-[22%] right-0 h-[19%] bg-[linear-gradient(180deg,rgba(253,251,247,0)_0%,rgba(253,251,247,0.92)_14%,#fdfbf7_100%)] [mask-image:linear-gradient(90deg,transparent_0%,#000_22%)] rtl:left-0 rtl:right-[22%] rtl:[mask-image:linear-gradient(270deg,transparent_0%,#000_22%)]" />
 
@@ -323,8 +390,53 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
         </div>
       </div>
 
+      {loaderOn ? (
+        <div
+          className={cn(
+            "pointer-events-none absolute bottom-[18%] right-[18vw] z-20 md:bottom-auto md:right-[26vw] md:top-1/2 md:-translate-y-1/2 rtl:left-[18vw] rtl:right-auto md:rtl:left-[26vw]",
+            mediaReady && "landing-loader-out",
+          )}
+          aria-hidden
+        >
+          <span className="relative block h-[7.75rem] w-[11rem] overflow-hidden rounded-2xl bg-[rgba(226,236,220,0.62)] md:h-[12.5rem] md:w-[18rem] md:rounded-[1.75rem]">
+            <svg className="absolute inset-0 h-full w-full opacity-80" viewBox="0 0 240 160" preserveAspectRatio="none">
+              <g fill="none" stroke="#fff" strokeLinecap="round">
+                <path d="M-8 40 H250" strokeWidth="8" />
+                <path d="M-8 104 H250" strokeWidth="7" />
+                <path d="M62 -8 V170" strokeWidth="7" />
+                <path d="M168 -8 V170" strokeWidth="7" />
+                <path d="M-8 74 H250" strokeWidth="3" />
+                <path d="M116 -8 V170" strokeWidth="3" />
+              </g>
+              <g fill="#d7e3cf">
+                <rect x="74" y="50" width="34" height="20" rx="3" />
+                <rect x="182" y="24" width="38" height="20" rx="3" />
+                <rect x="126" y="114" width="30" height="22" rx="3" />
+              </g>
+            </svg>
+            <span className="absolute left-1/2 top-1/2 h-[4.5rem] w-[4.5rem] -translate-x-1/2 -translate-y-1/2 md:h-[8.5rem] md:w-[8.5rem]">
+              <i className="absolute inset-0 rounded-full border border-emerald-600/30 shadow-[inset_0_0_0_10px_rgba(16,185,129,0.08),inset_0_0_0_20px_rgba(16,185,129,0.05)] md:shadow-[inset_0_0_0_18px_rgba(16,185,129,0.08),inset_0_0_0_36px_rgba(16,185,129,0.05)]" />
+              <b className="absolute inset-0 animate-[boot-spin_2.6s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0_62%,rgba(16,185,129,0.04)_76%,rgba(5,150,105,0.42)_100%)]" />
+              <em className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600 shadow-[0_0_0_4px_rgba(16,185,129,0.28)]" />
+            </span>
+          </span>
+        </div>
+      ) : null}
+
       <div className="relative z-10 flex min-h-[100svh] flex-col justify-start px-5 pb-0 pt-20 sm:px-10 md:justify-center md:px-[4.7vw] md:pb-[6vh] md:pt-[12vh]">
-        <div className="min-w-0 w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 md:max-w-[50vw]">
+        <div className="min-w-0 w-full max-w-xl md:max-w-[50vw]">
+          <div className="mb-2 flex items-center md:hidden">
+            <img
+              src={BRAND_LOGO_SRC}
+              alt=""
+              className="h-9 w-auto"
+              loading="eager"
+              decoding="async"
+            />
+            <span className="-ml-1 text-lg font-black tracking-[-0.04em] text-zinc-950 dark:text-white">
+              tebnu
+            </span>
+          </div>
           <h1 className="w-[calc(100vw-2.5rem)] max-w-full whitespace-normal break-words text-[2.6rem] font-black leading-[0.98] tracking-[-0.045em] text-zinc-950 min-[430px]:text-[3rem] sm:w-auto sm:text-7xl md:text-[clamp(3.5rem,7.4vw,8.75rem)] md:leading-[0.96]">
             {t("landing.creamHero.title")}
           </h1>
@@ -352,52 +464,10 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
               {t("landing.creamHero.offerHelp")}
             </button>
           </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <span className="mr-1 hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sm:inline">
-              {t("landing.creamHero.appComingSoon")}
-            </span>
-            <a
-              href="https://testflight.apple.com/join/PesFrQ2m"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
-            >
-              <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
-              <span>
-                <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-300">{t("landing.creamHero.getTheApp")}</span>
-                <span className="block text-xs font-bold leading-tight">iOS</span>
-              </span>
-            </a>
-            <a
-              href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 shadow-sm backdrop-blur transition hover:bg-white active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
-            >
-              <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
-              <span>
-                <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-500">{t("landing.creamHero.getTheApp")}</span>
-                <span className="block text-xs font-bold leading-tight">Android</span>
-              </span>
-            </a>
-          </div>
-          <div className="mt-3 flex items-center md:hidden">
-            <img
-              src={BRAND_LOGO_SRC}
-              alt=""
-              className="h-11 w-auto"
-              loading="eager"
-              decoding="async"
-            />
-            <span className="-ml-1 text-xl font-black tracking-[-0.04em] text-zinc-950 dark:text-white">
-              tebnu
-            </span>
-          </div>
         </div>
 
         {/* Mobile artwork */}
-        <div className="relative -mr-5 ml-auto mt-8 h-[25rem] w-[calc(100%+1.25rem)] max-w-[25rem] sm:-mr-10 sm:mt-12 sm:h-[34rem] sm:max-w-[28rem] md:hidden rtl:-ml-5 rtl:mr-auto sm:rtl:-ml-10" aria-hidden>
+        <div className={cn("relative -mr-5 ml-auto mt-8 h-[25rem] w-[calc(100%+1.25rem)] max-w-[25rem] sm:-mr-10 sm:mt-12 sm:h-[34rem] sm:max-w-[28rem] md:hidden rtl:-ml-5 rtl:mr-auto sm:rtl:-ml-10", reveal(80).className)} style={reveal(80).style} aria-hidden>
           <div className="absolute bottom-0 left-[-10%] right-[-10%] h-[16%] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.85)_35%,#fdfbf7_100%)]" />
           <div className="absolute bottom-0 right-0 top-0 w-[74%] rtl:left-0 rtl:right-auto">
             <div className="absolute -left-[22%] top-[12%] aspect-square w-[52%] rounded-full bg-[#F97316]" />
@@ -418,11 +488,47 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
       </div>
 
       {/* Desktop phone + chip sit above the copy layer so the chip can overlap it like the reference */}
-      <div className="pointer-events-none absolute inset-0 z-20 hidden md:block" aria-hidden>
+      <div className={cn("pointer-events-none absolute inset-0 z-20 hidden md:block", reveal(140).className)} style={reveal(140).style} aria-hidden>
         <div className="absolute bottom-[4%] left-[52%] rtl:left-auto rtl:right-[52%]">
           <StandingPhone scale={phoneScale} />
+          <RequestPushNotification
+            className="left-[calc(100%+0.85rem)] top-[52%] rtl:right-[calc(100%+0.85rem)] rtl:left-auto"
+            title={t("landing.creamHero.acceptTitle")}
+            body={t("landing.creamHero.acceptBody")}
+            photo="/images/helper_profile_1.png"
+          />
         </div>
         <RequestPushNotification className="left-[39%] top-[74%] rtl:left-auto rtl:right-[39%]" />
+      </div>
+
+      <div className={cn("pointer-events-auto absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-5 z-30 flex items-center gap-3 sm:left-10 md:bottom-8 md:left-[4.7vw]", reveal(240).className)} style={reveal(240).style}>
+        <span className="hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sm:inline">
+          {t("landing.creamHero.appComingSoon")}
+        </span>
+        <a
+          href="https://testflight.apple.com/join/PesFrQ2m"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+        >
+          <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
+          <span>
+            <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-300">{t("landing.creamHero.getTheApp")}</span>
+            <span className="block text-xs font-bold leading-tight">iOS</span>
+          </span>
+        </a>
+        <a
+          href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 shadow-sm backdrop-blur transition hover:bg-white active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+        >
+          <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
+          <span>
+            <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-500">{t("landing.creamHero.getTheApp")}</span>
+            <span className="block text-xs font-bold leading-tight">Android</span>
+          </span>
+        </a>
       </div>
 
     </div>

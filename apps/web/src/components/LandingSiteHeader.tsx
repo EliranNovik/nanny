@@ -386,17 +386,24 @@ export function LandingSiteHeader({
   );
 
   const headerBrandMark = isFeedChrome || heroOverlay ? (
-    <span className="flex items-center gap-0">
+    <span
+      className={cn(
+        "flex items-center gap-0",
+        heroOverlay &&
+          "md:rounded-full md:bg-white/90 md:py-0 md:pl-0.5 md:pr-3 md:shadow-[0_0_0_1px_rgba(24,24,27,0.06),0_8px_20px_-14px_rgba(24,24,27,0.4)] md:backdrop-blur-md",
+      )}
+    >
       <img
         src={BRAND_LOGO_SRC}
         alt=""
-        className="h-10 w-auto sm:h-12 md:h-14 lg:h-16"
+        className={cn("h-10 w-auto sm:h-12 md:h-14 lg:h-16", heroOverlay && "md:h-14 lg:h-16")}
         loading="eager"
         decoding="async"
       />
       <span
         className={cn(
           "hidden -ml-1 text-lg font-black tracking-tight md:inline md:-ml-1.5 md:text-xl lg:text-2xl",
+          heroOverlay && "md:text-lg lg:text-xl",
           landingHeaderInkClass,
           heroWhiteInk &&
             "md:text-white md:drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",

@@ -169,36 +169,10 @@ export function useDebouncedListingSearch(query: string, debounceMs = 50) {
   const [results, setResults] = useState<ListingSearchHit[]>([]);
   const [settledQuery, setSettledQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [browserPoint, setBrowserPoint] = useState<{ lat: number; lng: number } | null>(null);
 
-  const profileLat = finiteNumber(profile?.location_lat);
-  const profileLng = finiteNumber(profile?.location_lng);
+  const viewerLat = finiteNumber(profile?.location_lat);
+  const viewerLng = finiteNumber(profile?.location_lng);
   const profileCity = profile?.city?.trim() || null;
-  const viewerLat = profileLat ?? browserPoint?.lat ?? null;
-  const viewerLng = profileLng ?? browserPoint?.lng ?? null;
-
-  useEffect(() => {
-    if (profileLat != null && profileLng != null) return;
-    if (!navigator.geolocation || !navigator.permissions?.query) return;
-    let cancelled = false;
-    void navigator.permissions
-      .query({ name: "geolocation" })
-      .then((status) => {
-        if (cancelled || status.state !== "granted") return;
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            if (cancelled) return;
-            setBrowserPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          () => {},
-          { maximumAge: 10 * 60 * 1000, timeout: 4000, enableHighAccuracy: false },
-        );
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [profileLat, profileLng]);
 
   useEffect(() => {
     const trimmed = query.trim();

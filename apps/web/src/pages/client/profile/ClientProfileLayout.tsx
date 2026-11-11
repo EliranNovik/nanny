@@ -13,7 +13,7 @@ export default function ClientProfileLayout() {
   if (isTablet) {
     const atRoot = pathname.replace(/\/+$/, "") === "/client/profile";
     return (
-      <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-[#F2F2F7] dark:bg-black">
+      <div data-profile-page="" className="flex h-[100dvh] min-h-0 overflow-hidden bg-[#F2F2F7] dark:bg-black md:h-full md:max-h-full">
         <aside className="h-full w-[380px] shrink-0 overflow-y-auto border-r border-black/10 bg-[#F2F2F7] dark:border-white/10 dark:bg-black">
           <ClientProfileHub form={form} variant="sidebar" />
         </aside>
@@ -28,5 +28,9 @@ export default function ClientProfileLayout() {
     );
   }
 
-  return <Outlet context={form} />;
+  return (
+    <div data-profile-page="" className="min-h-0">
+      <Outlet context={form} />
+    </div>
+  );
 }

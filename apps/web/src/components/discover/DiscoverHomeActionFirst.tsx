@@ -161,7 +161,6 @@ export function DiscoverHomeActionFirst({
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
   const isHire = homeMode === "hire";
-  const showFullDiscoverLists = profile?.is_admin === true;
   const isRtl = i18n.dir() === "rtl";
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
@@ -993,7 +992,7 @@ export function DiscoverHomeActionFirst({
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-1 flex-col gap-3 md:gap-5",
+        "flex w-full flex-col gap-3 max-md:min-h-0 max-md:flex-1 md:gap-5",
       )}
     >
       {renderQuickActionDockMobile()}
@@ -1087,10 +1086,7 @@ export function DiscoverHomeActionFirst({
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
       <div
         className={cn(
-          "hidden md:flex flex-col gap-5",
-          showFullDiscoverLists
-            ? "overflow-visible"
-            : "min-h-0 flex-1 overflow-hidden",
+          "hidden md:flex md:flex-col md:gap-5 md:overflow-visible",
         )}
       >
         <div className="flex w-full shrink-0 flex-col gap-4 md:gap-5 lg:gap-6">
@@ -1187,8 +1183,7 @@ export function DiscoverHomeActionFirst({
 
         <div
           className={cn(
-            "flex w-full flex-col gap-2 pt-2",
-            showFullDiscoverLists ? "overflow-visible" : "min-h-0 overflow-hidden",
+            "flex w-full flex-col gap-2 overflow-visible pt-2",
           )}
         >
           <div className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}>

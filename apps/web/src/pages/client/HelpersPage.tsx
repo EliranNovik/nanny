@@ -655,7 +655,6 @@ export default function HelpersPage() {
   );
   /** When set, profile city coords must not overwrite the map center (GPS or user choice wins). */
   const gpsLockRef = useRef(false);
-  const gpsAskedRef = useRef(false);
   const geocodeRequestIdRef = useRef(0);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
@@ -862,28 +861,6 @@ export default function HelpersPage() {
       setCenter({ lat, lng });
     }
   }, [profile?.location_lat, profile?.location_lng]);
-
-  /** Prefer device location when permission is granted; otherwise profile/saved city above applies. */
-  useEffect(() => {
-    if (!profile || profile.is_admin || gpsAskedRef.current) return;
-    if (!browserLocationPromptAllowed()) return;
-    if (!navigator.geolocation) return;
-    gpsAskedRef.current = true;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        gpsLockRef.current = true;
-        setCenter({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        setGeocodeMatchedPlace(false);
-      },
-      () => {
-        /* keep profile or default center */
-      },
-      { enableHighAccuracy: true, timeout: 12000 },
-    );
-  }, [profile]);
 
   /** Debounce search text for geocoding (does not fetch helpers until Search). */
   useEffect(() => {

@@ -42,6 +42,99 @@
     @apply md:ps-[220px];
   }
 
+  /* Signed-in pages: main column is a rounded card, inset like the messages chat. */
+  @media (min-width: 768px) {
+    .app-main-card {
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+      margin-inline-start: 0.75rem;
+      margin-inline-end: 0.75rem;
+      border-radius: 1.75rem;
+      background: #ffffff;
+      overflow: hidden;
+      min-height: calc(100dvh - 4rem - 1.5rem);
+      box-shadow: 0 10px 30px -18px rgba(24, 24, 27, 0.28);
+    }
+
+    .dark .app-main-card {
+      background: #09090b;
+      box-shadow: none;
+    }
+
+    /* Profile: the rounded box stays put; only the page inside it scrolls. */
+    .app-main-scroll-pad:has(.app-main-card [data-profile-page]),
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) {
+      height: 100dvh;
+      max-height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div,
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div {
+      height: 100%;
+      min-height: 0 !important;
+      overflow: hidden;
+    }
+
+    .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div > .app-side-panel-offset,
+    .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div > .app-tablet-rail-offset,
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div > .app-side-panel-offset,
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div > .app-tablet-rail-offset {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .app-main-card:has([data-profile-page]),
+    .app-main-card:has([data-discover-home-page]) {
+      flex: 1 1 auto;
+      height: auto;
+      max-height: none;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .app-main-card [data-profile-page],
+    .app-main-card [data-discover-home-page] {
+      height: 100%;
+      max-height: 100%;
+      min-height: 0 !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .app-main-card [data-profile-page]::-webkit-scrollbar,
+    .app-main-card [data-discover-home-page]::-webkit-scrollbar,
+    .app-main-card [data-public-profile-page] aside .overflow-y-auto::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .app-main-card [data-public-profile-page] aside .overflow-y-auto {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .app-main-card [data-public-profile-page] {
+      width: calc(100% - 400px);
+      margin-inline-end: 400px;
+    }
+
+    .profile-beside-about {
+      padding-inline-end: 400px;
+    }
+
+    .app-main-card [data-public-profile-page] .profile-beside-about {
+      padding-inline-end: 0;
+    }
+  }
+
   .app-desktop-side-panel {
     /* Flush under the fixed desktop header (no floating card). */
     @apply fixed bottom-0 start-0 z-[200] w-[220px];
@@ -461,6 +554,20 @@
       padding-inline-start: 220px;
     }
 
+    /* The rounded-card wrapper sits between the rail offset and the inbox. */
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      .app-side-panel-offset
+      > div,
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      .app-tablet-rail-offset
+      > div {
+      display: flex;
+      min-height: 0;
+      flex: 1 1 auto;
+      flex-direction: column;
+      height: 100%;
+    }
+
     .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
       [data-messages-page] {
       flex: 1 1 auto;
@@ -478,7 +585,7 @@
   }
 
   [data-messages-page] {
-    --messages-bg: #ffffff;
+    --messages-bg: #f4f4f5;
     --messages-surface: #ffffff;
     --messages-muted: #ffffff;
     --messages-text: #0f172a;
@@ -488,7 +595,7 @@
   }
 
   .dark [data-messages-page] {
-    --messages-bg: #18181b;
+    --messages-bg: #0c0a09;
     --messages-surface: #18181b;
     --messages-muted: #18181b;
     --messages-text: hsl(var(--foreground));
@@ -837,7 +944,7 @@
     margin: 10px 16px 12px;
     padding: 0 12px;
     border-radius: 14px;
-    background: #f1f3f5;
+    background: #ffffff;
     border: 1px solid rgba(15, 23, 42, 0.06);
   }
 
@@ -867,6 +974,22 @@
     cursor: pointer;
   }
 
+  /* Hairline starts at the photo's right edge and runs to the panel edge. */
+  [data-messages-page] .messages-conversation-row:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    inset-inline-start: calc(10px + 50px);
+    inset-inline-end: -8px;
+    height: 1px;
+    background: rgba(15, 23, 42, 0.1);
+    pointer-events: none;
+  }
+
+  .dark [data-messages-page] .messages-conversation-row:not(:last-child)::after {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   @media (max-width: 767.98px) {
     /* Aligns with the floating tabs / compose row, then scrolls away with the list. */
     [data-messages-page] .messages-inbox-section-title {
@@ -890,6 +1013,10 @@
       width: calc(100% - 16px);
       margin: 3px 8px;
       padding: 12px 10px;
+    }
+
+    [data-messages-page] .messages-conversation-row:not(:last-child)::after {
+      inset-inline-start: calc(10px + 62px);
     }
 
     [data-messages-page] .messages-conversation-row:hover,
@@ -927,9 +1054,10 @@
 
   @media (min-width: 768px) {
     .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
-      height: auto;
-      max-height: none;
-      overflow: visible;
+      height: 100dvh;
+      max-height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
       display: block;
     }
   }
@@ -1879,6 +2007,13 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 /* Animations */
+@keyframes boot-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes boot-glow {
+  0%, 100% { transform: scale(0.86); opacity: 0.55; }
+  50% { transform: scale(1); opacity: 1; }
+}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1972,6 +2107,23 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+@keyframes landing-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.landing-reveal {
+  animation: landing-reveal 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landing-loader-out {
+  to { opacity: 0; }
+}
+
+.landing-loader-out {
+  animation: landing-loader-out 0.55s ease both;
 }
 
 .animate-message-sent {
