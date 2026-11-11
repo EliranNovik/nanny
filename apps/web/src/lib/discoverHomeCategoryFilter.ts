@@ -37,7 +37,9 @@ export function filterOpenHelpRequestsByCategory<
       return sub === otherSubFilter;
     });
   }
-  return rows.filter((row) => row.service_type === categoryFilter);
+  return rows.filter(
+    (row) => (row.service_type ?? "").toLowerCase() === categoryFilter,
+  );
 }
 
 export function applyOpenHelpRequestDiscoverSort<

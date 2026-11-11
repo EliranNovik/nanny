@@ -538,7 +538,7 @@ export function HelperResultProfileCard({
     return (
     <>
       <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-t-[28px] rounded-b-none bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)] dark:bg-zinc-800 dark:shadow-lg dark:shadow-black/30 md:relative md:rounded-[28px] md:transition-[transform,box-shadow] md:duration-300 md:ease-out md:hover:z-10 md:hover:scale-[1.035] md:hover:shadow-[0_18px_44px_rgba(15,23,42,0.18)] dark:md:hover:shadow-2xl dark:md:hover:shadow-black/40">
-        <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-900 md:aspect-[4/5] md:flex-none">
+        <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-zinc-900 md:aspect-square md:flex-none">
           {slides.length === 0 ? (
             <ProfilePhotoPlaceholder name={h.full_name} seed={h.id} />
           ) : showStrip ? (

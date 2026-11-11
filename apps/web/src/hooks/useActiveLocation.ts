@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { browserLocationPromptAllowed } from "@/lib/location";
 
 const STORAGE_KEY = "app_active_location_mode";
 
@@ -98,9 +99,14 @@ export function useActiveLocation(): ActiveLocationResult {
     writeMode(m);
   }, []);
 
-  // Detect GPS city whenever mode is GPS
+  // Detect GPS city whenever mode is GPS. Admin accounts stay on the profile city.
   useEffect(() => {
+    if (profile?.is_admin) {
+      if (mode.type === "gps") setMode({ type: "profile" });
+      return;
+    }
     if (mode.type !== "gps") return;
+    if (!browserLocationPromptAllowed()) return;
     if (gpsDenied) return;
     if (!("geolocation" in navigator)) {
       setGpsDenied(true);
@@ -138,7 +144,7 @@ export function useActiveLocation(): ActiveLocationResult {
     };
     // Re-run only when mode type switches to gps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode.type, gpsDenied]);
+  }, [mode.type, gpsDenied, profile?.is_admin]);
 
   let displayCity: string | null = null;
   let displayCountry: string | null = null;

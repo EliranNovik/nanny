@@ -1,5 +1,7 @@
-import { Bell, MessageCircle, PenLine, X } from "lucide-react";
+import { Bell, Menu, MessageCircle, PenLine, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/AuthContext";
+import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 import { cn } from "@/lib/utils";
 
 const SEGMENT_PILL_WIDTH = 122;
@@ -31,12 +33,29 @@ export function MessagesInboxFloatingHeader({
   onToggleCompose,
 }: MessagesInboxFloatingHeaderProps) {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const { adminMenuOpen, setAdminMenuOpen } = useDesktopSidePanel();
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-20 md:hidden">
       <div
         className="flex items-center gap-3 px-4 pb-5 pt-[max(0.5rem,env(safe-area-inset-top,0px))]"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
       >
+        {profile?.is_admin ? (
+          <button
+            type="button"
+            onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+            className={cn(
+              "pointer-events-auto flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[26px] border border-white/20 text-slate-900 transition-opacity active:opacity-70 dark:text-white",
+              "bg-white/72 shadow-sm backdrop-blur-[20px] dark:border-white/10 dark:bg-zinc-900/72",
+            )}
+            aria-label={adminMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={adminMenuOpen}
+          >
+            <Menu className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          </button>
+        ) : null}
+        {profile?.is_admin ? null : (
         <div
           className={cn(
             "pointer-events-auto flex h-[52px] shrink-0 items-center rounded-[26px] border border-white/20",
@@ -108,8 +127,9 @@ export function MessagesInboxFloatingHeader({
             <CountBadge count={notificationsCount} />
           </button>
         </div>
+        )}
 
-        {section === "messages" ? (
+        {section === "messages" || profile?.is_admin ? (
           <div
             className={cn(
               "pointer-events-auto ml-auto flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[26px] border border-white/20",

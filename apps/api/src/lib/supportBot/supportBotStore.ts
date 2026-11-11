@@ -88,6 +88,129 @@ export async function escalateSupportThread(
   if (error) noteMissingTable(error);
 }
 
+/** An admin pause ends on its own after this long with no messages in the chat. */
+export const AI_PAUSE_IDLE_MS = 24 * 60 * 60 * 1000;
+let aiPauseColumnMissing = false;
+
+/**
+ * True while an admin has switched the bot off in this chat. `before` is the
+ * time of the first unanswered message: activity is measured up to it, so a
+ * person writing again after a quiet day gets the bot back.
+ */
+export async function isAiPaused(conversationId: string, before: string): Promise<boolean> {
+  if (persistenceDisabled || aiPauseColumnMissing) return false;
+  const { data, error } = await supabaseAdmin
+    .from("support_bot_threads")
+    .select("ai_paused_at")
+    .eq("conversation_id", conversationId)
+    .maybeSingle();
+  if (error) {
+    if (error.code === "42703" || /ai_paused_at/i.test(error.message ?? "")) {
+      aiPauseColumnMissing = true;
+      console.warn(
+        "[SupportBot] ai_paused_at is missing. Run db/sql/158_support_bot_ai_pause.sql; until then the AI switch in chats has no effect.",
+      );
+    } else {
+      noteMissingTable(error);
+    }
+    return false;
+  }
+  const pausedAt = data?.ai_paused_at as string | null | undefined;
+  if (!pausedAt) return false;
+
+  const { data: last } = await supabaseAdmin
+    .from("messages")
+    .select("created_at")
+    .eq("conversation_id", conversationId)
+    .lt("created_at", before)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const lastActivity = Math.max(
+    Date.parse(pausedAt),
+    last?.created_at ? Date.parse(last.created_at as string) : 0,
+  );
+  if (Date.parse(before) - lastActivity < AI_PAUSE_IDLE_MS) return true;
+
+  await supabaseAdmin
+    .from("support_bot_threads")
+    .update({ ai_paused_at: null, updated_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .eq("ai_paused_at", pausedAt);
+  console.log("[SupportBot] AI back on after a quiet day", { conversationId });
+  return false;
+}
+
+/**
+ * While the bot is on, hand-typed messages at or before this time are not a new
+ * takeover. The switch sets this when an admin turns the bot back on, so those
+ * older messages do not immediately switch it off again.
+ * Infinity means the bot is already paused.
+ * null means every hand-typed message still counts.
+ */
+export async function supportTakeoverCutoff(conversationId: string): Promise<number | null> {
+  if (persistenceDisabled || aiPauseColumnMissing) return null;
+  const { data, error } = await supabaseAdmin
+    .from("support_bot_threads")
+    .select("ai_paused_at, updated_at")
+    .eq("conversation_id", conversationId)
+    .maybeSingle();
+  if (error) {
+    if (error.code === "42703" || /ai_paused_at/i.test(error.message ?? "")) {
+      aiPauseColumnMissing = true;
+    } else {
+      noteMissingTable(error);
+    }
+    return null;
+  }
+  if (!data) return null;
+  if (data.ai_paused_at) return Number.POSITIVE_INFINITY;
+  const updated = Date.parse(String(data.updated_at ?? ""));
+  return Number.isFinite(updated) ? updated : null;
+}
+
+/** An admin turned the bot back on, or asked it to follow up. */
+export async function resumeSupportAi(conversationId: string): Promise<void> {
+  if (persistenceDisabled || aiPauseColumnMissing) return;
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("support_bot_threads").upsert(
+    {
+      conversation_id: conversationId,
+      ai_paused_at: null,
+      updated_at: now,
+    },
+    { onConflict: "conversation_id" },
+  );
+  if (error) {
+    if (error.code === "42703" || /ai_paused_at/i.test(error.message ?? "")) {
+      aiPauseColumnMissing = true;
+    } else {
+      noteMissingTable(error);
+    }
+  }
+}
+
+/** An admin typed in this chat, so the bot steps back until the chat goes quiet for a day. */
+export async function pauseSupportAi(conversationId: string): Promise<void> {
+  if (persistenceDisabled || aiPauseColumnMissing) return;
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("support_bot_threads").upsert(
+    {
+      conversation_id: conversationId,
+      ai_paused_at: now,
+      updated_at: now,
+    },
+    { onConflict: "conversation_id" },
+  );
+  if (error) {
+    if (error.code === "42703" || /ai_paused_at/i.test(error.message ?? "")) {
+      aiPauseColumnMissing = true;
+    } else {
+      noteMissingTable(error);
+    }
+  }
+}
+
 export async function isBotMessage(messageId: string): Promise<boolean> {
   if (memoryBotMessages.has(messageId) || persistenceDisabled) {
     return memoryBotMessages.has(messageId);
@@ -102,6 +225,50 @@ export async function isBotMessage(messageId: string): Promise<boolean> {
     return memoryBotMessages.has(messageId);
   }
   return Boolean(data?.message_id);
+}
+
+const DEFAULT_DAILY_CAP = 20;
+let dailyCapCache: { value: number; at: number } | null = null;
+let settingsTableMissing = false;
+
+/** Messages the bot may write to one person per UTC day. 0 means no limit. */
+export async function dailyMessageCap(): Promise<number> {
+  if (settingsTableMissing) return DEFAULT_DAILY_CAP;
+  if (dailyCapCache && Date.now() - dailyCapCache.at < 30_000) return dailyCapCache.value;
+  const { data, error } = await supabaseAdmin
+    .from("support_bot_settings")
+    .select("daily_message_cap")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) {
+    if (error.code === "42P01" || error.code === "PGRST205") {
+      settingsTableMissing = true;
+      console.warn(
+        "[SupportBot] support_bot_settings is missing. Run db/sql/160_support_bot_daily_cap.sql. Using a cap of 20 until then.",
+      );
+    }
+    return dailyCapCache?.value ?? DEFAULT_DAILY_CAP;
+  }
+  const parsed = Number(data?.daily_message_cap ?? DEFAULT_DAILY_CAP);
+  const value = Number.isFinite(parsed) ? Math.max(0, Math.min(500, Math.floor(parsed))) : DEFAULT_DAILY_CAP;
+  dailyCapCache = { value, at: Date.now() };
+  return value;
+}
+
+/** Bot messages already written in this chat since the start of the UTC day. */
+export async function botMessagesSentToday(conversationId: string): Promise<number> {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await supabaseAdmin
+    .from("support_bot_messages")
+    .select("message_id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .gte("created_at", start.toISOString());
+  if (error) {
+    noteMissingTable(error);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export async function rememberBotMessage(

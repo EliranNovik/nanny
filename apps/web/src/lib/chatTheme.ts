@@ -1,14 +1,13 @@
 import { cn } from "@/lib/utils";
 
-/** Rich dark gradient + light neutral background for the chat thread. */
+/** Plain chat thread: white in light mode, black in dark mode. */
 export const chatAreaBgClass =
-  "chat-screen bg-white text-foreground dark:bg-[#101214] dark:text-white";
+  "chat-screen bg-white text-foreground dark:bg-black dark:text-white";
 
-/** Frosted overlay for the chat header and composer so messages can show through. */
+/** Flat bar for the chat header and composer. */
 export const chatComposerBarClass = cn(
-  "border-0 bg-white/92 shadow-none backdrop-blur-xl backdrop-saturate-150",
-  "supports-[backdrop-filter]:bg-white/82",
-  "dark:bg-[#14161d]/90 dark:supports-[backdrop-filter]:bg-[#14161d]/82",
+  "border-0 bg-white shadow-none",
+  "dark:bg-black",
 );
 
 export const chatChromeBarClass = chatComposerBarClass;

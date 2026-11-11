@@ -831,6 +831,9 @@ export default function PublicProfilePage() {
   >(null);
   const [profileMediaTab, setProfileMediaTab] =
     useState<ProfileMediaSectionTab>("posts");
+  const [profileSocialGroup, setProfileSocialGroup] = useState<
+    "posts" | "listings"
+  >("listings");
   useEffect(() => {
     if (effectiveProfilePanelOpen && profileMediaTab === "about") {
       setProfileMediaTab("posts");
@@ -2683,7 +2686,50 @@ export default function PublicProfilePage() {
                 )}
               </div>
             )}
-            {profileMediaTab === "posts" && <ProfilePostsFeed {...profilePostsFeedProps} />}
+            {profileMediaTab === "posts" && (
+              <>
+                <div
+                  className="mb-6 flex items-center gap-1 border-b border-border/40"
+                  role="tablist"
+                  aria-label="Social feed"
+                >
+                  {(
+                    [
+                      { id: "listings", label: "Offers & requests" },
+                      { id: "posts", label: "Events & community" },
+                    ] as const
+                  ).map((tab) => {
+                    const active = profileSocialGroup === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setProfileSocialGroup(tab.id)}
+                        className={cn(
+                          "-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+                          active
+                            ? "border-orange-600 text-orange-600 dark:border-orange-400 dark:text-orange-400"
+                            : "border-transparent text-muted-foreground hover:text-foreground/80",
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <ProfilePostsFeed
+                  {...profilePostsFeedProps}
+                  filterPostTypeIds={
+                    profileSocialGroup === "posts"
+                      ? ["event", "community"]
+                      : ["offer_service", "request_help"]
+                  }
+                  includeAvailabilityPosts={profileSocialGroup === "posts"}
+                />
+              </>
+            )}
             {profileMediaTab === "about" && (
               <div className="space-y-4">
               <HourlyRateCard rate={publicRate} />

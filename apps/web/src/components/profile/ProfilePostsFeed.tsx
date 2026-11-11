@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow, format, parseISO } from "date-fns";
@@ -97,7 +97,7 @@ import {
   parseProfilePostShareId,
   isolatedOfferPostPath,
 } from "@/lib/profilePostShare";
-import { fetchProfilePostById } from "@/lib/fetchProfilePostById";
+import { fetchProfilePostById, preloadedProfilePostImageRatio } from "@/lib/fetchProfilePostById";
 import { normalizeAppLocale } from "@/i18n";
 import {
   precomputedFromProfilePostOverlay,
@@ -158,6 +158,8 @@ import {
   mapProfilePostTypeToCopyType,
 } from "@/utils/postTextTemplates";
 import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { QualityBlockNotice } from "@/components/quality/QualityBlockNotice";
+import { reviewImages, saveQualityFlag, screenPost } from "@/lib/qualityReview";
 import {
   feedPostDescription,
   feedLocationDisplayLabel,
@@ -1613,6 +1615,7 @@ export function ComposeModal({
   const [tagResults, setTagResults] = useState<ProfileSnippet[]>([]);
   const [taggedUsers, setTaggedUsers] = useState<ProfileSnippet[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [qualityBlockNote, setQualityBlockNote] = useState<string | null>(null);
   const [postTypes, setPostTypes] = useState<{ id: string; name: string; emoji: string; color: string }[]>([]);
   const [selectedPostTypeId, setSelectedPostTypeId] = useState<string | null>(null);
 
@@ -1711,6 +1714,7 @@ export function ComposeModal({
   }, [open, initialPostTypeId]);
 
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  const [mediaDragOver, setMediaDragOver] = useState(false);
   const tagTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tagBoxRef = useRef<HTMLDivElement>(null);
 
@@ -1746,6 +1750,7 @@ export function ComposeModal({
     setCommunityTitle("");
     setCustomCategory("");
     setCustomCategoryText("");
+    setQualityBlockNote(null);
   }
 
   function handleClose() {
@@ -1938,6 +1943,30 @@ export function ComposeModal({
     }
     setSubmitting(true);
     try {
+      const images = await reviewImages(
+        composeMedia.filter((item) => item.kind === "image").map((item) => item.file),
+      );
+      const reviewTitle =
+        selectedPostTypeId === "community"
+          ? communityTitle
+          : selectedPostTypeId === "event"
+            ? eventName
+            : trimmedCustomCategory ||
+              (selectedPostTypeId === "request_help" ? requestHelpCategory : offerServiceCategory);
+      const reviewText = [caption.trim(), trimmedCustomCategory].filter(Boolean).join("\n");
+      const screen = await screenPost({
+        postType: selectedPostTypeId,
+        title: reviewTitle,
+        text: reviewText,
+        images,
+      });
+      if (screen.blockedNote) {
+        setQualityBlockNote(screen.blockedNote);
+        return;
+      }
+      setQualityBlockNote(null);
+      const flaggedReviewId = screen.reviewId;
+
       const uploadedMedia: ProfilePostMediaItem[] = [];
 
       for (const item of composeMedia) {
@@ -2132,6 +2161,10 @@ export function ComposeModal({
         insertedProfilePostId = insertedPost?.id ?? null;
       }
 
+      if (flaggedReviewId && insertedProfilePostId) {
+        await saveQualityFlag(flaggedReviewId, { profilePostId: insertedProfilePostId });
+      }
+
       addToast({ title: "Post shared!", variant: "success" });
       reset();
       onPosted(insertedProfilePostId ?? undefined);
@@ -2203,45 +2236,98 @@ export function ComposeModal({
     </div>
   );
 
+  const wideMediaDrop =
+    selectedPostTypeId === "event" || selectedPostTypeId === "community";
+
+  const acceptMediaDrop = (e: DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (submitting) return;
+    e.dataTransfer.dropEffect = "copy";
+    setMediaDragOver(true);
+  };
+
   const photoUploadSection = (
     <div className="space-y-2 pt-2">
       <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
         {t("composePost.addPhotos")}
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        {composeMedia.map((item) => (
-          <div
-            key={item.id}
-            className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border/40 bg-black shadow-sm"
-          >
-            {item.kind === "image" ? (
-              <img src={item.previewUrl} className="h-full w-full object-cover" alt="Preview" />
-            ) : (
-              <video src={item.previewUrl} className="h-full w-full object-cover" muted playsInline />
-            )}
+      {composeMedia.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {composeMedia.map((item) => (
+            <div
+              key={item.id}
+              className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border/40 bg-black shadow-sm"
+            >
+              {item.kind === "image" ? (
+                <img src={item.previewUrl} className="h-full w-full object-cover" alt="Preview" />
+              ) : (
+                <video src={item.previewUrl} className="h-full w-full object-cover" muted playsInline />
+              )}
+              <button
+                type="button"
+                onClick={() => removeComposeMedia(item.id)}
+                className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 shadow-md active:scale-[0.85] transition-transform"
+                aria-label={t("composePost.removeMedia")}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          ))}
+          {!wideMediaDrop && composeMedia.length < MAX_PROFILE_POST_MEDIA ? (
             <button
               type="button"
-              onClick={() => removeComposeMedia(item.id)}
-            className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 shadow-md active:scale-[0.85] transition-transform"
-            aria-label={t("composePost.removeMedia")}
+              onClick={() => mediaInputRef.current?.click()}
+              className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-95 dark:border-zinc-800 dark:text-zinc-600 dark:hover:border-zinc-600 dark:hover:bg-zinc-900/30"
+              disabled={submitting}
+              aria-label={t("composePost.addPhotosVideos")}
             >
-              <X className="h-3 w-3" strokeWidth={2.5} />
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
             </button>
-          </div>
-        ))}
+          ) : null}
+        </div>
+      ) : null}
 
-        {composeMedia.length < MAX_PROFILE_POST_MEDIA ? (
-          <button
-            type="button"
-            onClick={() => mediaInputRef.current?.click()}
-            className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-95 dark:border-zinc-800 dark:text-zinc-600 dark:hover:border-zinc-600 dark:hover:bg-zinc-900/30"
-            disabled={submitting}
-            aria-label={t("composePost.addPhotosVideos")}
-          >
-            <Plus className="h-6 w-6" strokeWidth={2.5} />
-          </button>
-        ) : null}
-      </div>
+      {wideMediaDrop && composeMedia.length < MAX_PROFILE_POST_MEDIA ? (
+        <button
+          type="button"
+          onClick={() => mediaInputRef.current?.click()}
+          onDragEnter={acceptMediaDrop}
+          onDragOver={acceptMediaDrop}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setMediaDragOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setMediaDragOver(false);
+            if (submitting) return;
+            if (e.dataTransfer.files?.length) handlePhotoVideoPick(e.dataTransfer.files);
+          }}
+          disabled={submitting}
+          aria-label={t("composePost.addPhotosVideos")}
+          className={cn(
+            "flex min-h-[11.5rem] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 text-center transition-colors",
+            mediaDragOver
+              ? "border-orange-400 bg-orange-50 text-orange-600 dark:border-orange-400 dark:bg-orange-500/10 dark:text-orange-300"
+              : "border-zinc-300 bg-white text-zinc-500 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-900/70",
+          )}
+        >
+          <Plus className="h-8 w-8" strokeWidth={2.25} />
+          <span className="text-[14px] font-semibold">{t("composePost.dropMedia")}</span>
+        </button>
+      ) : !wideMediaDrop && composeMedia.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => mediaInputRef.current?.click()}
+          className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-95 dark:border-zinc-800 dark:text-zinc-600 dark:hover:border-zinc-600 dark:hover:bg-zinc-900/30"
+          disabled={submitting}
+          aria-label={t("composePost.addPhotosVideos")}
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        </button>
+      ) : null}
     </div>
   );
 
@@ -2531,7 +2617,7 @@ export function ComposeModal({
 
   const composeScrollFields = (
     <>
-            {/* Author row */}
+            {qualityBlockNote ? <QualityBlockNotice note={qualityBlockNote} /> : null}
             <div className="flex items-center gap-2.5">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={authorProfile.photo_url ?? undefined} />
@@ -3350,7 +3436,12 @@ export function ComposeModal({
           </ScrollArea>
 
           {selectedPostTypeId ? (
-            <ScrollArea className="hidden sm:flex min-h-0 w-[min(100%,380px)] shrink-0 flex-col border-l border-zinc-200/80 bg-zinc-50/40 dark:border-zinc-800/80 dark:bg-zinc-900/25">
+            <ScrollArea className={cn(
+              "hidden sm:flex min-h-0 shrink-0 flex-col border-l border-zinc-200/80 bg-zinc-50/40 dark:border-zinc-800/80 dark:bg-zinc-900/25",
+              selectedPostTypeId === "event" || selectedPostTypeId === "community"
+                ? "w-[min(100%,480px)]"
+                : "w-[min(100%,380px)]",
+            )}>
               <div className="space-y-5 px-5 py-4">
                 {photoUploadSection}
                 {livePreviewSection}
@@ -3448,9 +3539,9 @@ function FeedPostCardSkeleton({
   );
 }
 
-/** User-written caption/body — grey in light, white in dark. Keep breaks with modest gaps. */
+/** User-written caption/body — black in light, white in dark. Keep breaks with modest gaps. */
 const postFreeTextClassName =
-  "whitespace-pre-line break-words text-muted-foreground dark:text-white leading-[1.45]";
+  "whitespace-pre-line break-words text-black dark:text-white leading-[1.45]";
 
 /** Cap blank lines at one so paragraphs stay separated without large empty gaps. */
 function normalizeFreeTextBreaks(text: string): string {
@@ -3487,11 +3578,13 @@ function PostAuthorAvatar({
   photoUrl,
   liveUntil,
   variant,
+  compact = false,
 }: {
   authorName: string;
   photoUrl: string | undefined;
   liveUntil?: string | null;
   variant: "overlay" | "card";
+  compact?: boolean;
 }) {
   const fallbackClass =
     variant === "overlay"
@@ -3503,7 +3596,11 @@ function PostAuthorAvatar({
       <Avatar
         className={cn(
           "shrink-0",
-          variant === "card" ? "h-[2.75rem] w-[2.75rem]" : "h-[2.5rem] w-[2.5rem]",
+          compact
+            ? "h-8 w-8"
+            : variant === "card"
+              ? "h-[2.75rem] w-[2.75rem]"
+              : "h-[2.5rem] w-[2.5rem]",
         )}
       >
         <AvatarImage src={photoUrl} className="object-cover" alt="" />
@@ -3900,6 +3997,12 @@ function PostCard({
   isolateFocusedPost = false,
 }: PostCardProps) {
   const { t, i18n } = useTranslation();
+  const { pathname } = useLocation();
+  const hideTitleCategoryIcon =
+    isolateFocusedPost ||
+    pathname.startsWith("/offers/") ||
+    pathname.startsWith("/open-requests/") ||
+    pathname.startsWith("/posts/");
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { profile: viewerProfile, user } = useAuth();
@@ -4041,19 +4144,38 @@ function PostCard({
   const [mediaCarouselIndex, setMediaCarouselIndex] = useState(0);
   const [showAllTagged, setShowAllTagged] = useState(false);
   const videoUnmutedByUser = globalVideoUnmuted;
-  const [mediaOrientation, setMediaOrientation] = useState<
-    "unknown" | "portrait" | "landscape"
-  >("unknown");
-  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
   const mediaUrl =
     post.media_type && post.storage_path
       ? post.media_type === "image"
         ? optimizedMediaUrl.hero(publicProfileMediaPublicUrl(post.storage_path))
         : publicProfileMediaPublicUrl(post.storage_path)
       : null;
+  const cachedMediaRatio = isolateFocusedPost
+    ? preloadedProfilePostImageRatio(mediaUrl)
+    : null;
+  const [mediaOrientation, setMediaOrientation] = useState<
+    "unknown" | "portrait" | "landscape"
+  >(
+    cachedMediaRatio == null
+      ? "unknown"
+      : cachedMediaRatio >= 1.05
+        ? "landscape"
+        : "portrait",
+  );
+  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(
+    cachedMediaRatio,
+  );
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const hasMedia = Boolean(mediaUrl);
+  // Detail page keeps a real media slot before the file arrives, so the title
+  // and body are already sitting under it instead of jumping down later.
+  const frameRatio =
+    mediaAspectRatio ??
+    (isolateFocusedPost && hasMedia
+      ? post.media_type === "video"
+        ? 16 / 9
+        : 4 / 3
+      : null);
 
   const postMediaItems = useMemo(
     () =>
@@ -4264,12 +4386,12 @@ function PostCard({
     "post-media-shell relative mt-0 flex items-start justify-center overflow-hidden md:rounded-xl",
     mobileMediaInsetClass,
     desktopDiscoverMediaColumnClass,
-    mediaAspectRatio && !isLandscape && mediaBoxBgClass,
+    frameRatio && (!mediaAspectRatio || !isLandscape) && mediaBoxBgClass,
   );
-  const singleMediaFrameStyle: React.CSSProperties | undefined = mediaAspectRatio
-    ? ({ ["--post-media-ratio" as string]: String(mediaAspectRatio) } as React.CSSProperties)
+  const singleMediaFrameStyle: React.CSSProperties | undefined = frameRatio
+    ? ({ ["--post-media-ratio" as string]: String(frameRatio) } as React.CSSProperties)
     : undefined;
-  const singleMediaFillClass = mediaAspectRatio
+  const singleMediaFillClass = frameRatio
     ? "h-full w-full object-cover"
     : cn(
         "block h-auto w-full max-w-full object-contain object-center",
@@ -4927,64 +5049,114 @@ function PostCard({
     onLightGlass = false,
   ) {
     const mute = onLightGlass ? "text-zinc-600" : "text-muted-foreground";
-    const muteSoft = onLightGlass ? "text-zinc-500" : "text-muted-foreground/80";
     const ink = onLightGlass ? "text-zinc-900" : undefined;
     if (isolateFocusedPost) {
-      return isolatedDetails
-        .filter((item) => !omitWhen || item.kind !== "when")
-        .map((item) => (
-        <div
-          key={item.key}
-          className={cn(
-            "flex min-w-0 items-start gap-2.5",
-            ink,
-            item.kind === "notes" && "col-span-2",
-            item.kind === "budget" &&
-              (onLightGlass ? "text-orange-700" : requestPostBudgetTextClass),
-            item.kind === "rate" &&
-              (onLightGlass ? "text-emerald-700" : "text-emerald-600 dark:text-emerald-400"),
-            item.kind === "when" && whenExpired && mute,
-          )}
-        >
-          <IsolatedDetailIcon
-            kind={item.kind}
-            expired={whenExpired}
-            onLightGlass={onLightGlass}
-          />
-          <span
-            className={cn(
-              "min-w-0",
-              item.kind === "notes" && "whitespace-pre-wrap leading-snug",
-              whenExpired && item.kind === "when" && "font-bold",
-            )}
-          >
-            {item.value}
-          </span>
-        </div>
-      ));
+      const isEventOrCommunity = postTypeId === "event" || postTypeId === "community";
+      const isOfferOrRequest =
+        postTypeId === "offer_service" || postTypeId === "request_help" || isJobRequest;
+      const placeKinds = new Set(["location", "when", "schedule"]);
+      const visible = isolatedDetails.filter((item) => !omitWhen || item.kind !== "when");
+      const placeItems = isEventOrCommunity
+        ? visible.filter((item) => placeKinds.has(item.kind))
+        : [];
+      if (
+        postTypeId === "community" &&
+        !placeItems.some((item) => item.kind === "when" || item.kind === "schedule") &&
+        post.created_at
+      ) {
+        const postedAt = new Date(post.created_at);
+        if (!Number.isNaN(postedAt.getTime())) {
+          placeItems.push({
+            key: "posted",
+            kind: "when",
+            value: format(postedAt, "MMM d, yyyy, h:mm a", {
+              locale: dateFnsLocaleFor(i18n.language),
+            }),
+          });
+        }
+      }
+      const rest = visible.filter(
+        (item) =>
+          !(isEventOrCommunity && placeKinds.has(item.kind)) &&
+          !(isOfferOrRequest && (item.kind === "budget" || item.kind === "rate")),
+      );
+      return (
+        <>
+          {placeItems.length > 0 ? (
+            <div className={cn("col-span-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", ink)}>
+              {placeItems.map((item, index) => (
+                <span key={item.key} className="inline-flex min-w-0 items-center gap-2">
+                  {index > 0 ? (
+                    <span aria-hidden className="text-muted-foreground">
+                      ·
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 break-words">{item.value}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {rest.map((item) => (
+            <div
+              key={item.key}
+              className={cn(
+                "flex min-w-0 items-start gap-2.5",
+                ink,
+                item.kind === "notes" && "col-span-2",
+                item.kind === "budget" &&
+                  (onLightGlass ? "text-orange-700" : requestPostBudgetTextClass),
+                item.kind === "rate" &&
+                  (onLightGlass ? "text-emerald-700" : "text-emerald-600 dark:text-emerald-400"),
+                item.kind === "when" && whenExpired && mute,
+              )}
+            >
+              <IsolatedDetailIcon
+                kind={item.kind}
+                expired={whenExpired}
+                onLightGlass={onLightGlass}
+              />
+              <span
+                className={cn(
+                  "min-w-0",
+                  item.kind === "notes" && "whitespace-pre-wrap leading-snug",
+                  whenExpired && item.kind === "when" && "font-bold",
+                )}
+              >
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </>
+      );
     }
+    const placeParts = [
+      postLocationLine
+        ? { key: "location", value: postLocationLine, expired: false }
+        : null,
+      whenLabel && !omitWhen
+        ? { key: "when", value: whenLabel, expired: whenExpired }
+        : null,
+    ].filter((item): item is { key: string; value: string; expired: boolean } => item != null);
     return (
       <>
-        {postLocationLine ? (
-          <div className={cn("flex min-w-0 items-center gap-2", ink)}>
-            <MapPinned className={cn("h-5 w-5 shrink-0", mute)} />
-            <span className="min-w-0 break-words">{postLocationLine}</span>
-          </div>
-        ) : null}
-        {whenLabel && !omitWhen ? (
-          <div
-            className={cn(
-              "flex min-w-0 items-center gap-2",
-              whenExpired ? mute : ink,
-            )}
-          >
-            <Clock
-              className={cn(
-                "h-5 w-5 shrink-0",
-                whenExpired ? muteSoft : mute,
-              )}
-            />
-            <span className={cn(whenExpired && "font-bold")}>{whenLabel}</span>
+        {placeParts.length > 0 ? (
+          <div className={cn("col-span-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", ink)}>
+            {placeParts.map((item, index) => (
+              <span
+                key={item.key}
+                className={cn(
+                  "inline-flex min-w-0 items-center",
+                  item.expired && cn("font-bold", mute),
+                )}
+              >
+                {index > 0 ? (
+                  <span aria-hidden className="me-2 text-muted-foreground">
+                    ·
+                  </span>
+                ) : null}
+                <span className="min-w-0 break-words">{item.value}</span>
+              </span>
+            ))}
           </div>
         ) : null}
         {post.source === "post" &&
@@ -5162,11 +5334,15 @@ function PostCard({
   }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   function renderEngagementRow() {
-    const pinEngagementToMobileBottom = isolateFocusedPost;
+    const pinEngagementToMobileBottom = false;
+    const engagementUnderMedia =
+      isGlobalFeed && (hasMedia || isolateFocusedPost) && !pinEngagementToMobileBottom;
     const btnPad = isGlobalFeed
       ? pinEngagementToMobileBottom
         ? "py-2 md:py-2.5"
-        : "py-2 md:py-1"
+        : engagementUnderMedia
+          ? "py-1.5"
+          : "py-2 md:py-1"
       : hasMedia
         ? isProfile
           ? "py-1.5"
@@ -5177,17 +5353,23 @@ function PostCard({
     const iconClass = isGlobalFeed
       ? pinEngagementToMobileBottom
         ? "h-5 w-5 md:h-6 md:w-6"
-        : "h-5 w-5 md:h-4 md:w-4"
+        : engagementUnderMedia
+          ? "h-6 w-6"
+          : "h-5 w-5 md:h-4 md:w-4"
       : "h-6 w-6 md:h-7 md:w-7";
     const engagementTextClass = isGlobalFeed
       ? pinEngagementToMobileBottom
         ? "text-[13px] font-bold md:text-[15px]"
-        : "text-[13px] font-bold md:text-[12.5px] md:font-semibold"
+        : engagementUnderMedia
+          ? "text-[15px] font-semibold"
+          : "text-[13px] font-bold md:text-[12.5px] md:font-semibold"
       : "text-[15px] font-semibold md:text-[17px]";
     const engagementBtnPx = isGlobalFeed
       ? pinEngagementToMobileBottom
         ? "px-2.5 md:px-3"
-        : "px-2.5 md:px-2"
+        : engagementUnderMedia
+          ? "px-2.5"
+          : "px-2.5 md:px-2"
       : "px-3 md:px-3.5";
     const engagementGapClass =
       isGlobalFeed && !pinEngagementToMobileBottom ? "gap-1.5 md:gap-1" : "gap-1.5 md:gap-2";
@@ -5209,7 +5391,13 @@ function PostCard({
             : isGlobalFeed
             ? cn(
                 cardPadX,
-                "mt-1 pb-3.5 pt-2",
+                engagementUnderMedia
+                  ? !hasMedia
+                    ? "mt-1 pb-1 pt-4"
+                    : "mt-0 pb-1 pt-0.5"
+                  : !hasMedia && !isolateFocusedPost
+                    ? "mt-0.5 pb-2 pt-1"
+                    : "mt-1 pb-3.5 pt-2",
                 globalFeedMobileEngagementRowClassForMedia(hasMedia),
               )
             : cn("mt-1.5 bg-transparent", cardMarginX, isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0"),
@@ -5308,6 +5496,37 @@ function PostCard({
           </button>
         </div>
 
+        <div className="flex shrink-0 items-center gap-2">
+        {isGlobalFeed && isEventPost && !hasMedia && !isolateFocusedPost ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrimaryFeedAction(e);
+            }}
+            disabled={
+              eventJoinBusy ||
+              eventJoinStatus === "accepted" ||
+              eventJoinStatus === "declined"
+            }
+            className={cn(
+              "inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-65",
+              globalFeedPrimaryCtaClass(
+                postTypeId,
+                eventJoinStatus === "accepted"
+                  ? "accepted"
+                  : eventJoinStatus === "declined"
+                    ? "declined"
+                    : eventJoinStatus === "pending"
+                      ? "pending"
+                      : undefined,
+              ),
+            )}
+          >
+            {eventJoinBusy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : null}
+            <span className="truncate">{globalFeedCtaText}</span>
+          </button>
+        ) : null}
         {canSaveJobRequest ? (
           <button
             type="button"
@@ -5386,6 +5605,7 @@ function PostCard({
             ) : null}
           </button>
         ) : null}
+        </div>
       </div>
     );
     if (pinEngagementToMobileBottom && typeof document !== "undefined") {
@@ -5473,6 +5693,12 @@ function PostCard({
     Boolean(showFeedActionButton || showPortraitMediaMeta);
   const useSimpleSocialMediaOverlay =
     isEventPost || postTypeId === "community";
+
+  const listingPriceLabel =
+    isolateFocusedPost &&
+    (postTypeId === "offer_service" || postTypeId === "request_help" || isJobRequest)
+      ? isolatedDetails.find((item) => item.kind === "budget" || item.kind === "rate")?.value ?? null
+      : null;
 
   const globalFeedCtaButton = showFeedActionButton ? (
     <button
@@ -5574,6 +5800,20 @@ function PostCard({
     </div>
   ) : null;
 
+  const titleByline = !isolateFocusedPost && hasMedia ? (
+    <span className="ms-auto inline-flex max-w-[46%] shrink-0 items-center gap-1 ps-3 text-sm font-medium text-muted-foreground">
+      <span className="truncate">by {authorName}</span>
+      {post.author?.is_verified ? (
+        <BadgeCheck
+          className="h-4 w-4 shrink-0"
+          fill="#0ea5e9"
+          color="#ffffff"
+          aria-label="Verified"
+        />
+      ) : null}
+    </span>
+  ) : null;
+
   // Public profile posts tab: offers + requests use the compact home-tab box layout.
   if (isProfile && isProfileOfferOrRequestPost(post) && !isolateFocusedPost) {
     return (
@@ -5583,7 +5823,7 @@ function PostCard({
             ? feedItemDomId(post.source, post.id)
             : undefined
         }
-        className={cn("relative", isFocused && "scroll-mt-24 scroll-mb-28")}
+        className={cn("relative h-full min-w-0", isFocused && "scroll-mt-24 scroll-mb-28")}
       >
         <ProfileOfferRequestListRow
           post={post}
@@ -5633,11 +5873,15 @@ function PostCard({
       }
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
+        isProfile && "md:col-span-full",
         isGlobalFeed
           ? cn(
               "rounded-2xl",
               globalFeedMobileCardClassForMedia(hasMedia),
               globalFeedCardSurfaceForMedia(hasMedia),
+              !hasMedia &&
+                !isolateFocusedPost &&
+                "bg-zinc-50 shadow-none ring-0 max-md:bg-zinc-50 max-md:shadow-none max-md:ring-0 md:bg-zinc-50 md:shadow-none md:ring-0 dark:bg-zinc-800/80 dark:shadow-none dark:ring-0 dark:max-md:bg-[#2c2c2e] md:dark:bg-zinc-900",
             )
           : isDiscover || isPlainCard
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
@@ -5652,10 +5896,10 @@ function PostCard({
     >
       {/* Header — always rendered outside the media block */}
       {isGlobalFeed ? (
-        <div className={cn(headerRowClass, headerPadX, "pt-3.5 pb-1", isVideoHeaderOverlay && "hidden")}>
+        <div className={cn(headerRowClass, !isolateFocusedPost && "items-center", headerPadX, !hasMedia && !isolateFocusedPost ? "pt-2 pb-0.5" : "pt-3.5 pb-1", isVideoHeaderOverlay && "hidden")}>
           <GuestAwareProfileLink
             userId={post.author_id}
-            className="shrink-0 self-start"
+            className="shrink-0 self-center"
             aria-label={`View ${authorName} profile`}
           >
             <PostAuthorAvatar
@@ -5663,29 +5907,36 @@ function PostCard({
               photoUrl={post.author?.photo_url ?? undefined}
               liveUntil={post.author?.live_until}
               variant="card"
+              compact={!isolateFocusedPost}
             />
           </GuestAwareProfileLink>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start justify-between gap-2">
               <div className="min-w-0 flex flex-col gap-0">
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <GuestAwareProfileLink
                     userId={post.author_id}
-                    className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
+                    className={cn(
+                      "truncate font-bold text-foreground hover:underline underline-offset-2",
+                      isolateFocusedPost ? "text-[19px] leading-tight" : "text-[15px] leading-none",
+                    )}
                     aria-label={`View ${authorName} profile`}
                   >
                     {authorName}
                   </GuestAwareProfileLink>
                   {post.author?.is_verified ? (
                     <BadgeCheck
-                      className="h-5 w-5 shrink-0"
+                      className={cn("shrink-0", isolateFocusedPost ? "h-5 w-5" : "h-4 w-4")}
                       fill="#0ea5e9"
                       color="#ffffff"
                       aria-label="Verified"
                     />
                   ) : null}
                 </div>
-                <p className="text-[15px] font-medium leading-tight text-muted-foreground">
+                <p className={cn(
+                  "font-medium text-muted-foreground",
+                  isolateFocusedPost ? "text-[15px] leading-tight" : "mt-0.5 text-[13px] leading-tight",
+                )}>
                   <time className="tabular-nums">{postedLabel}</time>
                   {postLocationLine ? (
                     <>
@@ -6036,7 +6287,7 @@ function PostCard({
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "image" && (
         <div className={singleMediaShellClass} data-media-cap={mediaCap}>
           <div
-            className={mediaAspectRatio ? "post-media-frame" : "relative w-full"}
+            className={frameRatio ? "post-media-frame" : "relative w-full"}
             style={singleMediaFrameStyle}
           >
           <button
@@ -6044,7 +6295,7 @@ function PostCard({
             onClick={openPostFromCard}
             className={cn(
               "overflow-hidden focus-visible:outline-none",
-              mediaAspectRatio
+              frameRatio
                 ? "absolute inset-0 block h-full w-full"
                 : "flex w-full items-center justify-center",
             )}
@@ -6054,7 +6305,8 @@ function PostCard({
               src={mediaUrl}
               alt=""
               className={singleMediaFillClass}
-              loading="lazy"
+              loading={isolateFocusedPost ? "eager" : "lazy"}
+              fetchPriority={isolateFocusedPost ? "high" : "auto"}
               decoding="async"
               onLoad={(e) => {
                 const el = e.currentTarget;
@@ -6123,7 +6375,7 @@ function PostCard({
       {hasMedia && !hasMultipleMedia && mediaUrl && post.media_type === "video" && (
         <div className={singleMediaShellClass} data-media-cap={mediaCap}>
           <div
-            className={mediaAspectRatio ? "post-media-frame" : "relative w-full"}
+            className={frameRatio ? "post-media-frame" : "relative w-full"}
             style={singleMediaFrameStyle}
           >
           <video
@@ -6133,10 +6385,10 @@ function PostCard({
             playsInline
             loop
             muted={!videoUnmutedByUser}
-            preload="metadata"
+            preload={isolateFocusedPost ? "auto" : "metadata"}
             className={cn(
               singleMediaFillClass,
-              mediaAspectRatio && "absolute inset-0",
+              frameRatio && "absolute inset-0",
             )}
             onLoadedMetadata={(e) => {
               const el = e.currentTarget;
@@ -6299,6 +6551,10 @@ function PostCard({
         </div>
       )}
 
+      {isGlobalFeed && hasMedia && !(isolateFocusedPost && !currentUserId)
+        ? renderEngagementRow()
+        : null}
+
       {isGlobalFeed ? (
         <>
           {isGlobalTextOnlyCard ? (
@@ -6310,7 +6566,9 @@ function PostCard({
             >
               <div
                 className={cn(
-                  "w-full px-4 pb-4 pt-0",
+                  "w-full px-4",
+                  isolateFocusedPost ? "pb-4" : "pb-2",
+                  isolateFocusedPost ? "pt-6" : "pt-0",
                   isGlobalFeed ? "max-md:rounded-2xl md:rounded-xl" : "rounded-xl",
                   globalFeedContentLayout?.className,
                 )}
@@ -6325,30 +6583,34 @@ function PostCard({
                   {displayPostTitle ? (
                     <h3
                       className={cn(
-                        "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
+                        "flex items-center gap-2 font-bold leading-snug text-foreground",
+                        isolateFocusedPost ? "text-[19px]" : "text-base",
                         displayPostTitleLayout?.className,
                       )}
                       dir={displayPostTitleLayout?.dir}
                     >
-                      {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
+                      {!hideTitleCategoryIcon && (serviceCategoryMeta?.iconId || serviceCategoryMeta?.id) ? (
                         <CategoryIcon
                           categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
                           className="h-6 w-6 shrink-0"
                         />
                       ) : null}
-                      <span>{displayPostTitle}</span>
+                      <span className="min-w-0 flex-1">{displayPostTitle}</span>
+                      {titleByline}
                     </h3>
                   ) : null}
                   {displayTextOnlyBody ? (
                     <FeedExpandableFreeText
                       text={displayTextOnlyBody}
                       fullText={isolateFocusedPost}
-                      className="mt-2 text-[17px]"
+                      className={cn(
+                        isolateFocusedPost ? "mt-4 text-[17px]" : "mt-2 text-sm",
+                      )}
                     />
                   ) : null}
                 </button>
                 {postTranslation.showControl ? (
-                  <div className="relative z-10 mt-2 text-left">
+                  <div className="relative z-10 mt-0.5 text-left">
                     <TranslateLinkButton
                       loading={postTranslation.loading}
                       label={postTranslation.controlLabel}
@@ -6358,7 +6620,10 @@ function PostCard({
                 ) : null}
                 <div
                   className={cn(
-                    "mt-5 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/85",
+                    "mt-5 grid gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/85",
+                    isolateFocusedPost && postTypeId === "offer_service"
+                      ? "grid-cols-1"
+                      : "grid-cols-2",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6375,11 +6640,19 @@ function PostCard({
                     cardPadX,
                     isGlobalFeed
                       ? hasMedia
-                        ? "pt-2.5"
-                        : "pt-0"
+                        ? isolateFocusedPost
+                          ? "pt-6"
+                          : "pt-0"
+                        : isolateFocusedPost
+                          ? "pt-6"
+                          : "pt-0"
                       : hasMedia
-                        ? "pt-2.5"
-                        : "pt-2",
+                        ? isolateFocusedPost
+                          ? "pt-6"
+                          : "pt-2.5"
+                        : isolateFocusedPost
+                          ? "pt-6"
+                          : "pt-2",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6407,30 +6680,35 @@ function PostCard({
                     {displayPostTitle ? (
                       <h3
                         className={cn(
-                          "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
+                          "flex items-center gap-2 font-bold leading-snug text-foreground",
+                          isolateFocusedPost ? "text-[19px]" : "text-base",
                           displayPostTitleLayout?.className,
                         )}
                         dir={displayPostTitleLayout?.dir}
                       >
-                        {serviceCategoryMeta?.iconId || serviceCategoryMeta?.id ? (
+                        {!hideTitleCategoryIcon && (serviceCategoryMeta?.iconId || serviceCategoryMeta?.id) ? (
                           <CategoryIcon
                             categoryId={serviceCategoryMeta.iconId ?? serviceCategoryMeta.id}
                             className="h-6 w-6 shrink-0"
                           />
                         ) : null}
-                        <span>{displayPostTitle}</span>
+                        <span className="min-w-0 flex-1">{displayPostTitle}</span>
+                        {titleByline}
                       </h3>
                     ) : null}
                     {displayPostDescription ? (
                       <FeedExpandableFreeText
                         text={displayPostDescription}
                         fullText={isolateFocusedPost}
-                        className={cn("text-[17px]", displayPostTitle && "mt-1")}
+                        className={cn(
+                          isolateFocusedPost ? "text-[17px]" : "text-sm",
+                          displayPostTitle && (isolateFocusedPost ? "mt-4" : "mt-1"),
+                        )}
                       />
                     ) : null}
                   </div>
                   {postTranslation.showControl ? (
-                    <div className="relative z-10 mt-1 text-left">
+                    <div className="relative z-10 mt-0.5 text-left">
                       <TranslateLinkButton
                         loading={postTranslation.loading}
                         label={postTranslation.controlLabel}
@@ -6444,7 +6722,10 @@ function PostCard({
                 <div
                   className={cn(
                     cardPadX,
-                    "mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/90",
+                    "mt-4 grid gap-x-3 gap-y-2.5 text-[16px] font-medium text-foreground/90",
+                    isolateFocusedPost && postTypeId === "offer_service"
+                      ? "grid-cols-1"
+                      : "grid-cols-2",
                     globalFeedContentLayout?.className,
                   )}
                   dir={globalFeedContentLayout?.dir}
@@ -6455,16 +6736,31 @@ function PostCard({
             </>
           )}
 
-          {(!showPortraitMediaOverlay && (showFeedActionButton || postStatusBadgesRow)) ? (
+          {(!showPortraitMediaOverlay && ((showFeedActionButton && !(isEventPost && !hasMedia && !isolateFocusedPost)) || postStatusBadgesRow || listingPriceLabel)) ? (
             <div className={cn(cardPadX, "mt-3 flex flex-col items-end gap-2 pb-1")}>
               {postStatusBadgesRow}
-              {globalFeedCtaButton}
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {listingPriceLabel ? (
+                  <span
+                    className={cn(
+                      "text-[16px] font-bold",
+                      postTypeId === "offer_service"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : requestPostBudgetTextClass,
+                    )}
+                  >
+                    {listingPriceLabel}
+                  </span>
+                ) : null}
+                {isEventPost && !hasMedia && !isolateFocusedPost ? null : globalFeedCtaButton}
+              </div>
             </div>
           ) : postStatusBadgesRow && showPortraitMediaOverlay ? (
             <div className={cn(cardPadX, "mt-3 flex flex-col items-end gap-2 pb-1")}>
               {postStatusBadgesRow}
             </div>
           ) : null}
+          {isolateFocusedPost && !hasMedia && currentUserId ? renderEngagementRow() : null}
         </>
       ) : (
         <>
@@ -6755,7 +7051,11 @@ function PostCard({
         </>
       )}
 
-      {isolateFocusedPost && !currentUserId ? null : renderEngagementRow()}
+      {isGlobalFeed && hasMedia
+        ? null
+        : isolateFocusedPost
+          ? null
+          : renderEngagementRow()}
 
       {/* Comments dialog */}
       {!isJobRequest ? (
@@ -6915,6 +7215,8 @@ interface ProfilePostsFeedProps {
   filterPostTypeId?: string | null;
   /** Filter feed to multiple post types (Discover home hire/work tabs). */
   filterPostTypeIds?: string[] | null;
+  /** Keep live-availability posts when a post-type filter is also set. */
+  includeAvailabilityPosts?: boolean;
   /** Post types shown in the favorites side panel (defaults to feed filter). */
   sidePanelPostTypeIds?: string[] | null;
   /** Pin favorites panel to viewport; scroll panel independently (community feed page). */
@@ -6974,6 +7276,7 @@ export function ProfilePostsFeed({
   plainCards = false,
   filterPostTypeId = null,
   filterPostTypeIds = null,
+  includeAvailabilityPosts = false,
   sidePanelPostTypeIds = null,
   fixedFavoritesSidePanel = false,
   onSidePanelPostOpen,
@@ -7038,6 +7341,7 @@ export function ProfilePostsFeed({
     filterLikedByUserId,
     filterPostTypeId,
     filterPostTypeIds: effectivePostTypeFilter,
+    includeAvailability: includeAvailabilityPosts,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     feedWhen: advancedFilters?.when ?? null,
@@ -7059,6 +7363,7 @@ export function ProfilePostsFeed({
     filterLikedByUserId,
     filterPostTypeId,
     effectivePostTypeFilter,
+    includeAvailabilityPosts,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     advancedFilters?.when,
@@ -7084,6 +7389,8 @@ export function ProfilePostsFeed({
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId: filterPostTypeId ?? undefined,
+    filterPostTypeIds: effectivePostTypeFilter ?? undefined,
+    includeAvailability: includeAvailabilityPosts,
     filterCommentedOwnPosts,
     feedAdvancedFilters: advancedFilters,
     limit,
@@ -7352,7 +7659,7 @@ export function ProfilePostsFeed({
         Boolean(filterCommentedOwnPosts) ||
         Boolean(advancedFilters?.myPostsOnly) ||
         Boolean(advancedFilters?.favoriteProfilesOnly) ||
-        hasPostTypeFilter ||
+        (hasPostTypeFilter && !includeAvailabilityPosts) ||
         (Boolean(filterPostTypeId) && filterPostTypeId !== "request_help") ||
         (advancedFilters?.when !== "any" && !includesRequestHelp) ||
         (advancedFilters?.budgetMin != null && !includesRequestHelp) ||
@@ -7793,7 +8100,7 @@ export function ProfilePostsFeed({
           if (post.source === "job_request") {
             return effectivePostTypeFilter.includes("request_help");
           }
-          if (post.source === "availability") return false;
+          if (post.source === "availability") return includeAvailabilityPosts;
           if (post.source === "post") {
             const typeId = post.post_type_id ?? post.post_types?.id ?? null;
             return typeId != null && effectivePostTypeFilter.includes(typeId);
@@ -7822,6 +8129,7 @@ export function ProfilePostsFeed({
     filterLikedByUserId,
     filterPostTypeId,
     effectivePostTypeFilter,
+    includeAvailabilityPosts,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     advancedFilters,
@@ -8305,7 +8613,7 @@ export function ProfilePostsFeed({
         className={cn(
           "flex flex-col",
           globalFeedLayout
-            ? "max-md:space-y-0 space-y-1.5 max-md:pb-[110px] md:space-y-1.5"
+            ? "max-md:space-y-0 space-y-10 max-md:pb-[110px] md:space-y-12"
             : "gap-8 md:gap-7",
         )}
         role="status"
@@ -8324,10 +8632,15 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className={cn("space-y-2 md:space-y-3", globalFeedLayout && "max-md:space-y-0 space-y-1.5 max-md:pb-[110px] md:space-y-1.5")}>
+    <div className={cn(
+      "space-y-2 md:space-y-3",
+      globalFeedLayout && "max-md:space-y-0 space-y-10 max-md:pb-[110px] md:space-y-12",
+      appearance === "profile" &&
+        "md:grid md:grid-cols-2 md:gap-x-5 md:gap-y-6 md:space-y-0 xl:grid-cols-3 2xl:grid-cols-4",
+    )}>
       {/* Compose button — own profile only */}
       {isOwnProfile && (
-        <div>
+        <div className={appearance === "profile" ? "md:col-span-full" : undefined}>
           <button
             type="button"
             onClick={openCompose}
@@ -8345,7 +8658,7 @@ export function ProfilePostsFeed({
 
       {/* Feed */}
       {displayPosts.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <div className={cn("flex flex-col items-center gap-3 py-10 text-center", appearance === "profile" && "md:col-span-full")}>
           <LayoutGrid
             className="h-10 w-10 text-slate-300 dark:text-slate-600"
             aria-hidden

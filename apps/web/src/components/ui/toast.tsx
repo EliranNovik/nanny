@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 import { X, CheckCircle2, AlertCircle, Info, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -138,10 +139,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastContainer({ toasts }: { toasts: ToastProps[] }) {
+  const { pathname } = useLocation();
+  const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-sm">
+    <div
+      className={cn(
+        "fixed right-4 z-[220] flex w-full max-w-sm flex-col gap-2",
+        onAdmin ? "top-[calc(4rem+0.75rem)]" : "top-4",
+      )}
+    >
       {toasts.map((toast) => (
         <Toast key={toast.id} {...toast} />
       ))}

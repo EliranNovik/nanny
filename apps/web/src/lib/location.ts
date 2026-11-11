@@ -1,5 +1,16 @@
 // Location utility functions for GPS and reverse geocoding
 
+/** Admin accounts never trigger the browser location permission prompt. */
+let skipBrowserLocationPrompt = false;
+
+export function setSkipBrowserLocationPrompt(skip: boolean) {
+  skipBrowserLocationPrompt = skip;
+}
+
+export function browserLocationPromptAllowed(): boolean {
+  return !skipBrowserLocationPrompt;
+}
+
 export interface LocationData {
   city: string;
   lat?: number;
@@ -14,6 +25,11 @@ export async function getCurrentLocation(): Promise<{
   lng: number;
 }> {
   return new Promise((resolve, reject) => {
+    if (!browserLocationPromptAllowed()) {
+      reject(new Error("Location isn't used on admin accounts."));
+      return;
+    }
+
     if (!navigator.geolocation) {
       reject(new Error("Geolocation is not supported by your browser"));
       return;

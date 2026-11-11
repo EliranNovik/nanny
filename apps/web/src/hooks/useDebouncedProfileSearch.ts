@@ -10,14 +10,16 @@ export type ProfileSearchRow = {
   role: "client" | "freelancer" | null;
   categories: string[] | null;
   phone: string | null;
+  is_verified: boolean | null;
 };
 
 export function useDebouncedProfileSearch(
   query: string,
-  debounceMs = 300,
+  debounceMs = 50,
   limit = 8,
 ) {
   const [results, setResults] = useState<ProfileSearchRow[]>([]);
+  const [settledQuery, setSettledQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function useDebouncedProfileSearch(
       
       let dbQuery = supabase
         .from("profiles")
-        .select("id, full_name, photo_url, average_rating, total_ratings, role, categories, phone")
+        .select("id, full_name, photo_url, average_rating, total_ratings, role, categories, phone, is_verified")
         .or("is_admin.eq.false,is_admin.is.null")
         .limit(limit);
 
@@ -51,11 +53,12 @@ export function useDebouncedProfileSearch(
 
       if (!error && data) setResults(data as ProfileSearchRow[]);
       else setResults([]);
+      setSettledQuery(trimmed);
       setLoading(false);
     }, debounceMs);
 
     return () => clearTimeout(t);
   }, [query, debounceMs, limit]);
 
-  return { results, loading };
+  return { results, settledQuery, loading };
 }

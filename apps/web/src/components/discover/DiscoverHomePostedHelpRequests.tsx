@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Clock, Loader2, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -33,8 +33,9 @@ import {
   type DiscoverHomeCategoryFilter,
   type DiscoverOpenHelpRequestSort,
 } from "@/lib/discoverHomeCategoryFilter";
-import { isOpenHelpRequestWhenExpired } from "@/lib/openHelpRequestDisplay";
 import {
+  formatOpenHelpRequestBudget,
+  isOpenHelpRequestWhenExpired,
   openHelpRequestScheduleLine,
   openHelpRequestTitle,
 } from "@/lib/openHelpRequestDisplay";
@@ -105,6 +106,16 @@ function NearbyRequestRow({
         locale: dateFnsLocaleFor(i18n.language),
       })
     : "";
+  const budget = formatOpenHelpRequestBudget(row);
+  const budgetLabel = budget
+    ? row.budget_rate_type === "per_hour"
+      ? `${budget}/hr`
+      : budget
+    : null;
+  const clientRating =
+    row.client_average_rating != null && Number(row.client_average_rating) > 0
+      ? Number(row.client_average_rating)
+      : null;
 
   return (
     <div
@@ -119,8 +130,26 @@ function NearbyRequestRow({
       }}
       className="group flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] bg-white p-0 pe-3 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0 shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
     >
-      <div className="h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
+      <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
         <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]" loading="lazy" />
+        {budgetLabel || clientRating != null ? (
+          <span className="absolute bottom-2.5 end-2.5 z-[2] hidden items-center gap-1.5 md:inline-flex">
+            {clientRating != null ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[15px] font-bold leading-none text-zinc-900 shadow-md">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+                {clientRating.toFixed(1)}
+                <span className="font-semibold text-zinc-500">
+                  ({row.client_total_ratings ?? 0})
+                </span>
+              </span>
+            ) : null}
+            {budgetLabel ? (
+              <span className="inline-flex rounded-full bg-emerald-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
+                {budgetLabel}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </div>
       <div className="min-w-0 flex-1 md:px-4 md:pt-3.5">
         <p className="truncate text-[15px] font-semibold text-emerald-700 dark:text-emerald-400 sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-emerald-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-emerald-500/15">
@@ -138,28 +167,40 @@ function NearbyRequestRow({
           {author}{timeAgo ? ` • ${timeAgo}` : ""}
         </p>
       </div>
-      <button
-        type="button"
-        disabled={accepted || accepting}
-        onClick={(event) => {
-          event.stopPropagation();
-          onAccept();
-        }}
-        className={cn(
-          "inline-flex h-10 min-w-[88px] shrink-0 items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default md:mx-4 md:mb-4 md:mt-3",
-          accepted
-            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-            : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
-        )}
-      >
-        {accepting ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : accepted ? (
-          "Accepted"
-        ) : (
-          "Accept"
-        )}
-      </button>
+      <div className="flex shrink-0 flex-col gap-1.5 md:mx-4 md:mb-4 md:mt-3 md:flex-row md:gap-2">
+        <button
+          type="button"
+          disabled={accepted || accepting}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAccept();
+          }}
+          className={cn(
+            "inline-flex h-10 min-w-[88px] items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default md:min-w-0 md:flex-[2]",
+            accepted
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+              : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
+          )}
+        >
+          {accepting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : accepted ? (
+            "Accepted"
+          ) : (
+            "Accept"
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white px-3.5 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-50 active:scale-[0.97] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        >
+          {t("common.more")}
+        </button>
+      </div>
     </div>
   );
 }
@@ -181,6 +222,7 @@ export function DiscoverHomePostedHelpRequests({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
+  const isAdmin = profile?.is_admin === true;
   const { addToast } = useToast();
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
   const [acceptedJobIds, setAcceptedJobIds] = useState<Set<string>>(() => new Set());
@@ -193,17 +235,18 @@ export function DiscoverHomePostedHelpRequests({
 
   const { data: openRequests = [], isLoading: loading } = useDiscoverOpenHelpRequests(
     enabled,
-    user?.id,
+    isAdmin ? null : user?.id,
+    isAdmin ? 200 : undefined,
   );
 
   const undismissedRequests = useMemo(
     () =>
       openRequests.filter(
         (row) =>
-          !dismissedJobIds.has(row.id) &&
+          (isAdmin || !dismissedJobIds.has(row.id)) &&
           !isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at),
       ),
-    [openRequests, dismissedJobIds],
+    [isAdmin, openRequests, dismissedJobIds],
   );
   const filteredRequests = useMemo(
     () =>
@@ -225,10 +268,10 @@ export function DiscoverHomePostedHelpRequests({
   );
 
   const visibleRows = useMemo(
-    () => sortedRequests.slice(0, MAX_VISIBLE),
-    [sortedRequests],
+    () => (isAdmin ? sortedRequests : sortedRequests.slice(0, MAX_VISIBLE)),
+    [isAdmin, sortedRequests],
   );
-  const hasMore = sortedRequests.length > MAX_VISIBLE;
+  const hasMore = !isAdmin && sortedRequests.length > MAX_VISIBLE;
   const visibleJobIdsKey = useMemo(
     () => visibleRows.map((row) => row.id).join(","),
     [visibleRows],
@@ -496,7 +539,7 @@ export function DiscoverHomePostedHelpRequests({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4">
             {visibleRows.map((row) => (
               <NearbyRequestRow
                 key={row.id}

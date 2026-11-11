@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +31,8 @@ type ChatSimpleHeaderProps = {
   isAdmin?: boolean;
   onBack?: () => void;
   showBackButton?: boolean;
+  /** Right side of the bar, e.g. the admin AI switch. */
+  trailing?: ReactNode;
   className?: string;
 };
 
@@ -46,6 +49,7 @@ export function ChatSimpleHeader({
   isAdmin = false,
   onBack,
   showBackButton = false,
+  trailing,
   className,
 }: ChatSimpleHeaderProps) {
   const { t } = useTranslation();
@@ -153,6 +157,7 @@ export function ChatSimpleHeader({
           ) : null}
         </div>
       </div>
+      {trailing}
     </header>
   );
 }

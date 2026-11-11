@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { avatarUrl } from "@/lib/imageTransform";
+import { initialsGradient } from "@/components/ui/avatar";
 
 export type PublicAvailabilityDay = {
   day: string;
@@ -162,7 +163,10 @@ export function AnimatedProfileRing({
           opacity={Math.min(1, 6 * frame.progress)}
         />
       </svg>
-      <div className="absolute left-[7.5px] top-[7.5px] h-[104px] w-[104px] overflow-hidden rounded-full bg-muted">
+      <div
+        className="absolute left-[7.5px] top-[7.5px] h-[104px] w-[104px] overflow-hidden rounded-full bg-muted"
+        style={photoUrl ? undefined : { backgroundImage: initialsGradient(name) }}
+      >
         {photoUrl ? (
           <img
             src={avatarUrl.md(photoUrl)}
@@ -172,7 +176,7 @@ export function AnimatedProfileRing({
             fetchPriority="high"
           />
         ) : (
-          <span className="flex h-full items-center justify-center text-3xl font-black text-primary/40">
+          <span className="flex h-full items-center justify-center text-3xl font-black text-white">
             {name.charAt(0).toUpperCase()}
           </span>
         )}

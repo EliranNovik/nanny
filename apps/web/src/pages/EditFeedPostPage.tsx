@@ -30,6 +30,8 @@ import { jobRequestImageUrls } from "@/lib/openHelpRequestFeedPost";
 import { parseJobRequestShareId } from "@/lib/jobRequestShare";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
 import { supabase } from "@/lib/supabase";
+import { QualityBlockNotice } from "@/components/quality/QualityBlockNotice";
+import { reviewImages, saveQualityFlag, screenPost } from "@/lib/qualityReview";
 import {
   bidirectionalInputProps,
 } from "@/lib/textDirection";
@@ -81,6 +83,7 @@ export default function EditFeedPostPage({ kind }: { kind: EditKind }) {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [qualityBlockNote, setQualityBlockNote] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
 
@@ -399,6 +402,36 @@ export default function EditFeedPostPage({ kind }: { kind: EditKind }) {
     if (!user?.id) return;
     setSaving(true);
     try {
+      const imageSources: Array<File | string> = [];
+      for (const item of media) {
+        if (imageSources.length >= 3) break;
+        if (item.kind === "new") {
+          if (item.mediaType === "image") imageSources.push(item.file);
+        } else if (item.item.media_type !== "video") {
+          const path = item.item.storage_path;
+          imageSources.push(/^https?:\/\//i.test(path) ? path : publicProfileMediaPublicUrl(path));
+        }
+      }
+      const images = await reviewImages(imageSources);
+      const reviewTitle =
+        postTypeId === "community"
+          ? communityTitle
+          : postTypeId === "event"
+            ? eventName
+            : customCategory.trim() || categoryId;
+      const reviewText = [caption.trim(), customCategory.trim()].filter(Boolean).join("\n");
+      const screen = await screenPost({
+        postType: postTypeId || kind,
+        title: reviewTitle,
+        text: reviewText,
+        images,
+      });
+      if (screen.blockedNote) {
+        setQualityBlockNote(screen.blockedNote);
+        return;
+      }
+      setQualityBlockNote(null);
+
       if (kind === "post" && postId) {
         const uploaded = await uploadNewMedia(user.id);
         const primary = uploaded[0] ?? null;
@@ -479,6 +512,10 @@ export default function EditFeedPostPage({ kind }: { kind: EditKind }) {
           .eq("id", postId)
           .eq("author_id", user.id);
         if (error) throw error;
+
+        if (screen.reviewId) {
+          await saveQualityFlag(screen.reviewId, { profilePostId: postId });
+        }
 
         if (linkedJobId && postTypeId === "request_help") {
           const imageUrls = uploaded.map((item) =>
@@ -658,6 +695,7 @@ export default function EditFeedPostPage({ kind }: { kind: EditKind }) {
             </p>
           ) : (
             <div className="space-y-6">
+              {qualityBlockNote ? <QualityBlockNotice note={qualityBlockNote} /> : null}
               {/* Media */}
               <section className="overflow-hidden rounded-[1.5rem] border border-black/[0.05] bg-white shadow-[0_12px_40px_-24px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#181b1f] dark:shadow-none">
                 <div className="border-b border-black/[0.05] px-5 py-4 dark:border-white/10">

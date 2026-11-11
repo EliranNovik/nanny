@@ -55,9 +55,14 @@ export type DiscoverOpenHelpRequestRow = {
 export function useDiscoverOpenHelpRequests(
   enabled: boolean,
   excludeUserId?: string | null,
+  limit = DEFAULT_LIMIT,
 ) {
   const queryClient = useQueryClient();
-  const qk = queryKeys.discoverOpenHelpRequests(excludeUserId ?? undefined);
+  const listLimit = Math.max(1, Math.min(limit, 500));
+  const qk = queryKeys.discoverOpenHelpRequests(
+    excludeUserId ?? undefined,
+    listLimit,
+  );
 
   useRealtimeSubscription(
     { table: "job_requests", event: "*", enabled },
@@ -73,7 +78,7 @@ export function useDiscoverOpenHelpRequests(
     queryFn: async (): Promise<DiscoverOpenHelpRequestRow[]> => {
       const { data, error } = await supabase.rpc(
         "get_discover_open_help_requests",
-        { p_limit: DEFAULT_LIMIT },
+        { p_limit: listLimit },
       );
       if (error) throw error;
 

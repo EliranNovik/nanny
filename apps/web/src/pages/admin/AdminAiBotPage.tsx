@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   BookOpen,
+  ChevronDown,
   Loader2,
   MessageSquareQuote,
   Plus,
-  RefreshCw,
   Save,
+  Settings,
   ShieldAlert,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { AdminQualityManager } from "@/pages/admin/AdminQualityManager";
 
 type EntryKind = "behavior" | "knowledge" | "rules";
 
@@ -38,6 +41,8 @@ type Draft = {
   enabled: boolean;
 };
 
+/** Mobile carousel: entries shown per card before "View more". */
+const COLLAPSED_ENTRY_COUNT = 3;
 const BODY_MAX = 8000;
 const TITLE_MAX = 120;
 
@@ -110,9 +115,107 @@ export default function AdminAiBotPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [expandedKinds, setExpandedKinds] = useState<Partial<Record<EntryKind, boolean>>>({});
+  const [section, setSection] = useState<"chat" | "quality">("chat");
+  const [capOpen, setCapOpen] = useState(false);
+  const [dailyCap, setDailyCap] = useState("20");
+  const [capMissing, setCapMissing] = useState(false);
+  const [capSaving, setCapSaving] = useState(false);
+  const carouselRef = useRef<HTMLElement>(null);
+  const editorRef = useRef<HTMLElement>(null);
+  const capMenuRef = useRef<HTMLDivElement>(null);
+
+  const onCarouselScroll = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const slides = Array.from(el.children) as HTMLElement[];
+    const box = el.getBoundingClientRect();
+    const center = box.left + box.width / 2;
+    let closest = 0;
+    let best = Infinity;
+    slides.forEach((slide, index) => {
+      const rect = slide.getBoundingClientRect();
+      const distance = Math.abs(rect.left + rect.width / 2 - center);
+      if (distance < best) {
+        best = distance;
+        closest = index;
+      }
+    });
+    setActiveSlide(closest);
+  };
+
+  const scrollToSlide = (index: number) => {
+    const el = carouselRef.current;
+    const slide = el?.children[index] as HTMLElement | undefined;
+    if (!el || !slide) return;
+    el.scrollTo({
+      left: el.scrollLeft + slide.getBoundingClientRect().left - el.getBoundingClientRect().left,
+      behavior: "smooth",
+    });
+  };
+
+  const revealEditorOnMobile = () => {
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const loadCap = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("support_bot_settings")
+      .select("daily_message_cap")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) {
+      setCapMissing(error.code === "42P01" || error.code === "PGRST205");
+      return;
+    }
+    setCapMissing(false);
+    if (data && typeof data.daily_message_cap === "number") {
+      setDailyCap(String(data.daily_message_cap));
+    }
+  }, []);
+
+  const saveCap = async () => {
+    const value = Number(dailyCap);
+    if (!Number.isInteger(value) || value < 0 || value > 500) {
+      addToast({
+        title: "Enter a whole number from 0 to 500",
+        description: "Use 0 for no daily limit.",
+        variant: "error",
+      });
+      return;
+    }
+    setCapSaving(true);
+    const { error } = await supabase.from("support_bot_settings").upsert({
+      id: 1,
+      daily_message_cap: value,
+      updated_by: user?.id ?? null,
+    });
+    setCapSaving(false);
+    if (error) {
+      addToast({
+        title: "Could not save the limit",
+        description:
+          error.code === "42P01" || error.code === "PGRST205"
+            ? "Run db/sql/160_support_bot_daily_cap.sql in Supabase first."
+            : error.message,
+        variant: "error",
+      });
+      return;
+    }
+    setCapMissing(false);
+    addToast({
+      title: value === 0 ? "Daily limit is off" : `Daily limit is ${value} messages`,
+      variant: "success",
+    });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
+    void loadCap();
     const { data, error } = await supabase
       .from("support_bot_knowledge")
       .select("id, kind, title, body, enabled, sort_order, updated_at")
@@ -130,11 +233,27 @@ export default function AdminAiBotPage() {
     }
     setTableMissing(false);
     setEntries((data ?? []) as KnowledgeEntry[]);
-  }, [addToast]);
+  }, [addToast, loadCap]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!capOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!capMenuRef.current?.contains(event.target as Node)) setCapOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCapOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [capOpen]);
 
   const grouped = useMemo(
     () => ({
@@ -160,11 +279,13 @@ export default function AdminAiBotPage() {
   const openEntry = (entry: KnowledgeEntry) => {
     if (entry.id === draft.id || !confirmDiscard()) return;
     setDraft(draftFrom(entry));
+    revealEditorOnMobile();
   };
 
   const startNew = (kind: EntryKind) => {
     if (!confirmDiscard()) return;
     setDraft(emptyDraft(kind));
+    revealEditorOnMobile();
   };
 
   const save = async () => {
@@ -251,37 +372,122 @@ export default function AdminAiBotPage() {
 
   return (
     <div className="admin-page min-h-screen bg-zinc-100 pb-10 dark:bg-zinc-950 md:h-[calc(100dvh-4rem)] md:min-h-0 md:overflow-y-auto">
-      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
-        <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="flex items-center gap-2 text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-              <Bot className="h-8 w-8 text-orange-500" /> AI Bot
-            </h1>
+      <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
+        <div className="mb-6 flex flex-wrap items-center gap-1 md:mb-8">
+          <nav className="flex items-center gap-1" aria-label="AI tools">
+            {(
+              [
+                ["chat", "AI chat bot"],
+                ["quality", "Quality manager"],
+              ] as const
+            ).map(([id, label]) => {
+              const selected = section === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setSection(id);
+                    if (id !== "chat") setCapOpen(false);
+                  }}
+                  aria-current={selected ? "page" : undefined}
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-xl font-extrabold tracking-tight transition-colors sm:text-3xl",
+                    selected
+                      ? "text-zinc-900 underline decoration-2 underline-offset-8 dark:text-zinc-50"
+                      : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300",
+                    selected && id === "chat" && "decoration-orange-500",
+                    selected && id === "quality" && "decoration-sky-600",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+          {section === "chat" ? (
+          <div className="relative" ref={capMenuRef}>
+            <button
+              type="button"
+              onClick={() => setCapOpen((open) => !open)}
+              aria-expanded={capOpen}
+              aria-haspopup="dialog"
+              aria-label="Daily message limit"
+              title="Daily message limit"
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-white hover:text-orange-600 dark:hover:bg-zinc-900 dark:hover:text-orange-400",
+                capOpen && "bg-white text-orange-600 dark:bg-zinc-900 dark:text-orange-400",
+              )}
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+            {capOpen ? (
+              <div className="absolute start-0 top-12 z-30 w-[min(20rem,calc(100vw-2rem))] rounded-2xl bg-white p-4 shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700">
+                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
+                  <SlidersHorizontal className="h-4 w-4 text-orange-500" /> Daily message limit
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Messages one person can get per day. Then the chat goes to the Tebnu admins until midnight UTC. 0 means no limit.
+                </p>
+                {capMissing ? (
+                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Run db/sql/160_support_bot_daily_cap.sql first. Until then the limit is 20.
+                  </p>
+                ) : null}
+                <div className="mt-3 flex items-center gap-2">
+                  <label className="sr-only" htmlFor="daily-cap">
+                    Messages per person per day
+                  </label>
+                  <input
+                    id="daily-cap"
+                    inputMode="numeric"
+                    value={dailyCap}
+                    onChange={(e) => setDailyCap(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                    className="h-10 w-20 rounded-xl border border-zinc-200 bg-white px-3 text-center text-sm font-bold tabular-nums text-zinc-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void saveCap()}
+                    disabled={capSaving}
+                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-bold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    {capSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
-          <button
-            onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} /> Refresh
-          </button>
+          ) : null}
         </div>
 
-        {tableMissing ? (
+        {section === "quality" ? (
+          <AdminQualityManager />
+        ) : tableMissing ? (
           <div className={cn(cardClass, "p-6 text-sm text-zinc-700 dark:text-zinc-300")}>
             The knowledge table is not set up yet. Run{" "}
             <code className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
               db/sql/154_support_bot_knowledge.sql
             </code>{" "}
-            in the Supabase SQL editor, then press Refresh.
+            in the Supabase SQL editor, then reload the page.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
-            <aside className="space-y-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,360px)_1fr] lg:gap-6">
+            <div className="min-w-0">
+            <aside
+              ref={carouselRef}
+              onScroll={onCarouselScroll}
+              className="-mx-2 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-px-2 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mx-4 md:scroll-px-4 md:px-4 lg:mx-0 lg:grid lg:grid-cols-1 lg:items-start lg:gap-6 lg:overflow-visible lg:px-0"
+            >
               {KIND_ORDER.map((kind) => {
                 const meta = KIND_META[kind];
                 const Icon = meta.icon;
+                const listOpen = Boolean(expandedKinds[kind]);
                 return (
-                  <section key={kind} className={cn(cardClass, "p-4")}>
+                  <section
+                    key={kind}
+                    className={cn(cardClass, "flex w-[86%] shrink-0 snap-start flex-col p-4 sm:w-[70%] lg:min-h-[19rem] lg:w-auto")}
+                  >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
                         <Icon className="h-6 w-6 shrink-0 text-orange-500" /> {meta.label}
@@ -306,8 +512,13 @@ export default function AdminAiBotPage() {
                       </p>
                     ) : (
                       <ul className="space-y-1.5">
-                        {grouped[kind].map((entry) => (
-                          <li key={entry.id}>
+                        {grouped[kind].map((entry, index) => (
+                          <li
+                            key={entry.id}
+                            className={cn(
+                              !listOpen && index >= COLLAPSED_ENTRY_COUNT && "hidden",
+                            )}
+                          >
                             <div
                               role="button"
                               tabIndex={0}
@@ -349,12 +560,47 @@ export default function AdminAiBotPage() {
                         ))}
                       </ul>
                     )}
+                    {grouped[kind].length > COLLAPSED_ENTRY_COUNT ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedKinds((prev) => ({ ...prev, [kind]: !prev[kind] }))
+                        }
+                        className="mt-auto inline-flex items-center justify-center gap-1 self-center rounded-lg px-3 pt-3 text-xs font-semibold text-orange-600 hover:opacity-80 dark:text-orange-400"
+                        aria-expanded={listOpen}
+                      >
+                        {listOpen
+                          ? "Show less"
+                          : `See more (${grouped[kind].length - COLLAPSED_ENTRY_COUNT})`}
+                        <ChevronDown
+                          className={cn("h-3.5 w-3.5 transition-transform", listOpen && "rotate-180")}
+                        />
+                      </button>
+                    ) : null}
                   </section>
                 );
               })}
             </aside>
+            <div className="mt-3 flex justify-center gap-1.5 lg:hidden">
+              {KIND_ORDER.map((kind, index) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => scrollToSlide(index)}
+                  className={cn(
+                    "h-2 rounded-full transition-all",
+                    activeSlide === index
+                      ? "w-5 bg-orange-500"
+                      : "w-2 bg-zinc-300 dark:bg-zinc-700",
+                  )}
+                  aria-label={KIND_META[kind].label}
+                  aria-current={activeSlide === index ? "true" : undefined}
+                />
+              ))}
+            </div>
+            </div>
 
-            <section className={cn(cardClass, "mb-8 flex flex-col p-5")}>
+            <section ref={editorRef} className={cn(cardClass, "mb-8 flex scroll-mt-20 flex-col p-5 lg:mb-0 lg:h-[calc(19rem*3+3rem)] lg:self-start")}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
                   {draft.id ? "Edit entry" : "New entry"}
@@ -404,13 +650,13 @@ export default function AdminAiBotPage() {
                 maxLength={BODY_MAX}
                 onChange={(e) => setDraft((prev) => ({ ...prev, body: e.target.value }))}
                 placeholder={BODY_PLACEHOLDER[draft.kind]}
-                className="min-h-[320px] w-full flex-1 resize-y rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-zinc-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="h-36 w-full resize-y rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-zinc-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 lg:h-auto lg:min-h-0 lg:flex-1"
               />
               <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                 Write in any language. The bot answers each person in their own language. {KIND_NOTE[draft.kind]}
               </p>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 lg:mt-auto">
                 <label className="flex items-center gap-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   <Switch
                     checked={draft.enabled}
@@ -444,6 +690,7 @@ export default function AdminAiBotPage() {
             </section>
           </div>
         )}
+
       </div>
     </div>
   );

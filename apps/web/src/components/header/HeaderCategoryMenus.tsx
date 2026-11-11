@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, ClipboardList, HeartHandshake, Megaphone, PenSquare, Search, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   OTHER_HELP_SUBCATEGORIES,
   SERVICE_CATEGORIES,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/serviceCategories";
 import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
+import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 
 type Mode = "hire" | "work";
 
@@ -31,7 +33,7 @@ const ACTIONS: Action[] = [
     icon: Search,
     label: "Find helpers",
     hint: "People nearby who can help",
-    to: (id) => `/client/helpers?category=${encodeURIComponent(id)}`,
+    to: (id, sub) => `/client/helpers?category=${encodeURIComponent(id)}${subQuery(sub)}`,
   },
   {
     key: "post_request",
@@ -47,7 +49,7 @@ const ACTIONS: Action[] = [
     icon: HeartHandshake,
     label: "Find offers",
     hint: "Helpers offering this",
-    to: (id, sub) => `${GLOBAL_POSTS_PATH}?type=offer_service&category=${encodeURIComponent(id)}${subQuery(sub)}`,
+    to: () => "",
   },
   {
     key: "find_requests",
@@ -55,7 +57,7 @@ const ACTIONS: Action[] = [
     icon: ClipboardList,
     label: "Find requests",
     hint: "People who need this",
-    to: (id, sub) => `${GLOBAL_POSTS_PATH}?type=request_help&category=${encodeURIComponent(id)}${subQuery(sub)}`,
+    to: () => "",
   },
   {
     key: "post_offer",
@@ -67,10 +69,25 @@ const ACTIONS: Action[] = [
   },
 ];
 
+function discoverHomeCategoryPath(
+  intent: Mode,
+  id: ServiceCategoryId,
+  sub: string | null,
+  role: string | null | undefined,
+) {
+  const path = role === "freelancer" ? "/freelancer/home" : "/client/home";
+  const params = new URLSearchParams();
+  params.set("category", id);
+  if (sub) params.set("sub", sub);
+  params.set("home", intent);
+  return `${path}?${params.toString()}`;
+}
+
 export function HeaderCategoryMenus({ mode, className }: { mode: Mode; className?: string }) {
   const actions = ACTIONS.filter((a) => a.modes.includes(mode));
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [openId, setOpenId] = useState<ServiceCategoryId | null>(null);
   const [otherSub, setOtherSub] = useState<string | null>(null);
 
@@ -209,7 +226,14 @@ export function HeaderCategoryMenus({ mode, className }: { mode: Mode; className
                     role="menuitem"
                     onClick={() => {
                       setOpenId(null);
-                      navigate(to(id, id === "other_help" ? otherSub : null));
+                      const sub = id === "other_help" ? otherSub : null;
+                      if (key === "find_offers" || key === "find_requests") {
+                        const intent = key === "find_offers" ? "hire" : "work";
+                        writeDiscoverHomeIntent(intent);
+                        navigate(discoverHomeCategoryPath(intent, id, sub, profile?.role));
+                        return;
+                      }
+                      navigate(to(id, sub));
                     }}
                     className={cn(
                       "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all duration-200",

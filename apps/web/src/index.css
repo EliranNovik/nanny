@@ -48,6 +48,25 @@
     top: 4rem;
   }
 
+  /* Admin: mobile slide-in drawer; desktop card with gaps so the rounded end corners show. */
+  .app-admin-side-panel {
+    top: 0;
+    bottom: 0;
+    width: min(240px, 78vw);
+    padding-top: var(--app-safe-top, env(safe-area-inset-top, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (min-width: 768px) {
+    .app-admin-side-panel {
+      top: calc(4rem + 0.5rem);
+      bottom: 0.75rem;
+      width: 220px;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+
   .app-tablet-nav-rail {
     top: 4rem;
     bottom: 0;
@@ -61,6 +80,16 @@
   html:has([data-messages-page]) .app-desktop-side-panel,
   html:has([data-messages-page]) .app-tablet-nav-rail {
     top: 0;
+  }
+}
+
+/* Admin desktop: floating card under the header, so the rounded corners are visible. */
+@media (min-width: 768px) {
+  aside.app-desktop-side-panel.app-admin-side-panel {
+    top: calc(4rem + 0.5rem) !important;
+    bottom: 0.75rem !important;
+    z-index: 230;
+    overflow: hidden;
   }
 }
 
@@ -428,8 +457,8 @@
       flex: 1 1 auto;
       flex-direction: column;
       height: auto;
-      /* Match the 76px icon rail — default tablet offset (108px) left a visible gap. */
-      padding-inline-start: 76px;
+      /* Open sidebar on messages is 220px for every signed-in user. */
+      padding-inline-start: 220px;
     }
 
     .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page])
@@ -465,6 +494,15 @@
     --messages-text: hsl(var(--foreground));
     --messages-text-muted: hsl(var(--muted-foreground));
     --messages-border: hsl(var(--border));
+  }
+
+  /* Mobile inbox list matches the black chat thread. Desktop keeps the panel grey. */
+  @media (max-width: 767.98px) {
+    .dark [data-messages-page] {
+      --messages-bg: #000000;
+      --messages-surface: #000000;
+      --messages-muted: #000000;
+    }
   }
 
   @keyframes chat-recording-wave {
@@ -925,6 +963,65 @@
    */
   .app-content-below-fixed-header {
     padding-top: var(--app-mobile-header-stack);
+  }
+
+  /* Admin uses a shorter mobile header (3.25rem instead of 4rem). */
+  @media (max-width: 767.98px) {
+    .app-content-below-fixed-header.app-admin-shell {
+      padding-top: calc(var(--app-mobile-header-stack) - 0.75rem);
+    }
+
+    /* Admin summary boxes: swipeable row bleeding to the screen edge (page wrapper is px-2). */
+    .admin-summary-carousel {
+      display: flex !important;
+      align-items: stretch;
+      gap: 0.75rem;
+      margin-inline: -0.5rem;
+      padding-inline: 0.5rem;
+      scroll-padding-inline: 0.5rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+    }
+
+    .admin-summary-carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .admin-summary-carousel > * {
+      flex: 0 0 72%;
+      min-width: 0;
+      scroll-snap-align: start;
+    }
+
+    /* Admin filters: one swipeable row of compact controls. */
+    .admin-filter-carousel {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      align-items: center;
+      gap: 0.5rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+
+    .admin-filter-carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .admin-filter-carousel > * {
+      flex: 0 0 auto;
+      width: auto !important;
+      min-width: 9.5rem;
+      scroll-snap-align: start;
+    }
+
+    .admin-filter-carousel > * > select,
+    .admin-filter-carousel > * > button {
+      white-space: nowrap;
+    }
   }
 
   @media (max-width: 767.98px) {
@@ -1622,10 +1719,7 @@
 }
 
 .dark .chat-screen {
-  background:
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(249, 115, 22, 0.08), transparent 58%),
-    radial-gradient(circle at 100% 0%, rgba(194, 65, 12, 0.08), transparent 42%),
-    linear-gradient(168deg, #171411 0%, #110f0d 52%, #0b0908 100%);
+  background: #000000;
 }
 
 .chat-scroll {

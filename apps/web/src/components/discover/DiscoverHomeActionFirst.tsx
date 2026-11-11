@@ -2,10 +2,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ClipboardList,
@@ -48,6 +49,7 @@ import {
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
+import { isOtherHelpSubcategoryId } from "@/lib/discoverHomeCategoryFilter";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
 import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
@@ -127,21 +129,56 @@ export function DiscoverHomeActionFirst({
 }: Props) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const urlCategory = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("category");
+    if (!raw || !isServiceCategoryId(raw)) return null;
+    const sub = params.get("sub");
+    return {
+      category: raw as DiscoverHomeCategoryFilter,
+      sub: raw === "other_help" && isOtherHelpSubcategoryId(sub) ? sub : null,
+    };
+  }, [location.search]);
+  const [pickedCategory, setPickedCategory] = useState<{
+    search: string;
+    category: DiscoverHomeCategoryFilter;
+    sub: string | null;
+  } | null>(null);
+  const categoryFilter =
+    pickedCategory && pickedCategory.search === location.search
+      ? pickedCategory.category
+      : (urlCategory?.category ?? "all");
+  const otherSubFilter =
+    pickedCategory && pickedCategory.search === location.search
+      ? pickedCategory.sub
+      : (urlCategory?.sub ?? null);
   const { user, profile } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
   const isHire = homeMode === "hire";
+  const showFullDiscoverLists = profile?.is_admin === true;
   const isRtl = i18n.dir() === "rtl";
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myOfferCategoryIds, setMyOfferCategoryIds] = useState<string[]>([]);
-  const [categoryFilter, setCategoryFilter] =
-    useState<DiscoverHomeCategoryFilter>("all");
-  const [otherSubFilter, setOtherSubFilter] = useState<string | null>(null);
+
+  const pendingSubRef = useRef<string | null | undefined>(undefined);
 
   const selectCategoryAndScroll = useCallback((id: DiscoverHomeCategoryFilter) => {
-    setCategoryFilter(id);
+    const sub =
+      id === "other_help"
+        ? pendingSubRef.current !== undefined
+          ? pendingSubRef.current
+          : null
+        : null;
+    pendingSubRef.current = undefined;
+    setPickedCategory({
+      search: window.location.search,
+      category: id,
+      sub,
+    });
     window.requestAnimationFrame(() => {
       const target = Array.from(
         document.querySelectorAll<HTMLElement>("[data-discover-results]"),
@@ -149,6 +186,27 @@ export function DiscoverHomeActionFirst({
       target?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, []);
+
+  const setOtherSubFilter = useCallback((sub: string | null) => {
+    pendingSubRef.current = sub;
+    setPickedCategory((prev) => ({
+      search: window.location.search,
+      category:
+        prev && prev.search === window.location.search ? prev.category : "other_help",
+      sub,
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!urlCategory) return;
+    const scroll = window.setTimeout(() => {
+      const target = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-discover-results]"),
+      ).find((el) => el.offsetParent !== null);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(scroll);
+  }, [urlCategory]);
 
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
@@ -1014,7 +1072,14 @@ export function DiscoverHomeActionFirst({
       </div>
 
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
-      <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-hidden gap-5">
+      <div
+        className={cn(
+          "hidden md:flex flex-col gap-5",
+          showFullDiscoverLists
+            ? "overflow-visible"
+            : "min-h-0 flex-1 overflow-hidden",
+        )}
+      >
         <div className="flex w-full shrink-0 flex-col gap-4 md:gap-5 lg:gap-6">
           <div className={cn("flex min-h-0 min-w-0 flex-col gap-4 md:h-full", !isHire && "hidden")}>
             <section
@@ -1059,11 +1124,6 @@ export function DiscoverHomeActionFirst({
                 {renderHeroMyContentSummary()}
               </div>
             </section>
-            <UserSearch
-              size="lg"
-              placeholder="Search helpers, categories or people…"
-              className="relative z-[30]"
-            />
           </div>
           
           <section
@@ -1112,7 +1172,12 @@ export function DiscoverHomeActionFirst({
             </section>
         </div>
 
-        <div className="min-h-0 w-full overflow-hidden pt-2 flex flex-col gap-2">
+        <div
+          className={cn(
+            "flex w-full flex-col gap-2 pt-2",
+            showFullDiscoverLists ? "overflow-visible" : "min-h-0 overflow-hidden",
+          )}
+        >
           <div className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}>
             <DiscoverHomeCategoryFilterRow
               variant="hire"
@@ -1122,6 +1187,13 @@ export function DiscoverHomeActionFirst({
               otherSubFilter={otherSubFilter}
               onOtherSubFilterChange={setOtherSubFilter}
               className="pb-3"
+              afterMore={
+                <UserSearch
+                  size="lg"
+                  placeholder="Search offers, events, or people…"
+                  className="relative z-[30] mx-0 w-full max-w-none"
+                />
+              }
             />
             <div data-discover-results="" className="scroll-mt-24">
               <DiscoverHomeOffersForYou

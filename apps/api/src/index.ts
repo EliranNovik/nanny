@@ -18,6 +18,7 @@ import { ogPublicProfileRouter } from "./routes/ogPublicProfile";
 import { postsRouter } from "./routes/posts";
 import { contactRouter } from "./routes/contact";
 import { aiRouter } from "./routes/ai";
+import { qualityRouter } from "./routes/qualityManager";
 import { translateRouter } from "./routes/translate";
 import { pushRouter } from "./routes/push";
 import { handleProcessPushQueue } from "./routes/pushCron";
@@ -47,7 +48,7 @@ app.post(
   handleDiditWebhook,
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "4mb" }));
 
 // Health check
 app.get("/health", (_, res) => res.json({ ok: true }));
@@ -76,6 +77,7 @@ app.use("/api/freelancer", requireUser, freelancerRouter);
 app.use("/api/dev", requireUser, devRouter);
 app.use("/api/admin", requireUser, adminRouter);
 app.use("/api/ai", requireUser, aiRouter);
+app.use("/api/quality", requireUser, qualityRouter);
 app.get("/api/link-preview/image", handleLinkPreviewImageGet);
 app.use("/api/link-preview", requireUser, linkPreviewRouter);
 

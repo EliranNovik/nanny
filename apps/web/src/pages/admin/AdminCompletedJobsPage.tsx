@@ -240,7 +240,7 @@ export default function AdminCompletedJobsPage() {
 
   return (
     <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
-      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
+      <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
@@ -257,7 +257,7 @@ export default function AdminCompletedJobsPage() {
         </div>
 
         {/* Overview Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="admin-summary-carousel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card className="rounded-2xl border-0 bg-white shadow-xs sm:border-0 sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="px-4 pb-1 pt-3">
               <CardDescription className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Completed Contracts</CardDescription>
@@ -334,7 +334,7 @@ export default function AdminCompletedJobsPage() {
 
         {/* Filter controls */}
         <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 mb-6 p-0">
-          <div className="relative col-span-1 lg:col-span-2">
+          <div className="relative col-span-full md:col-span-1 lg:col-span-2">
             <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
@@ -345,6 +345,7 @@ export default function AdminCompletedJobsPage() {
             />
           </div>
 
+          <div className="admin-filter-carousel col-span-full -mx-2 px-2 md:mx-0 md:px-0 md:contents">
           <div>
             <select
               value={careTypeFilter}
@@ -383,6 +384,7 @@ export default function AdminCompletedJobsPage() {
                 Sort: {sortBy === "created_at" ? "Recent" : "Highest Budget"}
               </span>
             </button>
+          </div>
           </div>
         </div>
 

@@ -43,6 +43,8 @@ export function useProfilePostsFeedRealtime({
   sortOrder = "newest",
   filterLikedByUserId,
   filterPostTypeId,
+  filterPostTypeIds,
+  includeAvailability,
   filterCommentedOwnPosts,
   feedAdvancedFilters,
   limit,
@@ -55,6 +57,8 @@ export function useProfilePostsFeedRealtime({
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId,
+    filterPostTypeIds,
+    includeAvailability,
     filterCommentedOwnPosts,
     feedAdvancedFilters,
     limit,
@@ -95,6 +99,7 @@ export function useProfilePostsFeedRealtime({
             id?: string;
             author_id?: string;
             tagged_user_ids?: string[];
+            post_type_id?: string | null;
           }
         | undefined;
       if (!row?.id || !row.author_id) return;
@@ -109,6 +114,7 @@ export function useProfilePostsFeedRealtime({
           id: row.id,
           author_id: row.author_id,
           tagged_user_ids: row.tagged_user_ids,
+          post_type_id: row.post_type_id,
         },
         filtersRef.current,
       )) {

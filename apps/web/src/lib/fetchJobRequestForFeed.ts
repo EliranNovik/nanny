@@ -1,9 +1,12 @@
 import { supabase } from "@/lib/supabase";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import { preloadProfilePostImage } from "@/lib/fetchProfilePostById";
+import { mediaUrl as optimizedMediaUrl } from "@/lib/imageTransform";
 import {
   mapOpenHelpRequestToFeedPost,
   type JobRequestFeedPost,
 } from "@/lib/openHelpRequestFeedPost";
+import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 
 type JobRequestEngagement = {
   job_id: string;
@@ -101,8 +104,6 @@ export async function fetchJobRequestForFeedById(
   }
 
   const row = data[0] as DiscoverOpenHelpRequestRow;
-  const engagement = await fetchJobRequestEngagement([jobId], viewerUserId);
-
   const author =
     row.client_id
       ? {
@@ -112,8 +113,13 @@ export async function fetchJobRequestForFeedById(
           is_verified: row.is_verified ?? null,
         }
       : undefined;
-
   const base = mapOpenHelpRequestToFeedPost(row, author);
+  if (base.media_type === "image" && base.storage_path) {
+    preloadProfilePostImage(
+      optimizedMediaUrl.hero(publicProfileMediaPublicUrl(base.storage_path)),
+    );
+  }
+  const engagement = await fetchJobRequestEngagement([jobId], viewerUserId);
   const e = engagement.get(jobId);
   return {
     ...base,

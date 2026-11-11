@@ -13,9 +13,15 @@ import {
   touchSupportMemories,
 } from "./supportBotMemory";
 import {
+  botMessagesSentToday,
   claimSupportWork,
+  dailyMessageCap,
   escalateSupportThread,
+  isAiPaused,
   isBotMessage,
+  pauseSupportAi,
+  resumeSupportAi,
+  supportTakeoverCutoff,
   markSupportHandoff,
   releaseSupportWork,
   rememberBotMessage,
@@ -35,6 +41,10 @@ const WATCH_RETRY_MAX_MS = 30_000;
 const AI_SENT_MARK = "\u200b\u200b\u200b";
 /** Same AI mark, plus a word joiner, only on a handoff to the Tebnu team. */
 const HANDOFF_MARK = `${AI_SENT_MARK}\u2060`;
+/** Sent once, with no model call, after this person's daily message cap is reached. */
+const DAILY_CAP_HANDOFF =
+  "This chat is being transferred to the Tebnu admins team. They will respond shortly.";
+const capNoticeSent = new Set<string>();
 
 type ConversationRow = {
   id: string;
@@ -283,6 +293,16 @@ async function sendTemplateBubbles(
   }
 }
 
+async function sendQuestionBubble(
+  conversationId: string,
+  adminId: string,
+  question: string | null,
+  client: "ios" | "android" | "web" | "unknown",
+): Promise<void> {
+  const text = question ? replyForClient(question, client).trim() : "";
+  if (text) await sendAsSupport(conversationId, adminId, text);
+}
+
 type DecisionInput = Parameters<typeof decideSupportReply>[0];
 
 /**
@@ -342,6 +362,54 @@ async function decideWithMemory(
   return decision;
 }
 
+function capNoticeKey(conversationId: string): string {
+  return `cap-notice:${conversationId}:${new Date().toISOString().slice(0, 10)}`;
+}
+
+/** True when this chat is already at the daily cap, so the model must not be called. */
+async function atDailyMessageCap(conversationId: string): Promise<boolean> {
+  const cap = await dailyMessageCap();
+  if (cap <= 0) return false;
+  return (await botMessagesSentToday(conversationId)) >= cap;
+}
+
+/**
+ * One handoff line for the day, with no model call. Later messages the same
+ * day stay quiet so the cap is not spent on repeating it.
+ */
+async function capNoticeAlreadySent(conversationId: string): Promise<boolean> {
+  const key = capNoticeKey(conversationId);
+  if (capNoticeSent.has(key)) return true;
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const { data, error } = await supabaseAdmin
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", conversationId)
+    .gte("created_at", start.toISOString())
+    .ilike("body", "%transferred to the Tebnu admins team%")
+    .limit(1);
+  if (error || !data?.length) return false;
+  capNoticeSent.add(key);
+  return true;
+}
+
+async function sendDailyCapHandoff(conversationId: string, adminId: string): Promise<boolean> {
+  const key = capNoticeKey(conversationId);
+  if (await capNoticeAlreadySent(conversationId)) return false;
+  if (!(await claimSupportWork(key))) return false;
+  try {
+    if (await capNoticeAlreadySent(conversationId)) return false;
+    await sendAsSupport(conversationId, adminId, `${HANDOFF_MARK}${DAILY_CAP_HANDOFF}`);
+    await markSupportHandoff(conversationId);
+    capNoticeSent.add(key);
+    console.log("[SupportBot] Daily cap reached", { conversationId });
+    return true;
+  } finally {
+    await releaseSupportWork(key);
+  }
+}
+
 async function replyToUserMessages(
   conversationId: string,
   pending: MessageRow[],
@@ -360,6 +428,14 @@ async function replyToUserMessages(
 
   let replied = false;
   try {
+  if (await atDailyMessageCap(conversationId)) {
+    await sendDailyCapHandoff(conversationId, adminId);
+    for (const message of pending) {
+      await rememberBotMessage(message.id, conversationId);
+    }
+    replied = true;
+    return;
+  }
   const history = await recentHistory(
     conversationId,
     adminId,
@@ -404,6 +480,7 @@ async function replyToUserMessages(
       : text;
     await sendAsSupport(conversationId, adminId, reply);
   }
+  await sendQuestionBubble(conversationId, adminId, decision.question, client);
   await sendTemplateBubbles(conversationId, adminId, decision.templates, client);
   if (decision.escalate) {
     await markSupportHandoff(conversationId);
@@ -445,6 +522,7 @@ async function handleIncomingMessages(admins: Set<string>): Promise<void> {
     const support = await supportConversation(conversationId, admins);
     if (!support) continue;
 
+    const takeoverCutoff = await supportTakeoverCutoff(conversationId);
     let humanTookOver = false;
     for (const row of rows) {
       if (row.sender_id !== support.adminId) continue;
@@ -452,6 +530,9 @@ async function handleIncomingMessages(admins: Set<string>): Promise<void> {
       // make those look like a person typed and silence the next answer.
       if (row.body?.startsWith(AI_SENT_MARK)) continue;
       if (await isBotMessage(row.id)) continue;
+      // Switching the bot back on must stick. Messages typed before that moment
+      // are not a new takeover, or the next user message only flashes typing.
+      if (takeoverCutoff != null && Date.parse(row.created_at) <= takeoverCutoff) continue;
       humanTookOver = true;
     }
     const fromUser = rows.filter(
@@ -459,6 +540,7 @@ async function handleIncomingMessages(admins: Set<string>): Promise<void> {
     );
     if (humanTookOver) {
       await endSupportTyping(conversationId, support.adminId);
+      await pauseSupportAi(conversationId);
       await escalateSupportThread(conversationId);
       for (const row of fromUser) {
         await rememberBotMessage(row.id, conversationId);
@@ -472,6 +554,15 @@ async function handleIncomingMessages(admins: Set<string>): Promise<void> {
       pending.push(row);
     }
     if (pending.length === 0) continue;
+
+    if (await isAiPaused(conversationId, pending[0].created_at)) {
+      // Marked as handled so switching the bot back on does not answer old messages.
+      await endSupportTyping(conversationId, support.adminId);
+      for (const row of pending) {
+        await rememberBotMessage(row.id, conversationId);
+      }
+      continue;
+    }
 
     const key = `msg:${conversationId}:${pending[pending.length - 1].id}`;
     if ((failures.get(key) ?? 0) >= 3) {
@@ -532,8 +623,20 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
       );
       if (!conversationId) continue;
 
+      if (await isAiPaused(conversationId, new Date().toISOString())) {
+        await rememberReport(report.id, conversationId);
+        handled = true;
+        continue;
+      }
+
       beginSupportTyping(conversationId, adminId);
       try {
+        if (await atDailyMessageCap(conversationId)) {
+          await sendDailyCapHandoff(conversationId, adminId);
+          await rememberReport(report.id, conversationId);
+          handled = true;
+          continue;
+        }
         const client = await latestClientPlatform(report.reporter_id);
         const decision = await decideWithMemory(
           {
@@ -557,6 +660,7 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
             : text;
           await sendAsSupport(conversationId, adminId, reply);
         }
+        await sendQuestionBubble(conversationId, adminId, decision.question, client);
         await sendTemplateBubbles(conversationId, adminId, decision.templates, client);
         if (decision.escalate) {
           await markSupportHandoff(conversationId);
@@ -601,6 +705,7 @@ async function onMessageInserted(row: MessageRow): Promise<void> {
   if (admins.has(row.sender_id)) return;
   const support = await cachedSupport(row.conversation_id, admins);
   if (!support || support.userId !== row.sender_id) return;
+  if (await isAiPaused(row.conversation_id, row.created_at)) return;
   if (beginSupportTyping(row.conversation_id, support.adminId)) {
     console.log("[SupportBot] Typing", { conversationId: row.conversation_id });
   }
@@ -671,6 +776,105 @@ async function tick(): Promise<void> {
       tickQueued = false;
       void tick();
     }
+  }
+}
+
+/** Admin asked the bot to continue from the person's latest message. */
+export async function followUpSupportChat(
+  conversationId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!supportBotConfigured()) {
+    return { ok: false, error: "The support bot is not configured." };
+  }
+  const admins = await loadAdminIds();
+  const support = await supportConversation(conversationId, admins);
+  if (!support) {
+    return { ok: false, error: "This chat is not with a member." };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("messages")
+    .select("id, body, sender_id, created_at, conversation_id, attachment_url, attachment_type")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) throw error;
+
+  const rows = ((data ?? []) as MessageRow[]).slice().reverse();
+  const fromUser = rows.filter(
+    (row) => row.sender_id === support.userId && messageHasContent(row),
+  );
+  const latest = fromUser[fromUser.length - 1];
+  if (!latest) {
+    return { ok: false, error: "This person has not sent a message yet." };
+  }
+
+  // One follow-up also turns automatic replies back on. Older hand-typed
+  // messages must not pause the bot again on the next user message.
+  await resumeSupportAi(conversationId);
+
+  const claimKey = `followup:${conversationId}`;
+  if (!(await claimSupportWork(claimKey))) {
+    return { ok: false, error: "A follow-up is already being written." };
+  }
+
+  beginSupportTyping(conversationId, support.adminId);
+  try {
+    if (await atDailyMessageCap(conversationId)) {
+      const sent = await sendDailyCapHandoff(conversationId, support.adminId);
+      return sent
+        ? { ok: true }
+        : { ok: false, error: "This person has reached today's message limit." };
+    }
+    const history = rows
+      .filter((row) => row.id !== latest.id && messageHasContent(row))
+      .map((row) => ({
+        role: (row.sender_id === support.adminId ? "assistant" : "user") as
+          | "assistant"
+          | "user",
+        body: String(row.body ?? "").replace(/^\u200b\u200b\u200b/, "").trim() || "[photo]",
+      }));
+    const latestText = isImageAttachment(latest)
+      ? [latest.body?.trim() ?? "", "[photo attached]"].filter(Boolean).join("\n")
+      : (latest.body?.trim() ?? "");
+    const client = await latestClientPlatform(latest.sender_id);
+    const images = await photosFromMessages([latest]);
+    const decision = await decideWithMemory(
+      {
+        history,
+        latestText,
+        hint: "user_message",
+        client,
+        images,
+        followUp: true,
+        profile: await userProfileSummary(latest.sender_id),
+      },
+      {
+        conversationId,
+        adminId: support.adminId,
+        userId: support.userId,
+        sourceMessageId: latest.id,
+      },
+    );
+
+    if (!decision.reply && !decision.question && decision.templates.length === 0) {
+      return { ok: false, error: "The bot had nothing more to add." };
+    }
+    if (decision.reply) {
+      const text = replyForClient(decision.reply, client);
+      await sendAsSupport(
+        conversationId,
+        support.adminId,
+        decision.escalate ? `${HANDOFF_MARK}${text}` : text,
+      );
+    }
+    await sendQuestionBubble(conversationId, support.adminId, decision.question, client);
+    await sendTemplateBubbles(conversationId, support.adminId, decision.templates, client);
+    if (decision.escalate) await markSupportHandoff(conversationId);
+    return { ok: true };
+  } finally {
+    await releaseSupportWork(claimKey);
+    await endSupportTyping(conversationId, support.adminId);
   }
 }
 

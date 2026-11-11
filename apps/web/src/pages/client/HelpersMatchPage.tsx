@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { browserLocationPromptAllowed } from "@/lib/location";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -283,7 +284,7 @@ export default function HelpersMatchPage() {
   }
 
   function useMyLocation() {
-    if (!navigator.geolocation) return;
+    if (!browserLocationPromptAllowed() || !navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {

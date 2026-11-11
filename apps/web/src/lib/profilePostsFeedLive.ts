@@ -14,6 +14,9 @@ export type ProfilePostsFeedFilters = {
   sortOrder?: "newest" | "oldest";
   filterLikedByUserId?: string;
   filterPostTypeId?: string;
+  filterPostTypeIds?: string[];
+  /** Keep live-availability posts when a post-type filter is also set. */
+  includeAvailability?: boolean;
   filterCommentedOwnPosts?: boolean;
   feedAdvancedFilters?: CommunityFeedAdvancedFilters;
   limit?: number;
@@ -72,6 +75,14 @@ export function profilePostMatchesFeedFilters(
   ) {
     return false;
   }
+  if (filters.filterPostTypeIds?.length) {
+    if (
+      !row.post_type_id ||
+      !filters.filterPostTypeIds.includes(row.post_type_id)
+    ) {
+      return false;
+    }
+  }
   if (filters.authorNameFilter?.trim()) return false;
   if (
     filters.feedAdvancedFilters &&
@@ -102,6 +113,9 @@ export function communityPostMatchesFeedFilters(
     return false;
   }
   if (filters.filterTaggedUserId) return false;
+  if (filters.filterPostTypeIds?.length && !filters.includeAvailability) {
+    return false;
+  }
   if (filters.filterPostTypeId) return false;
   if (filters.filterCommentedOwnPosts) return false;
   if (filters.feedAdvancedFilters?.myPostsOnly) return false;

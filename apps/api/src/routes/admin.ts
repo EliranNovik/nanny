@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { supabaseAdmin } from "../supabase";
 import { requireAdmin } from "../middleware/auth";
+import { followUpSupportChat } from "../lib/supportBot/supportBotWorker";
 
 export const adminRouter = Router();
 
@@ -600,6 +601,61 @@ adminRouter.post("/posts/:id/delete", async (req: Request, res: Response): Promi
   } catch (err: any) {
     console.error("[AdminRouter] POST /posts/:id/delete failure:", err);
     res.status(500).json({ error: `Failed to delete post: ${err.message || err}` });
+  }
+});
+
+adminRouter.post("/quality-flags/:id/remove", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const { data: flag, error } = await supabaseAdmin
+      .from("quality_post_flags")
+      .select("id, profile_post_id, community_post_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!flag) {
+      res.status(404).json({ error: "Flagged post not found." });
+      return;
+    }
+    if (flag.profile_post_id) {
+      const { error: deleteErr } = await supabaseAdmin
+        .from("profile_posts")
+        .delete()
+        .eq("id", flag.profile_post_id);
+      if (deleteErr) throw deleteErr;
+    }
+    if (flag.community_post_id) {
+      const { error: deleteErr } = await supabaseAdmin
+        .from("community_posts")
+        .delete()
+        .eq("id", flag.community_post_id);
+      if (deleteErr) throw deleteErr;
+    }
+    await supabaseAdmin.from("quality_post_flags").delete().eq("id", id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error("[AdminRouter] POST /quality-flags/:id/remove failure:", err);
+    res.status(500).json({ error: "Could not remove that post." });
+  }
+});
+
+adminRouter.post("/support/follow-up", async (req: Request, res: Response): Promise<void> => {
+  const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId : "";
+  if (!/^[0-9a-f-]{36}$/i.test(conversationId)) {
+    res.status(400).json({ error: "Invalid chat." });
+    return;
+  }
+  try {
+    const result = await followUpSupportChat(conversationId);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Follow-up failed";
+    console.error("[AdminRouter] POST /support/follow-up failure:", message);
+    res.status(503).json({ error: "The bot could not follow up." });
   }
 });
 

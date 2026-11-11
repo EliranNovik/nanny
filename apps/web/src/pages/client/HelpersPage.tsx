@@ -30,6 +30,7 @@ import {
 } from "@/components/helpers/FindHelpersMobileChrome";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { useToast } from "@/components/ui/toast";
+import { browserLocationPromptAllowed } from "@/lib/location";
 import {
   canStartInCardLabel,
   respondsWithinCardLabel,
@@ -558,6 +559,7 @@ export default function HelpersPage() {
   );
   /** When set, profile city coords must not overwrite the map center (GPS or user choice wins). */
   const gpsLockRef = useRef(false);
+  const gpsAskedRef = useRef(false);
   const geocodeRequestIdRef = useRef(0);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
@@ -565,9 +567,23 @@ export default function HelpersPage() {
   /** Multi-select: show helpers live in any of these categories (OR). Empty = all categories. */
   const [selectedCategories, setSelectedCategories] = useState<
     Set<ServiceCategoryId>
-  >(() => new Set());
+  >(() => {
+    const raw = searchParams.get("category");
+    return raw && isServiceCategoryId(raw) ? new Set([raw]) : new Set();
+  });
   const [selectedOtherSubs, setSelectedOtherSubs] = useState<Set<string>>(
-    () => new Set(),
+    () => {
+      const raw = searchParams.get("category");
+      const sub = searchParams.get("sub");
+      if (
+        raw === "other_help" &&
+        sub &&
+        OTHER_HELP_SUBCATEGORIES.some((item) => item.id === sub)
+      ) {
+        return new Set([sub]);
+      }
+      return new Set();
+    },
   );
   const [quickFilter, setQuickFilter] = useState<FindHelpersQuickFilter>("all");
   const [nameQuery, setNameQuery] = useState("");
@@ -619,6 +635,14 @@ export default function HelpersPage() {
     setSelectedCategories(new Set());
     setSelectedOtherSubs(new Set());
   }, []);
+
+  const replaceCategoryFilters = useCallback(
+    (categories: ServiceCategoryId[], otherSubs: string[]) => {
+      setSelectedCategories(new Set(categories));
+      setSelectedOtherSubs(new Set(otherSubs));
+    },
+    [],
+  );
 
   const loadFavorites = useCallback(async () => {
     if (!user?.id) {
@@ -715,7 +739,10 @@ export default function HelpersPage() {
 
   /** Prefer device location when permission is granted; otherwise profile/saved city above applies. */
   useEffect(() => {
+    if (!profile || profile.is_admin || gpsAskedRef.current) return;
+    if (!browserLocationPromptAllowed()) return;
     if (!navigator.geolocation) return;
+    gpsAskedRef.current = true;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         gpsLockRef.current = true;
@@ -730,7 +757,7 @@ export default function HelpersPage() {
       },
       { enableHighAccuracy: true, timeout: 12000 },
     );
-  }, []);
+  }, [profile]);
 
   /** Debounce search text for geocoding (does not fetch helpers until Search). */
   useEffect(() => {
@@ -942,6 +969,7 @@ export default function HelpersPage() {
   }, [debouncedSearch, isLoaded]);
 
   const useMyLocation = () => {
+    if (profile?.is_admin || !browserLocationPromptAllowed()) return;
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
@@ -1172,6 +1200,23 @@ export default function HelpersPage() {
     setSearchParams,
   ]);
 
+  /** Deep link from the header category menu: keep that category selected. */
+  useEffect(() => {
+    const raw = searchParams.get("category");
+    if (!raw || !isServiceCategoryId(raw)) return;
+    setSelectedCategories(new Set([raw]));
+    const sub = searchParams.get("sub");
+    if (
+      raw === "other_help" &&
+      sub &&
+      OTHER_HELP_SUBCATEGORIES.some((item) => item.id === sub)
+    ) {
+      setSelectedOtherSubs(new Set([sub]));
+    } else {
+      setSelectedOtherSubs(new Set());
+    }
+  }, [searchParams]);
+
   /** Restore previous state (Back navigation / revisit). */
   useEffect(() => {
     if (restoringRef.current) return;
@@ -1179,6 +1224,8 @@ export default function HelpersPage() {
     if (searchParams.get(HELPERS_FOCUS_HELPER_QUERY)?.trim()) {
       return;
     }
+    const categoryFromUrl = searchParams.get("category");
+    if (categoryFromUrl && isServiceCategoryId(categoryFromUrl)) return;
     try {
       const raw = sessionStorage.getItem(HELPERS_PAGE_STATE_KEY);
       if (!raw) return;
@@ -1348,6 +1395,7 @@ export default function HelpersPage() {
             selectedCategories={selectedCategories}
             onToggleCategory={toggleCategory}
             onClearCategories={clearCategoryFilters}
+            onReplaceCategories={replaceCategoryFilters}
             selectedOtherSubs={selectedOtherSubs}
             onToggleOtherSub={toggleOtherSub}
             nameQuery={nameQuery}

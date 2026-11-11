@@ -94,7 +94,7 @@ export default function AdminStatisticsPage() {
 
   return (
     <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
-      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
+      <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
             <BarChart3 className="h-8 w-8 text-indigo-500" /> Platform Insights & Analytics
@@ -102,8 +102,8 @@ export default function AdminStatisticsPage() {
         </div>
 
         {/* Top metrics row */}
-        <div className="grid shrink-0 grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-emerald-500 shadow-sm">
+        <div className="admin-summary-carousel grid shrink-0 grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-emerald-500 bg-white shadow-sm sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
               <CardTitle className="text-sm font-medium">Total Active Users (30d)</CardTitle>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -121,7 +121,7 @@ export default function AdminStatisticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-violet-500 shadow-sm">
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-violet-500 bg-white shadow-sm sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
               <CardTitle className="text-sm font-medium">Verified Accounts</CardTitle>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
@@ -139,7 +139,7 @@ export default function AdminStatisticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-sky-500 shadow-sm">
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-sky-500 bg-white shadow-sm sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
               <CardTitle className="text-sm font-medium">Matched Assignments</CardTitle>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400">
@@ -157,7 +157,7 @@ export default function AdminStatisticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-orange-500 shadow-sm">
+          <Card className="overflow-hidden rounded-2xl border-0 border-t-4 border-t-orange-500 bg-white shadow-sm sm:bg-white dark:bg-zinc-900 dark:sm:bg-zinc-900">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-3 pt-5">
               <CardTitle className="text-sm font-medium">Contract Completion</CardTitle>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">

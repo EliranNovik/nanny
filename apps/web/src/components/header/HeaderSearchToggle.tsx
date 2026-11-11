@@ -8,16 +8,22 @@ export function HeaderSearchToggle({
   onOpenChange,
   inputClassName,
   className,
+  fieldClassName,
+  persistOpen = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inputClassName?: string;
   className?: string;
+  fieldClassName?: string;
+  /** Stay expanded. Used for the admin header search. */
+  persistOpen?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const shown = open || persistOpen;
 
   useEffect(() => {
-    if (!open) return;
+    if (!shown || persistOpen) return;
     const onPointer = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) onOpenChange(false);
     };
@@ -30,16 +36,22 @@ export function HeaderSearchToggle({
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onOpenChange]);
+  }, [shown, persistOpen, onOpenChange]);
 
   return (
     <div ref={rootRef} className={cn("relative flex shrink-0 items-center", className)}>
-      {open ? (
+      {shown ? (
         <UserSearch
-          autoFocus
-          onResultSelect={() => onOpenChange(false)}
-          className="w-[min(22rem,32vw)] max-w-none animate-in fade-in slide-in-from-right-2 duration-200 sm:max-w-none md:max-w-none lg:max-w-none"
+          autoFocus={!persistOpen}
+          onResultSelect={() => {
+            if (!persistOpen) onOpenChange(false);
+          }}
+          className={cn(
+            "w-[min(36rem,46vw)] max-w-none animate-in fade-in slide-in-from-right-2 duration-200 sm:max-w-none md:max-w-none lg:max-w-none",
+            fieldClassName,
+          )}
           inputClassName={inputClassName}
+          resultsBeside={persistOpen}
         />
       ) : (
         <button

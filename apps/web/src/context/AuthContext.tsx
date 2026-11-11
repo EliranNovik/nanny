@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { getSupabaseSession, supabase } from "@/lib/supabase";
+import { setSkipBrowserLocationPrompt } from "@/lib/location";
 
 interface Profile {
   id: string;
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     profileDataRef.current = p;
     setProfile(p);
+    setSkipBrowserLocationPrompt(Boolean(p?.is_admin));
   };
 
   async function fetchProfile(

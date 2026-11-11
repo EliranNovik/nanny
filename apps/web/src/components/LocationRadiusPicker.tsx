@@ -8,6 +8,7 @@ import {
 import { Loader2, MapPin, Navigation } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { browserLocationPromptAllowed } from "@/lib/location";
 
 const mapContainerStyle = {
   width: "100%",
@@ -122,7 +123,7 @@ export function LocationRadiusPicker({
   );
 
   const handleUseMyLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!browserLocationPromptAllowed() || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       const { latitude: lat, longitude: lng } = coords;
       applyPosition(lat, lng);

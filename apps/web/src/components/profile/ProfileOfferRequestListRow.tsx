@@ -127,28 +127,31 @@ export function ProfileOfferRequestListRow({
       type="button"
       onClick={onOpen}
       className={cn(
-        "flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left",
+        "group flex h-full w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0",
         "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
         "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         focusRing,
         className,
       )}
     >
-      <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+      <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
         <img
           src={thumbUrl}
           alt=""
-          className="h-full w-full object-cover object-center"
+          className="h-full w-full object-cover object-center transition-transform duration-500 md:group-hover:scale-[1.04]"
           loading="lazy"
           decoding="async"
         />
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 md:px-4 md:pb-4 md:pt-3.5">
         <p
           className={cn(
-            "flex min-w-0 items-center gap-1.5 text-[15px] font-semibold sm:text-[13px]",
+            "flex min-w-0 items-center gap-1.5 text-[15px] font-semibold sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:px-2.5 md:py-1 md:text-[12px] md:font-bold",
             accentText,
+            isOffer
+              ? "md:bg-orange-50 dark:md:bg-orange-500/15"
+              : "md:bg-emerald-50 dark:md:bg-emerald-500/15",
           )}
         >
           <CategoryGlyph
@@ -164,17 +167,17 @@ export function ProfileOfferRequestListRow({
           {title}
         </p>
         {locationRaw ? (
-          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
             {locationRaw}
           </p>
         ) : null}
-        <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+        <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
           {timeAgo}
         </p>
       </div>
 
       <ChevronRight
-        className="h-6 w-6 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600 sm:h-5 sm:w-5"
+        className="h-6 w-6 shrink-0 text-zinc-300 rtl-flip-icon dark:text-zinc-600 sm:h-5 sm:w-5 md:hidden"
         strokeWidth={2}
         aria-hidden
       />

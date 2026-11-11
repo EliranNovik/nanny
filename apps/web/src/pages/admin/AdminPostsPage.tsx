@@ -458,7 +458,7 @@ export default function AdminPostsPage() {
 
   return (
     <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
-      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
+      <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -492,7 +492,7 @@ export default function AdminPostsPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
             {/* Search */}
-            <div className="relative lg:col-span-2">
+            <div className="relative col-span-full md:col-span-1 lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <input
                 type="text"
@@ -503,6 +503,7 @@ export default function AdminPostsPage() {
               />
             </div>
 
+            <div className="admin-filter-carousel col-span-full -mx-2 px-2 md:mx-0 md:px-0 md:contents">
             {/* Date From */}
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -559,6 +560,7 @@ export default function AdminPostsPage() {
                 </select>
               </div>
             )}
+            </div>
           </div>
 
           {/* Active filter summary */}

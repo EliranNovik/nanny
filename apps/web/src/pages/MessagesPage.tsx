@@ -1,6 +1,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   useMemo,
   useCallback,
@@ -38,6 +39,7 @@ import {
   BadgeCheck,
   ShieldCheck,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -61,6 +63,7 @@ import {
 } from "@/hooks/data/useMessagesInbox";
 import { prefetchChatThread } from "@/hooks/data/useChatThread";
 import { ChatSimpleHeader } from "@/components/messages/ChatSimpleHeader";
+import { SupportAiToggle } from "@/components/messages/SupportAiToggle";
 import {
   MessagesInboxFloatingHeader,
 } from "@/components/messages/MessagesInboxFloatingHeader";
@@ -139,6 +142,8 @@ export default function MessagesPage() {
   const [contactFilterUnread, setContactFilterUnread] = useState(false);
   const [contactFilterWaiting, setContactFilterWaiting] = useState(false);
   const [contactFilterFavorites, setContactFilterFavorites] = useState(false);
+  const [adminFilterMenuOpen, setAdminFilterMenuOpen] = useState(false);
+  const adminFilterMenuRef = useRef<HTMLDivElement>(null);
   const [handoffWaiting, setHandoffWaiting] = useState<AdminHandoffWaiting>({
     userIds: new Set(),
     conversationByUserId: new Map(),
@@ -149,6 +154,24 @@ export default function MessagesPage() {
 
   const { pathname } = useLocation();
   const onMessagesRoute = pathname === "/messages" || pathname.startsWith("/messages/");
+
+  useEffect(() => {
+    if (!adminFilterMenuOpen) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!adminFilterMenuRef.current?.contains(event.target as Node)) {
+        setAdminFilterMenuOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAdminFilterMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [adminFilterMenuOpen]);
 
   // Native tablet messages always opens the newest available thread.
   // This page stays mounted on other routes, so only touch the URL while it is showing.
@@ -691,7 +714,7 @@ export default function MessagesPage() {
   return (
     <div
       data-messages-page=""
-      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-white md:h-full md:max-h-full dark:bg-[#0c0a09]"
+      className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-white md:h-full md:max-h-full dark:bg-black md:dark:bg-[#0c0a09]"
     >
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
@@ -730,10 +753,95 @@ export default function MessagesPage() {
             )}
           >
             {/* Desktop: title + Messages/News tabs scroll with inbox content */}
-            <div className="hidden flex-col px-5 pb-3 pt-3 md:flex">
-              <h1 className="mb-3 text-[28px] font-extrabold leading-tight tracking-tight">
+            <div className="relative z-20 hidden flex-col px-5 pb-3 pt-3 md:flex">
+              <div className="mb-3 flex items-center justify-between gap-3">
+              <h1 className="text-[28px] font-extrabold leading-tight tracking-tight">
                 {t("messagesPage.messages")}
               </h1>
+              <div ref={adminFilterMenuRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAdminFilterMenuOpen((open) => !open)}
+                    className={cn(
+                      "inline-flex h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition-colors",
+                      contactFilterUnread || contactFilterWaiting || contactFilterFavorites || isManageMode
+                        ? "border-orange-500 bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"
+                        : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
+                    )}
+                    aria-expanded={adminFilterMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    {t("messagesPage.filters", { defaultValue: "Filters" })}
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", adminFilterMenuOpen && "rotate-180")} />
+                  </button>
+                  {adminFilterMenuOpen ? (
+                    <div
+                      role="menu"
+                      className="absolute end-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+                    >
+                      {(
+                        [
+                          {
+                            key: "unread",
+                            active: contactFilterUnread,
+                            toggle: () => setContactFilterUnread((v) => !v),
+                            label: t("messagesPage.unread"),
+                            icon: <MessageCircle className="h-4 w-4" />,
+                            count: inboxUnreadTotal,
+                          },
+                          {
+                            key: "waiting",
+                            active: contactFilterWaiting,
+                            toggle: () => setContactFilterWaiting((v) => !v),
+                            label: t("messagesPage.waiting"),
+                            icon: <Sparkles className="h-4 w-4" />,
+                            count: handoffWaitingCount,
+                          },
+                          {
+                            key: "favorites",
+                            active: contactFilterFavorites,
+                            toggle: () => setContactFilterFavorites((v) => !v),
+                            label: t("messagesPage.favorites"),
+                            icon: <Bookmark className="h-4 w-4" />,
+                            count: 0,
+                          },
+                          {
+                            key: "remove",
+                            active: isManageMode,
+                            toggle: () => setIsManageMode((v) => !v),
+                            label: isManageMode ? t("messagesPage.done") : t("messagesPage.remove"),
+                            icon: isManageMode ? <Check className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />,
+                            count: 0,
+                          },
+                        ] as const
+                      ).filter((item) => item.key !== "waiting" || profile?.is_admin === true).map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={item.active}
+                          onClick={item.toggle}
+                          className={cn(
+                            "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold",
+                            item.active
+                              ? "bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400"
+                              : "text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/5",
+                          )}
+                        >
+                          {item.icon}
+                          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                          {item.count > 0 ? (
+                            <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-orange-400">
+                              {item.count > 99 ? "99+" : item.count}
+                            </span>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              {profile?.is_admin === true ? null : (
               <div
                 className={cn(
                   "flex w-auto gap-0.5 rounded-full p-1 md:min-w-0 md:flex-1 md:gap-0",
@@ -799,8 +907,9 @@ export default function MessagesPage() {
                   ) : null}
                 </button>
               </div>
+              )}
             </div>
-            {inboxTab === "messages" ? (
+            {inboxTab === "messages" || profile?.is_admin === true ? (
               chatInboxRows.length === 0 ? (
               <>
               <h1 className="messages-inbox-section-title shrink-0 md:hidden">
@@ -884,7 +993,7 @@ export default function MessagesPage() {
                         </button>
                       ) : null}
                   </div>
-                  <div className="-mx-4 mt-2.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="-mx-4 mt-2.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
                     <div className="flex w-max min-w-full gap-2">
                       <button
                         type="button"
@@ -1311,6 +1420,12 @@ export default function MessagesPage() {
                   }
                   showBackButton={!isTablet}
                   onBack={handleBackToContacts}
+                  trailing={
+                    profile?.is_admin === true &&
+                    otherUserProfile?.is_admin !== true ? (
+                      <SupportAiToggle conversationId={conversationId} />
+                    ) : null
+                  }
                   className={cn(
                     "inset-x-0 top-0 z-40",
                     isTablet ? "absolute" : "fixed",

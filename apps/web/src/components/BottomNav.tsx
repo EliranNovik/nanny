@@ -205,7 +205,11 @@ export function BottomNav() {
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
+  const {
+    collapsed: desktopSidePanelCollapsed,
+    adminMenuOpen,
+    setAdminMenuOpen,
+  } = useDesktopSidePanel();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const jobsTabCounts = useJobsTabCounts(user);
@@ -339,7 +343,7 @@ export function BottomNav() {
   const headerBackHomeFallback =
     profile?.role === "freelancer"
       ? "/freelancer/home"
-      : profile?.role === "client"
+      : profile?.role === "client" || profile?.is_admin
         ? "/client/home"
         : "/";
   const showDesktopBrandChrome =
@@ -403,6 +407,7 @@ export function BottomNav() {
 
   const hideMobileBottomNav =
     !showBottomTabs ||
+    Boolean(profile?.is_admin) ||
     (isDiscoverHome &&
       (discoverHomeOverlayOpen ||
         mobileSearchOpen)) ||
@@ -994,6 +999,18 @@ export function BottomNav() {
       )}
     >
       <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+        {isAdminPage ? (
+          <div className="flex w-[220px] shrink-0 items-center px-3">
+            <HeaderSearchToggle
+              open
+              persistOpen
+              onOpenChange={setDesktopSearchOpen}
+              className="w-full min-w-0"
+              fieldClassName="w-full"
+              inputClassName="bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
+            />
+          </div>
+        ) : null}
         {showDesktopBrandChrome && !isAdminPage ? (
           <div
             className={cn(
@@ -1008,16 +1025,21 @@ export function BottomNav() {
           >
             <Link
               to={headerBackHomeFallback}
-              className="flex items-center gap-0 rounded-lg py-1 transition-opacity hover:opacity-80"
-              aria-label={t("common.home")}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 py-1 pe-3.5 ps-1.5 shadow-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+              aria-label="Tebnu"
             >
-              <img
-                src={BRAND_LOGO_SRC}
-                alt=""
-                className="h-11 w-auto shrink-0 md:h-12"
-                loading="eager"
-                decoding="async"
-              />
+              <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white dark:bg-zinc-950">
+                <img
+                  src={BRAND_LOGO_SRC}
+                  alt=""
+                  className="h-7 w-7 object-contain"
+                  loading="eager"
+                  decoding="async"
+                />
+              </span>
+              <span className="text-[15px] font-black lowercase tracking-tight text-zinc-900 dark:text-white">
+                tebnu
+              </span>
             </Link>
             {languageInBrand ? <LanguageSwitcher className="-ms-3" menuAlign="start" /> : null}
             {isDiscoverHome ? (
@@ -1050,15 +1072,10 @@ export function BottomNav() {
                 </div>
               )}
               {!isAdminPage && DesktopCreateButton}
-              {!(isDiscoverHome && discoverHomeMode === "hire") && (
+              {!isAdminPage && !(isDiscoverHome && discoverHomeMode === "hire") && (
               <HeaderSearchToggle
                 open={desktopSearchOpen}
                 onOpenChange={setDesktopSearchOpen}
-                inputClassName={
-                  isAdminPage
-                    ? "bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
-                    : undefined
-                }
               />
               )}
             </div>
@@ -1136,10 +1153,14 @@ export function BottomNav() {
     </header>
   );
 
+  const isAdminUser = Boolean(profile?.is_admin);
   const mobileProfilePhotoHeader = isPublicProfilePage && !mobileSearchOpen;
   const mobileHeaderIconClass = mobileProfilePhotoHeader
     ? publicProfileHeaderGlassIconBtnClass
-    : signedInHeaderIconBtnClass;
+    : isAdminPage
+      ? cn(signedInHeaderIconBtnClass, "h-10 w-10")
+      : signedInHeaderIconBtnClass;
+  const mobileHeaderIconSize = isAdminPage ? "h-6 w-6" : "h-7 w-7";
 
   const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
     <header
@@ -1154,13 +1175,29 @@ export function BottomNav() {
         paddingTop: "var(--app-safe-top, env(safe-area-inset-top, 0px))",
       }}
     >
-      <div className="flex h-16 min-h-16 items-center gap-1 px-2 sm:px-3">
+      <div
+        className={cn(
+          "flex items-center gap-1 px-2 sm:px-3",
+          isAdminPage ? "h-[3.25rem] min-h-[3.25rem]" : "h-16 min-h-16",
+        )}
+      >
         <div
           className={cn(
             "flex min-w-0 items-center gap-0.5",
             isDiscoverHome && !mobileSearchOpen ? "min-w-0 flex-1 justify-start" : "shrink-0",
           )}
         >
+          {isAdminUser ? (
+            <button
+              type="button"
+              onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+              className={mobileHeaderIconClass}
+              aria-label={adminMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={adminMenuOpen}
+            >
+              <Menu className={mobileHeaderIconSize} strokeWidth={2} />
+            </button>
+          ) : null}
           {showCommunityFeedHeaderLeft ? (
               <div className="flex items-center gap-1.5">
               <button
@@ -1181,7 +1218,7 @@ export function BottomNav() {
               }}
               variant="header"
             />
-            ) : !isDiscoverHome ? (
+            ) : !isDiscoverHome && !isAdminUser ? (
             <button
               type="button"
               onClick={handleHeaderBack}
@@ -1234,9 +1271,9 @@ export function BottomNav() {
                 aria-expanded={mobileSearchOpen}
               >
                 {mobileSearchOpen ? (
-                  <X className="h-7 w-7" strokeWidth={2} />
+                  <X className={mobileHeaderIconSize} strokeWidth={2} />
                 ) : (
-                  <Search className="h-7 w-7" strokeWidth={2} />
+                  <Search className={mobileHeaderIconSize} strokeWidth={2} />
                 )}
               </button>
               )}
@@ -1250,7 +1287,7 @@ export function BottomNav() {
                     className={cn("relative", mobileHeaderIconClass)}
                     aria-label="Notifications"
                   >
-                    <Bell className="h-7 w-7" strokeWidth={2} />
+                    <Bell className={mobileHeaderIconSize} strokeWidth={2} />
                     {notificationBadgeCount > 0 ? (
                       <span
                         className="absolute right-1 top-1 z-10 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900"
@@ -1276,7 +1313,7 @@ export function BottomNav() {
             variant="ghost"
             className="justify-start gap-2 w-full"
             onClick={() => {
-              navigate("/");
+              navigate(headerBackHomeFallback);
               setProfileMenuOpen(false);
             }}
           >
@@ -1404,12 +1441,11 @@ export function BottomNav() {
     );
   }
 
-  // User navigation (Client & Freelancer)
+  // Signed-in navigation, including admins. Home opens the discover page.
   if (
-    (profile && !profile.is_admin) ||
-    (!profile &&
-      (location.pathname.startsWith("/client") ||
-        location.pathname.startsWith("/freelancer")))
+    profile ||
+    location.pathname.startsWith("/client") ||
+    location.pathname.startsWith("/freelancer")
   ) {
     const isFreelancer = profile?.role === "freelancer";
 

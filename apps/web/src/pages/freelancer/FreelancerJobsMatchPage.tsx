@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { browserLocationPromptAllowed } from "@/lib/location";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -645,7 +646,7 @@ export default function FreelancerJobsMatchPage() {
   ]);
 
   function useMyLocation() {
-    if (!navigator.geolocation) return;
+    if (!browserLocationPromptAllowed() || !navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {

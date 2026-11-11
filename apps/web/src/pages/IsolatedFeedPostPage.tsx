@@ -2,7 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useParams } from "react-router-dom";
 import { PageFrame } from "@/components/page-frame";
-import { AuthorPostsSidePanel } from "@/components/community/AuthorPostsSidePanel";
+import {
+  AuthorPostsSidePanel,
+  AuthorPostsSidePanelSkeleton,
+} from "@/components/community/AuthorPostsSidePanel";
 import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
 import {
   ProfilePostsFeed,
@@ -37,8 +40,13 @@ export default function IsolatedFeedPostPage({ kind }: { kind: IsolatedKind }) {
   }, [profile]);
 
   const handleFocusedPostResolved = useCallback((post: FeedPost | null) => {
-    setFocusedPost(post);
+    if (post) setFocusedPost(post);
   }, []);
+  const selectedPanelKey = postId
+    ? `post:${postId}`
+    : requestId
+      ? `job_request:${requestId}`
+      : null;
 
   return (
     <PageFrame
@@ -59,8 +67,8 @@ export default function IsolatedFeedPostPage({ kind }: { kind: IsolatedKind }) {
             onOfferHelp={() => openGuestAuthPrompt({ variant: "engage" })}
           />
         ) : null}
-        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
-          <div className={user ? "mx-auto w-full max-w-3xl px-1.5 pb-28 pt-4 md:px-4" : "w-full px-4 pb-10 pt-4 md:px-8"}>
+        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className={user ? "mx-auto w-full max-w-3xl px-1.5 pb-10 pt-4 md:px-4" : "w-full px-4 pb-10 pt-4 md:px-8"}>
             <ProfilePostsFeed
               appearance="discover"
               plainCards
@@ -77,8 +85,12 @@ export default function IsolatedFeedPostPage({ kind }: { kind: IsolatedKind }) {
           </div>
         </main>
 
-        {isTablet && focusedPost ? (
-          <AuthorPostsSidePanel post={focusedPost} />
+        {isTablet ? (
+          focusedPost ? (
+            <AuthorPostsSidePanel post={focusedPost} selectedKey={selectedPanelKey} />
+          ) : (
+            <AuthorPostsSidePanelSkeleton />
+          )
         ) : null}
       </div>
     </PageFrame>

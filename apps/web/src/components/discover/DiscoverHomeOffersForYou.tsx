@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronRight, HelpCircle } from "lucide-react";
+import { ChevronRight, HelpCircle, Star } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { queryKeys } from "@/hooks/data/keys";
 import { fetchDiscoverOffersForYou } from "@/lib/fetchDiscoverOffersForYou";
@@ -60,11 +60,14 @@ export function DiscoverHomeOffersForYou({
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isAdmin = profile?.is_admin === true;
+  const offerLimit = isAdmin ? 200 : 10;
+  const excludeUserId = isAdmin ? null : user?.id;
 
   const { data: offers = [], isLoading } = useQuery({
-    queryKey: queryKeys.discoverOffersForYou(user?.id, 10),
-    queryFn: () => fetchDiscoverOffersForYou(user?.id, 10),
+    queryKey: queryKeys.discoverOffersForYou(excludeUserId, offerLimit),
+    queryFn: () => fetchDiscoverOffersForYou(excludeUserId, offerLimit),
     staleTime: 60_000,
   });
 
@@ -83,7 +86,11 @@ export function DiscoverHomeOffersForYou({
         );
       });
     }
-    return offers.filter((offer) => offer.categoryId === categoryFilter);
+    return offers.filter(
+      (offer) =>
+        (offer.categoryId ?? "").toLowerCase() === categoryFilter ||
+        (offer.customCategory ?? "").toLowerCase() === categoryFilter,
+    );
   }, [offers, categoryFilter, otherSubFilter]);
 
   const openOffer = (postId: string) => {
@@ -130,7 +137,7 @@ export function DiscoverHomeOffersForYou({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-x-5 md:gap-y-6 xl:grid-cols-4">
           {visibleOffers.map((offer) => {
             const postMediaUrl = trimUrl(offer.imageUrl);
             const authorPhotoUrl = trimUrl(offer.authorPhotoUrl);
@@ -197,6 +204,24 @@ export function DiscoverHomeOffersForYou({
                     loading="lazy"
                     decoding="async"
                   />
+                  {offer.budgetLabel || (offer.authorRating != null && offer.authorRating > 0) ? (
+                    <span className="absolute bottom-2.5 end-2.5 z-[2] hidden items-center gap-1.5 md:inline-flex">
+                      {offer.authorRating != null && offer.authorRating > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[15px] font-bold leading-none text-zinc-900 shadow-md">
+                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+                          {offer.authorRating.toFixed(1)}
+                          <span className="font-semibold text-zinc-500">
+                            ({offer.authorRatingCount ?? 0})
+                          </span>
+                        </span>
+                      ) : null}
+                      {offer.budgetLabel ? (
+                        <span className="inline-flex rounded-full bg-orange-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
+                          {offer.budgetLabel}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1 md:px-4 md:pb-4 md:pt-3.5">

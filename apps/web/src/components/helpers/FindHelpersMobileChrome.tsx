@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutGrid, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
-import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
 import {
   OTHER_HELP_SUBCATEGORIES,
@@ -19,82 +18,31 @@ export type FindHelpersQuickFilter =
 
 export type FindHelpersMobilePanel = "none" | "categories" | "location";
 
-/** Box fill matches each badge PNG background. */
-const CATEGORY_TILE: Record<
-  ServiceCategoryId,
-  { idle: string; selected: string }
-> = {
-  cleaning: {
-    idle: "bg-[#aed8ef] text-slate-900 dark:bg-[#aed8ef] dark:text-slate-900",
-    selected: "bg-[#3d8eb8] text-white",
-  },
-  cooking: {
-    idle: "bg-[#fabb97] text-slate-900 dark:bg-[#fabb97] dark:text-slate-900",
-    selected: "bg-[#e07840] text-white",
-  },
-  pickup_delivery: {
-    idle: "bg-[#ddccf5] text-slate-900 dark:bg-[#ddccf5] dark:text-slate-900",
-    selected: "bg-[#8f6fd4] text-white",
-  },
-  nanny: {
-    idle: "bg-[#bbd0b5] text-slate-900 dark:bg-[#bbd0b5] dark:text-slate-900",
-    selected: "bg-[#6a8f5a] text-white",
-  },
-  home_maintenance: {
-    idle: "bg-[#f3d5b5] text-slate-900 dark:bg-[#f3d5b5] dark:text-slate-900",
-    selected: "bg-[#c9955a] text-white",
-  },
-  other_help: {
-    idle: "bg-[#e5dbf6] text-slate-900 dark:bg-[#e5dbf6] dark:text-slate-900",
-    selected: "bg-[#8b6fc7] text-white",
-  },
+/** Unpicked boxes stay neutral. The picked box uses its category color. */
+const CATEGORY_IDLE =
+  "bg-zinc-100 text-slate-900 dark:bg-zinc-800 dark:text-zinc-100";
+
+const CATEGORY_SELECTED: Record<ServiceCategoryId, string> = {
+  cleaning: "bg-[#3d8eb8] text-white",
+  cooking: "bg-[#e07840] text-white",
+  pickup_delivery: "bg-[#8f6fd4] text-white",
+  nanny: "bg-[#6a8f5a] text-white",
+  home_maintenance: "bg-[#c9955a] text-white",
+  other_help: "bg-[#8b6fc7] text-white",
 };
 
-const OTHER_SUBCATEGORY_TILE: Record<string, { idle: string; selected: string }> = {
-  beauty_personal_care: {
-    idle: "bg-[#fad6d2] text-slate-900",
-    selected: "bg-[#d47a72] text-white",
-  },
-  heavy_lifting_moving: {
-    idle: "bg-[#dbcefa] text-slate-900",
-    selected: "bg-[#8f6fd4] text-white",
-  },
-  coaching_lessons: {
-    idle: "bg-[#aad3eb] text-slate-900",
-    selected: "bg-[#3d8eb8] text-white",
-  },
-  shopping_errands: {
-    idle: "bg-[#fdf1e1] text-slate-900",
-    selected: "bg-[#d4a06a] text-white",
-  },
-  pet_help: {
-    idle: "bg-[#fcc19e] text-slate-900",
-    selected: "bg-[#e07840] text-white",
-  },
-  elderly_help: {
-    idle: "bg-[#bbd0b2] text-slate-900",
-    selected: "bg-[#6a8f5a] text-white",
-  },
-  paperwork_bureaucracy: {
-    idle: "bg-[#afc7d4] text-slate-900",
-    selected: "bg-[#5a7d8f] text-white",
-  },
-  event_help: {
-    idle: "bg-[#d7c9ee] text-slate-900",
-    selected: "bg-[#8b6fc7] text-white",
-  },
-  technical_help: {
-    idle: "bg-[#abc2cf] text-slate-900",
-    selected: "bg-[#5a7d8f] text-white",
-  },
-  digital_creative: {
-    idle: "bg-[#afd6e9] text-slate-900",
-    selected: "bg-[#3d8eb8] text-white",
-  },
-  religious_community: {
-    idle: "bg-[#c6d7bf] text-slate-900",
-    selected: "bg-[#6a8f5a] text-white",
-  },
+const OTHER_SUBCATEGORY_SELECTED: Record<string, string> = {
+  beauty_personal_care: "bg-[#d47a72] text-white",
+  heavy_lifting_moving: "bg-[#8f6fd4] text-white",
+  coaching_lessons: "bg-[#3d8eb8] text-white",
+  shopping_errands: "bg-[#d4a06a] text-white",
+  pet_help: "bg-[#e07840] text-white",
+  elderly_help: "bg-[#6a8f5a] text-white",
+  paperwork_bureaucracy: "bg-[#5a7d8f] text-white",
+  event_help: "bg-[#8b6fc7] text-white",
+  technical_help: "bg-[#5a7d8f] text-white",
+  digital_creative: "bg-[#3d8eb8] text-white",
+  religious_community: "bg-[#6a8f5a] text-white",
 };
 
 type FindHelpersMobileChromeProps = {
@@ -103,6 +51,10 @@ type FindHelpersMobileChromeProps = {
   selectedCategories: ReadonlySet<ServiceCategoryId>;
   onToggleCategory: (id: ServiceCategoryId) => void;
   onClearCategories: () => void;
+  onReplaceCategories: (
+    categories: ServiceCategoryId[],
+    otherSubs: string[],
+  ) => void;
   selectedOtherSubs: ReadonlySet<string>;
   onToggleOtherSub: (id: string) => void;
   nameQuery: string;
@@ -130,6 +82,7 @@ export function FindHelpersMobileChrome({
   selectedCategories,
   onToggleCategory,
   onClearCategories,
+  onReplaceCategories,
   selectedOtherSubs,
   onToggleOtherSub,
   nameQuery,
@@ -146,7 +99,27 @@ export function FindHelpersMobileChrome({
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const [otherSheetOpen, setOtherSheetOpen] = useState(false);
+  const [otherSubsOpen, setOtherSubsOpen] = useState(false);
+  const categorySnapshotRef = useRef<{
+    categories: ServiceCategoryId[];
+    otherSubs: string[];
+  } | null>(null);
+  const selectedCategoriesRef = useRef(selectedCategories);
+  const selectedOtherSubsRef = useRef(selectedOtherSubs);
+  selectedCategoriesRef.current = selectedCategories;
+  selectedOtherSubsRef.current = selectedOtherSubs;
+
+  useEffect(() => {
+    if (panel !== "categories") {
+      setOtherSubsOpen(false);
+      return;
+    }
+    categorySnapshotRef.current = {
+      categories: [...selectedCategoriesRef.current],
+      otherSubs: [...selectedOtherSubsRef.current],
+    };
+    setOtherSubsOpen(selectedCategoriesRef.current.has("other_help"));
+  }, [panel]);
 
   useEffect(() => {
     if (!filterMenuOpen) return;
@@ -249,7 +222,7 @@ export function FindHelpersMobileChrome({
             <div className="px-1 pb-2 md:order-2 md:w-72 md:shrink-0 md:px-0 md:pb-0">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
                   aria-hidden
                 />
                 <input
@@ -258,7 +231,7 @@ export function FindHelpersMobileChrome({
                   value={nameQuery}
                   onChange={(e) => onNameQueryChange(e.target.value)}
                   placeholder={t("findHelpersPage.searchByName")}
-                  className="h-11 w-full rounded-2xl bg-zinc-800 pl-10 pr-3 text-[15px] text-white placeholder:text-zinc-500 outline-none"
+                  className="h-11 w-full rounded-2xl bg-zinc-100 pl-10 pr-3 text-[15px] text-zinc-900 outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-white dark:placeholder:text-zinc-500"
                 />
               </div>
             </div>
@@ -300,7 +273,7 @@ export function FindHelpersMobileChrome({
       {panel === "categories" ? (
         <div className="fixed inset-0 z-[220] flex flex-col bg-background">
           <div
-            className="flex items-center justify-between px-2 pb-2"
+            className="relative flex items-center justify-between px-2 pb-2"
             style={{
               paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
             }}
@@ -308,27 +281,26 @@ export function FindHelpersMobileChrome({
             <button
               type="button"
               onClick={() => onPanelChange("none")}
-              className="inline-flex h-11 w-11 items-center justify-center text-foreground"
+              className="relative z-[1] inline-flex h-11 w-11 items-center justify-center text-foreground"
               aria-label={t("common.back")}
             >
               <HeaderBackChevron className="h-8 w-8" />
             </button>
-            <h2 className="text-base font-bold text-foreground">
+            <h2 className="pointer-events-none absolute inset-x-0 bottom-2 flex h-11 items-center justify-center px-28 text-base font-bold text-foreground">
               {t("findHelpersPage.filterCategories")}
             </h2>
             <button
               type="button"
               onClick={onClearCategories}
-              className="px-3 text-[13px] font-semibold text-zinc-400"
+              className="relative z-[1] mr-1 inline-flex h-11 items-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-white"
             >
               {t("findHelpersPage.clear")}
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-3 pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
             <div className="mx-auto grid max-w-4xl grid-cols-2 gap-2.5 md:grid-cols-3">
               {SERVICE_CATEGORIES.map((cat) => {
                 const selected = selectedCategories.has(cat.id);
-                const meta = CATEGORY_TILE[cat.id];
                 const otherCount =
                   cat.id === "other_help" ? selectedOtherSubs.size : 0;
                 return (
@@ -338,15 +310,18 @@ export function FindHelpersMobileChrome({
                     aria-pressed={selected}
                     onClick={() => {
                       if (cat.id === "other_help") {
-                        if (!selected) onToggleCategory("other_help");
-                        setOtherSheetOpen(true);
+                        setOtherSubsOpen((open) => {
+                          const next = !open;
+                          if (next && !selected) onToggleCategory("other_help");
+                          return next;
+                        });
                         return;
                       }
                       onToggleCategory(cat.id);
                     }}
                     className={cn(
                       "relative flex aspect-square w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl p-3 text-center",
-                      selected ? meta.selected : meta.idle,
+                      selected ? CATEGORY_SELECTED[cat.id] : CATEGORY_IDLE,
                     )}
                   >
                     {otherCount > 0 ? (
@@ -354,7 +329,7 @@ export function FindHelpersMobileChrome({
                         {otherCount}
                       </span>
                     ) : null}
-                    <span className="relative isolate block h-16 w-16 overflow-hidden rounded-full">
+                    <span className="relative isolate block h-24 w-24 overflow-hidden rounded-full md:h-28 md:w-28">
                       <img
                         src={categoryIllustrationSrc(cat.id)}
                         alt=""
@@ -378,13 +353,73 @@ export function FindHelpersMobileChrome({
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={() => onPanelChange("none")}
-              className="mt-5 h-12 w-full rounded-2xl bg-orange-500 text-[15px] font-bold text-white"
-            >
-              {t("findHelpersPage.done")}
-            </button>
+            {otherSubsOpen ? (
+              <div className="mx-auto mt-5 max-w-4xl">
+                <p className="mb-3 text-center text-base font-black text-foreground">
+                  {t("findHelpersPage.otherSubcategoriesTitle")}
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+                  {OTHER_HELP_SUBCATEGORIES.map((sub) => {
+                    const subSelected = selectedOtherSubs.has(sub.id);
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        aria-pressed={subSelected}
+                        onClick={() => onToggleOtherSub(sub.id)}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center",
+                          subSelected
+                            ? (OTHER_SUBCATEGORY_SELECTED[sub.id] ??
+                              CATEGORY_SELECTED.other_help)
+                            : CATEGORY_IDLE,
+                        )}
+                      >
+                        <span className="relative isolate block h-20 w-20 overflow-hidden rounded-full md:h-24 md:w-24">
+                          <img
+                            src={categoryIllustrationSrc(sub.id)}
+                            alt=""
+                            className="absolute inset-0 h-full w-full origin-center scale-[1.22] object-cover"
+                          />
+                        </span>
+                        <span className="text-[14px] font-bold leading-snug">
+                          {t(`otherHelpSubcategories.${sub.id}`, {
+                            defaultValue: sub.label,
+                          })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div
+            className="shrink-0 border-t border-border/50 bg-background px-3 pt-3"
+            style={{
+              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+            }}
+          >
+            <div className="mx-auto flex max-w-4xl gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const snap = categorySnapshotRef.current;
+                  if (snap) onReplaceCategories(snap.categories, snap.otherSubs);
+                  onPanelChange("none");
+                }}
+                className="h-12 flex-1 rounded-2xl bg-zinc-100 text-[15px] font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+              >
+                {t("findHelpersPage.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => onPanelChange("none")}
+                className="h-12 flex-1 rounded-2xl bg-orange-500 text-[15px] font-bold text-white"
+              >
+                {t("findHelpersPage.done")}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -412,73 +447,6 @@ export function FindHelpersMobileChrome({
           </div>
           <div className="min-h-0 flex-1 overflow-visible">{locationPanel}</div>
         </div>
-      ) : null}
-
-      {otherSheetOpen ? (
-        <MobileSnapBottomSheet
-          expanded
-          presented
-          hidePeek
-          heightMode="viewport"
-          maxHeight="min(88dvh, 760px)"
-          className="z-[230] md:block md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2"
-          bottomOffsetClass="bottom-0"
-          ariaLabel={t("findHelpersPage.otherSubcategoriesTitle")}
-          onExpandedChange={(next) => {
-            if (!next) setOtherSheetOpen(false);
-          }}
-          onDismiss={() => setOtherSheetOpen(false)}
-        >
-          <div className="px-4 pb-6 pt-2">
-            <div className="mb-4 text-center">
-              <p className="text-base font-black text-foreground">
-                {t("findHelpersPage.otherSubcategoriesTitle")}
-              </p>
-              <p className="mt-1 text-[13px] font-medium text-zinc-400">
-                {t("otherHelpSubcategories.selectLabel")}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              {OTHER_HELP_SUBCATEGORIES.map((sub) => {
-                const selected = selectedOtherSubs.has(sub.id);
-                const meta =
-                  OTHER_SUBCATEGORY_TILE[sub.id] ?? CATEGORY_TILE.other_help;
-                return (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => onToggleOtherSub(sub.id)}
-                    className={cn(
-                      "flex flex-col items-center justify-start gap-2 rounded-2xl p-3.5 text-center",
-                      selected ? meta.selected : meta.idle,
-                    )}
-                  >
-                    <span className="relative isolate block h-14 w-14 overflow-hidden rounded-full">
-                      <img
-                        src={categoryIllustrationSrc(sub.id)}
-                        alt=""
-                        className="absolute inset-0 h-full w-full origin-center scale-[1.22] object-cover"
-                      />
-                    </span>
-                    <span className="text-[13px] font-bold leading-snug">
-                      {t(`otherHelpSubcategories.${sub.id}`, {
-                        defaultValue: sub.label,
-                      })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => setOtherSheetOpen(false)}
-              className="mt-5 h-12 w-full rounded-2xl bg-orange-500 text-[15px] font-bold text-white"
-            >
-              {t("findHelpersPage.done")}
-            </button>
-          </div>
-        </MobileSnapBottomSheet>
       ) : null}
     </>
   );

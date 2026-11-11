@@ -101,6 +101,7 @@ import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminStatisticsPage from "@/pages/admin/AdminStatisticsPage";
 import AdminPostsPage from "@/pages/admin/AdminPostsPage";
 import AdminAiBotPage from "@/pages/admin/AdminAiBotPage";
+import AdminFlaggedPostsPage from "@/pages/admin/AdminFlaggedPostsPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
@@ -285,8 +286,7 @@ function PageLayoutWithHeader() {
   });
   const isMessagesPath =
     pathname === "/messages" || pathname.startsWith("/messages/");
-  const railNarrow =
-    desktopSidePanelCollapsed || isMessagesPath;
+  const railNarrow = desktopSidePanelCollapsed && !isMessagesPath;
   // Sidebar "Explore" opens /community/feed (dedicated /explore routes also count).
   const isExplorePath =
     pathname === "/community/feed" ||
@@ -344,6 +344,7 @@ function PageLayoutWithHeader() {
   return (
     <div className={cn(
       "app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content",
+      isAdminPath && "app-admin-shell",
       /* Light mode: match rail so the padding strip isn't a different color. */
       guestPostDetail && "bg-white dark:bg-[#101214]",
       showRail &&
@@ -825,6 +826,14 @@ function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <AdminAiBotPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/flagged"
+          element={
+            <ProtectedAdminRoute>
+              <AdminFlaggedPostsPage />
             </ProtectedAdminRoute>
           }
         />

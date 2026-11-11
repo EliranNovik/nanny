@@ -14,18 +14,19 @@ import {
   Bot,
   ChevronDown,
   UsersRound,
+  ArrowLeft,
   Home,
   Rss,
   MessageCircle,
   User,
   LogOut,
-  ExternalLink,
   Shield,
   CheckCircle2,
   BarChart3,
   Clock,
   Briefcase,
   Newspaper,
+  X,
 } from "lucide-react";
 import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
@@ -60,29 +61,47 @@ export function DesktopSidePanel() {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { unreadMessages } = useUnreadCounts();
-  const { collapsed } = useDesktopSidePanel();
+  const { collapsed, adminMenuOpen, setAdminMenuOpen } = useDesktopSidePanel();
   const { pathname, search } = useLocation();
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
-  const { showRail, whiteRail } = useAuthenticatedShellLayout({
+
+  useEffect(() => {
+    setAdminMenuOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!adminMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAdminMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [adminMenuOpen, setAdminMenuOpen]);
+  const { showRail, whiteRail, isMdUp } = useAuthenticatedShellLayout({
     pathname,
     search,
     isAdmin: isAdminPage,
   });
   const isMessagesPage =
     pathname === "/messages" || pathname.startsWith("/messages/");
+  /** Admin pages, the mobile drawer, and the desktop messages page: full open sidebar. */
+  const adminDrawer =
+    isAdminPage || (Boolean(profile?.is_admin) && (!isMdUp || isMessagesPage));
   /** Extra clearance under the fixed header on all pages except messages. */
-  const insetFromHeader = !isAdminPage && !isMessagesPage;
-  /** Messages always uses the compact icon-over-label rail. */
-  const iconRail = !isAdminPage && (collapsed || isMessagesPage);
-  const railBg = isAdminPage
-    ? "bg-zinc-100 dark:bg-zinc-950"
+  const insetFromHeader = !adminDrawer && !isMessagesPage;
+  /** Messages on desktop uses the open sidebar. The icon rail is for a collapsed panel elsewhere. */
+  const iconRail = !adminDrawer && !isMessagesPage && collapsed;
+  const railBg = adminDrawer
+    ? "bg-white dark:bg-zinc-900"
     : whiteRail
       ? "bg-white dark:bg-background"
       : "bg-[#F2F2F7] dark:bg-background";
-  const navHover = whiteRail
+  const lightRail = whiteRail || adminDrawer;
+  const navHover = lightRail
     ? "hover:bg-zinc-100 dark:hover:bg-white/10"
     : "hover:bg-white/90 dark:hover:bg-white/10";
-  const navActive = whiteRail
+  const navActive = lightRail
     ? "bg-zinc-100 text-foreground dark:bg-white/10"
     : "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none";
   const navigate = useNavigate();
@@ -208,10 +227,17 @@ export function DesktopSidePanel() {
       icon: Bot,
       activeMatch: (p: string) => p.startsWith("/admin/ai-bot"),
     },
+    {
+      id: "admin-flagged",
+      label: "Flagged by AI",
+      href: "/admin/flagged",
+      icon: Shield,
+      activeMatch: (p: string) => p.startsWith("/admin/flagged"),
+    },
   ];
 
-  const savedProfilesEnabled = Boolean(user?.id) && !isAdminPage;
-  const savedPostsEnabled = Boolean(user?.id) && !isAdminPage;
+  const savedProfilesEnabled = Boolean(user?.id) && !adminDrawer;
+  const savedPostsEnabled = Boolean(user?.id) && !adminDrawer;
 
   const savedProfilesShort = useMemo(() => savedProfiles.slice(0, 8), [savedProfiles]);
   const savedPostsShort = useMemo(() => savedPosts.slice(0, 8), [savedPosts]);
@@ -326,7 +352,7 @@ export function DesktopSidePanel() {
   // After all hooks: decide whether to render.
   if (!user || !profile) return null;
   if (isDesktopSidePanelExcludedRoute(pathname)) return null;
-  if (!isAdminPage && !showRail) return null;
+  if (!adminDrawer && !showRail) return null;
 
   if (iconRail) {
     return (
@@ -515,12 +541,12 @@ export function DesktopSidePanel() {
             </span>
           </button>
           <Link
-            to="/"
+            to={homeHref}
             className="flex w-full flex-col items-center gap-1 px-0.5 py-1.5 text-zinc-500 transition-colors hover:text-zinc-800 hover:opacity-90 dark:text-zinc-400 dark:hover:text-zinc-100"
-            aria-label={t("messagesPage.goHome")}
-            title={t("messagesPage.goHome")}
+            aria-label={t("common.home")}
+            title={t("common.home")}
           >
-            <ExternalLink className="h-5 w-5 shrink-0" strokeWidth={2.15} />
+            <Home className="h-5 w-5 shrink-0" strokeWidth={2.15} />
             <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
               {t("common.home")}
             </span>
@@ -531,12 +557,54 @@ export function DesktopSidePanel() {
   }
 
   return (
+    <>
+    {adminDrawer ? (
+      <div
+        className={cn(
+          "fixed inset-0 z-[205] bg-black/40 transition-opacity duration-300 md:hidden",
+          adminMenuOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setAdminMenuOpen(false)}
+        aria-hidden
+      />
+    ) : null}
     <aside
       className={cn(
         "app-desktop-side-panel flex flex-col border-0 shadow-none",
         railBg,
+        adminDrawer &&
+          "app-admin-side-panel rounded-e-3xl transition-transform duration-300 ease-out max-md:z-[206] max-md:shadow-2xl md:overflow-hidden",
+        adminDrawer &&
+          !adminMenuOpen &&
+          "max-md:pointer-events-none max-md:-translate-x-full max-md:rtl:translate-x-full",
       )}
     >
+      {isAdminPage ? (
+        <Link
+          to={homeHref}
+          className="hidden shrink-0 items-center gap-3 px-6 pb-1 pt-4 text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10 md:flex"
+        >
+          <Home className="h-6 w-6 shrink-0 text-zinc-400" strokeWidth={2.15} />
+          <span className="text-[13px] font-semibold leading-none tracking-tight">
+            {t("common.home")}
+          </span>
+        </Link>
+      ) : null}
+      {adminDrawer ? (
+        <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-4 md:hidden">
+          <span className="text-sm font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Admin
+          </span>
+          <button
+            type="button"
+            onClick={() => setAdminMenuOpen(false)}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
+            aria-label="Close menu"
+          >
+            <X className="h-6 w-6" strokeWidth={2.15} />
+          </button>
+        </div>
+      ) : null}
       {/* Independent scroll: panel content scrolls without moving the page */}
       <div
         className={cn(
@@ -547,7 +615,7 @@ export function DesktopSidePanel() {
 
         <div className="mt-2 flex flex-col">
           <nav className="flex w-full flex-col items-stretch gap-1">
-            {items.map((it) => {
+            {items.filter((it) => !(isAdminPage && isMdUp && it.id === "home")).map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
               const isProfileRow = it.id === "profile";
@@ -641,10 +709,8 @@ export function DesktopSidePanel() {
                       to={it.href}
                       className={cn(
                         "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
-                        "hover:bg-white/90 dark:hover:bg-white/10",
-                        active
-                          ? "bg-white text-foreground shadow-sm dark:bg-white/10 dark:shadow-none"
-                          : "text-zinc-800 dark:text-zinc-100",
+                        navHover,
+                        active ? navActive : "text-zinc-800 dark:text-zinc-100",
                       )}
                       title={it.label}
                     >
@@ -678,7 +744,7 @@ export function DesktopSidePanel() {
             </div>
           )}
 
-          <div className={cn("mt-auto pt-4", isAdminPage && "hidden")}>
+          <div className={cn("mt-auto pt-4", adminDrawer && "hidden")}>
               {/* Saved profiles */}
               <button
                 type="button"
@@ -800,7 +866,20 @@ export function DesktopSidePanel() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 border-t border-border/10 p-3">
+      <div className="flex shrink-0 flex-col gap-1 border-t border-border/10 p-3">
+        {isAdminPage ? (
+          <Link
+            to={homeHref}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+            aria-label={t("common.back")}
+          >
+            <ArrowLeft className="h-6 w-6 shrink-0 text-zinc-400 rtl-flip-icon" strokeWidth={2.15} />
+            <span className="truncate text-[13px] font-semibold leading-none tracking-tight">
+              {t("common.back")}
+            </span>
+          </Link>
+        ) : null}
+        <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={async () => {
@@ -817,16 +896,20 @@ export function DesktopSidePanel() {
             {t("common.logOut")}
           </span>
         </button>
+        {adminDrawer ? null : (
         <Link
-          to="/"
+          to={homeHref}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-black/[0.04] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100"
-          aria-label={t("messagesPage.goHome")}
-          title={t("messagesPage.goHome")}
+          aria-label={t("common.home")}
+          title={t("common.home")}
         >
-          <ExternalLink className="h-5 w-5" strokeWidth={2.15} />
+          <Home className="h-5 w-5" strokeWidth={2.15} />
         </Link>
+        )}
+        </div>
       </div>
     </aside>
+    </>
   );
 }
 

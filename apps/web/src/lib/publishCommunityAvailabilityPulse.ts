@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { reviewImages, saveQualityFlag, screenPost } from "@/lib/qualityReview";
 import {
   buildAvailabilityDisplayTitle,
   computeExpiresAtIsoFromStatus,
@@ -86,6 +87,17 @@ export async function publishCommunityAvailabilityPulse(
     area_tag: area || null,
   };
 
+  const images = input.imageFile ? await reviewImages([input.imageFile]) : [];
+  const screen = await screenPost({
+    postType: "availability",
+    title,
+    text: noteTrim,
+    images,
+  });
+  if (screen.blockedNote) {
+    return { ok: false, error: new Error(screen.blockedNote) };
+  }
+
   const { data: post, error: insErr } = await supabase
     .from("community_posts")
     .insert({
@@ -103,6 +115,9 @@ export async function publishCommunityAvailabilityPulse(
 
   if (insErr) return { ok: false, error: insErr };
   const postId = post.id as string;
+  if (screen.reviewId) {
+    await saveQualityFlag(screen.reviewId, { communityPostId: postId });
+  }
 
   const file = input.imageFile;
   if (file) {

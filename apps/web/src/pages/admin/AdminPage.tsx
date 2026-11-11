@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import {
   Briefcase,
   Users,
-  BarChart3,
   MessageSquare,
   CheckCircle2,
   Eye,
@@ -25,6 +24,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { getJobStageBadge } from "@/lib/jobStages";
 import { apiGet, apiPost } from "@/lib/api";
@@ -368,14 +368,14 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page admin-overview-page admin-overview-workspace min-h-screen bg-zinc-100 pb-6 dark:bg-zinc-950 md:pb-8">
-      <div className="admin-overview-content w-full px-4 py-6 lg:px-6 xl:px-8">
+      <div className="admin-overview-content w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
 
         {/* Statistics Cards */}
         {statistics && (
-          <div className="admin-kpi-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="admin-kpi-grid admin-summary-carousel grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <Card className="relative rounded-2xl">
               <CardHeader className="absolute right-0 top-0 p-5">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
@@ -442,35 +442,46 @@ export default function AdminPage() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="admin-overview-tabs w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="jobs">
-              <Briefcase className="w-4 h-4 mr-2" />
-              Jobs
-            </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="w-4 h-4 mr-2" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="statistics">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Statistics
-            </TabsTrigger>
-            <TabsTrigger value="reports">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Reports
-              {reports.filter((r) => r.unread_count > 0).length > 0 && (
-                <Badge className="ml-2" variant="destructive">
-                  {reports.filter((r) => r.unread_count > 0).length}
-                </Badge>
-              )}
-            </TabsTrigger>
+          <TabsList className="inline-flex h-auto w-auto justify-start gap-1 bg-transparent p-0">
+            {(
+              [
+                ["jobs", "Jobs"],
+                ["users", "Users"],
+                ["statistics", "Statistics"],
+                ["reports", "Reports"],
+              ] as const
+            ).map(([value, label]) => {
+              const unread =
+                value === "reports"
+                  ? reports.filter((report) => report.unread_count > 0).length
+                  : 0;
+              return (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className={cn(
+                    "rounded-xl bg-transparent px-3 py-2 text-xl font-extrabold tracking-tight text-zinc-400 shadow-none ring-0 transition-colors hover:text-zinc-600",
+                    "data-[state=active]:bg-transparent data-[state=active]:text-zinc-900 data-[state=active]:underline data-[state=active]:decoration-orange-500 data-[state=active]:decoration-2 data-[state=active]:underline-offset-8 data-[state=active]:shadow-none",
+                    "dark:text-zinc-500 dark:hover:text-zinc-300 dark:data-[state=active]:text-zinc-50",
+                    "sm:text-3xl",
+                  )}
+                >
+                  {label}
+                  {unread > 0 ? (
+                    <span className="ms-2 rounded-full bg-orange-500 px-1.5 py-0.5 text-xs font-bold text-white no-underline">
+                      {unread}
+                    </span>
+                  ) : null}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <TabsContent value="jobs" className="admin-overview-tab mt-6">
             <div className="admin-overview-table-panel overflow-hidden rounded-2xl bg-white dark:bg-zinc-900">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-6 py-3 dark:border-zinc-800">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 max-md:flex-col max-md:items-stretch md:px-6">
                 <h2 className="text-lg font-bold">Jobs overview</h2>
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="admin-filter-carousel flex flex-wrap items-center justify-end gap-2 max-md:-mx-4 max-md:px-4">
                   <input
                     type="date"
                     value={jobsDateFrom}

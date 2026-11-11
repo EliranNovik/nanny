@@ -14,6 +14,8 @@ interface UserSearchProps {
   inputClassName?: string;
   size?: "default" | "lg";
   placeholder?: string;
+  /** Open the results beside the field, lined up with it, instead of underneath. */
+  resultsBeside?: boolean;
 }
 
 export function UserSearch({
@@ -24,6 +26,7 @@ export function UserSearch({
   onResultSelect,
   size = "default",
   placeholder = "Search anything...",
+  resultsBeside = false,
 }: UserSearchProps) {
   const isLarge = size === "lg";
   const [query, setQuery] = useState("");
@@ -86,7 +89,7 @@ export function UserSearch({
       ref={searchRef}
       className={cn(
         "group relative w-full",
-        !isLarge && "max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
+        isLarge ? "mx-auto max-w-xl" : "max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
         className,
       )}
     >
@@ -114,7 +117,7 @@ export function UserSearch({
           className={cn(
             "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isLarge
-              ? "h-16 rounded-2xl border border-zinc-200 bg-white pl-14 pr-12 text-[17px] text-zinc-900 shadow-[0_6px_24px_rgba(15,23,42,0.07)] placeholder:text-zinc-400 focus:border-orange-300 focus:shadow-[0_8px_30px_rgba(249,115,22,0.14)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-orange-500/50"
+              ? "h-16 rounded-full border-0 bg-zinc-100 pl-14 pr-12 text-[17px] text-zinc-900 shadow-none placeholder:text-zinc-400 focus:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
               : isInline
               ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
               : "h-11 rounded-2xl border-0 bg-zinc-100 pl-10 pr-10 shadow-none text-zinc-900 placeholder:text-zinc-500 focus:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:bg-zinc-700",
@@ -138,13 +141,17 @@ export function UserSearch({
       {showPanel && (
         <div
           className={cn(
-            "absolute left-[-20px] right-[-20px] sm:left-0 sm:right-0 top-full z-[100] mt-3 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
-            "rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]",
-            "max-h-[min(80vh,32rem)] overflow-y-auto"
+            resultsBeside
+              ? "absolute start-full top-0 z-[100] ms-3 w-[min(22rem,calc(100vw-18rem))] rounded-2xl shadow-lg animate-in fade-in slide-in-from-left-2 duration-200"
+              : isLarge
+                ? "absolute inset-x-0 top-full z-[100] mt-2 rounded-3xl shadow-lg"
+                : "absolute inset-x-0 top-full z-[100] mt-2 w-full rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
+            "overflow-hidden border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950",
+            "max-h-[min(70vh,28rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           )}
         >
           <div className="p-2.5">
-            {loading ? (
+            {loading && results.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
                 <p className="text-xs font-medium text-slate-400 animate-pulse">Searching the community...</p>
@@ -154,15 +161,24 @@ export function UserSearch({
                 {/* Visual grouping of results */}
                 {(() => {
                   const groups: Record<string, SmartResult[]> = {};
+                  const groupOrder = ["Offers", "Events", "Posts", "People", "Pages", "Recent"];
                   results.forEach(r => {
-                    const groupName = r.kind === "recent" ? "Recent" : (r.kind === "person" ? "People" : "Suggestions");
+                    const groupName =
+                      r.kind === "recent" ? "Recent" :
+                      r.kind === "person" ? "People" :
+                      r.kind === "offer" ? "Offers" :
+                      r.kind === "event" ? "Events" :
+                      r.kind === "post" ? "Posts" :
+                      "Pages";
                     if (!groups[groupName]) groups[groupName] = [];
                     groups[groupName].push(r);
                   });
 
-                  return Object.entries(groups).map(([groupName, groupItems]) => (
+                  return groupOrder.filter((name) => groups[name]?.length).map((groupName) => {
+                    const groupItems = groups[groupName];
+                    return (
                     <div key={groupName} className="space-y-1">
-                      <h3 className="px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400/80 mb-1.5">
+                      <h3 className="px-3 pb-1 pt-2 text-sm font-semibold tracking-wide text-zinc-500">
                         {groupName}
                       </h3>
                       {groupItems.map(item => (
@@ -175,7 +191,8 @@ export function UserSearch({
                         />
                       ))}
                     </div>
-                  ));
+                  );
+                  });
                 })()}
               </div>
             ) : (
@@ -187,19 +204,10 @@ export function UserSearch({
                   {hasQuery ? `No results for "${query}"` : "Try searching for..."}
                 </p>
                 <p className="text-xs text-slate-400 max-w-[200px] mx-auto leading-relaxed">
-                  {hasQuery ? "Try checking your spelling or search for categories like 'Cleaning'" : "Search for people, categories like 'Nanny', or pages like 'Messages'"}
+                  {hasQuery ? "Try a name, an offer, or an event" : "Search offers, events, posts, and people"}
                 </p>
               </div>
             )}
-          </div>
-          
-          {/* Subtle footer */}
-          <div className="px-5 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
-             <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Smart Search v2</span>
-             <div className="flex gap-1.5">
-                <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-[9px] font-bold bg-white dark:bg-zinc-800 text-slate-400 shadow-sm">ESC</kbd>
-                <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-[9px] font-bold bg-white dark:bg-zinc-800 text-slate-400 shadow-sm">↵</kbd>
-             </div>
           </div>
         </div>
       )}

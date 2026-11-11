@@ -1,8 +1,34 @@
 import { supabase } from "@/lib/supabase";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { mediaUrl as optimizedMediaUrl } from "@/lib/imageTransform";
+import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { withProfilePostTranslationOverlays } from "@/lib/profilePostTranslations";
 import type { ProfilePostTranslationOverlay } from "@/lib/profilePostTranslations";
+
+const preloadedImageRatios = new Map<string, number>();
+
+/** Start a detail-page image early and remember its ratio for the first paint. */
+export function preloadProfilePostImage(src: string | null | undefined) {
+  if (!src || typeof window === "undefined") return;
+  const img = new Image();
+  img.decoding = "async";
+  const remember = () => {
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    if (width > 0 && height > 0) preloadedImageRatios.set(src, width / height);
+  };
+  img.onload = remember;
+  img.src = src;
+  if (img.complete) remember();
+}
+
+export function preloadedProfilePostImageRatio(
+  src: string | null | undefined,
+): number | null {
+  if (!src) return null;
+  return preloadedImageRatios.get(src) ?? null;
+}
 
 type ProfileSnippet = {
   id: string;
@@ -71,6 +97,15 @@ export async function fetchProfilePostById(
     authorId: row.author_id,
     mediaType: row.media_type,
   });
+
+  // Start the hero image while author, counts, and translations are still loading
+  // so the detail page does not paint the text and then jump the photo in later.
+  if (typeof window !== "undefined" && row.media_type === "image" && row.storage_path) {
+    const heroSrc = optimizedMediaUrl.hero(
+      publicProfileMediaPublicUrl(row.storage_path as string),
+    );
+    if (heroSrc) preloadProfilePostImage(heroSrc);
+  }
 
   const taggedIds = (row.tagged_user_ids as string[]) ?? [];
   const authorId = row.author_id as string;

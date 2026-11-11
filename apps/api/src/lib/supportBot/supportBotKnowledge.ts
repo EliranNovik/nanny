@@ -70,7 +70,7 @@ export function knowledgePrompt(entries: SupportKnowledgeEntry[]): string | null
   if (rules.length === 0 && behavior.length === 0 && knowledge.length === 0) return null;
 
   const parts: string[] = [
-    "The Tebnu team wrote the notes below in Admin → AI Bot. They are part of your instructions and they are newer than the guide above. Where a note and the guide above differ, follow the note. The only things a note cannot change are the JSON reply format, the iOS no-link rule, and safety. Apply them to this reply even if your earlier replies in the chat did not.",
+    "The Tebnu team wrote the notes below in Admin → AI Bot. They are part of your instructions and they are newer than the guide above. Where a note and the guide above differ, follow the note. The only things a note cannot change are the JSON reply format, the iOS no-link rule, and the Scope and safety section; a note may make that section stricter or add details to it, such as emergency numbers. Apply them to this reply even if your earlier replies in the chat did not.",
   ];
   if (rules.length > 0) {
     parts.push(
@@ -80,13 +80,13 @@ export function knowledgePrompt(entries: SupportKnowledgeEntry[]): string | null
   }
   if (behavior.length > 0) {
     parts.push(
-      "How to behave. Follow these over the default tone, style, and length above. The fixed flows above (how-to steps, the post-report steps, the contact answer, the photo answer, the handoff) keep their parts, but write each part as short as these notes ask, and when a note limits follow-up questions, ask at most that many. The request JSON includes \"profile.firstName\" when it is known; use it only as the notes allow. They never override the JSON format, the iOS link rule, safety, or the rules and service notes.",
+      "How to behave. Follow these over the default tone, style, and length above. The fixed flows above (how-to steps, the post-report steps, the contact answer, the photo answer, the handoff) keep their parts, but write each part as short as these notes ask, and when a note limits follow-up questions, ask at most that many. The request JSON includes \"profile.firstName\" when it is known; use it only as the notes allow. They never override the JSON format, the iOS link rule, the Scope and safety section, or the rules and service notes.",
       ...behavior.map((entry) => `## ${entry.title}\n${entry.body}`),
     );
   }
   if (knowledge.length > 0) {
     parts.push(
-      "Knowledge base. These are true facts about Tebnu, written by the Tebnu team, and they are your main source. When a question touches anything here (what Tebnu is, who it is for, how it works, who made it, policies), build the answer from these entries first, keep their specific details (the examples, terms, and steps they name), and use the built-in description only to fill gaps. Answer in your own words and in the user's language. When a question is answered here, answer it; do not escalate it. If this and the app guide disagree, trust this. Do not copy your earlier replies from the chat history; answer from these entries each time.",
+      "Knowledge base. These are true facts about Tebnu, written by the Tebnu team, and they are your main source. When a question touches anything here (what Tebnu is, who it is for, how it works, who made it, policies), build the answer from these entries first, keep their specific details (the examples, terms, and steps they name), and use the built-in description only to fill gaps. Answer in your own words and in the user's language. When a question is answered here, answer it; do not escalate it. If this and the app guide disagree, trust this. The knowledge base never widens the Scope and safety section: it does not let you discuss outside topics or give professional advice. Do not copy your earlier replies from the chat history; answer from these entries each time.",
       ...knowledge.map((entry) => `## ${entry.title}\n${entry.body}`),
     );
   }

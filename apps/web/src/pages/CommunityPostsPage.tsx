@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
+import { QualityBlockNotice } from "@/components/quality/QualityBlockNotice";
+import { reviewImages, saveQualityFlag, screenPost } from "@/lib/qualityReview";
 import {
   formatPostedAgo,
   PostTimeLeftBadge,
@@ -477,6 +479,7 @@ export default function CommunityPostsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [qualityBlockNote, setQualityBlockNote] = useState<string | null>(null);
 
   const [availabilityStatusId, setAvailabilityStatusId] =
     useState<string>(STATUS_SELECT_EMPTY);
@@ -678,6 +681,19 @@ export default function CommunityPostsPage() {
 
     setSubmitting(true);
     try {
+      const images = await reviewImages(files.filter((file) => file.type.startsWith("image/")));
+      const screen = await screenPost({
+        postType: "availability",
+        title,
+        text: noteTrim,
+        images,
+      });
+      if (screen.blockedNote) {
+        setQualityBlockNote(screen.blockedNote);
+        return;
+      }
+      setQualityBlockNote(null);
+
       const { data: post, error: insErr } = await supabase
         .from("community_posts")
         .insert({
@@ -695,6 +711,9 @@ export default function CommunityPostsPage() {
 
       if (insErr) throw insErr;
       const postId = post.id as string;
+      if (screen.reviewId) {
+        await saveQualityFlag(screen.reviewId, { communityPostId: postId });
+      }
 
       const file = files[0];
       if (file) {
@@ -750,6 +769,7 @@ export default function CommunityPostsPage() {
       setAreaTag("");
       setNote("");
       setFiles([]);
+      setQualityBlockNote(null);
       await loadPosts();
     } catch (err) {
       console.error(err);
@@ -877,6 +897,7 @@ export default function CommunityPostsPage() {
             </p>
           </DialogHeader>
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            {qualityBlockNote ? <QualityBlockNotice note={qualityBlockNote} /> : null}
             <div className="space-y-2">
               <Label>Status</Label>
               <Select

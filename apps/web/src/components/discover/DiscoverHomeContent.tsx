@@ -1,5 +1,6 @@
 import { useToast } from "@/components/ui/toast";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { DiscoverHomeActionFirst } from "@/components/discover/DiscoverHomeActionFirst";
@@ -18,9 +19,18 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
   const { addToast } = useToast();
   const isClient = role === "client";
-  const [homeMode, setHomeMode] = useState<DiscoverHomeIntent>(() =>
-    readDiscoverHomeIntent(isClient ? "hire" : "work"),
-  );
+  const [searchParams] = useSearchParams();
+  const homeFromUrl = searchParams.get("home");
+  const [homeMode, setHomeMode] = useState<DiscoverHomeIntent>(() => {
+    if (homeFromUrl === "hire" || homeFromUrl === "work") return homeFromUrl;
+    return readDiscoverHomeIntent(isClient ? "hire" : "work");
+  });
+
+  useEffect(() => {
+    if (homeFromUrl === "hire" || homeFromUrl === "work") {
+      setHomeMode((prev) => (prev === homeFromUrl ? prev : homeFromUrl));
+    }
+  }, [homeFromUrl]);
 
   useEffect(() => {
     return subscribeDiscoverHomeIntent((m) => {

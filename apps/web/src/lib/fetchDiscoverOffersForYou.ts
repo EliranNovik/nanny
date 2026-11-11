@@ -19,12 +19,17 @@ export type DiscoverOfferForYou = {
   locationLabel: string | null;
   locationLat: number | null;
   locationLng: number | null;
+  budgetLabel: string | null;
+  authorRating: number | null;
+  authorRatingCount: number | null;
 };
 
 type ProfileRow = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
+  average_rating: number | null;
+  total_ratings: number | null;
 };
 
 type ProfilePostRow = {
@@ -56,6 +61,16 @@ function generatedTitle(raw: unknown): string | null {
   return null;
 }
 
+function offerBudgetLabel(meta: Record<string, unknown> | null): string | null {
+  if (!meta) return null;
+  const raw = meta.rate ?? meta.budget;
+  const amount = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const rateType = typeof meta.rate_type === "string" ? meta.rate_type : null;
+  const suffix = rateType === "per_hour" || rateType === "hourly" ? "/hr" : "";
+  return `₪${amount}${suffix}`;
+}
+
 function categoryFromMeta(
   meta: Record<string, unknown> | null,
   customCategory: string | null,
@@ -82,7 +97,7 @@ export async function fetchDiscoverOffersForYou(
     )
     .eq("post_type_id", "offer_service")
     .order("created_at", { ascending: false })
-    .limit(Math.max(1, Math.min(limit + 4, 24)));
+    .limit(Math.max(1, Math.min(limit + 4, 500)));
 
   if (excludeUserId) {
     query = query.neq("author_id", excludeUserId);
@@ -102,7 +117,7 @@ export async function fetchDiscoverOffersForYou(
   if (authorIds.length > 0) {
     const { data: profiles, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, photo_url")
+      .select("id, full_name, photo_url, average_rating, total_ratings")
       .in("id", authorIds);
     if (profileError) {
       console.warn("[fetchDiscoverOffersForYou] profiles", profileError);
@@ -129,6 +144,10 @@ export async function fetchDiscoverOffersForYou(
       categoryLabel;
     const profile = profileMap.get(row.author_id);
     const authorName = firstName(profile?.full_name) || "Member";
+    const ratingRaw = profile?.average_rating;
+    const ratingNum = typeof ratingRaw === "number" ? ratingRaw : Number(ratingRaw);
+    const countRaw = profile?.total_ratings;
+    const countNum = typeof countRaw === "number" ? countRaw : Number(countRaw);
     const hasImage =
       row.media_type === "image" && Boolean(row.storage_path?.trim());
     const imageUrl = hasImage
@@ -162,6 +181,9 @@ export async function fetchDiscoverOffersForYou(
       locationLabel,
       locationLat: Number.isFinite(lat) ? lat : null,
       locationLng: Number.isFinite(lng) ? lng : null,
+      budgetLabel: offerBudgetLabel(meta),
+      authorRating: Number.isFinite(ratingNum) && ratingNum > 0 ? ratingNum : null,
+      authorRatingCount: Number.isFinite(countNum) ? countNum : null,
     });
   }
 

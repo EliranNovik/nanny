@@ -142,7 +142,7 @@ export function MobileSmartSearchOverlay({
           paddingRight: "max(0.4rem, env(safe-area-inset-right))",
         }}
       >
-        {loading ? (
+        {loading && results.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-sm font-medium text-muted-foreground animate-pulse">Searching...</p>
@@ -159,7 +159,7 @@ export function MobileSmartSearchOverlay({
 
               return Object.entries(groups).map(([groupName, groupItems]) => (
                 <section key={groupName} className="space-y-1">
-                  <h2 className="px-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2">
+                  <h2 className="px-3 text-sm font-semibold tracking-wide text-muted-foreground mb-2">
                     {groupName}
                   </h2>
                   <div className="flex flex-col gap-1">

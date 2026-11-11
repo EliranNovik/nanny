@@ -7,6 +7,9 @@ type DesktopSidePanelContextValue = {
   setFeedPanelOpen: (open: boolean) => void;
   profilePanelOpen: boolean;
   setProfilePanelOpen: (open: boolean) => void;
+  /** Mobile admin drawer (hamburger in the mobile header). */
+  adminMenuOpen: boolean;
+  setAdminMenuOpen: (open: boolean) => void;
 };
 
 const DesktopSidePanelContext =
@@ -14,6 +17,7 @@ const DesktopSidePanelContext =
 
 export function DesktopSidePanelProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [feedPanelOpen, setFeedPanelOpenState] = useState(
     () => localStorage.getItem("tebnu_feed_side_panel_open") !== "false",
   );
@@ -36,8 +40,10 @@ export function DesktopSidePanelProvider({ children }: { children: ReactNode }) 
       setFeedPanelOpen,
       profilePanelOpen,
       setProfilePanelOpen,
+      adminMenuOpen,
+      setAdminMenuOpen,
     }),
-    [collapsed, feedPanelOpen, profilePanelOpen],
+    [collapsed, feedPanelOpen, profilePanelOpen, adminMenuOpen],
   );
   return (
     <DesktopSidePanelContext.Provider value={value}>
@@ -58,6 +64,8 @@ export function useDesktopSidePanel() {
       setFeedPanelOpen: () => {},
       profilePanelOpen: true,
       setProfilePanelOpen: () => {},
+      adminMenuOpen: false,
+      setAdminMenuOpen: () => {},
     }
   );
 }

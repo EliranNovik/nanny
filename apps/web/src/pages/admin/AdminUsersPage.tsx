@@ -243,7 +243,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="admin-page admin-table-page min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-10">
-      <div className="w-full px-4 py-6 lg:px-6 xl:px-8">
+      <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
@@ -261,7 +261,7 @@ export default function AdminUsersPage() {
 
         {/* Filter controls */}
         <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-0">
-          <div className="relative col-span-1 lg:col-span-2">
+          <div className="relative col-span-full md:col-span-1 lg:col-span-2">
             <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
@@ -272,6 +272,7 @@ export default function AdminUsersPage() {
             />
           </div>
 
+          <div className="admin-filter-carousel col-span-full -mx-2 px-2 md:mx-0 md:px-0 md:contents">
           <div>
             <select
               value={roleFilter}
@@ -309,6 +310,7 @@ export default function AdminUsersPage() {
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </select>
+          </div>
           </div>
         </div>
 

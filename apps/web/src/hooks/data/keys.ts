@@ -24,8 +24,8 @@ export const queryKeys = {
   discoverFeed: () => [...queryKeys.communityFeed, "discover"] as const,
   discoverLiveAvatars: (excludeUserId?: string | null) =>
     [...queryKeys.communityFeed, "avatars", excludeUserId ?? "all"] as const,
-  discoverOpenHelpRequests: (excludeUserId?: string | null) =>
-    [...queryKeys.jobs, "discoverOpen", excludeUserId ?? "none"] as const,
+  discoverOpenHelpRequests: (excludeUserId?: string | null, limit = 8) =>
+    [...queryKeys.jobs, "discoverOpen", excludeUserId ?? "none", limit] as const,
 
   /** Get help mobile — offer_service posts for the "Offers for you" carousel. */
   discoverOffersForYou: (excludeUserId?: string | null, limit = 10) =>
@@ -70,6 +70,7 @@ export const queryKeys = {
     filterLikedByUserId?: string | null;
     filterPostTypeId?: string | null;
     filterPostTypeIds?: string[] | null;
+    includeAvailability?: boolean;
     filterCommentedOwnPosts?: boolean;
     filterAcceptedRequests?: boolean;
     feedWhen?: string | null;
@@ -95,6 +96,7 @@ export const queryKeys = {
       opts.filterLikedByUserId ?? "",
       opts.filterPostTypeId ?? "",
       opts.filterPostTypeIds?.join(",") ?? "",
+      opts.includeAvailability ? "avail" : "",
       opts.filterCommentedOwnPosts ? "commented" : "",
       opts.filterAcceptedRequests ? "accepted" : "",
       opts.feedWhen ?? "",
