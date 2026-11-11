@@ -37,6 +37,21 @@ qualityRouter.post("/review", async (req, res) => {
   }
   try {
     const review = await reviewPost({ userId, ...parsed.data });
+    if (review.decision === "block") {
+      const { error } = await supabaseAdmin.from("quality_post_flags").insert({
+        profile_post_id: null,
+        community_post_id: null,
+        author_id: userId,
+        title: review.postTitle || null,
+        excerpt:
+          review.postExcerpt ||
+          review.reasons.map((reason) => reason.detail).join(" ").slice(0, 280) ||
+          null,
+        reasons: review.reasons,
+        outcome: "block",
+      });
+      if (error) console.error("[Quality] Blocked post was not saved:", error.message);
+    }
     res.json(review);
   } catch (err) {
     const message = err instanceof SupportBotError ? err.message : "Quality review failed";
@@ -78,6 +93,7 @@ qualityRouter.post("/flag", async (req, res) => {
     title: review.postTitle || null,
     excerpt: review.postExcerpt || review.reasons.map((reason) => reason.detail).join(" ").slice(0, 280),
     reasons: review.reasons,
+    outcome: "flag",
   });
   if (error) {
     console.error("[Quality] Flag save failed:", error.message);

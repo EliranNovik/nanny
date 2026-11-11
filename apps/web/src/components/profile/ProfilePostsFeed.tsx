@@ -6584,7 +6584,7 @@ function PostCard({
                     <h3
                       className={cn(
                         "flex items-center gap-2 font-bold leading-snug text-foreground",
-                        isolateFocusedPost ? "text-[19px]" : "text-base",
+                        isolateFocusedPost ? "text-[19px]" : "text-[15px]",
                         displayPostTitleLayout?.className,
                       )}
                       dir={displayPostTitleLayout?.dir}
@@ -6681,7 +6681,7 @@ function PostCard({
                       <h3
                         className={cn(
                           "flex items-center gap-2 font-bold leading-snug text-foreground",
-                          isolateFocusedPost ? "text-[19px]" : "text-base",
+                          isolateFocusedPost ? "text-[19px]" : "text-[15px]",
                           displayPostTitleLayout?.className,
                         )}
                         dir={displayPostTitleLayout?.dir}

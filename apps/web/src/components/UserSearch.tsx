@@ -142,7 +142,7 @@ export function UserSearch({
         <div
           className={cn(
             resultsBeside
-              ? "absolute start-full top-0 z-[100] ms-3 w-[min(22rem,calc(100vw-18rem))] rounded-2xl shadow-lg animate-in fade-in slide-in-from-left-2 duration-200"
+              ? "absolute start-full top-0 z-[100] ms-3 w-[min(36rem,calc(100vw-22rem))] rounded-2xl shadow-lg animate-in fade-in slide-in-from-left-2 duration-200"
               : isLarge
                 ? "absolute inset-x-0 top-full z-[100] mt-2 rounded-3xl shadow-lg"
                 : "absolute inset-x-0 top-full z-[100] mt-2 w-full rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)]",

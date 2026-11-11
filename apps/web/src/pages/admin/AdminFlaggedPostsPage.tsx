@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Shield, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 type FlagReason = {
   category?: string;
@@ -19,6 +20,7 @@ type FlagRow = {
   title: string | null;
   excerpt: string | null;
   reasons: FlagReason[];
+  outcome: "flag" | "block";
   created_at: string;
   authorName: string;
 };
@@ -26,6 +28,7 @@ type FlagRow = {
 export default function AdminFlaggedPostsPage() {
   const { addToast } = useToast();
   const [rows, setRows] = useState<FlagRow[]>([]);
+  const [tab, setTab] = useState<"flag" | "block">("flag");
   const [loading, setLoading] = useState(true);
   const [tableMissing, setTableMissing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -33,7 +36,7 @@ export default function AdminFlaggedPostsPage() {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from("quality_post_flags")
-      .select("id, profile_post_id, community_post_id, author_id, title, excerpt, reasons, created_at")
+      .select("id, profile_post_id, community_post_id, author_id, title, excerpt, reasons, outcome, created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) {
@@ -41,7 +44,12 @@ export default function AdminFlaggedPostsPage() {
       setLoading(false);
       return;
     }
-    const flags = (data ?? []) as Omit<FlagRow, "authorName">[];
+    const flags = ((data ?? []) as Array<Omit<FlagRow, "authorName" | "outcome"> & { outcome?: string }>).map(
+      (row) => ({
+        ...row,
+        outcome: row.outcome === "block" ? ("block" as const) : ("flag" as const),
+      }),
+    );
     const authorIds = [...new Set(flags.map((row) => row.author_id))];
     const names = new Map<string, string>();
     if (authorIds.length > 0) {
@@ -62,14 +70,20 @@ export default function AdminFlaggedPostsPage() {
     void load();
   }, [load]);
 
+  const visibleRows = rows.filter((row) => row.outcome === tab);
+
   const remove = async (row: FlagRow) => {
     if (removingId) return;
-    if (!window.confirm("Remove this post from Tebnu?")) return;
+    const blocked = row.outcome === "block";
+    if (!window.confirm(blocked ? "Clear this blocked attempt?" : "Remove this post from Tebnu?")) return;
     setRemovingId(row.id);
     try {
       await apiPost(`/api/admin/quality-flags/${row.id}/remove`, {});
       setRows((prev) => prev.filter((item) => item.id !== row.id));
-      addToast({ title: "Post removed", variant: "success" });
+      addToast({
+        title: row.outcome === "block" ? "Cleared" : "Post removed",
+        variant: "success",
+      });
     } catch (err) {
       addToast({
         title: "Could not remove it",
@@ -84,25 +98,53 @@ export default function AdminFlaggedPostsPage() {
   return (
     <div className="admin-page min-h-screen bg-zinc-100 pb-10 dark:bg-zinc-950 md:h-[calc(100dvh-4rem)] md:min-h-0 md:overflow-y-auto">
       <div className="w-full px-2 py-6 md:px-4 lg:px-6 xl:px-8">
-        <h1 className="mb-2 flex items-center gap-2 text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-          <Shield className="h-8 w-8 text-sky-600" /> Flagged by AI
-        </h1>
+        <nav className="mb-5 flex items-center gap-1" aria-label="Flagged posts">
+          {(
+            [
+              ["flag", "Flagged"],
+              ["block", "Blocked"],
+            ] as const
+          ).map(([id, label]) => {
+            const selected = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                aria-current={selected ? "page" : undefined}
+                className={cn(
+                  "rounded-xl px-3 py-2 text-xl font-extrabold tracking-tight transition-colors sm:text-3xl",
+                  selected
+                    ? "text-zinc-900 underline decoration-2 underline-offset-8 dark:text-zinc-50"
+                    : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300",
+                  selected && id === "flag" && "decoration-orange-500",
+                  selected && id === "block" && "decoration-sky-600",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </nav>
         <p className="mb-6 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-          Posts the quality manager was unsure about. They are already visible. Remove one here if it should not stay up.
+          {tab === "block"
+            ? "Stopped before they were shared."
+            : "Already visible. Remove one if it should not stay up."}
         </p>
 
         {tableMissing ? (
           <div className="rounded-2xl bg-white p-6 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-            Run <code className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">db/sql/159_quality_manager.sql</code> in
-            the Supabase SQL editor, then reload.
+            Run <code className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">db/sql/159_quality_manager.sql</code> and{" "}
+            <code className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">db/sql/162_quality_blocked_posts.sql</code>{" "}
+            in the Supabase SQL editor, then reload.
           </div>
         ) : loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
           </div>
-        ) : rows.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div className="rounded-2xl bg-white px-6 py-12 text-center text-sm text-zinc-500 dark:bg-zinc-900">
-            Nothing is waiting for a look.
+            {tab === "block" ? "No blocked posts yet." : "Nothing is waiting for a look."}
           </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl bg-white dark:bg-zinc-900">
@@ -117,12 +159,16 @@ export default function AdminFlaggedPostsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {visibleRows.map((row) => (
                   <tr key={row.id} className="border-t border-zinc-100 align-top dark:border-zinc-800">
                     <td className="whitespace-nowrap px-4 py-3 text-zinc-500">
                       {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
                       <div className="mt-1 text-[11px] uppercase tracking-wider">
-                        {row.community_post_id ? "Availability" : "Post"}
+                        {row.outcome === "block"
+                          ? "Blocked"
+                          : row.community_post_id
+                            ? "Availability"
+                            : "Post"}
                       </div>
                     </td>
                     <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{row.authorName}</td>
@@ -154,7 +200,7 @@ export default function AdminFlaggedPostsPage() {
                         ) : (
                           <Trash2 className="h-4 w-4" />
                         )}
-                        Remove
+                        {row.outcome === "block" ? "Dismiss" : "Remove"}
                       </button>
                     </td>
                   </tr>
