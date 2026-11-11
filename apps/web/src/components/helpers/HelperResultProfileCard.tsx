@@ -51,15 +51,13 @@ function cityCountryLabel(raw: string | null | undefined): string | null {
     .filter(Boolean);
   if (parts.length === 0) return null;
   const city = parts[0];
-  const country = parts
-    .slice(1)
-    .filter(
-      (part) =>
-        !/district|county|region|province|governorate|prefecture|oblast|department|округ|район|область|מחוז|נפה/i.test(
-          part,
-        ),
-    )
-    .at(-1);
+  const rest = parts.slice(1).filter(
+    (part) =>
+      !/district|county|region|province|governorate|prefecture|oblast|department|округ|район|область|מחוז|נפה/i.test(
+        part,
+      ),
+  );
+  const country = rest[rest.length - 1];
   if (!country || country.localeCompare(city, undefined, { sensitivity: "accent" }) === 0) {
     return city;
   }
@@ -81,9 +79,6 @@ type Slide = { key: string; kind: "image" | "video"; src: string };
 /** Round action — frosted glass (no ring; shadow + blur define the edge) */
 const coloredGlassRoundBtn =
   "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg backdrop-blur-2xl transition-all hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
-
-const mediaGlassArrowBtn =
-  "hidden md:inline-flex absolute top-1/2 z-20 h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-xl backdrop-saturate-150 ring-1 ring-inset ring-white/15 transition-colors hover:bg-black/60 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 supports-[backdrop-filter]:bg-black/35";
 
 function buildSlides(
   photoUrl: string | null,
