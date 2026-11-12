@@ -60,6 +60,7 @@ import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpReq
 import { registerDiscoverHomeQuickMoreOpener } from "@/lib/discoverHomeQuickMoreBridge";
 import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
+import { requestMobileSmartSearchOpen } from "@/lib/mobileSmartSearchBridge";
 import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
@@ -626,8 +627,8 @@ export function DiscoverHomeActionFirst({
           }}
           className={cn(
             "flex h-12 flex-1 items-center justify-center rounded-xl",
-            "bg-white text-orange-700 shadow-sm",
-            "transition-colors hover:bg-orange-50 active:scale-[0.98]",
+            "bg-orange-600 text-white shadow-sm",
+            "transition-colors hover:bg-orange-700 active:scale-[0.98]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-600",
           )}
           aria-label={t("discover.postRequest")}
@@ -683,8 +684,8 @@ export function DiscoverHomeActionFirst({
           }}
           className={cn(
             "flex h-12 flex-1 items-center justify-center rounded-xl",
-            "bg-white text-emerald-800 shadow-sm",
-            "transition-colors hover:bg-emerald-50 active:scale-[0.98]",
+            "bg-emerald-600 text-white shadow-sm",
+            "transition-colors hover:bg-emerald-700 active:scale-[0.98]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700",
           )}
           aria-label={
@@ -694,7 +695,7 @@ export function DiscoverHomeActionFirst({
           }
         >
           <Radio className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-          <span className="ms-2 text-sm font-semibold">Go live</span>
+          <span className="ms-2 text-sm font-semibold">Available now</span>
         </button>
         <button
           type="button"
@@ -934,6 +935,7 @@ export function DiscoverHomeActionFirst({
 
   /** Desktop hero overlay: My requests / My offers, bottom-aligned with action buttons. */
   function renderHeroMyContentSummary() {
+    const hasOwn = isHire ? myRequestsCount > 0 : myOfferCategoryIds.length > 0;
     return (
       <div
         className={cn(
@@ -942,15 +944,19 @@ export function DiscoverHomeActionFirst({
         )}
       >
         <DiscoverHomeMyLiveHelpJobs mode={isHire ? "hire" : "work"} variant="hero" />
-        {isHire
-          ? renderMyContentSummaryCard("requests")
-          : renderMyContentSummaryCard("offers")}
+        {hasOwn
+          ? isHire
+            ? renderMyContentSummaryCard("requests")
+            : renderMyContentSummaryCard("offers")
+          : null}
       </div>
     );
   }
 
   /** Mobile: section below hero — title on page background, box underneath. */
   function renderMobileMyContentSummary() {
+    const hasOwn = isHire ? myRequestsCount > 0 : myOfferCategoryIds.length > 0;
+    if (!hasOwn) return null;
     const kind = isHire ? "requests" : "offers";
     const title = isHire ? "My requests" : "My offers";
     const titleClass = isHire
@@ -1032,7 +1038,13 @@ export function DiscoverHomeActionFirst({
     >
       {renderQuickActionDockMobile()}
       <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
-        <section className="relative mx-1.5 mt-1 h-[260px] overflow-hidden rounded-2xl bg-zinc-900 shadow-sm ring-1 ring-black/5">
+        <section
+          className={cn(
+            "relative mx-1.5 mt-1.5 overflow-visible rounded-2xl bg-zinc-900 shadow-sm ring-1 ring-black/5",
+            isHire ? "h-[268px]" : "h-[280px]",
+          )}
+        >
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
           <img
             src={
               isHire
@@ -1045,10 +1057,29 @@ export function DiscoverHomeActionFirst({
             {...{ fetchpriority: "high" }}
           />
           <div className="absolute inset-0 z-[5] bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-3 z-10 flex flex-col gap-2.5">
+          <div className="absolute inset-x-0 top-0 z-[6] h-16 bg-gradient-to-b from-black/40 to-transparent" />
+          </div>
+          <div className="absolute inset-x-0 top-2.5 z-20 flex items-center justify-between gap-2 px-3">
+            {renderHeroModeSwitch()}
+            {!isHire ? (
+              <button
+                type="button"
+                onClick={() => requestMobileSmartSearchOpen()}
+                className="flex h-10 w-10 items-center justify-center justify-self-end rounded-full bg-black/25 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] backdrop-blur-md"
+                aria-label={t("common.openSearch", { defaultValue: "Search" })}
+              >
+                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <div className="absolute inset-x-0 bottom-2.5 z-10 flex flex-col gap-2">
             <div className="px-4">
-              <div className="mb-3">{renderHeroModeSwitch()}</div>
-              <h1 className="max-w-[15.5rem] text-[1.55rem] font-semibold leading-[1.15] tracking-[-0.02em] text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.35)]">
+              <h1
+                className={cn(
+                  "text-[1.55rem] font-semibold leading-[1.15] tracking-[-0.02em] text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.35)]",
+                  isHire ? "max-w-[15.5rem]" : "max-w-none",
+                )}
+              >
                 {isHire
                   ? "A little help, nearby"
                   : "Someone nearby needs your help"}
@@ -1059,6 +1090,17 @@ export function DiscoverHomeActionFirst({
               : renderMobileWorkActionButtons()}
           </div>
         </section>
+        {isHire ? (
+          <div className="px-4 pt-3">
+            <UserSearch
+              size="lg"
+              guideId="search"
+              placeholder="Search offers, events, or people…"
+              className="mx-0 w-full max-w-none"
+              inputClassName="h-12 border border-black/[0.04] bg-zinc-100 text-[15px] shadow-none focus:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:focus:bg-zinc-900"
+            />
+          </div>
+        ) : null}
         {renderMobileMyContentSummary()}
 
         {isHire ? (

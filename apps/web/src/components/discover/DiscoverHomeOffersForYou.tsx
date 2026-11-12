@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronRight, HelpCircle, Star } from "lucide-react";
+import { ChevronRight, Star } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { queryKeys } from "@/hooks/data/keys";
 import { fetchDiscoverOffersForYou } from "@/lib/fetchDiscoverOffersForYou";
@@ -15,13 +15,7 @@ import {
   listingCityPart,
   localizedListingTitle,
 } from "@/lib/localizedListingCopy";
-import {
-  HIRE_CATEGORY_TILE_UI,
-  OTHER_HELP_SUBCATEGORY_UI,
-  categoryIllustrationSrc,
-  resolveHelpCategoryIconId,
-} from "@/lib/discoverCategoryTileIcons";
-import { isServiceCategoryId } from "@/lib/serviceCategories";
+import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
 import type { DiscoverHomeCategoryFilter, DiscoverHomeListingSort, DiscoverHomeListingFilters } from "@/lib/discoverHomeCategoryFilter";
 import { matchesListingFilters, EMPTY_LISTING_FILTERS } from "@/lib/discoverHomeCategoryFilter";
 import { cn } from "@/lib/utils";
@@ -50,23 +44,6 @@ function HomeListingCardSkeleton({ tone }: { tone: "orange" | "emerald" }) {
       </div>
     </div>
   );
-}
-
-function OfferCategoryIcon({
-  categoryId,
-  customCategory,
-  className,
-}: {
-  categoryId: string | null;
-  customCategory?: string | null;
-  className?: string;
-}) {
-  const id = resolveHelpCategoryIconId(categoryId, customCategory);
-  const ui =
-    (id ? OTHER_HELP_SUBCATEGORY_UI[id] : null) ??
-    (id && isServiceCategoryId(id) ? HIRE_CATEGORY_TILE_UI[id] : null);
-  const Icon = ui?.Icon ?? HelpCircle;
-  return <Icon className={className} aria-hidden />;
 }
 
 function trimUrl(value: string | null | undefined): string | null {
@@ -274,14 +251,15 @@ export function DiscoverHomeOffersForYou({
               listingCityPart(offer.locationLabel),
             );
             const freeTextTitle = offer.caption?.trim() || "";
-            const offerTitle =
+            const offerTitle = (
               freeTextTitle ||
               localizedListingTitle(t, {
                 kind: "offer",
                 categoryLabel: feedCategoryLabel(t, offer.categoryId, offer.customCategory),
                 location: localizedLocation,
               }) ||
-              offer.title;
+              offer.title
+            ).replace(/\s+/g, " ").trim();
             const locationLine = localizedLocation
               ? km != null
                 ? t("discover.offerLocationFromYou", {
@@ -301,12 +279,12 @@ export function DiscoverHomeOffersForYou({
                 type="button"
                 onClick={() => openOffer(offer.id)}
                 className={cn(
-                  "group flex w-full items-center gap-3 overflow-hidden rounded-[20px] p-0 pe-3 text-left md:h-auto md:flex-col md:items-stretch md:gap-0 md:self-stretch md:pe-0",
+                  "group flex w-full items-center gap-2.5 overflow-hidden rounded-[20px] p-0 pe-2 text-left md:h-auto md:flex-col md:items-stretch md:gap-0 md:self-stretch md:pe-0",
                   "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
-                <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
+                <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
                   <img
                     src={listingImageUrl}
                     alt=""
@@ -334,33 +312,15 @@ export function DiscoverHomeOffersForYou({
                   ) : null}
                 </div>
 
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col md:px-4 md:pb-4 md:pt-3.5">
-                  <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-orange-700 dark:text-orange-400 sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-orange-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-orange-500/15">
-                    <OfferCategoryIcon
-                      categoryId={offer.categoryId}
-                      customCategory={offer.customCategory}
-                      className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5"
-                    />
-                    <span className="truncate">
-                      {feedCategoryLabel(t, offer.categoryId, offer.customCategory)}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
+                <div className="flex min-h-0 w-0 min-w-0 flex-1 basis-0 flex-col justify-center md:w-auto md:px-4 md:pb-4 md:pt-3.5">
+                  <p className="line-clamp-2 w-full break-normal text-[15px] font-bold leading-snug text-zinc-900 [overflow-wrap:normal] [word-break:normal] dark:text-white md:text-[16px]">
                     {offerTitle}
                   </p>
-                  <div className="md:mt-auto md:pt-2">
-                    <p
-                      className={cn(
-                        "truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px] md:min-h-[1.15rem]",
-                        !locationLine && "max-md:hidden",
-                      )}
-                    >
-                      {locationLine || "\u00a0"}
-                    </p>
-                    <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-[13px]">
-                      {offer.authorName} • {timeAgo}
-                    </p>
-                  </div>
+                  <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-500 dark:text-zinc-400 md:text-[13px]">
+                    {[locationLine, feedCategoryLabel(t, offer.categoryId, offer.customCategory), timeAgo]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                 </div>
 
                 <ChevronRight

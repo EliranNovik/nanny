@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
+import { Check, ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -112,7 +112,7 @@ function NearbyRequestRow({
     row.service_type,
     helpCategoryIdFromServiceDetails(row.service_details),
   );
-  const title = openHelpRequestTitle(row, t);
+  const title = openHelpRequestTitle(row, t).replace(/\s+/g, " ").trim();
   const schedule = openHelpRequestScheduleLine(row);
   const author = row.client_display_name?.trim() || "Member";
   const timeAgo = row.created_at
@@ -143,9 +143,9 @@ function NearbyRequestRow({
           onOpen();
         }
       }}
-      className="group flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] bg-white p-0 pe-3 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0 shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
+      className="group flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-[20px] bg-white p-0 pe-2 text-left md:flex-col md:items-stretch md:gap-0 md:pe-0 shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-emerald-500/70 focus-visible:ring-offset-2 dark:bg-[#1d1f21] dark:shadow-none"
     >
-      <div className="relative h-[112px] w-[112px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
+      <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
         <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]" loading="lazy" />
         {budgetLabel || clientRating != null ? (
           <span className="absolute bottom-2.5 end-2.5 z-[2] hidden items-center gap-1.5 md:inline-flex">
@@ -166,19 +166,19 @@ function NearbyRequestRow({
           </span>
         ) : null}
       </div>
-      <div className="min-w-0 flex-1 md:px-4 md:pt-3.5">
-        <p className="truncate text-[15px] font-semibold text-emerald-700 dark:text-emerald-400 sm:text-[13px] md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-emerald-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-emerald-500/15">
+      <div className="min-w-0 w-0 flex-1 basis-0 md:w-auto md:px-4 md:pt-3.5">
+        <p className="truncate text-[12px] font-semibold text-emerald-700 dark:text-emerald-400 md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-emerald-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-emerald-500/15">
           {category}
         </p>
-        <p className="mt-0.5 line-clamp-2 text-[18px] font-bold leading-snug text-zinc-900 dark:text-white sm:text-[16px]">
+        <p className="mt-0.5 line-clamp-2 w-full break-normal text-[15px] font-bold leading-snug text-zinc-900 [overflow-wrap:normal] [word-break:normal] dark:text-white md:text-[16px]">
           {title}
         </p>
         {schedule ? (
-          <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+          <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400 dark:text-zinc-500 md:text-[13px]">
             {schedule}
           </p>
         ) : null}
-        <p className="mt-0.5 truncate text-[15px] font-medium text-zinc-400 dark:text-zinc-500 sm:text-[13px]">
+        <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400 dark:text-zinc-500 md:text-[13px]">
           {author}{timeAgo ? ` • ${timeAgo}` : ""}
         </p>
       </div>
@@ -190,8 +190,9 @@ function NearbyRequestRow({
             event.stopPropagation();
             onAccept();
           }}
+          aria-label={accepted ? "Accepted" : "Accept"}
           className={cn(
-            "inline-flex h-10 min-w-[88px] items-center justify-center rounded-full px-4 text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default md:min-w-0 md:flex-[2]",
+            "inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default md:h-10 md:w-auto md:min-w-0 md:flex-[2] md:px-4",
             accepted
               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
               : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
@@ -199,10 +200,11 @@ function NearbyRequestRow({
         >
           {accepting ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : accepted ? (
-            "Accepted"
           ) : (
-            "Accept"
+            <>
+              <Check className="h-5 w-5 md:hidden" strokeWidth={2.75} aria-hidden />
+              <span className="hidden md:inline">{accepted ? "Accepted" : "Accept"}</span>
+            </>
           )}
         </button>
         <button
@@ -211,7 +213,7 @@ function NearbyRequestRow({
             event.stopPropagation();
             onOpen();
           }}
-          className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white px-3.5 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-50 active:scale-[0.97] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="hidden h-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white px-3.5 text-sm font-extrabold text-zinc-800 transition hover:bg-zinc-50 active:scale-[0.97] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 md:inline-flex"
         >
           {t("common.more")}
         </button>

@@ -34,7 +34,7 @@ export function BottomNavHomeIcon({
   );
 }
 
-/** Feed — filled when active, outline when inactive. */
+/** Feed — a post card. Filled when active, outline when inactive. */
 export function BottomNavFeedIcon({
   active = false,
   className,
@@ -49,40 +49,37 @@ export function BottomNavFeedIcon({
       aria-hidden
     >
       {active ? (
-        <>
-          <circle cx="5.18" cy="18.82" r="2.18" fill="currentColor" />
-          <path
-            fill="currentColor"
-            d="M3 10.2v3.18c4.55 0 8.62 4.07 8.62 8.62H14.8C14.8 15.4 8.6 10.2 3 10.2z"
-          />
-          <path
-            fill="currentColor"
-            d="M3 4v3.18C12.05 7.18 19.82 14.95 19.82 24H23C23 13.18 13.82 4 3 4z"
-          />
-        </>
+        <path
+          fill="currentColor"
+          fillRule="evenodd"
+          d="M7.2 3.2h9.6a4 4 0 0 1 4 4v9.6a4 4 0 0 1-4 4H7.2a4 4 0 0 1-4-4V7.2a4 4 0 0 1 4-4zM6.85 8.3a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 0 0-2.5 0zm3.85-.575h5.9a.575.575 0 0 1 0 1.15h-5.9a.575.575 0 0 1 0-1.15zM6.5 11.55h11a.6.6 0 0 1 0 1.2h-11a.6.6 0 0 1 0-1.2zm0 3.4h7.3a.6.6 0 0 1 0 1.2h-7.3a.6.6 0 0 1 0-1.2z"
+        />
       ) : (
         <>
+          <rect
+            x="3.2"
+            y="3.2"
+            width="17.6"
+            height="17.6"
+            rx="4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.85}
+          />
           <circle
-            cx="5.18"
-            cy="18.82"
-            r="1.85"
+            cx="8.1"
+            cy="8.3"
+            r="1.25"
             fill="none"
             stroke="currentColor"
-            strokeWidth={1.85}
+            strokeWidth={1.7}
           />
           <path
+            d="M11.1 8.3h5.6M6.6 12.15h10.8M6.6 15.55h7.2"
             fill="none"
             stroke="currentColor"
-            strokeWidth={1.85}
+            strokeWidth={1.7}
             strokeLinecap="round"
-            d="M3 10.5v2.9c4.2 0 7.6 3.4 7.6 7.6H13.5C13.5 15.4 8.6 10.5 3 10.5z"
-          />
-          <path
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.85}
-            strokeLinecap="round"
-            d="M3 4.2v2.9C11.6 7.1 18.9 14.4 18.9 23h2.9C21.8 12.9 13.1 4.2 3 4.2z"
           />
         </>
       )}
@@ -126,7 +123,7 @@ export function BottomNavHeartIcon({
 }
 
 const MESSAGES_BUBBLE_PATH =
-  "M7 5.25h10a2.25 2.25 0 0 1 2.25 2.25v6.75A2.25 2.25 0 0 1 17 16.5h-2.65l-1.35 2.25-1.35-2.25H7A2.25 2.25 0 0 1 4.75 14.25V7.5A2.25 2.25 0 0 1 7 5.25z";
+  "M12 3.35c4.75 0 8.6 3.22 8.6 7.2 0 3.97-3.85 7.2-8.6 7.2-.68 0-1.34-.07-1.97-.2l-3.4 2.15a.62.62 0 0 1-.94-.66l.68-2.48C4.22 15.28 3.4 13.38 3.4 10.55 3.4 6.57 7.25 3.35 12 3.35z";
 
 /** Profile — filled when active, outline when inactive. */
 export function BottomNavProfileIcon({
@@ -192,13 +189,28 @@ export function BottomNavMessagesTabIcon({
       className={cn("shrink-0", className)}
       aria-hidden
     >
-      <path
-        d={MESSAGES_BUBBLE_PATH}
-        fill={active ? "currentColor" : "none"}
-        stroke={active ? "none" : "currentColor"}
-        strokeWidth={active ? 0 : 1.85}
-        strokeLinejoin="round"
-      />
+      {active ? (
+        <path
+          fill="currentColor"
+          fillRule="evenodd"
+          d={`${MESSAGES_BUBBLE_PATH}M8.1 10.55a.95.95 0 1 0 1.9 0 .95.95 0 0 0-1.9 0zm2.95 0a.95.95 0 1 0 1.9 0 .95.95 0 0 0-1.9 0zm2.95 0a.95.95 0 1 0 1.9 0 .95.95 0 0 0-1.9 0z`}
+        />
+      ) : (
+        <>
+          <path
+            d={MESSAGES_BUBBLE_PATH}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            strokeLinejoin="round"
+          />
+          <g fill="currentColor">
+            <circle cx="9.05" cy="10.55" r="0.9" />
+            <circle cx="12" cy="10.55" r="0.9" />
+            <circle cx="14.95" cy="10.55" r="0.9" />
+          </g>
+        </>
+      )}
     </svg>
   );
 }

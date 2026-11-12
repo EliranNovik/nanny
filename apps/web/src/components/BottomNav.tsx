@@ -74,14 +74,16 @@ import {
 } from "@/components/nav/BottomNavTabGlyphs";
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
-import { DiscoverHomeMobileHeaderRight } from "@/components/discover/DiscoverHomeMobileHeaderRight";
 import { GlobalFeedMobileTebnuMenu } from "@/components/community/GlobalFeedMobileTebnuMenu";
+import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import {
   readDiscoverHomeIntent,
   subscribeDiscoverHomeIntent,
+  writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
+import { registerMobileSmartSearchOpener } from "@/lib/mobileSmartSearchBridge";
 import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
   publicProfileHeaderGlassIconBtnClass,
@@ -307,7 +309,8 @@ export function BottomNav() {
     pathnameNorm === "/messages" ||
     pathnameNorm.startsWith("/messages/") ||
     isHelpersFindPage ||
-    (isFreelancerJobsMatch && !matchSearchChromeVisible);
+    (isFreelancerJobsMatch && !matchSearchChromeVisible) ||
+    isDiscoverHome;
   const isMessagesDesktopRoute =
     pathnameNorm === "/messages" || pathnameNorm.startsWith("/messages/");
   const hideDesktopAppHeader = isMessagesDesktopRoute;
@@ -385,6 +388,11 @@ export function BottomNav() {
 
   useEffect(() => {
     return subscribeDiscoverHomeIntent(setDiscoverHomeMode);
+  }, []);
+
+  useEffect(() => {
+    registerMobileSmartSearchOpener(() => setMobileSearchOpen(true));
+    return () => registerMobileSmartSearchOpener(null);
   }, []);
 
   useEffect(() => {
@@ -1312,6 +1320,14 @@ export function BottomNav() {
               </button>
               <GlobalFeedMobileTebnuMenu viewerUserId={viewerId!} />
               </div>
+            ) : isDiscoverHome && !mobileSearchOpen ? (
+            <DiscoverHomeModeSegmentedControl
+              mode={discoverHomeMode}
+              onModeChange={(m) => {
+                void writeDiscoverHomeIntent(m);
+              }}
+              variant="header"
+            />
             ) : !isDiscoverHome && !isAdminUser ? (
             <button
               type="button"
@@ -1343,6 +1359,7 @@ export function BottomNav() {
 
         <div className="flex shrink-0 items-center gap-0.5">
           {discoverHomeFixedChrome ? (
+            discoverHomeMode === "hire" ? null : (
             <>
               <button
                 type="button"
@@ -1352,8 +1369,8 @@ export function BottomNav() {
               >
                 <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
-              <DiscoverHomeMobileHeaderRight />
             </>
+            )
           ) : (
             <>
               {isPublicProfilePage ? null : (

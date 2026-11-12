@@ -54,11 +54,11 @@ export default function IsolatedFeedPostPage({ kind }: { kind: IsolatedKind }) {
       frameName="isolated-feed-post"
       data-guest-post-detail={!user ? "" : undefined}
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden",
+        "flex min-h-0 flex-1 flex-col overflow-hidden max-md:!min-h-0 md:h-full",
         !user && "bg-white dark:bg-[#101214]",
       )}
     >
-      <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-white dark:bg-[#101214]">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white dark:bg-[#101214] md:flex-row">
         {!user ? (
           <GuestCommunityFeedAside
             expanded
@@ -67,7 +67,7 @@ export default function IsolatedFeedPostPage({ kind }: { kind: IsolatedKind }) {
             onOfferHelp={() => openGuestAuthPrompt({ variant: "engage" })}
           />
         ) : null}
-        <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <main className="min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className={user ? "mx-auto w-full max-w-3xl px-1.5 pb-10 pt-4 md:px-4" : "w-full px-4 pb-10 pt-4 md:px-8"}>
             <ProfilePostsFeed
               appearance="discover"

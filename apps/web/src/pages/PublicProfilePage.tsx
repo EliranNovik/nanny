@@ -2513,7 +2513,7 @@ export default function PublicProfilePage() {
         </div>
 
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
-          <div className="relative z-10 bg-transparent py-1">
+          <div className="relative z-10 bg-white py-1 dark:bg-background">
             <div className="relative mx-auto grid h-11 w-full max-w-sm grid-cols-4 items-center p-1">
               <div
                 className={cn(

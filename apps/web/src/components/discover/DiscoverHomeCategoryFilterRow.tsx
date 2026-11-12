@@ -143,7 +143,7 @@ export function DiscoverHomeCategoryFilterRow({
     >
       <div
         className={cn(
-          "aspect-square w-full overflow-hidden rounded-[1.35rem] shadow-sm md:rounded-full",
+          "aspect-square w-full overflow-hidden rounded-full shadow-sm",
           active && filterAccent.selectedRing,
         )}
       >
@@ -164,7 +164,7 @@ export function DiscoverHomeCategoryFilterRow({
     <div className={cn("min-w-0 w-full", className)}>
       <div
         id="discover-home-category-filters"
-        className="flex flex-wrap items-start gap-x-3 gap-y-4 md:gap-x-5"
+        className="flex items-start gap-x-3 gap-y-4 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] md:flex-wrap md:gap-x-5 md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden"
       >
         {MAIN_FILTER_ITEMS.map((item) => (
           renderMainButton(
@@ -189,7 +189,7 @@ export function DiscoverHomeCategoryFilterRow({
             >
               <div
                 className={cn(
-                  "flex aspect-square w-full items-center justify-center rounded-[1.35rem] shadow-sm md:rounded-full",
+                  "flex aspect-square w-full items-center justify-center rounded-full shadow-sm",
                   moreActive || moreOpen ? filterAccent.allSelected : filterAccent.allIdle,
                 )}
               >
@@ -225,7 +225,7 @@ export function DiscoverHomeCategoryFilterRow({
           >
             <div
               className={cn(
-                "flex aspect-square w-full items-center justify-center rounded-[1.35rem] shadow-sm md:rounded-full",
+                "flex aspect-square w-full items-center justify-center rounded-full shadow-sm",
                 moreActive || moreOpen ? filterAccent.allSelected : filterAccent.allIdle,
               )}
             >
@@ -250,7 +250,7 @@ export function DiscoverHomeCategoryFilterRow({
       </div>
 
       {moreOpen ? (
-        <div className="mt-4 flex flex-wrap gap-x-3 gap-y-3 border-t border-border/40 pt-4 md:gap-x-4">
+        <div className="mt-4 flex gap-x-3 gap-y-3 overflow-x-auto overscroll-x-contain border-t border-border/40 pt-4 [scrollbar-width:none] md:flex-wrap md:gap-x-4 md:overflow-visible [&::-webkit-scrollbar]:hidden">
           {OTHER_HELP_SUBCATEGORIES.map((sub) => {
             const active = selected === "other_help" && otherSubFilter === sub.id;
             return (
@@ -267,7 +267,7 @@ export function DiscoverHomeCategoryFilterRow({
               >
                 <div
                   className={cn(
-                    "aspect-square w-full overflow-hidden rounded-2xl shadow-sm md:rounded-full",
+                    "aspect-square w-full overflow-hidden rounded-full shadow-sm",
                     active && filterAccent.selectedRing,
                   )}
                 >

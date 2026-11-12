@@ -665,6 +665,12 @@
 
   /* Mobile inbox list matches the black chat thread. Desktop keeps the panel grey. */
   @media (max-width: 767.98px) {
+    [data-messages-page] {
+      --messages-bg: #ffffff;
+      --messages-surface: #ffffff;
+      --messages-muted: #ffffff;
+    }
+
     .dark [data-messages-page] {
       --messages-bg: #000000;
       --messages-surface: #000000;
@@ -1249,6 +1255,11 @@
       margin-top: 0;
     }
 
+    /* Discover home: no mobile header — the hero switch sits at the top of the page. */
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
+      padding-top: var(--app-safe-top);
+    }
+
     .app-content-below-fixed-header:has([data-public-profile-page]) {
       padding-top: 0;
     }
@@ -1293,9 +1304,10 @@
   }
 
   /*
-   * Post detail: the page itself does not scroll. The post column and the
-   * author panel each scroll on their own, so moving one leaves the other put.
+   * Desktop post detail: the page itself does not scroll. The post column and
+   * the author panel each scroll on their own.
    */
+  @media (min-width: 768px) {
   html:has([data-page-frame="isolated-feed-post"]),
   html:has([data-page-frame="isolated-feed-post"]) body {
     overflow: hidden;
@@ -1327,7 +1339,6 @@
     margin-bottom: 0;
   }
 
-  /* The rounded card sits between the rail offset and the post. Give it the remaining height so the post column can scroll. */
   .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-main-card {
     display: flex;
     min-height: 0;
@@ -1336,6 +1347,7 @@
     flex: 1 1 auto;
     flex-direction: column;
     overflow: hidden;
+  }
   }
 
   /*
@@ -1910,6 +1922,55 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari and Opera */
+}
+
+/* Phone post detail: one scroll column under the header. */
+@media (max-width: 767.98px) {
+  html:has([data-page-frame="isolated-feed-post"]),
+  html:has([data-page-frame="isolated-feed-post"]) body,
+  #root:has([data-page-frame="isolated-feed-post"]) {
+    height: 100% !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) > div,
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-mobile-scroll-top-clearance,
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-mobile-scroll-top-clearance > div,
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-main-card,
+  [data-page-frame="isolated-feed-post"],
+  [data-page-frame="isolated-feed-post"] > div {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  [data-page-frame="isolated-feed-post"] main {
+    flex: 1 1 auto !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
 }
 
 /* Chat thread background + desktop scrollbar */

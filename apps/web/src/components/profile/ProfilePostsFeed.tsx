@@ -3827,7 +3827,7 @@ function PostMediaCarousel({
 
       <div
         ref={scrollRef}
-        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] scrollbar-hide"
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] max-md:[touch-action:pan-y] md:[touch-action:pan-x_pan-y] scrollbar-hide"
         aria-label="Post media carousel"
       >
         {items.map((item, index) => {
@@ -5392,9 +5392,11 @@ function PostCard({
             ? cn(
                 cardPadX,
                 engagementUnderMedia
-                  ? !hasMedia
-                    ? "mt-1 pb-1 pt-4"
-                    : "mt-0 pb-1 pt-0.5"
+                  ? isolateFocusedPost
+                    ? "mt-4 pb-1 pt-1"
+                    : !hasMedia
+                      ? "mt-1 pb-1 pt-4"
+                      : "mt-0 pb-1 pt-0.5"
                   : !hasMedia && !isolateFocusedPost
                     ? "mt-0.5 pb-2 pt-1"
                     : "mt-1 pb-3.5 pt-2",
@@ -6551,7 +6553,7 @@ function PostCard({
         </div>
       )}
 
-      {isGlobalFeed && hasMedia && !(isolateFocusedPost && !currentUserId)
+      {isGlobalFeed && hasMedia && !isolateFocusedPost
         ? renderEngagementRow()
         : null}
 
@@ -6718,6 +6720,7 @@ function PostCard({
                   ) : null}
                 </div>
               )}
+              {isolateFocusedPost && hasMedia && currentUserId ? renderEngagementRow() : null}
               {showPortraitMediaMeta && !showPortraitMediaOverlay ? (
                 <div
                   className={cn(

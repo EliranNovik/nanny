@@ -192,7 +192,7 @@ export function UserSearch({
                     const groupItems = groups[groupName];
                     return (
                     <div key={groupName} className="space-y-1">
-                      <h3 className="px-3 pb-1 pt-2 text-sm font-semibold tracking-wide text-zinc-500">
+                      <h3 className="px-2 pb-0.5 pt-1.5 text-xs font-semibold tracking-wide text-zinc-500 md:px-3 md:pb-1 md:pt-2 md:text-sm">
                         {groupName}
                       </h3>
                       {groupItems.map(item => (

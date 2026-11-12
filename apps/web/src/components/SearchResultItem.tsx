@@ -59,7 +59,7 @@ export const SearchResultItem = ({
     <div
       onClick={() => onSelect(result)}
       className={cn(
-        "group flex gap-3.5 p-3 rounded-2xl cursor-pointer transition-all",
+        "group flex gap-2 p-2 md:gap-3.5 md:p-3 rounded-2xl cursor-pointer transition-all",
         isListing ? "items-start" : "items-center",
         "hover:bg-muted/80 active:bg-muted/60",
         className
@@ -68,7 +68,7 @@ export const SearchResultItem = ({
       {/* Icon / Avatar Area */}
       <div className="shrink-0">
         {isPerson ? (
-          <Avatar className="h-10 w-10 border border-border/50">
+          <Avatar className="h-8 w-8 border border-border/50 md:h-10 md:w-10">
             <AvatarImage src={imageUrl || undefined} alt="" />
             <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
               {result.title.slice(0, 1)}
@@ -78,11 +78,11 @@ export const SearchResultItem = ({
           <img
             src={imageUrl}
             alt=""
-            className="h-28 w-28 rounded-2xl object-cover"
+            className="h-14 w-14 rounded-xl object-cover md:h-28 md:w-28 md:rounded-2xl"
           />
         ) : (
           <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-xl",
+            "flex h-8 w-8 items-center justify-center rounded-lg md:h-10 md:w-10 md:rounded-xl",
             isAction ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-500" :
             isCategory ? "bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500" :
             isRecent ? "bg-muted text-muted-foreground" :
@@ -97,14 +97,14 @@ export const SearchResultItem = ({
       <div className="min-w-0 flex-1">
         {isListing && authorName ? (
           <div className="mb-1.5 flex items-center gap-2">
-            <Avatar className="h-7 w-7 shrink-0 border border-border/50">
+            <Avatar className="h-5 w-5 shrink-0 border border-border/50 md:h-7 md:w-7">
               <AvatarImage src={authorPhotoUrl || undefined} alt="" />
               <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary">
                 {authorName.slice(0, 1)}
               </AvatarFallback>
             </Avatar>
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <p className="flex min-w-0 items-center gap-1 text-sm font-medium leading-none text-foreground">
+              <p className="flex min-w-0 items-center gap-1 text-xs font-medium leading-none text-foreground md:text-sm">
                 <span className="truncate">by {authorName}</span>
                 {result.metadata?.authorVerified ? (
                   <BadgeCheck
@@ -135,7 +135,7 @@ export const SearchResultItem = ({
         <div className="flex items-center gap-2">
           <p className={cn(
             "min-w-0 font-semibold leading-snug text-foreground",
-            isListing ? "line-clamp-2 text-base" : "truncate text-base",
+            isListing ? "line-clamp-2 text-[13px] md:text-base" : "truncate text-[13px] md:text-base",
           )}>
             {renderHighlighted(result.title, query)}
           </p>
@@ -157,28 +157,28 @@ export const SearchResultItem = ({
           )}
         </div>
         {result.subtitle && (
-          <p className="mt-1 text-sm leading-snug text-muted-foreground line-clamp-2">
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground line-clamp-2 md:mt-1 md:text-sm">
             {result.subtitle}
           </p>
         )}
       </div>
 
       {/* Action Area */}
-      <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex shrink-0 items-center gap-1">
         {isPerson && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onAction?.("message", result);
             }}
-            className="p-2 rounded-full hover:bg-primary/10 text-primary transition-colors"
+            className="rounded-full p-2 text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100"
             title="Send Message"
           >
             <MessageCircle className="h-4 w-4" />
           </button>
         )}
-        <div className="p-2 text-muted-foreground">
-          <ChevronRight className="h-4 w-4" />
+        <div className="p-1 text-muted-foreground md:p-2">
+          <ChevronRight className="h-4 w-4 rtl-flip-icon" />
         </div>
       </div>
     </div>
