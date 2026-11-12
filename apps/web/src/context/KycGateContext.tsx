@@ -74,7 +74,7 @@ function KycVerifyReminderBanner({
     <div
       className={cn(
         "pointer-events-auto fixed inset-x-0 z-[62] px-3",
-        "top-[calc(env(safe-area-inset-top,0px)+3.25rem)] md:top-auto md:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:left-[220px]",
+        "top-[calc(env(safe-area-inset-top,0px)+3.25rem)] md:top-auto md:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:left-[156px]",
       )}
       role="status"
     >

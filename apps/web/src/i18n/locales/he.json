@@ -657,7 +657,9 @@
     "goLive": "עלה לשידור חי",
     "sharePost": "שתף פוסט",
     "savedProfiles": "פרופילים שמורים",
-    "savedPosts": "פוסטים שמורים"
+    "savedPosts": "פוסטים שמורים",
+    "profiles": "פרופילים",
+    "posts": "פוסטים"
   },
   "feed": {
     "writeComment": "כתוב תגובה…",

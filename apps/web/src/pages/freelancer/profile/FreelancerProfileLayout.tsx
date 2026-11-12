@@ -22,11 +22,11 @@ export default function FreelancerProfileLayout() {
   if (isTablet) {
     const atRoot = pathname.replace(/\/+$/, "") === "/freelancer/profile";
     return (
-      <div data-profile-page="" className="flex h-[100dvh] min-h-0 overflow-hidden bg-[#F2F2F7] dark:bg-black md:h-full md:max-h-full">
-        <aside className="h-full w-[380px] shrink-0 overflow-y-auto border-r border-black/10 bg-[#F2F2F7] dark:border-white/10 dark:bg-black">
+      <div data-profile-page="" className="flex h-[100dvh] min-h-0 overflow-hidden bg-white dark:bg-black md:h-full md:max-h-full">
+        <aside className="scrollbar-hide h-full w-[380px] shrink-0 overflow-y-auto border-r border-black/10 bg-white dark:border-white/10 dark:bg-black">
           <FreelancerProfileHub form={form} variant="sidebar" />
         </aside>
-        <main className="min-w-0 flex-1 overflow-y-auto bg-[#F2F2F7] dark:bg-black">
+        <main className="scrollbar-hide min-w-0 flex-1 overflow-y-auto bg-white dark:bg-black">
           {atRoot ? (
             <Navigate to="/freelancer/profile/personal" replace />
           ) : (

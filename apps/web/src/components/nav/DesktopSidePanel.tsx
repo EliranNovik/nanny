@@ -18,6 +18,7 @@ import {
   Home,
   Rss,
   MessageCircle,
+  Send,
   User,
   LogOut,
   Shield,
@@ -370,7 +371,6 @@ export function DesktopSidePanel() {
             {items.map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
-              const isProfileRow = it.id === "profile";
               const label = t(it.labelKey);
               return (
                 <Link
@@ -391,37 +391,15 @@ export function DesktopSidePanel() {
                     />
                   ) : null}
                   <span className="relative flex h-7 w-7 items-center justify-center">
-                    {isProfileRow ? (
-                      <Avatar
-                        className={cn(
-                          "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
-                          active
-                            ? "border-transparent ring-2 ring-orange-500"
-                            : "border-black/10 dark:border-white/15",
-                        )}
-                      >
-                        <AvatarImage
-                          src={profile?.photo_url ?? undefined}
-                          alt=""
-                          className="object-cover"
-                        />
-                        <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white">
-                          {(profile?.full_name ?? user?.email ?? "U")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <Icon
-                        className={cn(
-                          "h-6 w-6 shrink-0 transition-colors",
-                          active
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
-                        )}
-                        strokeWidth={2.15}
-                      />
-                    )}
+                    <Icon
+                      className={cn(
+                        "h-6 w-6 shrink-0 transition-colors",
+                        active
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
+                      )}
+                      strokeWidth={2.15}
+                    />
                     {it.id === "messages" && unreadMessages > 0 ? (
                       <Badge
                         variant="destructive"
@@ -503,7 +481,7 @@ export function DesktopSidePanel() {
               >
                 <Bookmark className="h-5 w-5 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
                 <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
-                  {t("nav.savedProfiles")}
+                  {t("nav.profiles")}
                 </span>
               </button>
               <button
@@ -514,7 +492,7 @@ export function DesktopSidePanel() {
               >
                 <Bookmark className="h-5 w-5 fill-zinc-400 text-zinc-400 dark:fill-zinc-500 dark:text-zinc-500" strokeWidth={2.25} />
                 <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
-                  {t("nav.savedPosts")}
+                  {t("nav.posts")}
                 </span>
               </button>
             </div>
@@ -522,6 +500,17 @@ export function DesktopSidePanel() {
         </div>
 
         <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-border/10 p-2">
+          <button
+            type="button"
+            onClick={() => navigate("/community/feed?compose=1")}
+            className="flex w-full flex-col items-center gap-1 rounded-xl bg-orange-600 px-1 py-2 text-white transition-colors hover:bg-orange-700 active:scale-[0.98]"
+            aria-label={t("nav.sharePost")}
+          >
+            <Send className="h-5 w-5 shrink-0" strokeWidth={2.4} aria-hidden />
+            <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
+              {t("nav.sharePost")}
+            </span>
+          </button>
           <button
             type="button"
             onClick={async () => {
@@ -559,7 +548,8 @@ export function DesktopSidePanel() {
     {adminDrawer ? (
       <div
         className={cn(
-          "fixed inset-0 z-[205] bg-black/40 transition-opacity duration-300 md:hidden",
+          "fixed inset-0 z-[220] bg-black/40 transition-opacity duration-300",
+          isMessagesPage ? "" : "md:hidden",
           adminMenuOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setAdminMenuOpen(false)}
@@ -573,6 +563,11 @@ export function DesktopSidePanel() {
         adminDrawer &&
           "app-admin-side-panel rounded-e-3xl transition-transform duration-300 ease-out max-md:z-[206] max-md:shadow-2xl md:overflow-hidden",
         adminDrawer &&
+          isMessagesPage &&
+          !adminMenuOpen &&
+          "pointer-events-none -translate-x-full rtl:translate-x-full",
+        adminDrawer &&
+          !isMessagesPage &&
           !adminMenuOpen &&
           "max-md:pointer-events-none max-md:-translate-x-full max-md:rtl:translate-x-full",
       )}
@@ -616,7 +611,6 @@ export function DesktopSidePanel() {
             {items.filter((it) => !(isAdminPage && isMdUp && it.id === "home")).map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
-              const isProfileRow = it.id === "profile";
               const label = t(it.labelKey);
               return (
                 <Link
@@ -636,37 +630,15 @@ export function DesktopSidePanel() {
                       aria-hidden
                     />
                   ) : null}
-                  {isProfileRow ? (
-                    <Avatar
-                      className={cn(
-                        "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
-                        active
-                          ? "border-transparent ring-2 ring-orange-500"
-                          : "border-black/10 dark:border-white/15",
-                      )}
-                    >
-                      <AvatarImage
-                        src={profile?.photo_url ?? undefined}
-                        alt=""
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="text-[10px] font-bold bg-slate-100 text-zinc-900 dark:bg-zinc-800 dark:text-white">
-                        {(profile?.full_name ?? user?.email ?? "U")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Icon
-                      className={cn(
-                        "h-6 w-6 shrink-0 transition-colors",
-                        active
-                          ? "text-orange-600 dark:text-orange-400"
-                          : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
-                      )}
-                      strokeWidth={2.15}
-                    />
-                  )}
+                  <Icon
+                    className={cn(
+                      "h-6 w-6 shrink-0 transition-colors",
+                      active
+                        ? "text-orange-600 dark:text-orange-400"
+                        : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300",
+                    )}
+                    strokeWidth={2.15}
+                  />
                   <span
                     className={cn(
                       "text-[13px] font-semibold leading-none tracking-tight",
@@ -746,7 +718,7 @@ export function DesktopSidePanel() {
               {/* Saved profiles */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
+                className="flex w-full items-center px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
                 onClick={() => {
                   setSavedProfilesOpen((v) => {
                     const next = !v;
@@ -757,11 +729,13 @@ export function DesktopSidePanel() {
                   });
                 }}
               >
-                <span className="inline-flex items-center gap-2">
-                  <Bookmark className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
-                  {t("nav.savedProfiles")}
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <Bookmark className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
+                  <span className="inline-flex items-center gap-0.5">
+                    {t("nav.profiles")}
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500", savedProfilesOpen && "rotate-180")} />
+                  </span>
                 </span>
-                <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform dark:text-zinc-500", savedProfilesOpen && "rotate-180")} />
               </button>
               {savedProfilesOpen ? (
                 <div className="mt-1 space-y-1 px-1 pb-1">
@@ -815,7 +789,7 @@ export function DesktopSidePanel() {
               {/* Saved posts */}
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
+                className="flex w-full items-center px-2.5 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-zinc-800 hover:opacity-90 dark:text-zinc-100"
                 onClick={() => {
                   setSavedPostsOpen((v) => {
                     const next = !v;
@@ -826,11 +800,13 @@ export function DesktopSidePanel() {
                   });
                 }}
               >
-                <span className="inline-flex items-center gap-2">
-                  <Bookmark className="h-4 w-4 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
-                  {t("nav.savedPosts")}
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <Bookmark className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={2.25} />
+                  <span className="inline-flex items-center gap-0.5">
+                    {t("nav.posts")}
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-zinc-400 transition-transform dark:text-zinc-500", savedPostsOpen && "rotate-180")} />
+                  </span>
                 </span>
-                <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform dark:text-zinc-500", savedPostsOpen && "rotate-180")} />
               </button>
               {savedPostsOpen ? (
                 <div className="mt-1 space-y-1 px-1 pb-1">
@@ -865,6 +841,14 @@ export function DesktopSidePanel() {
         </div>
       </div>
       <div className="flex shrink-0 flex-col gap-1 border-t border-border/10 p-3">
+        <button
+          type="button"
+          onClick={() => navigate("/community/feed?compose=1")}
+          className="mx-auto flex w-fit max-w-full items-center justify-center gap-1.5 rounded-full bg-orange-600 px-3 py-2.5 text-[13px] font-extrabold tracking-tight text-white transition-colors hover:bg-orange-700 active:scale-[0.98]"
+        >
+          <Send className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+          {t("nav.sharePost")}
+        </button>
         {isAdminPage ? (
           <Link
             to={homeHref}

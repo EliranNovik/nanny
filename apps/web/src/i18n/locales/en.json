@@ -657,7 +657,9 @@
     "goLive": "Go live",
     "sharePost": "Share a post",
     "savedProfiles": "Saved profiles",
-    "savedPosts": "Saved posts"
+    "savedPosts": "Saved posts",
+    "profiles": "Profiles",
+    "posts": "Posts"
   },
   "feed": {
     "writeComment": "Write a comment…",

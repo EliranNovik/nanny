@@ -25,6 +25,7 @@ import {
   HelpingHand,
   Home,
   Bell,
+  Bot,
   ChevronDown,
   LogOut,
   Menu,
@@ -36,6 +37,7 @@ import {
   ClipboardList,
   Zap,
   UsersRound,
+  User,
   Radio,
   PenSquare,
   AlertCircle,
@@ -223,7 +225,9 @@ export function BottomNav() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [adminAccountMenuOpen, setAdminAccountMenuOpen] = useState(false);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const adminAccountMenuRef = useRef<HTMLDivElement>(null);
+  const brandMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuPanelRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
@@ -439,6 +443,17 @@ export function BottomNav() {
       document.removeEventListener("pointerdown", onPointerDown);
     };
   }, [plusMenuOpen]);
+
+  useEffect(() => {
+    if (!brandMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!brandMenuRef.current?.contains(event.target as Node)) {
+        setBrandMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [brandMenuOpen]);
 
   useEffect(() => {
     if (!adminAccountMenuOpen) return;
@@ -955,7 +970,7 @@ export function BottomNav() {
         className={cn(
           "inline-flex items-center gap-2 rounded-full py-1 pl-3.5 pr-1",
           "text-sm font-bold text-zinc-800",
-          "bg-zinc-100 hover:bg-zinc-200/90",
+          "bg-zinc-200 hover:bg-zinc-300",
           "dark:bg-zinc-800/80 dark:text-zinc-100 dark:hover:bg-zinc-700/80",
           "transition-colors active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/70",
@@ -988,6 +1003,42 @@ export function BottomNav() {
     showDesktopBrandChrome &&
     !isAdminPage &&
     !(desktopBrandCollapsed && isMessagesDesktopRoute);
+
+  async function openHeaderAiChat() {
+    if (!user?.id) return;
+    const { data: admins } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("is_admin", true)
+      .neq("id", user.id)
+      .limit(1);
+    const adminId = admins?.[0]?.id;
+    if (!adminId) {
+      navigate("/messages");
+      return;
+    }
+    const [idA, idB] = [user.id, adminId].sort();
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("id")
+      .is("job_id", null)
+      .or(
+        `and(client_id.eq.${idA},freelancer_id.eq.${idB}),and(client_id.eq.${idB},freelancer_id.eq.${idA})`,
+      )
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) {
+      navigate(`/messages?conversation=${existing.id}`);
+      return;
+    }
+    const { data: created } = await supabase
+      .from("conversations")
+      .insert({ job_id: null, client_id: idA, freelancer_id: idB })
+      .select("id")
+      .single();
+    navigate(created?.id ? `/messages?conversation=${created.id}` : "/messages");
+  }
 
   /** Desktop only: full-width top bar — CSS `md` decides visibility (not isTablet). */
   const DesktopHeader = hideDesktopAppHeader ? null : (
@@ -1027,24 +1078,81 @@ export function BottomNav() {
               isDiscoverHome && "pe-2",
             )}
           >
-            <Link
-              to={headerBackHomeFallback}
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 py-1 pe-3.5 ps-1.5 shadow-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-              aria-label="Tebnu"
-            >
-              <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white dark:bg-zinc-950">
-                <img
-                  src={BRAND_LOGO_SRC}
-                  alt=""
-                  className="h-7 w-7 object-contain"
-                  loading="eager"
-                  decoding="async"
-                />
-              </span>
-              <span className="text-[15px] font-black lowercase tracking-tight text-zinc-900 dark:text-white">
-                tebnu
-              </span>
-            </Link>
+            <div ref={brandMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setBrandMenuOpen((open) => !open)}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 py-1 pe-2.5 ps-1 shadow-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                aria-haspopup="menu"
+                aria-expanded={brandMenuOpen}
+                aria-label="Tebnu account"
+              >
+                <Avatar className="h-8 w-8 shrink-0 border border-black/10 dark:border-white/15">
+                  <AvatarImage src={profile?.photo_url ?? undefined} alt="" className="object-cover" />
+                  <AvatarFallback className="bg-white text-[10px] font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white">
+                    {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white dark:bg-zinc-950">
+                  <img
+                    src={BRAND_LOGO_SRC}
+                    alt=""
+                    className="h-7 w-7 object-contain"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </span>
+                {desktopBrandCollapsed ? null : (
+                  <span className="text-[15px] font-black lowercase tracking-tight text-zinc-900 dark:text-white">
+                    tebnu
+                  </span>
+                )}
+                <ChevronDown className={cn("h-3.5 w-3.5 text-zinc-500 transition-transform", brandMenuOpen && "rotate-180")} />
+              </button>
+              {brandMenuOpen ? (
+                <div
+                  role="menu"
+                  className="absolute start-0 top-full z-[120] mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setBrandMenuOpen(false);
+                      navigate(profile?.id ? `/profile/${profile.id}` : headerBackHomeFallback);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    <User className="h-4 w-4 text-zinc-500" />
+                    Public profile
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setBrandMenuOpen(false);
+                      navigate(profile?.role === "freelancer" ? "/freelancer/profile" : "/client/profile");
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    <Settings className="h-4 w-4 text-zinc-500" />
+                    Settings
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setBrandMenuOpen(false);
+                      void openHeaderAiChat();
+                    }}
+                    className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-3 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                  >
+                    <Bot className="h-4 w-4" />
+                    AI chat
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {languageInBrand ? <LanguageSwitcher className="-ms-3" menuAlign="start" /> : null}
             {isDiscoverHome ? (
               <DiscoverHomeModeSegmentedControl

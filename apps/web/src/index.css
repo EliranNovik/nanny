@@ -39,7 +39,7 @@
 
   /** Desktop fixed side panel — content inset follows reading direction (LTR/RTL). */
   .app-side-panel-offset {
-    @apply md:ps-[220px];
+    @apply md:ps-[156px];
   }
 
   /* Signed-in pages: main column is a rounded card, inset like the messages chat. */
@@ -61,9 +61,23 @@
       box-shadow: none;
     }
 
-    /* Profile: the rounded box stays put; only the page inside it scrolls. */
+    /* Home, explore, and post detail: the panel runs off the bottom of the screen.
+       Find helpers is listed separately: that page stays mounted while hidden, so a
+       plain :has() would lock every other page too. */
+    .app-main-card:has([data-discover-home-page]),
+    .app-main-card:has([data-community-feed-page]),
+    .app-main-card:has([data-page-frame="isolated-feed-post"]),
+    .app-main-card:has(> div:not([aria-hidden="true"]) > [data-find-helpers-page]) {
+      margin-bottom: 0;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    /* Profile, home, and explore: the rounded box stays put; only the page inside it scrolls. */
     .app-main-scroll-pad:has(.app-main-card [data-profile-page]),
-    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) {
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]),
+    .app-main-scroll-pad:has(.app-main-card [data-community-feed-page]),
+    .app-main-scroll-pad:has(.app-main-card > div:not([aria-hidden="true"]) > [data-find-helpers-page]) {
       height: 100dvh;
       max-height: 100dvh;
       min-height: 0;
@@ -71,7 +85,9 @@
     }
 
     .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div,
-    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div {
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div,
+    .app-main-scroll-pad:has(.app-main-card [data-community-feed-page]) > div,
+    .app-main-scroll-pad:has(.app-main-card > div:not([aria-hidden="true"]) > [data-find-helpers-page]) > div {
       height: 100%;
       min-height: 0 !important;
       overflow: hidden;
@@ -80,7 +96,11 @@
     .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div > .app-side-panel-offset,
     .app-main-scroll-pad:has(.app-main-card [data-profile-page]) > div > .app-tablet-rail-offset,
     .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div > .app-side-panel-offset,
-    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div > .app-tablet-rail-offset {
+    .app-main-scroll-pad:has(.app-main-card [data-discover-home-page]) > div > .app-tablet-rail-offset,
+    .app-main-scroll-pad:has(.app-main-card [data-community-feed-page]) > div > .app-side-panel-offset,
+    .app-main-scroll-pad:has(.app-main-card [data-community-feed-page]) > div > .app-tablet-rail-offset,
+    .app-main-scroll-pad:has(.app-main-card > div:not([aria-hidden="true"]) > [data-find-helpers-page]) > div > .app-side-panel-offset,
+    .app-main-scroll-pad:has(.app-main-card > div:not([aria-hidden="true"]) > [data-find-helpers-page]) > div > .app-tablet-rail-offset {
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -88,7 +108,9 @@
     }
 
     .app-main-card:has([data-profile-page]),
-    .app-main-card:has([data-discover-home-page]) {
+    .app-main-card:has([data-discover-home-page]),
+    .app-main-card:has([data-community-feed-page]),
+    .app-main-card:has(> div:not([aria-hidden="true"]) > [data-find-helpers-page]) {
       flex: 1 1 auto;
       height: auto;
       max-height: none;
@@ -96,8 +118,26 @@
       overflow: hidden;
     }
 
+    /* Find helpers stays mounted in a wrapper. Only the visible wrapper fills the card. */
+    .app-main-card:has(> div:not([aria-hidden="true"]) > [data-find-helpers-page]) {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .app-main-card > div:not([aria-hidden="true"]):has(> [data-find-helpers-page]) {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
     .app-main-card [data-profile-page],
-    .app-main-card [data-discover-home-page] {
+    .app-main-card [data-discover-home-page],
+    .app-main-card [data-find-helpers-page],
+    .app-main-card [data-community-feed-page] {
       height: 100%;
       max-height: 100%;
       min-height: 0 !important;
@@ -110,6 +150,8 @@
 
     .app-main-card [data-profile-page]::-webkit-scrollbar,
     .app-main-card [data-discover-home-page]::-webkit-scrollbar,
+    .app-main-card [data-find-helpers-page]::-webkit-scrollbar,
+    .app-main-card [data-community-feed-page]::-webkit-scrollbar,
     .app-main-card [data-public-profile-page] aside .overflow-y-auto::-webkit-scrollbar {
       display: none;
       width: 0;
@@ -137,7 +179,7 @@
 
   .app-desktop-side-panel {
     /* Flush under the fixed desktop header (no floating card). */
-    @apply fixed bottom-0 start-0 z-[200] w-[220px];
+    @apply fixed bottom-0 start-0 z-[200] w-[156px];
     top: 4rem;
   }
 
@@ -157,6 +199,10 @@
       width: 220px;
       padding-top: 0;
       padding-bottom: 0;
+    }
+
+    .app-admin-shell .app-side-panel-offset {
+      padding-inline-start: 220px;
     }
   }
 
@@ -550,8 +596,22 @@
       flex: 1 1 auto;
       flex-direction: column;
       height: auto;
-      /* Open sidebar on messages is 220px for every signed-in user. */
-      padding-inline-start: 220px;
+      /* Open sidebar on messages matches the signed-in rail. */
+      padding-inline-start: 156px;
+    }
+
+    /* Admin on messages: the menu is a closed overlay, so the inbox uses the full width. */
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page]):has(.app-admin-side-panel)
+      .app-side-panel-offset,
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page]):has(.app-admin-side-panel)
+      .app-tablet-rail-offset {
+      padding-inline-start: 0;
+    }
+
+    html:has([data-messages-page]) aside.app-desktop-side-panel.app-admin-side-panel {
+      top: 0 !important;
+      bottom: 0 !important;
+      z-index: 230;
     }
 
     /* The rounded-card wrapper sits between the rail offset and the inbox. */
@@ -1265,6 +1325,17 @@
   .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-mobile-scroll-top-clearance {
     padding-bottom: 0;
     margin-bottom: 0;
+  }
+
+  /* The rounded card sits between the rail offset and the post. Give it the remaining height so the post column can scroll. */
+  .app-main-scroll-pad:has([data-page-frame="isolated-feed-post"]) .app-main-card {
+    display: flex;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   /*

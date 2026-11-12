@@ -8,7 +8,7 @@ import { useMobileScrollDirectionHeaderHide } from "@/hooks/useMobileScrollDirec
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { PanelRightClose, PanelRightOpen, Search, Send, SlidersHorizontal, X } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
@@ -359,32 +359,30 @@ function FeedMainContent({
             />
             <div
               className={cn(
-                "hidden min-h-0 flex-col overflow-y-auto overflow-x-hidden md:fixed md:end-0 md:top-16 md:z-30 md:flex",
-                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                "relative hidden min-h-0 flex-col overflow-hidden md:fixed md:end-3 md:top-[4.75rem] md:bottom-0 md:z-30 md:flex",
+                "md:rounded-se-[1.75rem]",
                 FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-                "max-h-[calc(100dvh-4rem)] bg-white px-3 pe-3 pb-6 pt-3 dark:bg-background",
+                "bg-white dark:bg-[#09090b]",
               )}
             >
               {!insightsPanelLocked ? (
-                <div className="mb-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => onInsightsPanelOpenChange?.(false)}
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-white/75 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-zinc-900/75 dark:text-zinc-100"
-                    aria-label={t("feed.sidePanel.close", {
-                      defaultValue: "Hide insights",
-                    })}
-                  >
-                    <PanelRightClose className="h-6 w-6" strokeWidth={2.25} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onInsightsPanelOpenChange?.(false)}
+                  className="absolute end-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/80 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100"
+                  aria-label={t("feed.sidePanel.close", {
+                    defaultValue: "Hide insights",
+                  })}
+                >
+                  <PanelRightClose className="h-5 w-5" strokeWidth={2.25} />
+                </button>
               ) : null}
-              <div className="min-h-0 w-full min-w-0 flex-1">
-                <FavoritesPostsSidePanel
-                  embedded
-                  postTypeIds={user ? null : ["community", "event"]}
-                  onPostOpen={onSidePanelPostOpen}
-                />
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <FavoritesPostsSidePanel
+                embedded
+                postTypeIds={user ? null : ["community", "event"]}
+                onPostOpen={onSidePanelPostOpen}
+              />
               </div>
             </div>
           </>
@@ -634,15 +632,6 @@ export default function GlobalPostsPage() {
     photo_url: profile?.photo_url ?? null,
   } : null;
 
-  /** Click handler reused by the desktop floating CTA. */
-  function openCompose() {
-    if (!user) {
-      openGuestAuthPrompt({ variant: "create" });
-      return;
-    }
-    setComposeOpen(true);
-  }
-
   useEffect(() => {
     if (!focusPostId) return;
     debugProfilePostDeepLink("GlobalPostsPage: open shared link", {
@@ -880,28 +869,6 @@ export default function GlobalPostsPage() {
         </MobileSnapBottomSheet>
       ) : null}
 
-      {/* Desktop: floating "Share a post" CTA */}
-      {user ? <button
-        type="button"
-        onClick={openCompose}
-        className={cn(
-          "hidden md:inline-flex fixed bottom-6 z-[120]",
-          "left-[calc(220px+1.5rem)]",
-          "items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-extrabold tracking-tight",
-          "bg-orange-600 text-white shadow-xl shadow-orange-500/25 transition-all",
-          "hover:bg-orange-700 hover:-translate-y-[2px] active:scale-[0.97]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "whitespace-nowrap",
-        )}
-        aria-label="Share a post"
-      >
-        <Send
-          className="h-4 w-4 translate-x-[1px]"
-          strokeWidth={2.75}
-          aria-hidden
-        />
-        Share a post
-      </button> : null}
 
       {/* Guest desktop: "What is tebnu?" modal (opened via desktop share button). */}
       {!user ? (

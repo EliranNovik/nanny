@@ -10,6 +10,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 import { supabase } from "@/lib/supabase";
 import {
   fetchInboxActivityAlerts,
@@ -40,6 +41,7 @@ import {
   ShieldCheck,
   Sparkles,
   ChevronDown,
+  Menu,
 } from "lucide-react";
 import {
   Dialog,
@@ -115,6 +117,7 @@ function InboxSecuredFooter() {
 export default function MessagesPage() {
   const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
+  const { adminMenuOpen, setAdminMenuOpen } = useDesktopSidePanel();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -755,9 +758,22 @@ export default function MessagesPage() {
             {/* Desktop: title + Messages/News tabs scroll with inbox content */}
             <div className="relative z-20 hidden flex-col px-5 pb-3 pt-3 md:flex">
               <div className="mb-3 flex items-center justify-between gap-3">
-              <h1 className="text-[28px] font-extrabold leading-tight tracking-tight">
+              <div className="flex min-w-0 items-center gap-2">
+                {profile?.is_admin ? (
+                  <button
+                    type="button"
+                    onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-800 transition-colors hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10"
+                    aria-label={adminMenuOpen ? "Close menu" : "Open menu"}
+                    aria-expanded={adminMenuOpen}
+                  >
+                    <Menu className="h-6 w-6" strokeWidth={2.15} aria-hidden />
+                  </button>
+                ) : null}
+              <h1 className="truncate text-[28px] font-extrabold leading-tight tracking-tight">
                 {t("messagesPage.messages")}
               </h1>
+              </div>
               <div ref={adminFilterMenuRef} className="relative">
                   <button
                     type="button"

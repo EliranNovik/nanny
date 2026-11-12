@@ -657,7 +657,9 @@
     "goLive": "В эфир",
     "sharePost": "Поделиться постом",
     "savedProfiles": "Сохранённые профили",
-    "savedPosts": "Сохранённые посты"
+    "savedPosts": "Сохранённые посты",
+    "profiles": "Профили",
+    "posts": "Посты"
   },
   "feed": {
     "writeComment": "Написать комментарий…",

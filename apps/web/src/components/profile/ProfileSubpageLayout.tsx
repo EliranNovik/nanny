@@ -20,7 +20,7 @@ export function ProfileSubpageLayout({
   return (
     <div
       className={cn(
-        "bg-slate-50/50 pb-6 dark:bg-background md:pb-8",
+        "bg-white pb-6 dark:bg-background md:pb-8",
         isTablet ? "min-h-full" : "min-h-screen",
         className,
       )}

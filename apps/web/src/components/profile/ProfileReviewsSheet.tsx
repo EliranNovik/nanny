@@ -1,4 +1,5 @@
-import { Star } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { DiscoverOverlaySnapSheet } from "@/lib/discoverSheetDialog";
@@ -54,7 +55,7 @@ export function ProfileReviewPreviewCard({
       onClick={onClick}
       role={onClick ? undefined : "listitem"}
       className={cn(
-        "group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 text-left shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20",
+        "group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-[#FAFAFB] p-6 pt-12 text-left shadow-sm transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20",
         onClick &&
           "cursor-pointer outline-none hover:shadow-lg active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/50",
         className,
@@ -66,7 +67,7 @@ export function ProfileReviewPreviewCard({
           gradient,
         )}
       >
-        <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
+        <Avatar className="h-full w-full border-4 border-[#FAFAFB] dark:border-zinc-900">
           <AvatarImage
             src={avatarUrl.xs(review.reviewer.photo_url)}
             className="object-cover"
@@ -98,6 +99,91 @@ export function ProfileReviewPreviewCard({
         </p>
       </div>
     </CardTag>
+  );
+}
+
+export function ProfileReviewCarousel({
+  reviews,
+  onSelect,
+  className,
+}: {
+  reviews: ProfileReviewItem[];
+  onSelect?: () => void;
+  className?: string;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const syncEnds = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const left = Math.abs(el.scrollLeft);
+    setCanPrev(left > 8);
+    setCanNext(max > 8 && left < max - 8);
+  };
+
+  useEffect(() => {
+    syncEnds();
+  }, [reviews.length]);
+
+  const scrollByCard = (direction: -1 | 1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-review-card]");
+    const step = (card?.offsetWidth ?? el.clientWidth) + 16;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    el.scrollBy({ left: (rtl ? -direction : direction) * step, behavior: "smooth" });
+  };
+
+  const showArrows = reviews.length > 1;
+
+  return (
+    <div className="relative">
+      {showArrows ? (
+        <>
+          <button
+            type="button"
+            aria-label="Previous review"
+            disabled={!canPrev}
+            onClick={() => scrollByCard(-1)}
+            className="absolute start-1 top-[4.75rem] z-10 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-35 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+          >
+            <ChevronLeft className="h-4 w-4 rtl-flip-icon" aria-hidden />
+          </button>
+          <button
+            type="button"
+            aria-label="Next review"
+            disabled={!canNext}
+            onClick={() => scrollByCard(1)}
+            className="absolute end-1 top-[4.75rem] z-10 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-35 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+          >
+            <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
+          </button>
+        </>
+      ) : null}
+      <div
+        ref={scrollerRef}
+        onScroll={syncEnds}
+        className={cn(
+          "flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 pt-16 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden",
+          className,
+        )}
+        role="list"
+        aria-label="User reviews"
+      >
+        {reviews.map((review, idx) => (
+          <div key={review.id} data-review-card="" className="shrink-0 snap-start snap-always">
+            <ProfileReviewPreviewCard
+              review={review}
+              index={idx}
+              onClick={onSelect}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

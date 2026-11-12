@@ -8,12 +8,13 @@ export type TextDirection = "rtl" | "ltr" | "auto";
 
 export function isRtlText(text: string | null | undefined): boolean {
   if (!text?.trim()) return false;
-  for (const char of text.trim()) {
-    if (/\s/.test(char)) continue;
-    if (RTL_SCRIPT.test(char)) return true;
-    if (/[A-Za-z0-9]/.test(char)) return false;
+  let rtl = 0;
+  let ltr = 0;
+  for (const char of text) {
+    if (RTL_SCRIPT.test(char)) rtl += 1;
+    else if (/[A-Za-z]/.test(char)) ltr += 1;
   }
-  return false;
+  return rtl > 0 && rtl >= ltr;
 }
 
 export function textDirection(text: string | null | undefined): TextDirection {

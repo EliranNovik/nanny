@@ -657,7 +657,9 @@
     "goLive": "Passer en direct",
     "sharePost": "Partager un post",
     "savedProfiles": "Profils enregistrés",
-    "savedPosts": "Posts enregistrés"
+    "savedPosts": "Posts enregistrés",
+    "profiles": "Profils",
+    "posts": "Posts"
   },
   "feed": {
     "writeComment": "Écrire un commentaire…",

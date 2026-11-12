@@ -71,7 +71,7 @@ const SIDE_PANEL_SECTION_TITLE_CLASS =
 const SIDE_PANEL_SECTION_CLASS = "mb-4 last:mb-0";
 
 const SIDE_PANEL_SECTION_HEADER_CLASS =
-  "sticky top-0 z-[1] mb-1.5 flex items-center justify-between gap-2 bg-white px-1 py-1.5 dark:bg-background";
+  "sticky top-0 z-[2] -mx-3 mb-1.5 flex items-center justify-between gap-2 bg-white px-3 py-3 dark:bg-[#09090b]";
 
 const SIDE_PANEL_PAGE_HEADER_CLASS =
   "sticky top-0 z-[1] mb-1.5 flex items-center justify-between gap-2 bg-white px-1 py-1.5 dark:bg-[#101214]";

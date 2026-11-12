@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import {
   MessageSquare,
+  ChevronLeft,
   ChevronRight,
   BadgeCheck,
   Star,
@@ -65,7 +66,7 @@ import { requestHeroWaveToneClass } from "@/components/discover/DiscoverRequestH
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import {
-  ProfileReviewPreviewCard,
+  ProfileReviewCarousel,
   ProfileReviewsSheet,
 } from "@/components/profile/ProfileReviewsSheet";
 import {
@@ -671,8 +672,25 @@ function ProfileBioHeader({
 
     if (isPanel) {
       return (
-        <div className="w-full space-y-3" dir={bioTextProps.dir}>
-          <p {...bioTextProps}>{profile.bio}</p>
+        <div
+          className="w-full space-y-3"
+          dir={bioTextProps.dir}
+          style={
+            bioTextProps.dir === "rtl"
+              ? { direction: "rtl", textAlign: "right" }
+              : undefined
+          }
+        >
+          <p
+            {...bioTextProps}
+            style={
+              bioTextProps.dir === "rtl"
+                ? { direction: "rtl", textAlign: "right" }
+                : undefined
+            }
+          >
+            {profile.bio}
+          </p>
           {isOwnProfile && profileEditPath ? (
             <OwnProfileBioActions
               onEditBio={() => setEditingBio(true)}
@@ -689,12 +707,26 @@ function ProfileBioHeader({
       <div
         className={cn(
           "w-full",
-          isDesktop ? "mt-2.5 max-w-2xl" : "mt-3 w-full",
-          bioTextProps.className,
+          isDesktop ? "mt-2.5" : "mt-3",
+          bioTextProps.dir !== "rtl" && isDesktop && "max-w-2xl",
         )}
         dir={bioTextProps.dir}
+        style={
+          bioTextProps.dir === "rtl"
+            ? { direction: "rtl", textAlign: "right", marginLeft: 0, marginRight: 0, width: "100%" }
+            : undefined
+        }
       >
-        <p {...bioTextProps}>{profile.bio}</p>
+        <p
+          {...bioTextProps}
+          style={
+            bioTextProps.dir === "rtl"
+              ? { direction: "rtl", textAlign: "right" }
+              : undefined
+          }
+        >
+          {profile.bio}
+        </p>
         {isOwnProfile && profileEditPath ? (
           <OwnProfileBioActions
             onEditBio={() => setEditingBio(true)}
@@ -772,6 +804,65 @@ function ProfileBioHeader({
         Add bio
       </Button>
     )
+  );
+}
+
+function ProfileAboutMediaCarousel({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const syncEnds = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const left = Math.abs(el.scrollLeft);
+    setCanPrev(left > 8);
+    setCanNext(max > 8 && left < max - 8);
+  };
+
+  useEffect(() => {
+    syncEnds();
+  }, [children]);
+
+  const scrollByTile = (direction: -1 | 1) => {
+    scrollerRef.current?.scrollBy({ left: direction * 133, behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label="Previous media"
+        disabled={!canPrev}
+        onClick={() => scrollByTile(-1)}
+        className="absolute start-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-35 md:flex dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+      >
+        <ChevronLeft className="h-4 w-4 rtl-flip-icon" aria-hidden />
+      </button>
+      <button
+        type="button"
+        aria-label="Next media"
+        disabled={!canNext}
+        onClick={() => scrollByTile(1)}
+        className="absolute end-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-35 md:flex dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+      >
+        <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
+      </button>
+      <div
+        ref={scrollerRef}
+        dir="ltr"
+        onScroll={syncEnds}
+        className="grid grid-flow-col grid-rows-1 auto-cols-[131px] gap-[2px] overflow-x-auto pb-[max(0px,env(safe-area-inset-bottom,0px))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Profile media"
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -1907,7 +1998,7 @@ export default function PublicProfilePage() {
           currentUser ? "pt-16 md:pt-2" : "pt-6 md:pt-2",
         )}
       >
-        <div className="app-desktop-shell px-4">
+        <div className="app-desktop-shell relative px-4">
           <div className="flex flex-col gap-6 md:flex-row md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
             <div className="hidden h-[119px] w-[119px] shrink-0 md:block">
@@ -1929,6 +2020,7 @@ export default function PublicProfilePage() {
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-start justify-between gap-6 flex-wrap">
                 <div className="min-w-0">
+                  <div className="md:max-w-[calc(100%-18rem)]">
                   <MemberSinceBadge
                     createdAt={profile.created_at}
                     helper={showHelperBadges}
@@ -1955,6 +2047,7 @@ export default function PublicProfilePage() {
                       {profileLocationLabel}
                     </p>
                   ) : null}
+                  </div>
                   <div className="mt-4 md:-ms-[143px] md:w-[calc(100%+143px)]">
                     <ProfileBioHeader
                       profile={profile}
@@ -1988,7 +2081,7 @@ export default function PublicProfilePage() {
                             variant="secondary"
                             className={cn(
                               profileCategoryBadgeClass,
-                              "bg-white/80 text-slate-700 dark:bg-zinc-800/80 dark:text-slate-200",
+                              "border border-black/[0.04] bg-white text-slate-700 shadow-[0_8px_18px_-8px_rgba(15,23,42,0.35)] dark:border-transparent dark:bg-zinc-800/80 dark:text-slate-200 dark:shadow-none",
                             )}
                           >
                             {publicProfileCategoryBadgeIcon(cat)}
@@ -2005,7 +2098,7 @@ export default function PublicProfilePage() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 shrink-0 self-start mt-1">
+                <div className="absolute end-0 top-0 z-20 flex items-center gap-2">
                   {!isOwnProfile && (
                     <>
                       <button
@@ -2610,20 +2703,11 @@ export default function PublicProfilePage() {
                   ) : null}
                 </button>
                 {reviews.length > 0 ? (
-                  <div
-                    className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-5 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
-                    role="list"
-                    aria-label="User reviews"
-                  >
-                    {reviews.map((review, idx) => (
-                      <ProfileReviewPreviewCard
-                        key={review.id}
-                        review={review}
-                        index={idx}
-                        onClick={() => setReviewsSheetOpen(true)}
-                      />
-                    ))}
-                  </div>
+                  <ProfileReviewCarousel
+                    reviews={reviews}
+                    onSelect={() => setReviewsSheetOpen(true)}
+                    className="-mx-5 px-5"
+                  />
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
                     <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
@@ -2856,20 +2940,10 @@ export default function PublicProfilePage() {
                     View all
                   </span>
                 </button>
-                <div
-                  className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
-                  role="list"
-                  aria-label="User reviews"
-                >
-                  {reviews.map((review, idx) => (
-                    <ProfileReviewPreviewCard
-                      key={review.id}
-                      review={review}
-                      index={idx}
-                      onClick={() => setReviewsSheetOpen(true)}
-                    />
-                  ))}
-                </div>
+                <ProfileReviewCarousel
+                  reviews={reviews}
+                  onSelect={() => setReviewsSheetOpen(true)}
+                />
               </div>
             ) : null}
             </div>
@@ -2896,11 +2970,7 @@ export default function PublicProfilePage() {
                     See all
                   </button>
                 </div>
-                <div
-                  dir="ltr"
-                  className="grid grid-flow-col grid-rows-1 auto-cols-[131px] gap-[2px] overflow-x-auto pb-[max(0px,env(safe-area-inset-bottom,0px))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  aria-label="Profile media"
-                >
+                <ProfileAboutMediaCarousel>
                   {mediaItems.map((row) => {
                     const src = publicProfileMediaPublicUrl(row.storage_path);
                     const mediaIndex = mediaItems.findIndex(
@@ -2952,7 +3022,7 @@ export default function PublicProfilePage() {
                       </button>
                     );
                   })}
-                </div>
+                </ProfileAboutMediaCarousel>
               </section>
             ) : null}
           </aside>
@@ -2985,20 +3055,11 @@ export default function PublicProfilePage() {
                 ) : null}
               </button>
               {reviews.length > 0 ? (
-                <div
-                  className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
-                  role="list"
-                  aria-label="User reviews"
-                >
-                  {reviews.map((review, idx) => (
-                    <ProfileReviewPreviewCard
-                      key={review.id}
-                      review={review}
-                      index={idx}
-                      onClick={() => setReviewsSheetOpen(true)}
-                    />
-                  ))}
-                </div>
+                <ProfileReviewCarousel
+                  reviews={reviews}
+                  onSelect={() => setReviewsSheetOpen(true)}
+                  className="-mx-6 px-6"
+                />
               ) : (
                 <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
                   <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
