@@ -2,7 +2,6 @@ import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
-import { ProfileLanguageMenuRow } from "@/components/profile/ProfileLanguageMenuRow";
 import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/ProfileMenuRow";
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import { ProfileHubLogoutButton } from "@/components/profile/ProfileHubLogoutButton";
@@ -15,9 +14,7 @@ import {
   Palette,
   UserCircle,
   AlertCircle,
-  Image as ImageIcon,
   Heart,
-  Activity,
   LayoutDashboard,
   CalendarDays,
 } from "lucide-react";
@@ -64,11 +61,8 @@ export default function ClientProfileHub({
             <ProfileMenuRow to="/client/profile/personal" icon={User} label={t("profile.personalContact")} />
             <ProfileMenuRow to="/client/explore" icon={LayoutDashboard} label={t("profile.myActivity")} />
             <ProfileMenuRow to="/client/profile/events" icon={CalendarDays} label={t("profile.myEvents")} />
-            <ProfileMenuRow to="/recent-activity" icon={Activity} label={t("profile.recentActivity")} />
             <ProfileMenuRow to="/client/profile/saved" icon={Heart} label={t("common.saved")} />
-            <ProfileMenuRow to="/client/profile/gallery" icon={ImageIcon} label={t("profile.publicGallery")} />
             <ProfileMenuRow to="/client/profile/services" icon={Briefcase} label={t("profile.servicesArea")} />
-            <ProfileLanguageMenuRow to="/client/profile/language" />
             <ProfileMenuRow to="/client/profile/appearance" icon={Palette} label={t("profile.appearance")} />
             <ProfileMenuRow to="/client/profile/account" icon={UserCircle} label={t("profile.myAccount")} />
           </div>

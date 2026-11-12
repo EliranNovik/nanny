@@ -323,6 +323,23 @@
       </div>
       <script>
         (function () {
+          var explicit = "";
+          var stored = "";
+          try {
+            explicit = localStorage.getItem("app-locale-explicit") || "";
+            stored = localStorage.getItem("app-locale") || "";
+          } catch (e) {}
+          var supported = { en: 1, he: 1, ru: 1, fr: 1 };
+          var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+          var browser = "en";
+          for (var i = 0; i < list.length; i++) {
+            var base = String(list[i] || "").split("-")[0];
+            if (supported[base]) { browser = base; break; }
+          }
+          var lang = explicit === "1" && supported[stored] ? stored : browser;
+          document.documentElement.setAttribute("lang", lang);
+          document.documentElement.setAttribute("dir", lang === "he" ? "rtl" : "ltr");
+
           var path = (location.pathname || "/").replace(/\/$/, "") || "/";
           var splash = document.getElementById("boot-splash");
           if (path !== "/") {
@@ -330,9 +347,6 @@
             return;
           }
           if (splash) splash.className = "is-home";
-          var stored = "";
-          try { stored = localStorage.getItem("i18nextLng") || ""; } catch (e) {}
-          var lang = (stored || navigator.language || "en").slice(0, 2);
           var copy = {
             en: ["Help is closer than you think.", "Ask once. Nearby helpers respond.", "Find help", "Offer help", "About Us", "Post Feed", "Home", "Sign in", "Register"],
             he: ["עזרה קרובה יותר ממה שחשבתם.", "מבקשים פעם אחת. עוזרים בסביבה עונים.", "מצאו עזרה", "הציעו עזרה", "אודותינו", "פיד פוסטים", "בית", "התחברות", "הרשמה"],
@@ -358,7 +372,6 @@
           if (home) home.textContent = row[6];
           if (signIn) signIn.textContent = row[7];
           if (register) register.textContent = row[8];
-          if (lang === "he") document.documentElement.setAttribute("dir", "rtl");
         })();
       </script>
     </div>

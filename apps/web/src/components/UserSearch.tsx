@@ -18,6 +18,8 @@ interface UserSearchProps {
   resultsBeside?: boolean;
   /** Sits inside the field, on the right. */
   endSlot?: ReactNode;
+  /** Marks this field for the first-run page guide. */
+  guideId?: string;
 }
 
 export function UserSearch({
@@ -30,6 +32,7 @@ export function UserSearch({
   placeholder = "Search anything...",
   resultsBeside = false,
   endSlot,
+  guideId,
 }: UserSearchProps) {
   const isLarge = size === "lg";
   const [query, setQuery] = useState("");
@@ -90,6 +93,8 @@ export function UserSearch({
   return (
     <div
       ref={searchRef}
+      data-guide={guideId}
+      data-guide-rank={guideId ? "primary" : undefined}
       className={cn(
         "group relative w-full",
         isLarge ? "mx-auto max-w-xl" : "max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
@@ -154,7 +159,7 @@ export function UserSearch({
               ? "absolute start-full top-0 z-[100] ms-3 w-[min(36rem,calc(100vw-22rem))] rounded-2xl shadow-lg animate-in fade-in slide-in-from-left-2 duration-200"
               : isLarge
                 ? "absolute inset-x-0 top-full z-[100] mt-2 rounded-3xl shadow-lg"
-                : "absolute inset-x-0 top-full z-[100] mt-2 w-full rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
+                : "absolute end-0 top-full z-[100] mt-2 w-[min(36rem,calc(100vw-8rem))] rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)]",
             "overflow-hidden border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950",
             "max-h-[min(70vh,28rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           )}

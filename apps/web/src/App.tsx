@@ -26,6 +26,8 @@ import { NotificationListener } from "@/components/NotificationListener";
 import { IncomingRequestToastListener } from "@/components/IncomingRequestToastListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { AiFeaturesPopup } from "@/components/AiFeaturesPopup";
+import { CommunityWelcomeModal } from "@/components/CommunityWelcomeModal";
+import { CommunitySpotlightGuide } from "@/components/CommunitySpotlightGuide";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -884,6 +886,8 @@ export default function App() {
                       <AppRoutes />
                       <BottomNav />
                       <ReportIssueModal />
+                      <CommunityWelcomeModal />
+                      <CommunitySpotlightGuide />
                       <AiFeaturesPopup />
                     </ReportIssueProvider>
                     </DesktopSidePanelProvider>

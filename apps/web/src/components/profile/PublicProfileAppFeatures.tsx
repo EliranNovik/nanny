@@ -204,17 +204,13 @@ export function MemberSinceBadge({
   return (
     <span
       className={cn(
-        "relative inline-flex h-5 items-center rounded-[10px] px-2 ps-8 text-[10.5px] font-semibold",
+        "mb-1.5 inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-semibold leading-none",
         helper
           ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
           : "bg-orange-500/15 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
       )}
     >
-      <Icon
-        className="absolute -start-1 h-8 w-8 fill-current"
-        strokeWidth={1.8}
-        aria-hidden
-      />
+      <Icon className="h-3.5 w-3.5 shrink-0 fill-current" strokeWidth={2.2} aria-hidden />
       {t("publicProfileFeatures.since", { date: formatted })}
     </span>
   );

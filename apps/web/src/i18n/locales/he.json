@@ -73,6 +73,39 @@
     "optionalVerification": "אימות זהות אופציונלי",
     "rights": "כל הזכויות שמורות."
   },
+  "communityWelcome": {
+    "eyebrow": "קהילה",
+    "title": "ברוכים הבאים לקהילה",
+    "clientIntro": "כאן אנשים בקרבתכם מבקשים עזרה ומציעים אותה.",
+    "clientPoints": [
+      "פרסמו בקשה לעזרה שאתם צריכים.",
+      "ראו נותני שירות והצעות בסביבה.",
+      "שלחו הודעה כשאתם רוצים להתקדם."
+    ],
+    "freelancerIntro": "כאן לקוחות מפרסמים מה הם צריכים, ונותני שירות מציעים את העבודה שלהם.",
+    "freelancerPoints": [
+      "עברו לשידור חי כשאתם פנויים לעזור בקרבת מקום.",
+      "שתפו הצעה כדי שאנשים ידעו מה אתם עושים.",
+      "הגיבו לבקשות ושלחו הודעה ללקוחות."
+    ],
+    "continue": "המשך"
+  },
+  "communityGuide": {
+    "skip": "דלג",
+    "next": "הבא",
+    "done": "הבנתי",
+    "clientPostTitle": "פרסום בקשה",
+    "clientPostBody": "הכפתור הזה הוא המקום לבקש עזרה. נותני שירות בקרבת מקום יכולים להגיב.",
+    "clientFindTitle": "מצאו נותני שירות",
+    "clientFindBody": "הכפתור הזה מציג נותני שירות פנויים בקרבת מקום.",
+    "clientSearchTitle": "חיפוש",
+    "clientSearchBody": "מכאן מחפשים הצעות, אירועים ואנשים.",
+    "closing": "קדימה, תכירו את Tebnu",
+    "helperOfferTitle": "פרסום הצעה",
+    "helperOfferBody": "הכפתור הזה הוא המקום לשתף את העבודה שאתם מציעים.",
+    "helperRequestsTitle": "מציאת בקשות",
+    "helperRequestsBody": "בקשות מאנשים בקרבת מקום מופיעות כאן."
+  },
   "legalAcceptance": {
     "title": "עיון בתנאים המעודכנים",
     "description": "לפני שממשיכים, יש לאשר את הגיל ואת המסמכים המשפטיים הנוכחיים.",
@@ -172,7 +205,10 @@
     "heroTitle": "הצטרפו לקהילת \u2068Tebnu\u2069.",
     "heroSubtitle": "רשמו פרופיל כדי להתחבר למקומיים אמינים תוך רגע.",
     "settingUp": "מכינים את החשבון…",
+    "alreadySignedIn": "כבר מחוברים",
+    "goToApp": "המשך",
     "stepDetails": "פרטים",
+    "stepRole": "תפקיד",
     "stepLanguage": "שפה",
     "stepCategories": "קטגוריות",
     "stepAccount": "חשבון",
@@ -878,6 +914,7 @@
     "rates": "תעריפים",
     "hourlyRates": "תעריף לשעה",
     "myAccount": "החשבון שלי",
+    "accountEmail": "אימייל",
     "myAccountDescription": "נהל את החשבון שלך ומחק אותו לצמיתות במידת הצורך.",
     "identity": {
       "title": "אימות זהות",
@@ -945,6 +982,10 @@
       "offerHelp": "הציעו עזרה",
       "appComingSoon": "הורדה",
       "getTheApp": "הורידו את האפליקציה",
+      "appStoreOn": "הורדה ב-",
+      "appStoreName": "App Store",
+      "playOn": "הורידו מ-",
+      "playName": "Google Play",
       "canHelp": "{{name}} יכול לעזור",
       "phoneCategory": "שמרטפות וטיפול בילדים",
       "phoneLive": "מחפשים בקרבתכם...",

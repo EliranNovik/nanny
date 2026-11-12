@@ -49,21 +49,17 @@ export function ContactUsButton({
       className={cn(
         isDock
           ? "relative z-10"
-          : "fixed right-4 top-1/2 z-[100] flex -translate-y-1/2 items-center md:right-6",
+          : "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[100] flex items-center md:bottom-8 md:right-6",
         className,
       )}
     >
       <div
         className={cn(
           "absolute w-52 rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-black/5 transition-all duration-200 dark:bg-zinc-800 dark:ring-white/10",
-          isDock
-            ? "bottom-full right-0 mb-3 origin-bottom-right"
-            : "right-full mr-3 origin-right rtl:left-full rtl:right-auto rtl:ml-3 rtl:mr-0",
+          "bottom-full right-0 mb-3 origin-bottom-right",
           open
             ? "pointer-events-auto translate-x-0 translate-y-0 opacity-100"
-            : isDock
-              ? "pointer-events-none translate-y-2 opacity-0"
-              : "pointer-events-none translate-x-3 opacity-0",
+            : "pointer-events-none translate-y-2 opacity-0",
         )}
       >
         <a

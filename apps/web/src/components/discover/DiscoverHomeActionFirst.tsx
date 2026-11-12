@@ -608,6 +608,7 @@ export function DiscoverHomeActionFirst({
       <div className="flex gap-2 px-2.5 pt-1.5 pb-1">
         <button
           type="button"
+          data-guide="post-request"
           onClick={() => {
             trackEvent("discover_actions_post_request", {
               mode: homeMode,
@@ -636,6 +637,7 @@ export function DiscoverHomeActionFirst({
         </button>
         <button
           type="button"
+          data-guide="find-helpers"
           onClick={() => {
             trackEvent("discover_actions_browse_helpers", {
               mode: homeMode,
@@ -696,6 +698,7 @@ export function DiscoverHomeActionFirst({
         </button>
         <button
           type="button"
+          data-guide="post-offer"
           onClick={() => {
             trackEvent("discover_actions_post_offer", {
               mode: homeMode,
@@ -725,6 +728,35 @@ export function DiscoverHomeActionFirst({
   }
 
   /** Desktop hero: three round icon badges + captions (no modal). */
+  function renderHeroModeSwitch() {
+    const options = [
+      { id: "hire" as const, label: t("explore.getHelpQuestion").replace(/\?|\s\?/g, "").trim() },
+      { id: "work" as const, label: t("explore.helpOthersQuestion").replace(/\?|\s\?/g, "").trim() },
+    ];
+    return (
+      <div className="pointer-events-auto inline-flex rounded-full bg-black/25 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] backdrop-blur-md">
+        {options.map((option) => {
+          const active = homeMode === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => writeDiscoverHomeIntent(option.id)}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-[13px] font-bold tracking-tight transition md:px-4 md:py-2 md:text-[14px]",
+                active
+                  ? "bg-white text-zinc-950 shadow-sm"
+                  : "text-white/85 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderDesktopWorkLiveBadge() {
     if (isHire) return null;
     if (!isInActive24hGoLiveWindow) return null;
@@ -762,6 +794,7 @@ export function DiscoverHomeActionFirst({
         <div className="pointer-events-auto absolute bottom-5 start-6 z-[22] hidden w-[min(420px,46%)] grid-cols-2 gap-2.5 md:grid">
           <button
             type="button"
+            data-guide="post-request"
             onClick={() => {
               trackEvent("discover_hero_quick_post_request", { mode: "hire" });
               guardKycAction("start_request", () => navigate(createRequestPath));
@@ -773,6 +806,7 @@ export function DiscoverHomeActionFirst({
           </button>
           <button
             type="button"
+            data-guide="find-helpers"
             onClick={() => {
               trackEvent("discover_hero_quick_find_helpers", { mode: "hire" });
               navigate("/client/helpers");
@@ -803,6 +837,7 @@ export function DiscoverHomeActionFirst({
         </button>
         <button
           type="button"
+          data-guide="post-offer"
           onClick={() => {
             trackEvent("discover_hero_quick_post_offer", { mode: "work" });
             guardKycAction("share_post", () =>
@@ -1012,6 +1047,7 @@ export function DiscoverHomeActionFirst({
           <div className="absolute inset-0 z-[5] bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
           <div className="absolute inset-x-0 bottom-3 z-10 flex flex-col gap-2.5">
             <div className="px-4">
+              <div className="mb-3">{renderHeroModeSwitch()}</div>
               <h1 className="max-w-[15.5rem] text-[1.55rem] font-semibold leading-[1.15] tracking-[-0.02em] text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.35)]">
                 {isHire
                   ? "A little help, nearby"
@@ -1057,14 +1093,15 @@ export function DiscoverHomeActionFirst({
             <div className="w-full px-4 pt-3 pb-1">
               <DiscoverHomeMyLiveHelpJobs mode="work" />
             </div>
+            <div data-guide="find-requests" className="px-4 pt-3 pb-5">
             <DiscoverHomeCategoryFilterRow
               variant="work"
               selected={categoryFilter}
               onSelect={selectCategoryAndScroll}
               otherSubFilter={otherSubFilter}
               onOtherSubFilterChange={setOtherSubFilter}
-              className="px-4 pt-3 pb-5"
             />
+            </div>
             <div data-discover-results="" className="scroll-mt-24">
               <DiscoverHomePostedHelpRequests
                 enabled
@@ -1120,6 +1157,7 @@ export function DiscoverHomeActionFirst({
                   >
                     <div className="min-w-0">
                       <div className={cn(heroTitleBlockClassName, "pr-0")}>
+                        <div className="mb-3">{renderHeroModeSwitch()}</div>
                         <h2 className={heroHeadlineClassName}>
                           A little help, nearby
                         </h2>
@@ -1166,6 +1204,7 @@ export function DiscoverHomeActionFirst({
                   >
                     <div className="min-w-0">
                       <div className={cn(heroTitleBlockClassName, "pr-0")}>
+                        <div className="mb-3">{renderHeroModeSwitch()}</div>
                         <h2 className={heroHeadlineClassName}>
                           Someone nearby needs your help
                         </h2>
@@ -1198,6 +1237,7 @@ export function DiscoverHomeActionFirst({
               afterMore={
                 <UserSearch
                   size="lg"
+                  guideId="search"
                   placeholder="Search offers, events, or people…"
                   className="relative z-[30] mx-0 w-full max-w-none"
                   endSlot={
@@ -1228,7 +1268,7 @@ export function DiscoverHomeActionFirst({
           </div>
         </div>
 
-        <div className={cn("min-w-0 px-0.5 pt-2", isHire && "hidden")}>
+        <div data-guide="find-requests" className={cn("min-w-0 px-0.5 pt-2", isHire && "hidden")}>
           <DiscoverHomeCategoryFilterRow
             variant="work"
             selected={categoryFilter}

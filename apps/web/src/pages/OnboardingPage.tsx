@@ -18,16 +18,10 @@ import {
   Truck,
 } from "lucide-react";
 import {
-  SUPPORTED_LOCALES,
   isRtlLocale,
   normalizeAppLocale,
-  type AppLocale,
 } from "@/i18n";
-import { LOCALE_LABEL_KEYS } from "@/components/i18n/localeLabels";
-import {
-  guestSiteHeaderChromeProps,
-  LandingSiteHeader,
-} from "@/components/LandingSiteHeader";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import { cn } from "@/lib/utils";
@@ -41,7 +35,6 @@ import {
   clearPendingProfile,
   commitPendingProfile,
   readPendingProfile,
-  savePendingProfile,
 } from "@/lib/pendingProfile";
 import { needsKycVerification, roleHomePath } from "@/lib/kyc";
 
@@ -65,15 +58,21 @@ const CATEGORY_ICON_COLORS: Record<string, string> = {
   other_help: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
 };
 
-export default function OnboardingPage() {
+function OnboardingTopBar() {
+  return (
+    <div className="flex shrink-0 items-center justify-end px-4 pt-4 sm:px-6 md:px-10 lg:px-12">
+      <LanguageSwitcher variant="compact" triggerClassName="text-foreground" />
+    </div>
+  );
+}
+
+export default function OnboardingPage({ embedded = false }: { embedded?: boolean }) {
   const { user, profile, loading: authLoading, refreshProfile, applyProfile } = useAuth();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
-  const [appLocale, setAppLocale] = useState<AppLocale>(() =>
-    normalizeAppLocale(i18n.language ?? "en"),
-  );
+  const appLocale = normalizeAppLocale(i18n.language ?? "en");
   /** Default: family / hire flow. Use `?role=freelancer` for helpers. */
   const [role, setRole] = useState<Role>("client");
   const [fullName, setFullName] = useState("");
@@ -106,16 +105,16 @@ export default function OnboardingPage() {
   }
 
   function goToRegisterStep(next: number) {
-    const account = role === "freelancer" ? 4 : 3;
+    const details = role === "freelancer" ? 4 : 3;
     flushSync(() => {
       setStep(next);
     });
     if (next === 1) {
-      focusRegisterField(fullNameRef.current);
+      focusRegisterField(emailRef.current);
       return;
     }
-    if (next === account) {
-      focusRegisterField(emailRef.current);
+    if (next === details) {
+      focusRegisterField(fullNameRef.current);
     }
   }
 
@@ -129,12 +128,12 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (authLoading || completingSignup || checkingProfile) return;
-    const account = role === "freelancer" ? 4 : 3;
+    const details = role === "freelancer" ? 4 : 3;
     const target =
       step === 1
-        ? fullNameRef.current
-        : step === account
-          ? emailRef.current
+        ? emailRef.current
+        : step === details
+          ? fullNameRef.current
           : null;
     if (!target) return;
     const id = window.setTimeout(() => {
@@ -196,13 +195,10 @@ export default function OnboardingPage() {
         }
 
         if (existingProfile) {
-          console.log(
-            "[OnboardingPage] Profile already exists in database, redirecting immediately...",
-            existingProfile,
-          );
           setProfileChecked(true);
           setCheckingProfile(false);
           clearPendingProfile();
+          if (embedded) return;
 
           const target = needsKycVerification(existingProfile)
             ? "/onboarding/verify"
@@ -268,6 +264,7 @@ export default function OnboardingPage() {
           return;
         }
 
+        setProfileChecked(true);
         setCheckingProfile(false);
       } catch (err) {
         console.error("[OnboardingPage] Error in checkExistingProfile", err);
@@ -296,6 +293,11 @@ export default function OnboardingPage() {
     applyProfile,
   ]);
 
+  useEffect(() => {
+    if (!user || profile || authLoading || checkingProfile || step !== 1) return;
+    setStep(2);
+  }, [user, profile, authLoading, checkingProfile, step]);
+
   const hasPendingSignup =
     Boolean(user && !profile && readPendingProfile()) && !error;
 
@@ -307,8 +309,8 @@ export default function OnboardingPage() {
     hasPendingSignup
   ) {
     return (
-      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader {...guestSiteHeaderChromeProps} />
+      <div className={cn("flex flex-col", embedded ? "min-h-full bg-[#FAF6EF] dark:bg-[#09090b]" : "min-h-screen bg-slate-50/50 bg-white dark:bg-background")}>
+        {embedded ? null : <OnboardingTopBar />}
         <main className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <AppBootSplashLogo />
@@ -319,6 +321,25 @@ export default function OnboardingPage() {
             ) : null}
           </div>
         </main>
+      </div>
+    );
+  }
+
+  if (embedded && profile) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#FAF6EF] px-8 text-center dark:bg-[#09090b]">
+        <p className="text-lg font-semibold text-foreground">{t("onboarding.alreadySignedIn")}</p>
+        <Button
+          type="button"
+          onClick={() =>
+            navigate(
+              needsKycVerification(profile) ? "/onboarding/verify" : roleHomePath(profile.role),
+            )
+          }
+          className="rounded-full px-6"
+        >
+          {t("onboarding.goToApp")}
+        </Button>
       </div>
     );
   }
@@ -350,25 +371,17 @@ export default function OnboardingPage() {
   }
 
   async function handleNameCitySubmit() {
-    console.log("[OnboardingPage] handleNameCitySubmit called", {
-      role,
-      fullName,
-      citySelection,
-    });
-
     if (!fullName.trim() || !citySelection?.placeId) {
-      console.log("[OnboardingPage] Validation failed");
       setError(t("onboarding.errors.nameCityRequired"));
       return;
     }
-
     setError("");
-    goToRegisterStep(2);
+    await createProfile();
   }
 
-  async function applyRegisterLocale(locale: AppLocale) {
-    setAppLocale(locale);
-    await i18n.changeLanguage(locale);
+  function handleRoleContinue() {
+    setError("");
+    setStep(3);
   }
 
   function helperCategories() {
@@ -378,82 +391,21 @@ export default function OnboardingPage() {
     ];
   }
 
-  function pendingPayload() {
-    const cityFields = pendingCityFields();
-    if (!cityFields) return null;
-    return {
-      role,
-      fullName: fullName.trim(),
-      ...cityFields,
-      locale: appLocale,
-      categories: role === "freelancer" ? helperCategories() : undefined,
-    };
-  }
-
-  async function handleLanguageContinue() {
-    const pending = pendingPayload();
-    if (pending) savePendingProfile(pending);
-
-    if (role === "freelancer" || !user) {
-      // Advance first so the next field can take focus in the same tap
-      // (iOS will not open the keyboard after an await).
-      goToRegisterStep(3);
-      void applyRegisterLocale(appLocale);
-      return;
-    }
-
-    await applyRegisterLocale(appLocale);
-    await createProfile();
-  }
-
   async function handleCategoriesContinue() {
     if (categories.length === 0) {
       setError(t("onboarding.errors.categoriesRequired"));
       return;
     }
     setError("");
-    const pending = pendingPayload();
-    if (pending) savePendingProfile(pending);
-
-    if (!user) {
-      goToRegisterStep(4);
-      return;
-    }
-
-    await createProfile();
+    goToRegisterStep(4);
   }
 
   async function handleGoogleSignUp() {
-    const cityFields = pendingCityFields();
-    if (!cityFields) {
-      setError(t("onboarding.errors.cityRequired"));
-      return;
-    }
-
     setLoading(true);
     setError("");
-    if (role === "freelancer" && categories.length === 0) {
-      setError(t("onboarding.errors.categoriesRequired"));
-      return;
-    }
-
-    savePendingProfile({
-      role,
-      fullName: fullName.trim(),
-      ...cityFields,
-      locale: appLocale,
-      categories:
-        role === "freelancer"
-          ? [
-              ...categories,
-              ...(categories.includes("other_help") ? otherHelpSubs : []),
-            ]
-          : undefined,
-    });
-
     const { error: oAuthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { redirectTo: `${window.location.origin}/onboarding` },
     });
     if (oAuthError) {
       setError(oAuthError.message || "Failed to connect to Google.");
@@ -462,50 +414,21 @@ export default function OnboardingPage() {
   }
 
   async function handleRegister() {
-    const cityFields = pendingCityFields();
-    console.log("[OnboardingPage] handleRegister called", {
-      email,
-      password,
-      role,
-      fullName,
-      citySelection,
-    });
-
     if (!email.trim() || !password.trim()) {
       setError(t("onboarding.errors.emailPasswordRequired"));
       return;
     }
-
-    if (!cityFields) {
-      setError(t("onboarding.errors.cityRequired"));
-      return;
-    }
-
     if (password.length < 6) {
       setError(t("onboarding.errors.passwordShort"));
       return;
     }
-
-    if (role === "freelancer" && categories.length === 0) {
-      setError(t("onboarding.errors.categoriesRequired"));
+    if (user) {
+      goToRegisterStep(2);
       return;
     }
 
     setLoading(true);
     setError("");
-    savePendingProfile({
-      role,
-      fullName: fullName.trim(),
-      ...cityFields,
-      locale: appLocale,
-      categories:
-        role === "freelancer"
-          ? [
-              ...categories,
-              ...(categories.includes("other_help") ? otherHelpSubs : []),
-            ]
-          : undefined,
-    });
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
@@ -537,7 +460,8 @@ export default function OnboardingPage() {
       }
     }
 
-    await createProfile();
+    setLoading(false);
+    goToRegisterStep(2);
   }
 
   async function createProfile() {
@@ -655,6 +579,7 @@ export default function OnboardingPage() {
         location_lat: cityFields.location_lat,
         location_lng: cityFields.location_lng,
         kyc_status: "not_started",
+        app_locale: appLocale,
         ...(role === "freelancer" && helperCategories().length
           ? { categories: helperCategories() }
           : {}),
@@ -733,7 +658,7 @@ export default function OnboardingPage() {
   const isHelper = role === "freelancer";
   const isRtl = isRtlLocale(appLocale);
   const totalSteps = isHelper ? 4 : 3;
-  const accountStep = isHelper ? 4 : 3;
+  const detailsStep = isHelper ? 4 : 3;
   const progressStep = step;
   const primaryBtnClass = isHelper
     ? "rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
@@ -751,23 +676,25 @@ export default function OnboardingPage() {
   const accentBarClass = isHelper ? "bg-emerald-600" : "bg-primary";
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-white dark:bg-background">
-      <LandingSiteHeader {...guestSiteHeaderChromeProps} className="shrink-0" />
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-      {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
+    <div className={cn("flex flex-col", embedded ? "min-h-full bg-[#FAF6EF] dark:bg-[#09090b]" : "h-[100dvh] max-h-[100dvh] overflow-hidden bg-white dark:bg-background")}>
+      <div className={cn("flex min-h-0", embedded ? "flex-none overflow-visible" : "flex-1 overflow-hidden")}>
+      {embedded ? null : (
       <div
-        className={cn(
-          "relative hidden h-full min-h-0 shrink-0 flex-col justify-end overflow-hidden bg-slate-900 p-16 lg:flex lg:w-[45%]",
-          isRtl ? "rounded-s-[2rem] pb-24 pe-20" : "rounded-e-[2rem] pb-20",
-        )}
+        className="relative hidden h-full min-h-0 shrink-0 lg:block lg:w-[45%]"
       >
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-5 top-5 overflow-hidden bg-slate-900",
+            isRtl ? "rounded-s-[2rem]" : "rounded-[2rem]",
+          )}
+        >
         <img
           src="/ChatGPT Image Apr 19, 2026, 11_35_26 AM.png"
           alt="Trusted professionals connecting locally"
           className="absolute inset-0 h-full w-full object-cover object-right"
         />
         
-        <div className="relative z-10 animate-fade-up pointer-events-none">
+        <div className={cn("absolute inset-x-0 bottom-0 z-10 p-16 pointer-events-none", isRtl ? "pb-24 pe-20" : "pb-20")}>
           <h1
             className={cn(
               "mb-5 font-black tracking-tight text-white drop-shadow-xl",
@@ -789,11 +716,15 @@ export default function OnboardingPage() {
             {t("onboarding.heroSubtitle")}
           </p>
         </div>
+        </div>
       </div>
+      )}
 
       {/* RIGHT COLUMN - Auth Form */}
-      <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="shrink-0 bg-white px-6 pt-4 pb-3 dark:bg-background md:px-10 lg:px-12">
+      <div className={cn("relative flex min-h-0 min-w-0 flex-col overflow-hidden", embedded ? "w-full flex-none self-start" : "h-full flex-1")}>
+        {embedded ? null : <OnboardingTopBar />}
+        {embedded && step === 1 ? null : (
+        <div className={cn("shrink-0 px-6 pb-3 md:px-10 lg:px-12", embedded ? "bg-[#FAF6EF] px-5 pt-28 dark:bg-[#09090b]" : "bg-white pt-4 dark:bg-background")}>
           <div className="mx-auto w-full max-w-[460px]">
             <div className="flex items-center">
               {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
@@ -826,88 +757,61 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div className="mt-1.5 flex justify-between">
-              <span
-                className={cn(
-                  "text-[11px] font-medium",
-                  progressStep >= 1 ? accentTextClass : "text-muted-foreground",
-                )}
-              >
-                {t("onboarding.stepDetails")}
-              </span>
-              <span
-                className={cn(
-                  "text-[11px] font-medium",
-                  progressStep >= 2 ? accentTextClass : "text-muted-foreground",
-                )}
-              >
-                {t("onboarding.stepLanguage")}
-              </span>
-              {isHelper ? (
+              {(
+                isHelper
+                  ? [
+                      t("onboarding.stepAccount"),
+                      t("onboarding.stepRole"),
+                      t("onboarding.stepCategories"),
+                      t("onboarding.stepDetails"),
+                    ]
+                  : [
+                      t("onboarding.stepAccount"),
+                      t("onboarding.stepRole"),
+                      t("onboarding.stepDetails"),
+                    ]
+              ).map((label, index) => (
                 <span
+                  key={label}
                   className={cn(
                     "text-[11px] font-medium",
-                    progressStep >= 3 ? accentTextClass : "text-muted-foreground",
+                    progressStep >= index + 1 ? accentTextClass : "text-muted-foreground",
                   )}
                 >
-                  {t("onboarding.stepCategories")}
+                  {label}
                 </span>
-              ) : null}
-              <span
-                className={cn(
-                  "text-[11px] font-medium",
-                  progressStep >= accountStep ? accentTextClass : "text-muted-foreground",
-                )}
-              >
-                {t("onboarding.stepAccount")}
-              </span>
+              ))}
             </div>
           </div>
         </div>
+        )}
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-6 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:px-10 md:pt-6">
+        <main className={cn("min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain", embedded ? "bg-[#FAF6EF] px-5 pb-6 dark:bg-[#09090b]" : "px-6 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:px-10 md:pt-6", embedded && step === 1 && "pt-28")}>
           <div className="mx-auto w-full max-w-[460px] animate-fade-in">
           <div className={cn("text-center", step === 1 ? "mb-6" : "mb-8 md:mb-10")}>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {step === 1
-                ? t("onboarding.titleNameCity")
+                ? t("onboarding.titleAccount")
                 : step === 2
-                  ? t("onboarding.titleLanguage")
+                  ? t("onboarding.joiningAs")
                   : step === 3 && isHelper
                     ? t("onboarding.titleCategories")
-                    : t("onboarding.titleAccount")}
+                    : t("onboarding.titleNameCity")}
             </h1>
-            {step === 2 ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("onboarding.subtitleLanguage")}
-              </p>
-            ) : null}
             {step === 3 && isHelper ? (
               <p className="mt-2 text-sm text-muted-foreground">
                 {t("onboarding.subtitleCategories")}
               </p>
             ) : null}
-            {step === accountStep ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("onboarding.subtitleAccount")}
-              </p>
-            ) : null}
           </div>
 
-          {/* Role selector — shown at top of step 1 */}
-          {step === 1 && (
+          {/* Role selector */}
+          {step === 2 && (
             <div className="mb-6">
-              <p className="mb-10 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground sm:text-base">
-                {t("onboarding.joiningAs")}
-              </p>
               <div className="mx-auto grid max-w-[26rem] grid-cols-2 items-center gap-4 sm:max-w-md">
                 <button
                   type="button"
-                  onClick={() => {
-                    setRole("client");
-                    requestAnimationFrame(() =>
-                      focusRegisterField(fullNameRef.current),
-                    );
-                  }}
+                  onClick={() => setRole("client")}
                   className={cn(
                     "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "client"
@@ -954,12 +858,7 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setRole("freelancer");
-                    requestAnimationFrame(() =>
-                      focusRegisterField(fullNameRef.current),
-                    );
-                  }}
+                  onClick={() => setRole("freelancer")}
                   className={cn(
                     "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "freelancer"
@@ -1015,7 +914,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === detailsStep && (
               <div className="space-y-4">
                 <FloatingLabelInput
                   id="fullName"
@@ -1065,48 +964,6 @@ export default function OnboardingPage() {
                     void handleNameCitySubmit();
                   }}
                 />
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-2.5">
-                  {SUPPORTED_LOCALES.map((locale) => {
-                    const selected = appLocale === locale;
-                    return (
-                      <button
-                        key={locale}
-                        type="button"
-                        onClick={() => {
-                          void applyRegisterLocale(locale);
-                        }}
-                        aria-pressed={selected}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all",
-                          selected
-                            ? isHelper
-                              ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm"
-                              : "border-primary/40 bg-primary/10 shadow-sm"
-                            : "border-border/70 bg-muted/20 hover:bg-muted/30",
-                        )}
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/80 text-[11px] font-bold uppercase tracking-wide text-foreground/80">
-                          {locale}
-                        </span>
-                        <span className="min-w-0 flex-1 text-base font-semibold text-foreground">
-                          {t(LOCALE_LABEL_KEYS[locale])}
-                        </span>
-                        {selected ? (
-                          <Check
-                            className={cn("h-5 w-5 shrink-0", accentTextClass)}
-                            strokeWidth={2.25}
-                            aria-hidden
-                          />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             )}
 
@@ -1210,12 +1067,17 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {step === accountStep && (
+            {step === 1 && (
               <div className="space-y-4">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="mb-2 w-full rounded-full border-0 bg-zinc-100 font-semibold text-black shadow-none hover:bg-zinc-200 hover:text-black dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 dark:hover:text-white"
+                  className={cn(
+                    "mb-2 w-full rounded-full border font-semibold shadow-none",
+                    embedded
+                      ? "border-black/10 bg-white text-black hover:bg-white hover:text-black"
+                      : "border-0 bg-zinc-100 text-black hover:bg-zinc-200 hover:text-black dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 dark:hover:text-white",
+                  )}
                   onClick={handleGoogleSignUp}
                   disabled={loading}
                 >
@@ -1227,7 +1089,7 @@ export default function OnboardingPage() {
                     <span className="w-full border-t border-border/60" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">{t("onboarding.orEmail")}</span>
+                    <span className={cn("px-2 text-muted-foreground", embedded ? "bg-[#FAF6EF] dark:bg-[#09090b]" : "bg-card")}>{t("onboarding.orEmail")}</span>
                   </div>
                 </div>
 
@@ -1278,10 +1140,17 @@ export default function OnboardingPage() {
         </div>
         </main>
 
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:left-[45%]">
+        <div
+          className={cn(
+            embedded
+              ? "shrink-0 bg-[#FAF6EF] p-4 dark:bg-[#09090b]"
+              : "fixed inset-x-0 bottom-0 z-50 bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:left-[45%]",
+          )}
+        >
           <div className="mx-auto flex w-full max-w-[460px] gap-3">
             {step === 1 ? (
               <>
+                {embedded ? null : (
                 <Button
                   variant="outline"
                   type="button"
@@ -1290,12 +1159,13 @@ export default function OnboardingPage() {
                 >
                   {t("onboarding.back")}
                 </Button>
+                )}
                 <Button
-                  onClick={handleNameCitySubmit}
-                  disabled={loading || !fullName.trim() || !cityConfirmed}
+                  onClick={() => void handleRegister()}
+                  disabled={loading || !email.trim() || !password.trim()}
                   className={cn("flex-1", primaryBtnClass)}
                 >
-                  {t("onboarding.continue")}
+                  {loading ? t("onboarding.creatingAccount") : t("onboarding.createAccount")}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </>
@@ -1311,7 +1181,7 @@ export default function OnboardingPage() {
                   {t("onboarding.back")}
                 </Button>
                 <Button
-                  onClick={() => void handleLanguageContinue()}
+                  onClick={handleRoleContinue}
                   disabled={loading}
                   className={cn("flex-1", primaryBtnClass)}
                 >
@@ -1351,11 +1221,11 @@ export default function OnboardingPage() {
                   {t("onboarding.back")}
                 </Button>
                 <Button
-                  onClick={handleRegister}
-                  disabled={loading}
+                  onClick={() => void handleNameCitySubmit()}
+                  disabled={loading || !fullName.trim() || !cityConfirmed}
                   className={cn("flex-1", primaryBtnClass)}
                 >
-                  {loading ? t("onboarding.creatingAccount") : t("onboarding.createAccount")}
+                  {t("onboarding.continue")}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </>

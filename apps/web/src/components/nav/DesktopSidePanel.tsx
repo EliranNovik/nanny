@@ -516,16 +516,11 @@ export function DesktopSidePanel() {
             onClick={async () => {
               await signOut();
             }}
-            className={cn(
-              "flex w-full flex-col items-center gap-1 px-0.5 py-1.5 transition-colors",
-              "text-red-600 hover:opacity-90 active:scale-[0.98]",
-            )}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-red-500 transition-colors hover:bg-red-500/10 active:scale-[0.98]"
             aria-label={t("common.logOut")}
+            title={t("common.logOut")}
           >
-            <LogOut className="h-6 w-6 shrink-0 text-red-400" strokeWidth={2.15} />
-            <span className="w-full text-center text-[10px] font-semibold leading-[1.15] tracking-tight">
-              {t("common.logOut")}
-            </span>
+            <LogOut className="h-5 w-5" strokeWidth={2.15} />
           </button>
           <Link
             to={homeHref}
@@ -867,16 +862,11 @@ export function DesktopSidePanel() {
           onClick={async () => {
             await signOut();
           }}
-          className={cn(
-            "group flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 transition-colors",
-            "text-red-600 hover:opacity-90 active:scale-[0.98]",
-          )}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-red-500 transition-colors hover:bg-red-500/10 active:scale-[0.98]"
           aria-label={t("common.logOut")}
+          title={t("common.logOut")}
         >
-          <LogOut className="h-6 w-6 shrink-0 text-red-400" strokeWidth={2.15} />
-          <span className="truncate text-[13px] font-semibold leading-none tracking-tight">
-            {t("common.logOut")}
-          </span>
+          <LogOut className="h-5 w-5" strokeWidth={2.15} />
         </button>
         {adminDrawer ? null : (
         <Link

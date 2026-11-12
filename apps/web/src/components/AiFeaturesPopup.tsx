@@ -9,8 +9,13 @@ import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import {
   AI_FEATURES_POPUP_ID,
   closeAnnouncement,
+  COMMUNITY_SPOTLIGHT_CLOSED_EVENT,
+  COMMUNITY_WELCOME_CLOSED_EVENT,
   isAnnouncementOpen,
+  isCommunitySpotlightPending,
+  isCommunityWelcomePending,
 } from "@/lib/featureAnnouncements";
+import { profileHasCurrentLegalAcceptance } from "@/lib/legalAcceptance";
 
 const HIDDEN_ON = ["/onboarding", "/login", "/signup", "/register", "/auth", "/admin", "/reset-password"];
 const SHOW_DELAY_MS = 1200;
@@ -23,9 +28,30 @@ export function AiFeaturesPopup() {
   const [open, setOpen] = useState(false);
   const [snoozed, setSnoozed] = useState(false);
 
+  const [welcomeSettled, setWelcomeSettled] = useState(false);
+
+  useEffect(() => {
+    const sync = () => {
+      setWelcomeSettled(
+        !!user?.id &&
+          !isCommunityWelcomePending(user.id) &&
+          !isCommunitySpotlightPending(user.id),
+      );
+    };
+    sync();
+    window.addEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+    window.addEventListener(COMMUNITY_SPOTLIGHT_CLOSED_EVENT, sync);
+    return () => {
+      window.removeEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+      window.removeEventListener(COMMUNITY_SPOTLIGHT_CLOSED_EVENT, sync);
+    };
+  }, [user?.id]);
+
   const eligible =
     !!user?.id &&
     !!profile?.role &&
+    welcomeSettled &&
+    profileHasCurrentLegalAcceptance(profile) &&
     !snoozed &&
     !HIDDEN_ON.some((p) => pathname.startsWith(p));
 

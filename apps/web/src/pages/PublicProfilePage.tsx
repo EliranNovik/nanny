@@ -2020,7 +2020,7 @@ export default function PublicProfilePage() {
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-start justify-between gap-6 flex-wrap">
                 <div className="min-w-0">
-                  <div className="md:max-w-[calc(100%-18rem)]">
+                  <div className="min-w-0">
                   <MemberSinceBadge
                     createdAt={profile.created_at}
                     helper={showHelperBadges}

@@ -40,6 +40,32 @@ export function Footer() {
                 <Twitter className="w-5 h-5 text-slate-300" />
               </button>
             </div>
+            <div className="flex flex-wrap gap-2.5">
+              <a
+                href="https://testflight.apple.com/join/PesFrQ2m"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-11 items-center gap-2 rounded-[0.6rem] border border-white/80 bg-black px-2.5 text-left text-white transition hover:bg-zinc-900 active:scale-[0.98]"
+              >
+                <img src="/app-store-apple.svg" alt="" className="h-6 w-6 shrink-0 object-contain" />
+                <span className="leading-none">
+                  <span className="block text-[8px] font-medium tracking-wide">{t("landing.creamHero.appStoreOn")}</span>
+                  <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.02em]">{t("landing.creamHero.appStoreName")}</span>
+                </span>
+              </a>
+              <a
+                href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-11 items-center gap-2 rounded-[0.6rem] border-2 border-white bg-black px-2.5 text-left text-white transition hover:bg-zinc-900 active:scale-[0.98]"
+              >
+                <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain" />
+                <span className="leading-none">
+                  <span className="block text-[8px] font-medium uppercase tracking-[0.04em]">{t("landing.creamHero.playOn")}</span>
+                  <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.02em]">{t("landing.creamHero.playName")}</span>
+                </span>
+              </a>
+            </div>
           </div>
 
           {/* Quick Links */}

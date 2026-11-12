@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,10 @@ import {
   profileHasCurrentLegalAcceptance,
   recordLegalAcceptance,
 } from "@/lib/legalAcceptance";
+import {
+  COMMUNITY_WELCOME_CLOSED_EVENT,
+  isCommunityWelcomePending,
+} from "@/lib/featureAnnouncements";
 
 export function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -15,10 +19,18 @@ export function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const [confirmAge, setConfirmAge] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [welcomeRevision, setWelcomeRevision] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setWelcomeRevision((value) => value + 1);
+    window.addEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+    return () => window.removeEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+  }, []);
 
   const isAccountSettings = location.pathname.endsWith("/profile/account");
+  const welcomePending = welcomeRevision >= 0 && !!user?.id && isCommunityWelcomePending(user.id);
 
-  if (!user || !profile || profileHasCurrentLegalAcceptance(profile) || isAccountSettings) {
+  if (!user || !profile || profileHasCurrentLegalAcceptance(profile) || isAccountSettings || welcomePending) {
     return <>{children}</>;
   }
 

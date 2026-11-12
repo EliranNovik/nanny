@@ -17,6 +17,18 @@ if (!supabaseAnonKey || supabaseAnonKey.includes("your-anon-key")) {
 }
 
 // Create client even if env vars are missing (will fail gracefully on API calls)
+/**
+ * The browser lock throws as soon as another tab or a reload still holds it,
+ * and a waiting queue can deadlock the session read. Run the auth work directly.
+ */
+async function authLock<R>(
+  _name: string,
+  _acquireTimeout: number,
+  fn: () => Promise<R>,
+): Promise<R> {
+  return fn();
+}
+
 export const supabase = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
   supabaseAnonKey || "placeholder-key",
@@ -26,6 +38,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       // Required so email confirmation / magic links can establish a session from the redirect URL.
       detectSessionInUrl: true,
+      lock: authLock,
     },
     db: {
       schema: "public",

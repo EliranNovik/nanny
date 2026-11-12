@@ -1,6 +1,6 @@
 import { useEffect, useState, type Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, ChevronLeft, MoreHorizontal, Radar } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, Heart, MoreHorizontal, Radar, Share2 } from "lucide-react";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { cn } from "@/lib/utils";
 
@@ -64,13 +64,15 @@ function useHeroMediaReady() {
   return ready;
 }
 
-/** Desktop phone scale: ~62% of viewport height, capped by width so it never crowds the copy. */
+/** Desktop phone scale, sized to the hero stage beside the signup panel. */
 function usePhoneScale() {
   const compute = () => {
     if (typeof window === "undefined") return 1;
-    const byHeight = (window.innerHeight * 0.62) / PHONE_H;
-    const byWidth = (window.innerWidth * 0.235) / PHONE_W;
-    return Math.max(0.7, Math.min(1.6, byHeight, byWidth));
+    const panel = window.innerWidth >= 768 ? Math.min(400, window.innerWidth * 0.34) : 0;
+    const stage = Math.max(320, window.innerWidth - panel);
+    const byHeight = (window.innerHeight * 0.56) / PHONE_H;
+    const byWidth = (stage * 0.3) / PHONE_W;
+    return Math.max(0.58, Math.min(1.2, byHeight, byWidth));
   };
   const [scale, setScale] = useState(compute);
   useEffect(() => {
@@ -374,18 +376,37 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
   return (
     <div className={cn("relative overflow-hidden", LANDING_CREAM_BG, className)}>
       {/* Desktop artwork — measured against the reference layout */}
-      <div className={cn("pointer-events-none absolute inset-0 hidden md:block", reveal(0).className)} style={reveal(0).style} aria-hidden>
+      <div className={cn("pointer-events-none absolute inset-y-0 start-0 hidden w-full md:block md:w-[calc(100%-min(400px,34vw))]", reveal(0).className)} style={reveal(0).style} aria-hidden>
         {/* tabletop */}
-        <div className="absolute bottom-0 left-[22%] right-0 h-[19%] bg-[linear-gradient(180deg,rgba(253,251,247,0)_0%,rgba(253,251,247,0.92)_14%,#fdfbf7_100%)] [mask-image:linear-gradient(90deg,transparent_0%,#000_22%)] rtl:left-0 rtl:right-[22%] rtl:[mask-image:linear-gradient(270deg,transparent_0%,#000_22%)]" />
+        <div className="absolute bottom-0 left-[22%] right-[44%] h-[19%] bg-[linear-gradient(180deg,rgba(253,251,247,0)_0%,rgba(253,251,247,0.92)_14%,#fdfbf7_100%)] [mask-image:linear-gradient(90deg,transparent_0%,#000_22%)] rtl:left-[44%] rtl:right-[22%] rtl:[mask-image:linear-gradient(270deg,transparent_0%,#000_22%)]" />
 
-        <div className="absolute bottom-[16%] right-0 top-[max(7%,5.25rem)] w-[42%] rtl:left-0 rtl:right-auto">
-          <div className="absolute -left-[16%] top-[13%] aspect-square w-[44%] rounded-full bg-[#F97316] rtl:left-auto rtl:-right-[16%]" />
-          <div className="absolute inset-0 overflow-hidden rounded-t-[999px] rounded-bl-[3rem] ring-1 ring-inset ring-white/50">
+        <div className="absolute bottom-[18%] right-[4%] top-[18%] w-[36%] rtl:left-[4%] rtl:right-auto">
+          <div className="absolute inset-0 overflow-hidden rounded-[1.75rem] bg-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] ring-1 ring-black/5">
             <HeroPhoto />
-            <div
-              className="absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-b from-transparent via-[#FAF6EF]/35 to-[#FAF6EF]/90"
-              aria-hidden
-            />
+            <div className="absolute inset-x-6 top-6 flex items-center justify-between" aria-hidden>
+              <span className="h-4 w-[32%] rounded-full bg-white/90" />
+              <span className="flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-2.5">
+                <span className="h-5 w-5 rounded-full bg-zinc-200" />
+                <span className="h-3.5 w-12 rounded-full bg-zinc-200" />
+              </span>
+            </div>
+            <div className="absolute inset-x-6 bottom-6 flex flex-col gap-3.5" aria-hidden>
+              <span className="h-4 w-[40%] rounded-full bg-white/90" />
+              <span className="flex items-center gap-3">
+                <span className="h-5 w-[46%] rounded-full bg-white" />
+                <span className="h-5 w-5 rounded-full bg-white" />
+                <span className="h-5 w-5 rounded-full bg-white/75" />
+                <span className="h-5 w-5 rounded-full bg-white/45" />
+              </span>
+            </div>
+            <div className="absolute bottom-5 right-5 flex items-center gap-2 rtl:left-5 rtl:right-auto" aria-hidden>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_8px_18px_-8px_rgba(15,23,42,0.45)]">
+                <Share2 className="h-5 w-5 text-zinc-700" strokeWidth={2.25} />
+              </span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_8px_18px_-8px_rgba(15,23,42,0.45)]">
+                <Heart className="h-6 w-6 fill-red-500 text-red-500" strokeWidth={2.25} />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -423,8 +444,8 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
         </div>
       ) : null}
 
-      <div className="relative z-10 flex min-h-[100svh] flex-col justify-start px-5 pb-0 pt-20 sm:px-10 md:justify-center md:px-[4.7vw] md:pb-[6vh] md:pt-[12vh]">
-        <div className="min-w-0 w-full max-w-xl md:max-w-[50vw]">
+      <div className="relative z-10 flex min-h-[100svh] flex-col justify-start px-5 pb-0 pt-20 sm:px-10 md:w-[calc(100%-min(400px,34vw))] md:px-[3.2vw] md:pb-[6vh] md:pt-[6.5rem]">
+        <div className="min-w-0 w-full max-w-xl md:max-w-[min(40rem,54%)]">
           <div className="mb-2 flex items-center md:hidden">
             <img
               src={BRAND_LOGO_SRC}
@@ -437,10 +458,10 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
               tebnu
             </span>
           </div>
-          <h1 className="w-[calc(100vw-2.5rem)] max-w-full whitespace-normal break-words text-[2.6rem] font-black leading-[0.98] tracking-[-0.045em] text-zinc-950 min-[430px]:text-[3rem] sm:w-auto sm:text-7xl md:text-[clamp(3.5rem,7.4vw,8.75rem)] md:leading-[0.96]">
+          <h1 className="w-full max-w-full whitespace-normal break-words text-[2.6rem] font-black leading-[0.98] tracking-[-0.045em] text-zinc-950 min-[430px]:text-[3rem] sm:text-6xl md:text-[clamp(3.5rem,5vw,6.25rem)] md:leading-[0.94]">
             {t("landing.creamHero.title")}
           </h1>
-          <p className="mt-4 text-lg font-medium leading-snug text-zinc-600 sm:mt-6 sm:text-2xl md:mt-[2.2vw] md:text-[clamp(1.125rem,2.15vw,2rem)]">
+          <p className="mt-4 max-w-md text-lg font-medium leading-snug text-zinc-600 sm:mt-6 sm:text-xl md:mt-5 md:text-[clamp(1.05rem,1.45vw,1.5rem)]">
             {t("landing.creamHero.subtitle")}
           </p>
 
@@ -451,10 +472,10 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
             <button
               type="button"
               onClick={onFindHelp}
-              className="inline-flex h-[3.25rem] items-center gap-2 rounded-full bg-[#F97316] px-7 text-base font-semibold text-white shadow-[0_14px_30px_-14px_rgba(249,115,22,0.9)] transition hover:bg-orange-600 active:scale-[0.98] sm:h-14 sm:gap-2.5 sm:px-8 sm:text-lg md:h-[clamp(3.25rem,4.7vw,5rem)] md:gap-[0.9vw] md:px-[2.5vw] md:text-[clamp(1.05rem,1.85vw,1.75rem)]"
+              className="inline-flex h-14 items-center gap-2 rounded-full bg-[#F97316] px-8 text-lg font-semibold text-white shadow-[0_14px_30px_-14px_rgba(249,115,22,0.9)] transition hover:bg-orange-600 active:scale-[0.98] sm:h-16 sm:gap-2.5 sm:px-9 sm:text-xl md:h-16 md:px-9 md:text-xl"
             >
               {t("landing.creamHero.findHelp")}
-              <ArrowUpRight className="h-5 w-5 rtl:-scale-x-100 md:h-[1.6vw] md:w-[1.6vw]" strokeWidth={2.25} />
+              <ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6 rtl:-scale-x-100" strokeWidth={2.25} />
             </button>
             <button
               type="button"
@@ -469,14 +490,33 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
         {/* Mobile artwork */}
         <div className={cn("relative -mr-5 ml-auto mt-8 h-[25rem] w-[calc(100%+1.25rem)] max-w-[25rem] sm:-mr-10 sm:mt-12 sm:h-[34rem] sm:max-w-[28rem] md:hidden rtl:-ml-5 rtl:mr-auto sm:rtl:-ml-10", reveal(80).className)} style={reveal(80).style} aria-hidden>
           <div className="absolute bottom-0 left-[-10%] right-[-10%] h-[16%] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.85)_35%,#fdfbf7_100%)]" />
-          <div className="absolute bottom-0 right-0 top-0 w-[74%] rtl:left-0 rtl:right-auto">
-            <div className="absolute -left-[22%] top-[12%] aspect-square w-[52%] rounded-full bg-[#F97316]" />
-            <div className="absolute inset-0 overflow-hidden rounded-t-[999px] rounded-bl-[2rem] ring-1 ring-inset ring-white/50">
+          <div className="absolute bottom-[8%] right-0 top-[4%] w-[68%] rtl:left-0 rtl:right-auto">
+            <div className="absolute inset-0 overflow-hidden rounded-[1.5rem] bg-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] ring-1 ring-black/5">
               <HeroPhoto />
-              <div
-                className="absolute inset-x-0 bottom-0 h-[16%] bg-gradient-to-b from-transparent via-[#FAF6EF]/30 to-[#FAF6EF]/85"
-                aria-hidden
-              />
+              <div className="absolute inset-x-4 top-4 flex items-center justify-between" aria-hidden>
+                <span className="h-3 w-[32%] rounded-full bg-white/90" />
+                <span className="flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1.5">
+                  <span className="h-4 w-4 rounded-full bg-zinc-200" />
+                  <span className="h-2.5 w-8 rounded-full bg-zinc-200" />
+                </span>
+              </div>
+              <div className="absolute inset-x-4 bottom-4 flex flex-col gap-2.5" aria-hidden>
+                <span className="h-3 w-[40%] rounded-full bg-white/90" />
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-[46%] rounded-full bg-white" />
+                  <span className="h-3.5 w-3.5 rounded-full bg-white" />
+                  <span className="h-3.5 w-3.5 rounded-full bg-white/75" />
+                  <span className="h-3.5 w-3.5 rounded-full bg-white/45" />
+                </span>
+              </div>
+              <div className="absolute bottom-3.5 right-3.5 flex items-center gap-1.5 rtl:left-3.5 rtl:right-auto" aria-hidden>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_8px_18px_-8px_rgba(15,23,42,0.45)]">
+                  <Share2 className="h-4 w-4 text-zinc-700" strokeWidth={2.25} />
+                </span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_8px_18px_-8px_rgba(15,23,42,0.45)]">
+                  <Heart className="h-5 w-5 fill-red-500 text-red-500" strokeWidth={2.25} />
+                </span>
+              </div>
             </div>
           </div>
           <div className="absolute bottom-[-8%] left-[-4%] sm:bottom-[4%] sm:left-[8%]">
@@ -488,45 +528,36 @@ export function LandingCreamHero({ onFindHelp, onOfferHelp, ctaRef, className }:
       </div>
 
       {/* Desktop phone + chip sit above the copy layer so the chip can overlap it like the reference */}
-      <div className={cn("pointer-events-none absolute inset-0 z-20 hidden md:block", reveal(140).className)} style={reveal(140).style} aria-hidden>
-        <div className="absolute bottom-[4%] left-[52%] rtl:left-auto rtl:right-[52%]">
+      <div className={cn("pointer-events-none absolute inset-y-0 start-0 z-20 hidden w-full md:block md:w-[calc(100%-min(400px,34vw))]", reveal(140).className)} style={reveal(140).style} aria-hidden>
+        <div className="absolute bottom-[8%] left-[34%] rtl:left-auto rtl:right-[34%]">
           <StandingPhone scale={phoneScale} />
-          <RequestPushNotification
-            className="left-[calc(100%+0.85rem)] top-[52%] rtl:right-[calc(100%+0.85rem)] rtl:left-auto"
-            title={t("landing.creamHero.acceptTitle")}
-            body={t("landing.creamHero.acceptBody")}
-            photo="/images/helper_profile_1.png"
-          />
         </div>
-        <RequestPushNotification className="left-[39%] top-[74%] rtl:left-auto rtl:right-[39%]" />
+        <RequestPushNotification className="left-[78%] top-[calc(82%+0.7rem)] -translate-x-1/2 rtl:left-[22%] rtl:right-auto" />
       </div>
 
-      <div className={cn("pointer-events-auto absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-5 z-30 flex items-center gap-3 sm:left-10 md:bottom-8 md:left-[4.7vw]", reveal(240).className)} style={reveal(240).style}>
-        <span className="hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sm:inline">
-          {t("landing.creamHero.appComingSoon")}
-        </span>
+      <div className={cn("pointer-events-auto absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-5 z-30 flex items-center gap-2 sm:left-10 md:bottom-8 md:left-[4.7vw]", reveal(240).className)} style={reveal(240).style}>
         <a
           href="https://testflight.apple.com/join/PesFrQ2m"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-zinc-950 px-3 text-left text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+          className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-black px-2 text-left text-white transition hover:bg-zinc-900 active:scale-[0.98] sm:h-10 sm:gap-2 sm:px-2.5"
         >
-          <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
-          <span>
-            <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-300">{t("landing.creamHero.getTheApp")}</span>
-            <span className="block text-xs font-bold leading-tight">iOS</span>
+          <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-6 sm:w-6" />
+          <span className="leading-none">
+            <span className="block text-[7px] font-medium tracking-wide sm:text-[8px]">{t("landing.creamHero.appStoreOn")}</span>
+            <span className="mt-0.5 block text-[12px] font-semibold tracking-[-0.02em] sm:text-[14px]">{t("landing.creamHero.appStoreName")}</span>
           </span>
         </a>
         <a
           href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 bg-white/75 px-3 text-left text-zinc-950 shadow-sm backdrop-blur transition hover:bg-white active:scale-[0.98] sm:h-11 sm:gap-2 sm:rounded-xl sm:px-4"
+          className="flex h-8 items-center gap-1.5 rounded-[0.5rem] border border-white bg-black px-2 text-left text-white shadow-sm transition hover:bg-zinc-900 active:scale-[0.98] sm:h-10 sm:gap-2 sm:border-2 sm:px-2.5"
         >
-          <img src="/google-play-logo.svg" alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7" />
-          <span>
-            <span className="block text-[8px] font-semibold uppercase tracking-wide text-zinc-500">{t("landing.creamHero.getTheApp")}</span>
-            <span className="block text-xs font-bold leading-tight">Android</span>
+          <img src="/google-play-logo.svg" alt="" className="h-4 w-4 shrink-0 object-contain sm:h-5 sm:w-5" />
+          <span className="leading-none">
+            <span className="block text-[7px] font-medium uppercase tracking-[0.04em] sm:text-[8px]">{t("landing.creamHero.playOn")}</span>
+            <span className="mt-0.5 block text-[12px] font-semibold tracking-[-0.02em] sm:text-[14px]">{t("landing.creamHero.playName")}</span>
           </span>
         </a>
       </div>

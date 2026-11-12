@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   SUPPORTED_LOCALES,
+  markLocaleChosen,
   normalizeAppLocale,
   type AppLocale,
 } from "@/i18n";
@@ -28,6 +29,7 @@ export function ProfileAppLanguagePage() {
             label={t(LOCALE_LABEL_KEYS[locale])}
             selected={current === locale}
             onSelect={() => {
+              markLocaleChosen(locale);
               void i18n.changeLanguage(locale);
             }}
           />

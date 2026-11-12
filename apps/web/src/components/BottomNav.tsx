@@ -76,11 +76,9 @@ import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { DiscoverHomeMobileHeaderRight } from "@/components/discover/DiscoverHomeMobileHeaderRight";
 import { GlobalFeedMobileTebnuMenu } from "@/components/community/GlobalFeedMobileTebnuMenu";
-import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import {
   readDiscoverHomeIntent,
   subscribeDiscoverHomeIntent,
-  writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
@@ -1154,15 +1152,6 @@ export function BottomNav() {
               ) : null}
             </div>
             {languageInBrand ? <LanguageSwitcher className="-ms-3" menuAlign="start" /> : null}
-            {isDiscoverHome ? (
-              <DiscoverHomeModeSegmentedControl
-                mode={discoverHomeMode}
-                onModeChange={(m) => {
-                  void writeDiscoverHomeIntent(m);
-                }}
-                variant="header"
-              />
-            ) : null}
           </div>
         ) : null}
         <div className="grid h-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
@@ -1188,6 +1177,7 @@ export function BottomNav() {
               <HeaderSearchToggle
                 open={desktopSearchOpen}
                 onOpenChange={setDesktopSearchOpen}
+                inputClassName="bg-white focus:bg-white dark:bg-zinc-800 dark:focus:bg-zinc-700"
               />
               )}
             </div>
@@ -1322,14 +1312,6 @@ export function BottomNav() {
               </button>
               <GlobalFeedMobileTebnuMenu viewerUserId={viewerId!} />
               </div>
-            ) : isDiscoverHome && !mobileSearchOpen ? (
-            <DiscoverHomeModeSegmentedControl
-              mode={discoverHomeMode}
-              onModeChange={(m) => {
-                void writeDiscoverHomeIntent(m);
-              }}
-              variant="header"
-            />
             ) : !isDiscoverHome && !isAdminUser ? (
             <button
               type="button"

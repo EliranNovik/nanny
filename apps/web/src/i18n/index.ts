@@ -24,6 +24,39 @@ export function normalizeAppLocale(locale: string): AppLocale {
   return "en";
 }
 
+const LOCALE_STORAGE_KEY = "app-locale";
+const LOCALE_EXPLICIT_KEY = "app-locale-explicit";
+
+/** Browser language, limited to the locales the app ships. */
+export function browserAppLocale(): AppLocale {
+  if (typeof navigator === "undefined") return "en";
+  const list = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const entry of list) {
+    if (!entry) continue;
+    const base = entry.split("-")[0];
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(base)) return base as AppLocale;
+  }
+  return "en";
+}
+
+/** Remember a language the person chose. Until then, the browser language is used. */
+export function markLocaleChosen(locale: AppLocale): void {
+  try {
+    localStorage.setItem(LOCALE_EXPLICIT_KEY, "1");
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    /* ignore */
+  }
+}
+
+try {
+  if (localStorage.getItem(LOCALE_EXPLICIT_KEY) !== "1") {
+    localStorage.removeItem(LOCALE_STORAGE_KEY);
+  }
+} catch {
+  /* ignore */
+}
+
 void i18n
   .use(LanguageDetector)
   .use(initReactI18next)

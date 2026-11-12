@@ -32,6 +32,7 @@ import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import { ContactUsButton } from "@/components/ContactUsButton";
 import { Footer } from "@/components/Footer";
+import OnboardingPage from "@/pages/OnboardingPage";
 import { cn } from "@/lib/utils";
 import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, usePageSeo } from "@/lib/seo";
 import {
@@ -521,6 +522,7 @@ export default function LandingPage() {
   const showcaseWheelLockRef = useRef(false);
   const heroRef = useRef<HTMLElement>(null);
   const [heroScrolledPast, setHeroScrolledPast] = useState(false);
+  const [signupPanelOnScreen, setSignupPanelOnScreen] = useState(true);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [showFixedButtons, setShowFixedButtons] = useState(false);
   const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
@@ -642,6 +644,21 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
+    const updatePanel = () => {
+      const hero = heroRef.current;
+      if (!hero) return;
+      setSignupPanelOnScreen(hero.getBoundingClientRect().bottom > 72);
+    };
+    updatePanel();
+    window.addEventListener("scroll", updatePanel, { passive: true });
+    window.addEventListener("resize", updatePanel);
+    return () => {
+      window.removeEventListener("scroll", updatePanel);
+      window.removeEventListener("resize", updatePanel);
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         const isPast =
@@ -696,6 +713,7 @@ export default function LandingPage() {
         heroOverlayLightSurface
         hideBrandMobile
         hideThemeToggle
+        hideRegisterCta={signupPanelOnScreen}
         hideContactAndLegal
         onBrandClick={() => setAboutOpen(true)}
       />
@@ -740,6 +758,13 @@ export default function LandingPage() {
               mobileHeroButtonsRef.current = el;
             }}
           />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-16 z-40 hidden w-px bg-zinc-300 end-[min(400px,34vw)] md:block dark:bg-zinc-700"
+          />
+          <aside className="absolute inset-y-0 end-0 z-30 hidden w-[min(400px,34vw)] flex-col overflow-y-auto bg-[#FAF6EF] scrollbar-hide dark:bg-[#09090b] md:flex">
+            <OnboardingPage embedded />
+          </aside>
         </section>
 
         <section

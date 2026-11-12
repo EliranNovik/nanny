@@ -73,6 +73,39 @@
     "optionalVerification": "Vérification d’identité facultative",
     "rights": "Tous droits réservés."
   },
+  "communityWelcome": {
+    "eyebrow": "Communauté",
+    "title": "Bienvenue dans la communauté",
+    "clientIntro": "Ici, les gens autour de vous demandent de l'aide et en proposent.",
+    "clientPoints": [
+      "Publiez une demande pour l'aide dont vous avez besoin.",
+      "Voyez les helpers et les offres près de chez vous.",
+      "Écrivez à quelqu'un quand vous voulez avancer."
+    ],
+    "freelancerIntro": "Ici, les clients publient ce dont ils ont besoin et les helpers proposent leur travail.",
+    "freelancerPoints": [
+      "Passez en direct quand vous êtes disponible à proximité.",
+      "Partagez une offre pour montrer ce que vous faites.",
+      "Répondez aux demandes et écrivez aux clients."
+    ],
+    "continue": "Continuer"
+  },
+  "communityGuide": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "done": "Compris",
+    "clientPostTitle": "Publier une demande",
+    "clientPostBody": "Ce bouton sert à demander de l'aide. Les helpers proches peuvent répondre.",
+    "clientFindTitle": "Trouver des helpers",
+    "clientFindBody": "Ce bouton montre les helpers disponibles près de chez vous.",
+    "clientSearchTitle": "Rechercher",
+    "clientSearchBody": "Cherchez des offres, des événements et des personnes ici.",
+    "closing": "Allez-y et découvrez Tebnu",
+    "helperOfferTitle": "Publier une offre",
+    "helperOfferBody": "Ce bouton sert à partager le travail que vous proposez.",
+    "helperRequestsTitle": "Trouver des demandes",
+    "helperRequestsBody": "Les demandes des personnes proches s'affichent ici."
+  },
   "legalAcceptance": {
     "title": "Consultez nos conditions mises à jour",
     "description": "Avant de continuer, confirmez votre âge et acceptez les documents actuels.",
@@ -172,7 +205,10 @@
     "heroTitle": "Rejoignez la communauté Tebnu.",
     "heroSubtitle": "Créez votre profil pour vous connecter immédiatement à des habitants de confiance.",
     "settingUp": "Préparation de votre compte…",
+    "alreadySignedIn": "Vous êtes déjà connecté",
+    "goToApp": "Continuer",
     "stepDetails": "Infos",
+    "stepRole": "Rôle",
     "stepLanguage": "Langue",
     "stepCategories": "Catégories",
     "stepAccount": "Compte",
@@ -878,6 +914,7 @@
     "rates": "Tarifs",
     "hourlyRates": "Tarif horaire",
     "myAccount": "Mon compte",
+    "accountEmail": "E-mail",
     "myAccountDescription": "Gérez votre compte et supprimez-le définitivement si nécessaire.",
     "identity": {
       "title": "Vérification d’identité",
@@ -945,6 +982,10 @@
       "offerHelp": "Proposer de l'aide",
       "appComingSoon": "Télécharger",
       "getTheApp": "Télécharger l’application",
+      "appStoreOn": "Télécharger dans",
+      "appStoreName": "l'App Store",
+      "playOn": "Disponible sur",
+      "playName": "Google Play",
       "canHelp": "{{name}} peut aider",
       "phoneCategory": "Baby-sitting et garde d’enfants",
       "phoneLive": "Recherche près de chez vous...",

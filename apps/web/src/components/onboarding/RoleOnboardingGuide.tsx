@@ -17,6 +17,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  COMMUNITY_SPOTLIGHT_CLOSED_EVENT,
+  COMMUNITY_WELCOME_CLOSED_EVENT,
+  isCommunitySpotlightPending,
+  isCommunityWelcomePending,
+} from "@/lib/featureAnnouncements";
 
 type GuideRole = "client" | "freelancer" | "admin" | string;
 
@@ -70,14 +76,33 @@ export function RoleOnboardingGuide({
         };
   }, [isFreelancer]);
 
+  const [welcomeReady, setWelcomeReady] = useState(false);
+
+  // The page guide waits until the welcome box and the rules agreement are finished.
   useEffect(() => {
-    if (!autoOpen || !userId || !isRecentlyCreated(accountCreatedAt)) return;
+    const sync = () => {
+      setWelcomeReady(
+        !userId ||
+          (!isCommunityWelcomePending(userId) && !isCommunitySpotlightPending(userId)),
+      );
+    };
+    sync();
+    window.addEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+    window.addEventListener(COMMUNITY_SPOTLIGHT_CLOSED_EVENT, sync);
+    return () => {
+      window.removeEventListener(COMMUNITY_WELCOME_CLOSED_EVENT, sync);
+      window.removeEventListener(COMMUNITY_SPOTLIGHT_CLOSED_EVENT, sync);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!autoOpen || !userId || !welcomeReady || !isRecentlyCreated(accountCreatedAt)) return;
     const key = guideStorageKey(userId);
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, new Date().toISOString());
     const id = window.setTimeout(() => setOpen(true), 500);
     return () => window.clearTimeout(id);
-  }, [accountCreatedAt, autoOpen, userId]);
+  }, [accountCreatedAt, autoOpen, userId, welcomeReady]);
 
   const closeAndNavigate = (path: string) => {
     setOpen(false);

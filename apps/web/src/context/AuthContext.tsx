@@ -371,6 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Add explicit timeout wrapper to prevent hanging queries
       // Use a shorter timeout (3 seconds) and simpler query first
       let queryAborted = false;
+      let queryTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
       console.log("[AuthContext] Creating query promise...");
 
@@ -379,7 +380,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: null;
         error: { message: string; code: string };
       }>((resolve) => {
-        setTimeout(() => {
+        queryTimeoutId = setTimeout(() => {
           console.error(
             "[AuthContext] ⚠️ TIMEOUT: Query timeout after 3 seconds - request is hanging",
           );
@@ -450,6 +451,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryPromise,
         timeoutPromise,
       ])) as any;
+      if (queryTimeoutId) clearTimeout(queryTimeoutId);
       const { data, error } = result;
 
       const duration = Date.now() - startTime;
@@ -560,6 +562,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // maybeSingle() returns { data: null, error: null } when no rows found
       if (!data) {
         console.log("[AuthContext] No profile found (new user)");
+        profileUserIdRef.current = userId;
         setProfileWithRef(null);
         return;
       }
@@ -887,9 +890,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (
         tabJustBecameVisible &&
         event === "SIGNED_IN" &&
-        profile &&
         session?.user &&
-        profile.id === session.user.id
+        profileUserIdRef.current === session.user.id
       ) {
         const timeSinceTabVisible = Date.now() - tabVisibilityChangeTime;
         if (timeSinceTabVisible < TAB_VISIBILITY_GRACE_PERIOD) {
@@ -918,14 +920,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Skip SIGNED_IN events if we already have the same user and profile
-      // This prevents refetching when tab becomes visible again
+      // Skip SIGNED_IN events if we already resolved this user, including a new account with no profile yet.
+      // This prevents refetching when the tab becomes visible again.
       if (
         event === "SIGNED_IN" &&
         session?.user &&
-        profile &&
-        profile.id === session.user.id &&
-        profileUserIdRef.current === session.user.id
+        profileUserIdRef.current === session.user.id &&
+        (!profile || profile.id === session.user.id)
       ) {
         const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
         // Only skip if profile was fetched recently (within last 30 seconds)
@@ -1002,12 +1003,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const profileResolvedForSession =
+        !!session?.user &&
+        profileUserIdRef.current === session.user.id &&
+        (!profile || profile.id === session.user.id);
+
       // Only set loading if we actually need to fetch profile
-      const needsProfileFetch =
-        session?.user &&
-        (!profile ||
-          profile.id !== session.user.id ||
-          profileUserIdRef.current !== session.user.id);
+      const needsProfileFetch = !!session?.user && !profileResolvedForSession;
 
       if (needsProfileFetch && !shouldSkipFetch && !shouldSkipDueToVisibility) {
         setLoading(true);
@@ -1025,9 +1027,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (
             !shouldSkipFetch &&
             !shouldSkipDueToVisibility &&
-            (!profile ||
-              profile.id !== session.user.id ||
-              profileUserIdRef.current !== session.user.id)
+            session?.user &&
+            !profileResolvedForSession
           ) {
             // Check if fetch is already in progress
             if (fetchingProfileRef.current !== session.user.id) {

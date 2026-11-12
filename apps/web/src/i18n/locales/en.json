@@ -73,6 +73,39 @@
     "optionalVerification": "Optional identity verification",
     "rights": "All rights reserved."
   },
+  "communityWelcome": {
+    "eyebrow": "Community",
+    "title": "Welcome to the community",
+    "clientIntro": "This is where people nearby ask for help and offer it.",
+    "clientPoints": [
+      "Post a request for the help you need.",
+      "See helpers and offers around you.",
+      "Message someone when you want to go ahead."
+    ],
+    "freelancerIntro": "This is where clients post what they need and helpers offer their work.",
+    "freelancerPoints": [
+      "Go live when you are free to help nearby.",
+      "Share an offer so people know what you do.",
+      "Reply to requests and message clients."
+    ],
+    "continue": "Continue"
+  },
+  "communityGuide": {
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Got it",
+    "clientPostTitle": "Post a request",
+    "clientPostBody": "This button is where you ask for help. Helpers nearby can respond.",
+    "clientFindTitle": "Find helpers",
+    "clientFindBody": "This button shows helpers who are free nearby.",
+    "clientSearchTitle": "Search",
+    "clientSearchBody": "Search offers, events, and people from here.",
+    "closing": "Go ahead and experience Tebnu",
+    "helperOfferTitle": "Post an offer",
+    "helperOfferBody": "This button is where you share the work you do.",
+    "helperRequestsTitle": "Find requests",
+    "helperRequestsBody": "Requests from people nearby show up here."
+  },
   "legalAcceptance": {
     "title": "Review our updated terms",
     "description": "Before continuing, confirm your age and accept the current legal documents.",
@@ -172,7 +205,10 @@
     "heroTitle": "Join the Tebnu community.",
     "heroSubtitle": "Register your profile to connect with trusted locals instantly.",
     "settingUp": "Setting up your account…",
+    "alreadySignedIn": "You're already signed in",
+    "goToApp": "Continue",
     "stepDetails": "Details",
+    "stepRole": "Role",
     "stepLanguage": "Language",
     "stepCategories": "Categories",
     "stepAccount": "Account",
@@ -888,6 +924,7 @@
     "rates": "Rates",
     "hourlyRates": "Hourly rates",
     "myAccount": "My account",
+    "accountEmail": "Email",
     "myAccountDescription": "Manage your account and permanently delete it if needed.",
     "identity": {
       "title": "Identity verification",
@@ -955,6 +992,10 @@
       "offerHelp": "Offer help",
       "appComingSoon": "Download",
       "getTheApp": "Get the app",
+      "appStoreOn": "Download on the",
+      "appStoreName": "App Store",
+      "playOn": "Get it on",
+      "playName": "Google Play",
       "canHelp": "{{name}} can help",
       "phoneCategory": "Babysitting & childcare",
       "phoneLive": "Searching near you...",

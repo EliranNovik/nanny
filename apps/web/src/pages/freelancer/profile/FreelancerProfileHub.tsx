@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ProfileLanguageMenuRow } from "@/components/profile/ProfileLanguageMenuRow";
 import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/ProfileMenuRow";
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import { ProfileHubLogoutButton } from "@/components/profile/ProfileHubLogoutButton";
@@ -21,8 +20,6 @@ import {
   DollarSign,
   Palette,
   UserCircle,
-  Image as ImageIcon,
-  Activity,
   CalendarDays,
   LayoutDashboard,
 } from "lucide-react";
@@ -69,9 +66,7 @@ export default function FreelancerProfileHub({
               <ProfileMenuRow to="/freelancer/profile/personal" icon={User} label={t("profile.personalContact")} />
               <ProfileMenuRow to="/freelancer/explore" icon={LayoutDashboard} label={t("profile.myActivity")} />
               <ProfileMenuRow to="/freelancer/profile/events" icon={CalendarDays} label={t("profile.myEvents")} />
-              <ProfileMenuRow to="/recent-activity" icon={Activity} label={t("profile.recentActivity")} />
               <ProfileMenuRow to="/freelancer/profile/saved" icon={Heart} label={t("common.saved")} />
-              <ProfileMenuRow to="/freelancer/profile/gallery" icon={ImageIcon} label={t("profile.publicGallery")} />
               <ProfileMenuRow
                 to="/freelancer/profile/availability"
                 icon={Bell}
@@ -96,7 +91,6 @@ export default function FreelancerProfileHub({
               <ProfileMenuRow to="/freelancer/profile/languages" icon={Globe} label={t("profile.languages")} />
               <ProfileMenuRow to="/freelancer/profile/experience" icon={Shield} label={t("profile.experienceSkills")} />
               <ProfileMenuRow to="/freelancer/profile/rates" icon={DollarSign} label={t("profile.hourlyRates")} />
-              <ProfileLanguageMenuRow to="/freelancer/profile/language" />
               <ProfileMenuRow to="/freelancer/profile/appearance" icon={Palette} label={t("profile.appearance")} />
               <ProfileMenuRow to="/freelancer/profile/account" icon={UserCircle} label={t("profile.myAccount")} />
             </div>

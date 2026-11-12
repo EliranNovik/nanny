@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import i18n, { normalizeAppLocale, type AppLocale } from "@/i18n";
+import i18n, { browserAppLocale, normalizeAppLocale, type AppLocale } from "@/i18n";
 
 export type PendingProfilePayload = {
   role: "client" | "freelancer";
@@ -63,9 +63,8 @@ export async function commitPendingProfile(
     return { ok: false, error: "No pending profile data found." };
   }
 
-  if (pending.locale) {
-    void i18n.changeLanguage(pending.locale);
-  }
+  const locale = pending.locale ?? browserAppLocale();
+  void i18n.changeLanguage(locale);
 
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: userId,
@@ -76,6 +75,7 @@ export async function commitPendingProfile(
     location_lat: pending.location_lat ?? null,
     location_lng: pending.location_lng ?? null,
     kyc_status: "not_started",
+    app_locale: locale,
     ...(pending.categories?.length ? { categories: pending.categories } : {}),
   });
 

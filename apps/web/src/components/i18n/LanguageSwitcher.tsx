@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SUPPORTED_LOCALES, normalizeAppLocale } from "@/i18n";
+import { SUPPORTED_LOCALES, markLocaleChosen, normalizeAppLocale } from "@/i18n";
 import { LOCALE_LABEL_KEYS } from "@/components/i18n/localeLabels";
 
 type Props = {
@@ -104,6 +104,7 @@ export function LanguageSwitcher({
                 aria-selected={selected}
                 onClick={() => {
                   void i18n.changeLanguage(locale);
+                  markLocaleChosen(locale);
                   setOpen(false);
                 }}
                 className={cn(

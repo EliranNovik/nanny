@@ -143,19 +143,25 @@ export function GuestCommunityFeedAside({
                 href="https://testflight.apple.com/join/PesFrQ2m"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-zinc-950 px-2 text-left text-white transition hover:bg-zinc-800 active:scale-[0.98]"
+                className="flex h-10 items-center gap-1.5 rounded-lg bg-black px-2 text-left text-white transition hover:bg-zinc-900 active:scale-[0.98]"
               >
-                <img src="/app-store-apple.svg" alt="" className="h-5 w-5" />
-                <span className="text-[10px] font-bold">iOS</span>
+                <img src="/app-store-apple.svg" alt="" className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 leading-none">
+                  <span className="block truncate text-[7px] font-medium">{t("landing.creamHero.appStoreOn")}</span>
+                  <span className="mt-0.5 block truncate text-[11px] font-semibold">{t("landing.creamHero.appStoreName")}</span>
+                </span>
               </a>
               <a
                 href="https://groups.google.com/g/tebnu/c/hZGy5mYo9dk"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-2 text-left text-zinc-950 transition hover:bg-zinc-50 active:scale-[0.98]"
+                className="flex h-10 items-center gap-1.5 rounded-lg border-2 border-white bg-black px-2 text-left text-white transition hover:bg-zinc-900 active:scale-[0.98]"
               >
-                <img src="/google-play-logo.svg" alt="" className="h-5 w-5" />
-                <span className="text-[10px] font-bold">Android</span>
+                <img src="/google-play-logo.svg" alt="" className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 leading-none">
+                  <span className="block truncate text-[7px] font-medium uppercase">{t("landing.creamHero.playOn")}</span>
+                  <span className="mt-0.5 block truncate text-[11px] font-semibold">{t("landing.creamHero.playName")}</span>
+                </span>
               </a>
             </div>
           </section>

@@ -15,6 +15,8 @@ if ("serviceWorker" in navigator) {
   let refreshingForServiceWorker = false;
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    // In dev the worker reinstalls often; reloading here loops the page.
+    if (import.meta.env.DEV) return;
     if (refreshingForServiceWorker) return;
     refreshingForServiceWorker = true;
     window.location.reload();

@@ -516,7 +516,7 @@ export function DiscoverHomePostedHelpRequests({
 
   return (
     <section className={cn("w-full", className)} aria-label="Posted help requests">
-      <div className="mb-5 flex items-center justify-between gap-3">
+      <div data-guide="find-requests" data-guide-rank="primary" className="mb-5 flex items-center justify-between gap-3">
         <h2 className="min-w-0 text-[22px] font-black tracking-tight text-emerald-800 dark:text-emerald-400 sm:text-2xl">
           Requests near you
         </h2>

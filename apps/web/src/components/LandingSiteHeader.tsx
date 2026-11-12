@@ -46,6 +46,8 @@ export type LandingSiteHeaderProps = {
   hideLoginCta?: boolean;
   /** Hide only the Sign in control (e.g. already on `/login`). */
   hideSignInCta?: boolean;
+  /** Hide the Register control (landing hero shows it again after scroll). */
+  hideRegisterCta?: boolean;
   /** Signed-out only: show Home in the right cluster (e.g. login page). */
   homeLinkRight?: boolean;
   /** Hide Post Feed nav item (e.g. already on `/community/feed`). */
@@ -110,6 +112,7 @@ export function LandingSiteHeader({
   hideBackButton = false,
   hideLoginCta = false,
   hideSignInCta = false,
+  hideRegisterCta = false,
   homeLinkRight = false,
   hidePostFeedLink = false,
   hideContactAndLegal = false,
@@ -390,7 +393,7 @@ export function LandingSiteHeader({
       className={cn(
         "flex items-center gap-0",
         heroOverlay &&
-          "md:rounded-full md:bg-white/90 md:py-0 md:pl-0.5 md:pr-3 md:shadow-[0_0_0_1px_rgba(24,24,27,0.06),0_8px_20px_-14px_rgba(24,24,27,0.4)] md:backdrop-blur-md",
+          "md:rounded-full md:bg-white/90 md:p-1 md:shadow-[0_0_0_1px_rgba(24,24,27,0.06),0_8px_20px_-14px_rgba(24,24,27,0.4)] md:backdrop-blur-md",
       )}
     >
       <img
@@ -400,10 +403,10 @@ export function LandingSiteHeader({
         loading="eager"
         decoding="async"
       />
+      {heroOverlay ? null : (
       <span
         className={cn(
           "hidden -ml-1 text-lg font-black tracking-tight md:inline md:-ml-1.5 md:text-xl lg:text-2xl",
-          heroOverlay && "md:text-lg lg:text-xl",
           landingHeaderInkClass,
           heroWhiteInk &&
             "md:text-white md:drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]",
@@ -411,6 +414,7 @@ export function LandingSiteHeader({
       >
         tebnu
       </span>
+      )}
     </span>
   ) : (
     <span className={landingBrandTextClass}>Tebnu</span>
@@ -763,14 +767,17 @@ export function LandingSiteHeader({
                       onClick={() => navigate("/login")}
                       className={cn(
                         "h-9 rounded-full px-3 text-sm font-bold transition-colors md:h-10 md:px-4",
-                        heroOverlayLightSurface
-                          ? "text-zinc-950 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10"
-                          : "text-zinc-800 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10",
+                        heroOverlay && hideRegisterCta
+                          ? "bg-orange-600 text-white shadow-sm hover:bg-orange-700"
+                          : heroOverlayLightSurface
+                            ? "text-zinc-950 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10"
+                            : "text-zinc-800 hover:bg-black/[0.05] dark:text-zinc-100 dark:hover:bg-white/10",
                       )}
                     >
                       {t("siteNav.signIn")}
                     </button>
                   )}
+                  {hideRegisterCta ? null : (
                   <button
                     type="button"
                     onClick={() => navigate("/onboarding")}
@@ -778,6 +785,7 @@ export function LandingSiteHeader({
                   >
                     {t("siteNav.register")}
                   </button>
+                  )}
                 </div>
               ) : null}
               <div className={cn("flex items-center gap-1.5 md:gap-2", (heroOverlay || isFeedChrome) && "hidden")}>

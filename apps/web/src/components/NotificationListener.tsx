@@ -18,42 +18,44 @@ export function NotificationListener() {
   useEffect(() => {
     if (!user || !profile) return;
 
-    // 1. Subscribe to Messages (Everyone)
-    const messagesChannel = supabase
-      .channel(`message-notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
-        async (payload) => {
-          const newMsg = payload.new as any;
-          if (newMsg.sender_id === user.id) return;
-          if (processedMessageIds.current.has(newMsg.id)) return;
-          processedMessageIds.current.add(newMsg.id);
+    // New-message toasts are admin-only. Regular users keep the inbox badge.
+    let messagesChannel: ReturnType<typeof supabase.channel> | null = null;
+    if (profile.is_admin) {
+      messagesChannel = supabase
+        .channel(`message-notifications:${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+          },
+          async (payload) => {
+            const newMsg = payload.new as any;
+            if (newMsg.sender_id === user.id) return;
+            if (processedMessageIds.current.has(newMsg.id)) return;
+            processedMessageIds.current.add(newMsg.id);
 
-          // Fetch sender name
-          const { data: sender } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", newMsg.sender_id)
-            .single();
+            const { data: sender } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", newMsg.sender_id)
+              .single();
 
-          addToast({
-            title: "New Message",
-            description: `${sender?.full_name || "Someone"} sent you a message: "${newMsg.body?.substring(0, 30)}${newMsg.body?.length > 30 ? "..." : ""}"`,
-            variant: "info",
-            duration: 5000,
-            action: {
-              label: "Chat",
-              onClick: () => navigate(`/chat/${newMsg.conversation_id}`),
-            },
-          });
-        },
-      )
-      .subscribe();
+            addToast({
+              title: "New Message",
+              description: `${sender?.full_name || "Someone"} sent you a message: "${newMsg.body?.substring(0, 30)}${newMsg.body?.length > 30 ? "..." : ""}"`,
+              variant: "info",
+              duration: 5000,
+              action: {
+                label: "Chat",
+                onClick: () => navigate(`/chat/${newMsg.conversation_id}`),
+              },
+            });
+          },
+        )
+        .subscribe();
+    }
 
     // 2. Subscribe to Job Requests (Freelancer Only)
     let jobsChannel: any;
@@ -195,12 +197,12 @@ export function NotificationListener() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(messagesChannel);
+      if (messagesChannel) supabase.removeChannel(messagesChannel);
       if (jobsChannel) supabase.removeChannel(jobsChannel);
       if (confirmationsChannel) supabase.removeChannel(confirmationsChannel);
       supabase.removeChannel(statusChannel);
     };
-  }, [user?.id, profile?.role, addToast, navigate]);
+  }, [user?.id, profile?.role, profile?.is_admin, addToast, navigate]);
 
   return null;
 }

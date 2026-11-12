@@ -317,7 +317,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
             <Button
               type="button"
               variant="outline"
-              className="w-full h-12 mb-7 text-[0.95rem] font-semibold bg-white hover:bg-slate-50 border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 rounded-xl"
+              className="mb-7 h-12 w-full rounded-full border-zinc-200 bg-zinc-100 text-[0.95rem] font-semibold shadow-none transition-all hover:bg-zinc-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               onClick={handleGoogleLogin}
               disabled={loading}
             >
