@@ -15,7 +15,7 @@ import {
   listingCityPart,
   localizedListingTitle,
 } from "@/lib/localizedListingCopy";
-import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
+import { categoryIllustrationSrc, OTHER_HELP_SUBCATEGORY_UI } from "@/lib/discoverCategoryTileIcons";
 import type { DiscoverHomeCategoryFilter, DiscoverHomeListingSort, DiscoverHomeListingFilters } from "@/lib/discoverHomeCategoryFilter";
 import { matchesListingFilters, EMPTY_LISTING_FILTERS } from "@/lib/discoverHomeCategoryFilter";
 import { cn } from "@/lib/utils";
