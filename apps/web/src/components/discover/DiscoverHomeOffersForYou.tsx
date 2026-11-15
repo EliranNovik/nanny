@@ -1,11 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronRight, Star } from "lucide-react";
+import { BadgeCheck, ChevronRight, Star } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
+import { useToast } from "@/components/ui/toast";
+import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
+import { ListingImageSaveButton } from "@/components/discover/ListingImageSaveButton";
 import { fetchDiscoverOffersForYou } from "@/lib/fetchDiscoverOffersForYou";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import { isolatedOfferPostPath } from "@/lib/profilePostShare";
@@ -46,6 +51,13 @@ function HomeListingCardSkeleton({ tone }: { tone: "orange" | "emerald" }) {
   );
 }
 
+function listingNameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
 function trimUrl(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
@@ -74,10 +86,71 @@ export function DiscoverHomeOffersForYou({
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { user, profile } = useAuth();
+  const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
   const isAdmin = profile?.is_admin === true;
   const offerLimit = isAdmin ? 200 : 10;
   const excludeUserId = isAdmin ? null : user?.id;
+
+  const { data: savedOfferIds = new Set<string>() } = useQuery({
+    queryKey: queryKeys.profilePostSaves(user?.id),
+    enabled: Boolean(user?.id),
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profile_post_likes")
+        .select("post_id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => row.post_id as string));
+    },
+  });
+
+  const toggleOfferSave = async (offerId: string) => {
+    if (!user?.id) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
+    const saved = savedOfferIds.has(offerId);
+    setSavingOfferId(offerId);
+    try {
+      if (saved) {
+        const { error } = await supabase
+          .from("profile_post_likes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("post_id", offerId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("profile_post_likes")
+          .insert({ user_id: user.id, post_id: offerId });
+        if (error) throw error;
+      }
+      queryClient.setQueryData<Set<string>>(queryKeys.profilePostSaves(user.id), (prev) => {
+        const next = new Set(prev ?? []);
+        if (saved) next.delete(offerId);
+        else next.add(offerId);
+        return next;
+      });
+      void queryClient.invalidateQueries({ queryKey: ["community", "profilePostsFeed"] });
+      addToast({
+        title: saved ? "Removed from saved" : "Offer saved",
+        variant: "success",
+      });
+    } catch (err) {
+      addToast({
+        title: "Could not save",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setSavingOfferId(null);
+    }
+  };
 
   const { data: offers = [], isLoading } = useQuery({
     queryKey: queryKeys.discoverOffersForYou(excludeUserId, offerLimit),
@@ -268,18 +341,26 @@ export function DiscoverHomeOffersForYou({
                   })
                 : localizedLocation
               : null;
+            const categoryLabel = feedCategoryLabel(t, offer.categoryId, offer.customCategory);
             const timeAgo = formatDistanceToNow(new Date(offer.createdAt), {
               addSuffix: true,
               locale: dateFnsLocaleFor(i18n.language),
             });
 
             return (
-              <button
+              <div
                 key={offer.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => openOffer(offer.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openOffer(offer.id);
+                  }
+                }}
                 className={cn(
-                  "group flex w-full items-center gap-2.5 overflow-hidden rounded-[20px] p-0 pe-2 text-left md:h-auto md:flex-col md:items-stretch md:gap-0 md:self-stretch md:pe-0",
+                  "group flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-[20px] p-0 pe-2 text-left md:h-auto md:flex-col md:items-stretch md:gap-0 md:self-stretch md:pe-0",
                   "bg-white shadow-[0_5px_20px_rgba(15,23,42,0.08)] outline-none transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_26px_rgba(15,23,42,0.12)] active:opacity-80 dark:bg-[#1d1f21] dark:shadow-none",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
@@ -292,34 +373,60 @@ export function DiscoverHomeOffersForYou({
                     loading="lazy"
                     decoding="async"
                   />
-                  {offer.budgetLabel || (offer.authorRating != null && offer.authorRating > 0) ? (
-                    <span className="absolute bottom-2.5 end-2.5 z-[2] hidden items-center gap-1.5 md:inline-flex">
-                      {offer.authorRating != null && offer.authorRating > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[15px] font-bold leading-none text-zinc-900 shadow-md">
-                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
-                          {offer.authorRating.toFixed(1)}
-                          <span className="font-semibold text-zinc-500">
-                            ({offer.authorRatingCount ?? 0})
-                          </span>
-                        </span>
-                      ) : null}
-                      {offer.budgetLabel ? (
-                        <span className="inline-flex rounded-full bg-orange-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
-                          {offer.budgetLabel}
-                        </span>
-                      ) : null}
+                  <ListingImageSaveButton
+                    saved={savedOfferIds.has(offer.id)}
+                    busy={savingOfferId === offer.id}
+                    label={savedOfferIds.has(offer.id) ? "Remove from saved" : "Save offer"}
+                    onToggle={() => void toggleOfferSave(offer.id)}
+                  />
+                  {offer.budgetLabel ? (
+                    <span className="absolute bottom-2.5 end-2.5 z-[2] hidden md:inline-flex">
+                      <span className="inline-flex rounded-full bg-orange-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
+                        {offer.budgetLabel}
+                      </span>
                     </span>
                   ) : null}
                 </div>
 
-                <div className="flex min-h-0 w-0 min-w-0 flex-1 basis-0 flex-col justify-center md:w-auto md:px-4 md:pb-4 md:pt-3.5">
-                  <p className="line-clamp-2 w-full break-normal text-[15px] font-bold leading-snug text-zinc-900 [overflow-wrap:normal] [word-break:normal] dark:text-white md:text-[16px]">
+                <div className="flex min-h-0 w-0 min-w-0 flex-1 basis-0 flex-col justify-center md:h-auto md:w-full md:min-h-fit md:flex-none md:basis-auto md:px-4 md:pb-4 md:pt-3.5">
+                  <span className="mb-1 flex min-w-0 items-center gap-1.5">
+                    <Avatar className="h-6 w-6 md:h-7 md:w-7">
+                      <AvatarImage src={authorPhotoUrl ?? undefined} alt="" />
+                      <AvatarFallback className="text-[10px] font-bold">
+                        {listingNameInitials(offer.authorName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 truncate text-[12px] font-semibold text-zinc-800 dark:text-zinc-100 md:text-[13px]">
+                      {offer.authorName}
+                    </span>
+                    {offer.authorVerified ? (
+                      <BadgeCheck
+                        className="h-3.5 w-3.5 shrink-0"
+                        fill="#0ea5e9"
+                        color="#ffffff"
+                        aria-label="Verified"
+                      />
+                    ) : null}
+                    {offer.authorRating != null && offer.authorRating > 0 ? (
+                      <span className="ms-auto inline-flex shrink-0 items-center gap-0.5 text-[12px] font-bold leading-none text-zinc-900 dark:text-zinc-100 md:text-[13px]">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+                        {offer.authorRating.toFixed(1)}
+                        <span className="font-semibold text-zinc-500">
+                          ({offer.authorRatingCount ?? 0})
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
+                  {categoryLabel ? (
+                    <p className="truncate text-[12px] font-semibold text-orange-700 dark:text-orange-400 md:mb-1 md:w-fit md:max-w-full md:rounded-full md:bg-orange-50 md:px-2.5 md:py-1 md:font-bold dark:md:bg-orange-500/15">
+                      {categoryLabel}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 line-clamp-2 w-full break-normal text-[15px] font-bold leading-snug text-zinc-900 [overflow-wrap:normal] [word-break:normal] dark:text-white md:text-[16px]">
                     {offerTitle}
                   </p>
                   <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-500 dark:text-zinc-400 md:text-[13px]">
-                    {[locationLine, feedCategoryLabel(t, offer.categoryId, offer.customCategory), timeAgo]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {[locationLine, timeAgo].filter(Boolean).join(" · ")}
                   </p>
                 </div>
 
@@ -328,7 +435,7 @@ export function DiscoverHomeOffersForYou({
                   strokeWidth={2}
                   aria-hidden
                 />
-              </button>
+              </div>
             );
           })}
         </div>

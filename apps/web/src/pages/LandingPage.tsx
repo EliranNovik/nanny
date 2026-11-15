@@ -510,6 +510,22 @@ export default function LandingPage() {
   const { t, i18n } = useTranslation();
   // Dark mode is intentionally disabled on the landing page for now.
   useForceLightTheme();
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("landing-cream");
+    root.style.backgroundColor = "#FAF6EF";
+    const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+    const previous = metas.map((el) => el.getAttribute("content"));
+    metas.forEach((el) => el.setAttribute("content", "#FAF6EF"));
+    return () => {
+      root.classList.remove("landing-cream");
+      root.style.backgroundColor = "";
+      metas.forEach((el, index) => {
+        const content = previous[index];
+        if (content) el.setAttribute("content", content);
+      });
+    };
+  }, []);
   const buttonsRef = useRef<HTMLDivElement | null>(null);
   const mobileHeroButtonsRef = useRef<HTMLDivElement | null>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);

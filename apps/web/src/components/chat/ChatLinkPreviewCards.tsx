@@ -3,11 +3,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Link2 } from "lucide-react";
 import {
+  chatLinkPreviewImageUrl,
   fetchChatLinkPreview,
   type ChatLinkPreviewApiPayload,
 } from "@/lib/chatLinkPreviewApi";
 
-const CACHE_KEY = "chatLinkPreviews:v6";
+const CACHE_KEY = "chatLinkPreviews:v7";
 const sessionPreviewCache = new Map<
   string,
   ChatLinkPreviewApiPayload | null
@@ -98,6 +99,7 @@ function ChatLinkPreviewTile({
   embedded: boolean;
 }) {
   const [hideImage, setHideImage] = useState(false);
+  const [skipProxy, setSkipProxy] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageAspect, setImageAspect] = useState(1.6);
   const [data, setData] = useState<ChatLinkPreviewApiPayload | null>(
@@ -107,6 +109,7 @@ function ChatLinkPreviewTile({
 
   useEffect(() => {
     setHideImage(false);
+    setSkipProxy(false);
     setImageLoaded(false);
   }, [url]);
 
@@ -169,9 +172,8 @@ function ChatLinkPreviewTile({
   })();
 
   const proxiedImg =
-    data?.imageToken && data.imageToken.length > 0
-      ? `${(import.meta.env.VITE_API_BASE_URL ||
-          "http://localhost:4000") as string}/api/link-preview/image?token=${encodeURIComponent(data.imageToken)}`
+    data?.imageToken && data.imageToken.length > 0 && !skipProxy
+      ? chatLinkPreviewImageUrl(data.imageToken)
       : null;
   const imageSrc =
     proxiedImg && !hideImage
@@ -352,6 +354,11 @@ function ChatLinkPreviewTile({
               }
             }}
             onError={() => {
+              if (proxiedImg && data?.image) {
+                setSkipProxy(true);
+                setImageLoaded(false);
+                return;
+              }
               setHideImage(true);
               setImageLoaded(false);
             }}

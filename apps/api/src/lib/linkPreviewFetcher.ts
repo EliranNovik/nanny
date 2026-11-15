@@ -140,6 +140,7 @@ export async function fetchLinkPreview(seedUrl: string): Promise<PreviewPayload>
     "og:title",
     "og:description",
     "og:image",
+    "og:image:secure_url",
     "og:site_name",
     "twitter:title",
     "twitter:description",
@@ -232,6 +233,7 @@ export async function fetchLinkPreview(seedUrl: string): Promise<PreviewPayload>
 
   const imgRaw =
     meta.get("og:image") ||
+    meta.get("og:image:secure_url") ||
     meta.get("twitter:image") ||
     meta.get("twitter:image:src") ||
     "";

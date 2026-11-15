@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
+import { BadgeCheck, Check, ChevronRight, Clock, Loader2, MessageCircle, Star } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -11,6 +12,10 @@ import { useToast } from "@/components/ui/toast";
 import { acceptOpenHelpRequest } from "@/lib/acceptOpenHelpRequest";
 import { globalCommunityFeedPath } from "@/lib/communityFeedNav";
 import { isolatedOpenRequestPath } from "@/lib/jobRequestShare";
+import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
+import { useJobRequestFavoriteIds } from "@/hooks/data/useJobRequestFavoriteIds";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
+import { ListingImageSaveButton } from "@/components/discover/ListingImageSaveButton";
 import {
   loadDismissedOpenHelpRequestIds,
 } from "@/lib/dismissedOpenHelpRequests";
@@ -50,6 +55,13 @@ import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 
 const MAX_VISIBLE = 8;
 
+function listingNameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
 function canActAsHelper(
   profile: { role?: string; is_available_for_jobs?: boolean } | null | undefined,
 ): boolean {
@@ -86,12 +98,18 @@ function NearbyRequestRow({
   accepted,
   accepting,
   onAccept,
+  saved,
+  saveBusy,
+  onToggleSave,
 }: {
   row: DiscoverOpenHelpRequestRow;
   onOpen: () => void;
   accepted: boolean;
   accepting: boolean;
   onAccept: () => void;
+  saved: boolean;
+  saveBusy: boolean;
+  onToggleSave: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const attachment =
@@ -147,26 +165,49 @@ function NearbyRequestRow({
     >
       <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden bg-zinc-200 dark:bg-zinc-800 md:aspect-[4/3] md:h-auto md:w-full">
         <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]" loading="lazy" />
-        {budgetLabel || clientRating != null ? (
-          <span className="absolute bottom-2.5 end-2.5 z-[2] hidden items-center gap-1.5 md:inline-flex">
-            {clientRating != null ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[15px] font-bold leading-none text-zinc-900 shadow-md">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
-                {clientRating.toFixed(1)}
-                <span className="font-semibold text-zinc-500">
-                  ({row.client_total_ratings ?? 0})
-                </span>
-              </span>
-            ) : null}
-            {budgetLabel ? (
-              <span className="inline-flex rounded-full bg-emerald-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
-                {budgetLabel}
-              </span>
-            ) : null}
+        <ListingImageSaveButton
+          saved={saved}
+          busy={saveBusy}
+          label={saved ? "Remove from saved" : "Save request"}
+          onToggle={onToggleSave}
+        />
+        {budgetLabel ? (
+          <span className="absolute bottom-2.5 end-2.5 z-[2] hidden md:inline-flex">
+            <span className="inline-flex rounded-full bg-emerald-600 px-3.5 py-1.5 text-[16px] font-bold leading-none text-white shadow-md">
+              {budgetLabel}
+            </span>
           </span>
         ) : null}
       </div>
       <div className="min-w-0 w-0 flex-1 basis-0 md:w-auto md:px-4 md:pt-3.5">
+        <span className="mb-1 flex min-w-0 items-center gap-1.5">
+          <Avatar className="h-6 w-6 md:h-7 md:w-7">
+            <AvatarImage src={authorPhoto ?? undefined} alt="" />
+            <AvatarFallback className="text-[10px] font-bold">
+              {listingNameInitials(author)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="min-w-0 truncate text-[12px] font-semibold text-zinc-800 dark:text-zinc-100 md:text-[13px]">
+            {author}
+          </span>
+          {row.is_verified === true ? (
+            <BadgeCheck
+              className="h-3.5 w-3.5 shrink-0"
+              fill="#0ea5e9"
+              color="#ffffff"
+              aria-label="Verified"
+            />
+          ) : null}
+          {clientRating != null ? (
+            <span className="ms-auto inline-flex shrink-0 items-center gap-0.5 text-[12px] font-bold leading-none text-zinc-900 dark:text-zinc-100 md:text-[13px]">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+              {clientRating.toFixed(1)}
+              <span className="font-semibold text-zinc-500">
+                ({row.client_total_ratings ?? 0})
+              </span>
+            </span>
+          ) : null}
+        </span>
         <p className="truncate text-[12px] font-semibold text-emerald-700 dark:text-emerald-400 md:mb-1.5 md:w-fit md:max-w-full md:rounded-full md:bg-emerald-50 md:px-2.5 md:py-1 md:text-[12px] md:font-bold dark:md:bg-emerald-500/15">
           {category}
         </p>
@@ -178,9 +219,11 @@ function NearbyRequestRow({
             {schedule}
           </p>
         ) : null}
-        <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400 dark:text-zinc-500 md:text-[13px]">
-          {author}{timeAgo ? ` • ${timeAgo}` : ""}
-        </p>
+        {timeAgo ? (
+          <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-400 dark:text-zinc-500 md:text-[13px]">
+            {timeAgo}
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-col gap-1.5 md:mx-4 md:mb-4 md:mt-3 md:flex-row md:gap-2">
         <button
@@ -251,7 +294,10 @@ export function DiscoverHomePostedHelpRequests({
   const { user, profile } = useAuth();
   const isAdmin = profile?.is_admin === true;
   const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+  const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(user?.id);
   const [acceptedJobIds, setAcceptedJobIds] = useState<Set<string>>(() => new Set());
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => loadDismissedOpenHelpRequestIds(user?.id),
@@ -479,6 +525,36 @@ export function DiscoverHomePostedHelpRequests({
     [user?.id, profile, queryClient, addToast],
   );
 
+  const handleToggleSave = useCallback(
+    async (jobId: string) => {
+      if (!user?.id) {
+        openGuestAuthPrompt({ variant: "engage" });
+        return;
+      }
+      const saved = savedJobIds.has(jobId);
+      setSavingJobId(jobId);
+      try {
+        await toggleJobRequestFavorite(user.id, jobId, saved);
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.jobRequestFavorites(user.id),
+        });
+        addToast({
+          title: saved ? "Removed from saved" : "Request saved",
+          variant: "success",
+        });
+      } catch (err) {
+        addToast({
+          title: "Could not save",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "error",
+        });
+      } finally {
+        setSavingJobId(null);
+      }
+    },
+    [user?.id, savedJobIds, openGuestAuthPrompt, queryClient, addToast],
+  );
+
   const handleOpenRequest = useCallback(
     (jobId: string) => {
       trackEvent("discover_posted_help_request_open", { job_id: jobId });
@@ -581,6 +657,9 @@ export function DiscoverHomePostedHelpRequests({
                 accepted={acceptedJobIds.has(row.id)}
                 accepting={acceptingJobId === row.id}
                 onAccept={() => void handleAccept(row.id, row.client_display_name)}
+                saved={savedJobIds.has(row.id)}
+                saveBusy={savingJobId === row.id}
+                onToggleSave={() => void handleToggleSave(row.id)}
               />
             ))}
           </div>

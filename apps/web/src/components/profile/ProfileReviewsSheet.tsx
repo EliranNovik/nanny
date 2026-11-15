@@ -15,6 +15,8 @@ export type ProfileReviewItem = {
     full_name: string | null;
     photo_url: string | null;
   };
+  /** Job category this review is about, when known. */
+  categoryLabel?: string | null;
 };
 
 const REVIEW_CARD_GRADIENTS = [
@@ -94,9 +96,14 @@ export function ProfileReviewPreviewCard({
             </span>
           </div>
         </div>
-        <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
+        <p className="line-clamp-4 flex-1 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
           {reviewQuote(review.review_text)}
         </p>
+        {review.categoryLabel ? (
+          <p className="mt-4 truncate text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+            {review.categoryLabel}
+          </p>
+        ) : null}
       </div>
     </CardTag>
   );
@@ -106,10 +113,13 @@ export function ProfileReviewCarousel({
   reviews,
   onSelect,
   className,
+  fill = false,
 }: {
   reviews: ProfileReviewItem[];
   onSelect?: () => void;
   className?: string;
+  /** Stretch cards across the row so a visible card is never sliced in half. */
+  fill?: boolean;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
@@ -137,7 +147,7 @@ export function ProfileReviewCarousel({
     el.scrollBy({ left: (rtl ? -direction : direction) * step, behavior: "smooth" });
   };
 
-  const showArrows = reviews.length > 1;
+  const showArrows = fill ? reviews.length > 3 : reviews.length > 1;
 
   return (
     <div className="relative">
@@ -167,18 +177,30 @@ export function ProfileReviewCarousel({
         ref={scrollerRef}
         onScroll={syncEnds}
         className={cn(
-          "flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 pt-16 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden",
+          "flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto scroll-smooth pb-3 pt-16 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden",
           className,
         )}
         role="list"
         aria-label="User reviews"
       >
         {reviews.map((review, idx) => (
-          <div key={review.id} data-review-card="" className="shrink-0 snap-start snap-always">
+          <div
+            key={review.id}
+            data-review-card=""
+            className={cn(
+              "snap-start snap-always",
+              fill
+                ? reviews.length <= 3
+                  ? "flex min-w-0 flex-1 basis-0"
+                  : "flex w-full shrink-0 sm:w-[calc((100%-1rem)/2)] xl:w-[calc((100%-2rem)/3)]"
+                : "shrink-0",
+            )}
+          >
             <ProfileReviewPreviewCard
               review={review}
               index={idx}
               onClick={onSelect}
+              className={fill ? "h-full min-h-[240px] w-full max-w-none min-w-0 shrink" : undefined}
             />
           </div>
         ))}
@@ -234,6 +256,11 @@ function ProfileReviewListItem({
         <p className="mt-3 text-sm italic leading-relaxed text-slate-700 dark:text-slate-300">
           {reviewQuote(review.review_text)}
         </p>
+        {review.categoryLabel ? (
+          <p className="mt-2 truncate text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+            {review.categoryLabel}
+          </p>
+        ) : null}
       </div>
     </article>
   );

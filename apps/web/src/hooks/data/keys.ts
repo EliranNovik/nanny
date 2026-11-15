@@ -43,6 +43,10 @@ export const queryKeys = {
   jobRequestFavorites: (userId?: string | null) =>
     [...queryKeys.jobs, "jobRequestFavorites", userId ?? "none"] as const,
 
+  /** Offer posts the current user saved (`profile_post_likes`, shown on Settings → Saved → Posts). */
+  profilePostSaves: (userId?: string | null) =>
+    [...queryKeys.community, "profilePostSaves", userId ?? "none"] as const,
+
   /** Saved profiles (`profile_favorites`) for the current user. */
   profileFavorites: (userId?: string | null) =>
     [...queryKeys.community, "profileFavorites", userId ?? "none"] as const,

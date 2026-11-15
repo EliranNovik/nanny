@@ -33,7 +33,12 @@ const previewRequests = new Map<
   Promise<ChatLinkPreviewApiPayload | null>
 >();
 
-function screenshotFallback(url: string): ChatLinkPreviewApiPayload | null {
+/** Same origin as the preview POST, so the thumbnail proxy works in dev and production. */
+export function chatLinkPreviewImageUrl(token: string): string {
+  return `${base}/api/link-preview/image?token=${encodeURIComponent(token)}`;
+}
+
+function textOnlyPreview(url: string): ChatLinkPreviewApiPayload | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
@@ -42,7 +47,7 @@ function screenshotFallback(url: string): ChatLinkPreviewApiPayload | null {
       url: parsed.href,
       title: host,
       description: null,
-      image: `https://image.thum.io/get/width/1200/crop/675/noanimate/${parsed.href}`,
+      image: null,
       imageToken: null,
       siteName: host,
     };
@@ -99,77 +104,8 @@ async function fetchChatLinkPreviewUncached(
     // Continue with the generic preview flow.
   }
 
-  try {
-    const response = await fetch(
-      `https://api.microlink.io/?url=${encodeURIComponent(url)}&meta=true&screenshot=true`,
-    );
-    if (response.ok) {
-      const payload = (await response.json()) as {
-        status?: string;
-        data?: Record<string, any>;
-      };
-      if (payload.status === "success" && payload.data) {
-        const page = payload.data;
-        const finalUrl =
-          typeof page.url === "string" && page.url ? page.url : url;
-        const host = new URL(finalUrl).hostname.replace(/^www\./, "");
-        const isTebnuLanding =
-          host === "tebnu.com" || host.endsWith(".tebnu.com");
-        const candidates = [
-          { value: page.image, score: 100 },
-          { value: page.screenshot, score: isTebnuLanding ? 160 : 60 },
-          { value: page.logo, score: 40 },
-        ]
-          .map(({ value, score }) => {
-            const imageUrl =
-              typeof value === "string" ? value : value?.url;
-            if (!imageUrl) return null;
-            const width = Number(value?.width ?? 0);
-            const height = Number(value?.height ?? 0);
-            const size = Number(value?.size ?? 0);
-            let adjusted = score;
-            if (width > 0 && height > 0 && width * height < 20_000) adjusted -= 40;
-            if (size > 0 && size < 2_000) adjusted -= 30;
-            if (width >= 400 || height >= 200) adjusted += 20;
-            if (/placeholder|sprite|pixel|1x1|blank/i.test(imageUrl)) adjusted -= 50;
-            try {
-              return {
-                url: new URL(imageUrl, finalUrl).href,
-                score: adjusted,
-              };
-            } catch {
-              return null;
-            }
-          })
-          .filter(
-            (candidate): candidate is { url: string; score: number } =>
-              Boolean(candidate),
-          )
-          .sort((a, b) => b.score - a.score);
-        const image =
-          candidates[0]?.score > 0
-            ? candidates[0].url
-            : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
-        return {
-          ok: true,
-          url: finalUrl,
-          title:
-            (typeof page.title === "string" && page.title) || host || url,
-          description:
-            typeof page.description === "string" ? page.description : null,
-          image,
-          imageToken: null,
-          siteName:
-            (typeof page.publisher === "string" && page.publisher) || host,
-        };
-      }
-    }
-  } catch {
-    // Fall through to the authenticated server-side preview service.
-  }
-
   const token = await getAccessTokenSafely();
-  if (!token) return screenshotFallback(url);
+  if (!token) return textOnlyPreview(url);
 
   try {
     const res = await fetch(`${base}/api/link-preview`, {
@@ -181,12 +117,12 @@ async function fetchChatLinkPreviewUncached(
       body: JSON.stringify({ url }),
     });
 
-    if (!res.ok) return screenshotFallback(url);
+    if (!res.ok) return textOnlyPreview(url);
 
     const preview = (await res.json()) as ChatLinkPreviewApiPayload;
-    if (preview.image || preview.imageToken) return preview;
-    return screenshotFallback(preview.url || url) ?? preview;
+    if (preview?.url || preview?.title) return preview;
+    return textOnlyPreview(url);
   } catch {
-    return screenshotFallback(url);
+    return textOnlyPreview(url);
   }
 }

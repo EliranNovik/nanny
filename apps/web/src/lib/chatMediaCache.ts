@@ -113,39 +113,87 @@ async function storeResponse(displayUrl: string, response: Response) {
   }
 }
 
-async function loadUncached(sourceUrl: string): Promise<CachedChatImage> {
-  const displayUrl = chatImageDisplayUrl(sourceUrl);
-  const localUrl = await readCachedBlob(displayUrl);
-  if (localUrl) {
-    const dims = await measure(localUrl);
-    const entry = { url: localUrl, ...dims, local: true };
-    remember(sourceUrl, entry);
-    return entry;
+async function dropCachedBlob(displayUrl: string) {
+  if (typeof caches === "undefined") return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.delete(displayUrl);
+  } catch {
+    // A bad cache entry is skipped either way.
   }
+}
 
-  let objectUrl = displayUrl;
+async function loadCandidate(url: string, cacheAs: string | null): Promise<CachedChatImage> {
+  let objectUrl = url;
   let local = false;
   try {
-    const response = await fetch(displayUrl, { mode: "cors", credentials: "omit" });
+    const response = await fetch(url, { mode: "cors", credentials: "omit" });
     if (response.ok) {
-      await storeResponse(displayUrl, response);
+      const cached = cacheAs ? response.clone() : null;
       const blob = await response.blob();
-      if (blob.size > 0) {
+      if (blob.size > 0 && blob.type.startsWith("image/")) {
+        if (cached && cacheAs) await storeResponse(cacheAs, cached);
         objectUrl = URL.createObjectURL(blob);
         local = true;
       }
     }
   } catch {
-    objectUrl = displayUrl;
+    objectUrl = url;
   }
 
-  const dims = await measure(objectUrl);
-  const entry = { url: objectUrl, ...dims, local };
-  remember(sourceUrl, entry);
-  return entry;
+  try {
+    const dims = await measure(objectUrl);
+    return { url: objectUrl, ...dims, local };
+  } catch (error) {
+    if (objectUrl.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
 }
 
-export function loadChatImage(sourceUrl: string): Promise<CachedChatImage> {
+async function loadUncached(sourceUrl: string): Promise<CachedChatImage> {
+  const displayUrl = chatImageDisplayUrl(sourceUrl);
+  const localUrl = await readCachedBlob(displayUrl);
+  if (localUrl) {
+    try {
+      const dims = await measure(localUrl);
+      const entry = { url: localUrl, ...dims, local: true };
+      remember(sourceUrl, entry);
+      return entry;
+    } catch {
+      URL.revokeObjectURL(localUrl);
+      await dropCachedBlob(displayUrl);
+    }
+  }
+
+  const candidates = displayUrl === sourceUrl ? [sourceUrl] : [displayUrl, sourceUrl];
+  let lastError: unknown = new Error("image failed");
+  for (const candidate of candidates) {
+    try {
+      const entry = await loadCandidate(
+        candidate,
+        candidate === displayUrl ? displayUrl : null,
+      );
+      remember(sourceUrl, entry);
+      return entry;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+export function loadChatImage(
+  sourceUrl: string,
+  options?: { fresh?: boolean },
+): Promise<CachedChatImage> {
+  if (options?.fresh) {
+    const previous = memory.get(sourceUrl);
+    memory.delete(sourceUrl);
+    inflight.delete(sourceUrl);
+    if (previous?.local && previous.url.startsWith("blob:")) {
+      URL.revokeObjectURL(previous.url);
+    }
+  }
   const known = memory.get(sourceUrl);
   if (known) return Promise.resolve(known);
   const pending = inflight.get(sourceUrl);

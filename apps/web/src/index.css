@@ -376,6 +376,12 @@
     }
   }
 
+  /* Landing page is cream; the notch band uses this same fill instead of the app white. */
+  html.landing-cream,
+  html.landing-cream::before {
+    background-color: #FAF6EF;
+  }
+
   html.dark::before {
     background-image: none;
     /* Subtle top highlight for depth (monochrome, not a colour wash). */

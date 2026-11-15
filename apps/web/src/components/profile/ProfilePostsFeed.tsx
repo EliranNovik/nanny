@@ -135,6 +135,7 @@ import {
   type JobRequestFeedPost,
 } from "@/lib/openHelpRequestFeedPost";
 import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
+import { PostDetailAuthorStrips } from "@/components/profile/PostDetailAuthorStrips";
 import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
 import {
   applyJobRequestEngagement,
@@ -8756,6 +8757,10 @@ export function ProfilePostsFeed({
           const authorName = post.author?.full_name?.trim()
             ? post.author.full_name.trim()
             : "Member";
+          const listingTypeId = post.source === "availability" ? null : post.post_type_id;
+          const showAuthorStrips =
+            detailStackLayout &&
+            (listingTypeId === "offer_service" || listingTypeId === "request_help");
 
           if (!shouldShowComments) {
             return (
@@ -8814,6 +8819,10 @@ export function ProfilePostsFeed({
                   isolateFocusedPost={isolateFocusedPost}
                 />
               </div>
+
+              {showAuthorStrips && post.author_id ? (
+                <PostDetailAuthorStrips authorId={post.author_id} />
+              ) : null}
 
               {isJobRequestPost ? (
                 <JobRequestCommentsSidePanel

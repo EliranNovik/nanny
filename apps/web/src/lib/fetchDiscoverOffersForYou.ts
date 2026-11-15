@@ -15,6 +15,7 @@ export type DiscoverOfferForYou = {
   authorId: string;
   authorName: string;
   authorPhotoUrl: string | null;
+  authorVerified: boolean;
   imageUrl: string | null;
   locationLabel: string | null;
   locationLat: number | null;
@@ -28,6 +29,7 @@ type ProfileRow = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
+  is_verified: boolean | null;
   average_rating: number | null;
   total_ratings: number | null;
 };
@@ -43,13 +45,6 @@ type ProfilePostRow = {
   custom_category: string | null;
   ai_generated_copy: unknown;
 };
-
-function firstName(name: string | null | undefined): string {
-  const t = (name || "").trim();
-  if (!t) return "";
-  const i = t.indexOf(" ");
-  return i > 0 ? t.slice(0, i) : t;
-}
 
 function generatedTitle(raw: unknown): string | null {
   const parsed = parseGeneratedPostCopy(raw);
@@ -117,7 +112,7 @@ export async function fetchDiscoverOffersForYou(
   if (authorIds.length > 0) {
     const { data: profiles, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, photo_url, average_rating, total_ratings")
+      .select("id, full_name, photo_url, is_verified, average_rating, total_ratings")
       .in("id", authorIds);
     if (profileError) {
       console.warn("[fetchDiscoverOffersForYou] profiles", profileError);
@@ -143,7 +138,7 @@ export async function fetchDiscoverOffersForYou(
       generatedTitle(row.ai_generated_copy) ||
       categoryLabel;
     const profile = profileMap.get(row.author_id);
-    const authorName = firstName(profile?.full_name) || "Member";
+    const authorName = profile?.full_name?.trim() || "Member";
     const ratingRaw = profile?.average_rating;
     const ratingNum = typeof ratingRaw === "number" ? ratingRaw : Number(ratingRaw);
     const countRaw = profile?.total_ratings;
@@ -177,6 +172,7 @@ export async function fetchDiscoverOffersForYou(
       authorId: row.author_id,
       authorName,
       authorPhotoUrl: profile?.photo_url ?? null,
+      authorVerified: profile?.is_verified === true,
       imageUrl,
       locationLabel,
       locationLat: Number.isFinite(lat) ? lat : null,

@@ -21,6 +21,23 @@ type ChatMessageMediaProps = {
 
 type MediaDimensions = { width: number; height: number };
 
+function MediaFailedNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onRetry();
+      }}
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-zinc-900/75 px-4 text-center text-white"
+    >
+      <ImageIcon className="h-6 w-6" aria-hidden />
+      <span className="text-sm font-semibold">Couldn’t load this file</span>
+      <span className="text-xs font-medium text-white/80">Tap to try again</span>
+    </button>
+  );
+}
+
 function MediaLoadingOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
@@ -72,7 +89,15 @@ export function ChatMessageMedia({
     known ? { width: known.width, height: known.height } : knownDims,
   );
   const [shownSrc, setShownSrc] = useState(known?.url ?? "");
+  const [attempt, setAttempt] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const retry = () => {
+    setFailed(false);
+    setLoaded(false);
+    setShownSrc("");
+    setAttempt((value) => value + 1);
+  };
 
   const isLandscape = dims ? dims.width > dims.height : null;
 
@@ -98,7 +123,7 @@ export function ChatMessageMedia({
       setDims(null);
       return;
     }
-    const cached = peekChatImage(src);
+    const cached = attempt === 0 ? peekChatImage(src) : null;
     if (cached) {
       setShownSrc(cached.url);
       setDims({ width: cached.width, height: cached.height });
@@ -111,7 +136,7 @@ export function ChatMessageMedia({
     setLoaded(false);
     setFailed(false);
     let cancelled = false;
-    void loadChatImage(src)
+    void loadChatImage(src, { fresh: attempt > 0 })
       .then((entry) => {
         if (cancelled) return;
         setShownSrc(entry.url);
@@ -124,7 +149,7 @@ export function ChatMessageMedia({
     return () => {
       cancelled = true;
     };
-  }, [src, type]);
+  }, [src, type, attempt]);
 
   const shell = mediaShellClass(isLandscape, flushBottom);
   const objectClass = mediaObjectClass();
@@ -138,6 +163,7 @@ export function ChatMessageMedia({
         />
         {!loaded && !failed ? <MediaLoadingOverlay /> : null}
         <video
+          key={attempt}
           ref={videoRef}
           src={src}
           controls
@@ -158,6 +184,7 @@ export function ChatMessageMedia({
           onCanPlay={() => setLoaded(true)}
           onError={() => setFailed(true)}
         />
+        {failed ? <MediaFailedNotice onRetry={retry} /> : null}
         {footer ? (
           <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full bg-black/65 px-2 py-1 shadow-sm backdrop-blur-sm">
             {footer}
@@ -212,6 +239,8 @@ export function ChatMessageMedia({
         onError={() => setFailed(true)}
       />
       ) : null}
+
+      {failed ? <MediaFailedNotice onRetry={retry} /> : null}
 
       {loaded && onImageClick ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity group-hover/image:opacity-100">

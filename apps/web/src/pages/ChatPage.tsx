@@ -102,6 +102,7 @@ import {
   isAiSentBody,
   messageBodyForDisplay,
 } from "@/components/chat/AiSentAvatar";
+import { ChatLocationMap } from "@/components/chat/ChatLocationMap";
 import { ChatTypingIndicator } from "@/components/chat/ChatTypingIndicator";
 import { useChatTyping } from "@/hooks/useChatTyping";
 import {
@@ -141,6 +142,7 @@ import {
   formatChatContactMessage,
   parseChatContactMessage,
 } from "@/lib/chatSharePayloads";
+import { parseChatLocation } from "@/lib/chatLocationMessage";
 
 interface Message {
   id: string;
@@ -2255,21 +2257,18 @@ export default function ChatPage({
 
   /** Paragraph text inside bubbles; avoid `w-full` under flex+(items-end) or % width won’t constrain long URLs */
 
-  // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
+  const nameInitials =
+    otherUser?.full_name
+      ?.split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "?";
+  // Support chats show S. Every other person shows their own initials.
   const otherInitials =
-    conversation?.job_id === null
-      ? currentUserProfile?.is_admin
-        ? otherUser?.full_name
-            ?.split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase() || "?"
-        : "S"
-      : otherUser?.full_name
-          ?.split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase() || "?";
+    otherUser?.is_admin && currentUserProfile?.is_admin !== true
+      ? "S"
+      : nameInitials;
 
   const peekProfile: ChatParticipantProfile | null = otherUser
     ? {
@@ -3076,12 +3075,7 @@ export default function ChatPage({
                 const contactPayload = !msg.attachment_url
                   ? parseChatContactMessage(msg.body)
                   : null;
-                const nextMessage = messages[index + 1];
-                const showReceivedAvatar =
-                  !isOwn &&
-                  (!nextMessage ||
-                    nextMessage.sender_id !== msg.sender_id ||
-                    shouldShowDateHeader(index + 1));
+                const showReceivedAvatar = !isOwn;
                 const matchIntro = msg.body
                   ? parseMatchIntroBody(msg.body)
                   : null;
@@ -3224,8 +3218,9 @@ export default function ChatPage({
                   );
                 }
 
+                const locationShare = parseChatLocation(msg.body);
                 const linkPreviewUrls =
-                  msg.body && !msg.body.trimStart().startsWith("📍")
+                  msg.body && !locationShare
                     ? extractChatUrlsFromText(msg.body, 1)
                     : [];
 
@@ -3524,6 +3519,11 @@ export default function ChatPage({
                         ))}
 
                       <div className={chatMessageColumnCn(isOwn)}>
+                        {locationShare ? (
+                          <div className="mb-1.5">
+                            <ChatLocationMap location={locationShare} />
+                          </div>
+                        ) : null}
                         <div
                           className={cn(
                             "flex min-w-0 w-full max-w-full",
