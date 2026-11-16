@@ -36,6 +36,7 @@ import {
   mobileSheetSafePaddingBottom,
 } from "@/lib/mobileModalLayout";
 import { useAuth } from "@/context/AuthContext";
+import { AdminHeaderMenuButton } from "@/components/nav/AdminHeaderMenuButton";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { trackEvent } from "@/lib/analytics";
@@ -1038,9 +1039,15 @@ export function DiscoverHomeActionFirst({
     >
       {renderQuickActionDockMobile()}
       <div className={cn("flex flex-1 md:hidden flex-col gap-0", "pb-24")}>
+        {profile?.is_admin ? (
+          <div className="flex items-center px-3 pt-3">
+            <AdminHeaderMenuButton className="h-11 w-11 rounded-full bg-white text-zinc-900 shadow-sm ring-1 ring-black/5 dark:bg-zinc-900 dark:text-zinc-100" />
+          </div>
+        ) : null}
         <section
           className={cn(
-            "relative mx-1.5 mt-1.5 overflow-visible rounded-2xl bg-zinc-900 shadow-sm ring-1 ring-black/5",
+            "relative mx-1.5 overflow-visible rounded-2xl bg-zinc-900 shadow-sm ring-1 ring-black/5",
+            profile?.is_admin ? "mt-2" : "mt-1.5",
             isHire ? "h-[268px]" : "h-[280px]",
           )}
         >

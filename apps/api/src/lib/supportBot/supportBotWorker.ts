@@ -165,11 +165,17 @@ async function findOrCreateSupportConversation(
   return (created.data?.id as string) ?? null;
 }
 
+function historyBody(row: MessageRow): string {
+  const caption = String(row.body ?? "").replace(/^[\u200b\u2060]+/, "").trim();
+  if (!isImageAttachment(row)) return caption;
+  return [caption, "Sent a photo in this chat."].filter(Boolean).join("\n");
+}
+
 async function recentHistory(
   conversationId: string,
   adminId: string,
   excludeIds: Set<string>,
-): Promise<SupportTranscriptTurn[]> {
+): Promise<{ turns: SupportTranscriptTurn[]; images: string[] }> {
   const { data, error } = await supabaseAdmin
     .from("messages")
     .select("id, sender_id, body, attachment_url, attachment_type")
@@ -177,19 +183,21 @@ async function recentHistory(
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
   if (error) throw error;
-  return (data ?? [])
+  const rows = ((data ?? []) as MessageRow[])
     .slice()
     .reverse()
     .filter(
       (row) =>
-        !excludeIds.has(row.id as string) &&
-        (typeof row.body === "string" && row.body.trim() ||
-          isImageAttachment(row as MessageRow)),
-    )
-    .map((row) => ({
+        !excludeIds.has(row.id) &&
+        (typeof row.body === "string" && row.body.trim() || isImageAttachment(row)),
+    );
+  return {
+    turns: rows.map((row) => ({
       role: row.sender_id === adminId ? "assistant" : "user",
-      body: String(row.body ?? "").replace(/^\u200b\u200b\u200b/, "").trim() || "[photo]",
-    }));
+      body: historyBody(row),
+    })),
+    images: await photosFromMessages(rows.filter(isImageAttachment), 4),
+  };
 }
 
 async function sendAsSupport(
@@ -265,8 +273,8 @@ async function photoForModel(url: string): Promise<string | null> {
   return url.startsWith("https://") ? url : null;
 }
 
-async function photosFromMessages(rows: MessageRow[]): Promise<string[]> {
-  const urls = rows.filter(isImageAttachment).map((row) => row.attachment_url as string).slice(0, 2);
+async function photosFromMessages(rows: MessageRow[], limit = 4): Promise<string[]> {
+  const urls = rows.filter(isImageAttachment).map((row) => row.attachment_url as string).slice(-limit);
   const photos: string[] = [];
   for (const url of urls) {
     const photo = await photoForModel(url);
@@ -442,23 +450,21 @@ async function replyToUserMessages(
     new Set(pending.map((message) => message.id)),
   );
   const latestText = pending
-    .map((message) => {
-      const caption = message.body?.trim() ?? "";
-      return isImageAttachment(message)
-        ? [caption, "[photo attached]"].filter(Boolean).join("\n")
-        : caption;
-    })
+    .map((message) => historyBody(message))
     .filter(Boolean)
     .join("\n");
   const hint = pending.some((message) => classifyInboundHint(message.body ?? "") === "auto_report")
     ? "auto_report"
     : "user_message";
   const client = await latestClientPlatform(pending[pending.length - 1].sender_id);
-  const images = await photosFromMessages(pending);
+  const images = [
+    ...history.images,
+    ...(await photosFromMessages(pending)),
+  ].slice(-4);
 
   const decision = await decideWithMemory(
     {
-      history: history.filter((turn) => turn.body.trim() !== latestText),
+      history: history.turns.filter((turn) => turn.body.trim() !== latestText),
       latestText,
       hint,
       client,
@@ -640,7 +646,7 @@ async function handleAutomaticReports(admins: Set<string>): Promise<void> {
         const client = await latestClientPlatform(report.reporter_id);
         const decision = await decideWithMemory(
           {
-            history: await recentHistory(conversationId, adminId, new Set()),
+            history: (await recentHistory(conversationId, adminId, new Set())).turns,
             latestText: reportText(report),
             hint: "auto_report",
             client,
@@ -832,13 +838,11 @@ export async function followUpSupportChat(
         role: (row.sender_id === support.adminId ? "assistant" : "user") as
           | "assistant"
           | "user",
-        body: String(row.body ?? "").replace(/^\u200b\u200b\u200b/, "").trim() || "[photo]",
+        body: historyBody(row),
       }));
-    const latestText = isImageAttachment(latest)
-      ? [latest.body?.trim() ?? "", "[photo attached]"].filter(Boolean).join("\n")
-      : (latest.body?.trim() ?? "");
+    const latestText = historyBody(latest);
     const client = await latestClientPlatform(latest.sender_id);
-    const images = await photosFromMessages([latest]);
+    const images = await photosFromMessages(rows.filter(isImageAttachment));
     const decision = await decideWithMemory(
       {
         history,

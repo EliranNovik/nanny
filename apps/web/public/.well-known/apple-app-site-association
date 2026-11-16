@@ -10,6 +10,18 @@
             "comment": "Public Tebnu profiles"
           },
           {
+            "/": "/client/home*",
+            "comment": "Client home tab"
+          },
+          {
+            "/": "/freelancer/home*",
+            "comment": "Freelancer home tab"
+          },
+          {
+            "/": "/community/feed*",
+            "comment": "Post feed tab"
+          },
+          {
             "/": "/posts/*",
             "comment": "Tebnu posts and offers"
           },

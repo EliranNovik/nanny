@@ -33,6 +33,13 @@ const unregisterSchema = z.object({
   token: z.string().min(20).max(4096),
 });
 
+/** APNs hex is case-insensitive, so the same phone must not be stored twice. */
+function normalizePushToken(platform: "ios" | "android" | "web", token: string): string {
+  const trimmed = token.trim();
+  if (platform !== "ios") return trimmed;
+  return trimmed.replace(/[<>\s]/g, "").toLowerCase();
+}
+
 async function ensurePreferences(userId: string): Promise<void> {
   await supabaseAdmin
     .from("push_notification_preferences")
@@ -49,7 +56,8 @@ pushRouter.post("/devices", async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  const { token, platform, device_id, app_version } = parsed.data;
+  const { platform, device_id, app_version } = parsed.data;
+  const token = normalizePushToken(platform, parsed.data.token);
 
   await ensurePreferences(userId);
 
@@ -74,6 +82,27 @@ pushRouter.post("/devices", async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ error: error.message });
     return;
   }
+
+  // A refreshed token used to leave the previous one in place. Apple and FCM
+  // keep delivering to both, so one phone showed the same alert twice.
+  // Another account on this phone is detached only when the app sends device_id,
+  // because the token string itself changes between registrations.
+  if (device_id) {
+    await supabaseAdmin
+      .from("push_device_tokens")
+      .delete()
+      .eq("device_id", device_id)
+      .neq("token", token);
+  }
+
+  let stale = supabaseAdmin
+    .from("push_device_tokens")
+    .delete()
+    .eq("user_id", userId)
+    .eq("platform", platform)
+    .neq("token", token);
+  if (device_id) stale = stale.is("device_id", null);
+  await stale;
 
   res.json({ device: data });
 });

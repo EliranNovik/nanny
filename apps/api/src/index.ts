@@ -27,6 +27,7 @@ import { requireCronSecret } from "./middleware/cronSecret";
 import { startPushScheduler } from "./lib/push/startPushScheduler";
 import { supportBotConfigured, supportBotModel } from "./lib/supportBot";
 import { startSupportBot } from "./lib/supportBot/supportBotWorker";
+import { startChatQualityScan } from "./lib/qualityManager/scanChats";
 
 const app = express();
 
@@ -91,4 +92,5 @@ app.listen(port, () => {
   );
   startPushScheduler();
   startSupportBot();
+  startChatQualityScan();
 });

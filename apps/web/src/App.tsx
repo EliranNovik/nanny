@@ -103,6 +103,7 @@ import AdminStatisticsPage from "@/pages/admin/AdminStatisticsPage";
 import AdminPostsPage from "@/pages/admin/AdminPostsPage";
 import AdminAiBotPage from "@/pages/admin/AdminAiBotPage";
 import AdminFlaggedPostsPage from "@/pages/admin/AdminFlaggedPostsPage";
+import AdminMemberPage from "@/pages/admin/AdminMemberPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
@@ -123,6 +124,7 @@ import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { LegalAcceptanceGate } from "@/components/LegalAcceptanceGate";
+import { BanGate } from "@/components/BanGate";
 import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 
 // Protected route wrapper
@@ -809,6 +811,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/admin/members/:userId"
+          element={
+            <ProtectedAdminRoute>
+              <AdminMemberPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
           path="/admin/statistics"
           element={
             <ProtectedAdminRoute>
@@ -875,6 +885,7 @@ export default function App() {
             <DocumentLocaleSync />
             <ToastProvider>
               <AuthProvider>
+                <BanGate>
                 <GuestAuthPromptProvider>
                 <KycGateProvider>
                   <SessionAnalyticsInit />
@@ -894,6 +905,7 @@ export default function App() {
                   </DiscoverHomeScrollHeaderProvider>
                 </KycGateProvider>
                 </GuestAuthPromptProvider>
+                </BanGate>
               </AuthProvider>
             </ToastProvider>
           </BrowserRouter>

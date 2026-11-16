@@ -102,6 +102,7 @@ import {
   isAiSentBody,
   messageBodyForDisplay,
 } from "@/components/chat/AiSentAvatar";
+import { memberModerationNotice } from "@/lib/moderationChatCopy";
 import { ChatLocationMap } from "@/components/chat/ChatLocationMap";
 import { ChatTypingIndicator } from "@/components/chat/ChatTypingIndicator";
 import { useChatTyping } from "@/hooks/useChatTyping";
@@ -1529,7 +1530,13 @@ export default function ChatPage({
     if (message.is_deleted) return "This message was deleted";
     const contactPreview = chatContactPreview(message.body);
     if (contactPreview) return contactPreview;
-    if (message.body?.trim()) return message.body.trim().slice(0, 180);
+    if (message.body?.trim()) {
+      if (currentUserProfile?.is_admin !== true) {
+        const notice = memberModerationNotice(messageBodyForDisplay(message.body));
+        if (notice) return `${notice.title}. ${notice.body}`;
+      }
+      return message.body.trim().slice(0, 180);
+    }
     if (message.attachment_type === "image") return "Photo";
     if (message.attachment_type === "video") return "Video";
     if (
@@ -1996,6 +2003,20 @@ export default function ChatPage({
     };
   }
 
+  function plainModerationBubble(body: string | null | undefined) {
+    return (
+      currentUserProfile?.is_admin !== true &&
+      memberModerationNotice(messageBodyForDisplay(body ?? "")) !== null
+    );
+  }
+
+  function textBubbleClass(isOwn: boolean, body: string | null | undefined) {
+    if (plainModerationBubble(body)) {
+      return "w-fit max-w-full rounded-2xl bg-zinc-100 px-3.5 py-2.5 text-zinc-800 ring-1 ring-black/5 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-white/10";
+    }
+    return isOwn ? chatSentBubbleCn : chatReceivedBubbleCn;
+  }
+
   function renderBubbleBodyText(
     text: string,
     msg: Message,
@@ -2003,6 +2024,22 @@ export default function ChatPage({
     _omitHrefs?: Set<string>,
   ) {
     const visible = messageBodyForDisplay(text);
+    if (currentUserProfile?.is_admin !== true) {
+      const notice = memberModerationNotice(visible);
+      if (notice) {
+        return (
+          <div className="space-y-1">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {notice.title}
+            </p>
+            <p className="text-[15px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+              {notice.body}
+            </p>
+            {bubbleMeta(msg, false)}
+          </div>
+        );
+      }
+    }
     const textClassName = cn(
       chatBubbleBodyTextCn,
       isOwn ? "text-white" : chatReceivedMessageTextCn,
@@ -3356,16 +3393,18 @@ export default function ChatPage({
                                       <div
                                         className={cn(
                                           "relative min-w-0 w-fit transition-all duration-300",
-                                          isOwn
-                                            ? chatSentBubbleCn
-                                            : chatReceivedBubbleCn,
+                                          textBubbleClass(isOwn, msg.body),
                                         )}
                                       >
                                         <TranslatableChatMessage
                                           messageId={msg.id}
                                           body={msg.body}
                                           enabled={!isOwn}
-                                          variant={isOwn ? "onDark" : "default"}
+                                          variant={
+                                            plainModerationBubble(msg.body) || !isOwn
+                                              ? "default"
+                                              : "onDark"
+                                          }
                                           className="mt-1"
                                           renderBody={(text) =>
                                             renderBubbleBodyText(
@@ -3393,9 +3432,7 @@ export default function ChatPage({
                                       captionJoined
                                         ? "w-full rounded-t-none"
                                         : "w-fit",
-                                      isOwn
-                                        ? chatSentBubbleCn
-                                        : chatReceivedBubbleCn,
+                                      textBubbleClass(isOwn, msg.body),
                                     )}
                                     style={
                                       captionJoined
@@ -3410,7 +3447,11 @@ export default function ChatPage({
                                       messageId={msg.id}
                                       body={msg.body}
                                       enabled={!isOwn}
-                                      variant={isOwn ? "onDark" : "default"}
+                                      variant={
+                                        plainModerationBubble(msg.body) || !isOwn
+                                          ? "default"
+                                          : "onDark"
+                                      }
                                       className="mt-1"
                                       renderBody={(text) =>
                                         renderBubbleBodyText(
@@ -3593,16 +3634,18 @@ export default function ChatPage({
                               <div
                                 className={cn(
                                   "relative min-w-0 w-fit transition-all duration-300",
-                                  isOwn
-                                    ? chatSentBubbleCn
-                                    : chatReceivedBubbleCn,
+                                  textBubbleClass(isOwn, msg.body),
                                 )}
                               >
                                 <TranslatableChatMessage
                                   messageId={msg.id}
                                   body={msg.body}
                                   enabled={!isOwn}
-                                  variant={isOwn ? "onDark" : "default"}
+                                  variant={
+                                    plainModerationBubble(msg.body) || !isOwn
+                                      ? "default"
+                                      : "onDark"
+                                  }
                                   className="mt-1"
                                   renderBody={(text) =>
                                     renderBubbleBodyText(
@@ -3621,9 +3664,7 @@ export default function ChatPage({
                           <div
                             className={cn(
                               "group relative min-w-0 w-fit transition-all duration-300",
-                              isOwn
-                                ? chatSentBubbleCn
-                                : chatReceivedBubbleCn,
+                              textBubbleClass(isOwn, msg.body),
                               isDocumentOnly &&
                                 "!border-0 !bg-transparent !p-0 !shadow-none",
                             )}
@@ -3671,7 +3712,11 @@ export default function ChatPage({
                                 messageId={msg.id}
                                 body={msg.body}
                                 enabled={!isOwn}
-                                variant={isOwn ? "onDark" : "default"}
+                                variant={
+                                  plainModerationBubble(msg.body) || !isOwn
+                                    ? "default"
+                                    : "onDark"
+                                }
                                 className="mt-1"
                                 renderBody={(text) =>
                                   renderBubbleBodyText(

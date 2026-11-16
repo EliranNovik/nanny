@@ -64,6 +64,7 @@ import {
   X,
 } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
+import { AdminHeaderMenuButton } from "@/components/nav/AdminHeaderMenuButton";
 import { cn } from "@/lib/utils";
 import {
   SERVICE_CATEGORIES,
@@ -948,6 +949,9 @@ export default function CreateJobPage() {
                   />
                   <div className="absolute inset-x-0 top-0 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-2 pb-3 pt-2 sm:gap-2 sm:px-3 sm:pb-4">
                     <div className="flex justify-start">
+                      {profile?.is_admin ? (
+                        <AdminHeaderMenuButton className="h-11 w-11 text-white" iconClassName="h-6 w-6" />
+                      ) : null}
                       {step === 1 ? (
                         <Button
                           type="button"

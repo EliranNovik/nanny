@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { supabaseAdmin } from "../supabase";
-import { requireAdmin } from "../middleware/auth";
+import { requireAdmin, type AuthenticatedRequest } from "../middleware/auth";
 import { followUpSupportChat } from "../lib/supportBot/supportBotWorker";
 
 export const adminRouter = Router();
@@ -637,6 +637,419 @@ adminRouter.post("/quality-flags/:id/remove", async (req: Request, res: Response
     console.error("[AdminRouter] POST /quality-flags/:id/remove failure:", err);
     res.status(500).json({ error: "Could not remove that post." });
   }
+});
+
+adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    res.status(400).json({ error: "Unknown member." });
+    return;
+  }
+  try {
+    const [
+      { data: profile, error: profileErr },
+      { data: jobs, error: jobsErr },
+      { data: ban },
+      mediaResult,
+      postsResult,
+      communityResult,
+      authResult,
+      helperResult,
+      reviewsResult,
+    ] = await Promise.all([
+        supabaseAdmin.from("profiles").select("*").eq("id", id).maybeSingle(),
+        supabaseAdmin
+          .from("job_requests")
+          .select("status, client_id, selected_freelancer_id, service_type")
+          .or(`client_id.eq.${id},selected_freelancer_id.eq.${id}`),
+        supabaseAdmin
+          .from("user_bans")
+          .select("user_id, reason, duration, expires_at, created_at")
+          .eq("user_id", id)
+          .is("lifted_at", null)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("public_profile_media")
+          .select("id, media_type, storage_path, sort_order, created_at")
+          .eq("user_id", id)
+          .order("sort_order", { ascending: true }),
+        supabaseAdmin
+          .from("profile_posts")
+          .select("id, caption, media_type, storage_path, created_at, custom_category, post_metadata, post_types(name, emoji)")
+          .eq("author_id", id)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabaseAdmin
+          .from("community_posts")
+          .select("id, title, body, category, status, created_at")
+          .eq("author_id", id)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabaseAdmin.auth.admin.getUserById(id),
+        supabaseAdmin
+          .from("freelancer_profiles")
+          .select("languages, live_categories, available_now, hourly_rate_min, hourly_rate_max")
+          .eq("user_id", id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("job_reviews")
+          .select("id, rating, review_text, created_at, reviewer:profiles!reviewer_id(full_name, photo_url)")
+          .eq("reviewee_id", id)
+          .order("created_at", { ascending: false }),
+      ]);
+    if (profileErr) throw profileErr;
+    if (jobsErr) throw jobsErr;
+    if (!profile) {
+      res.status(404).json({ error: "Member not found." });
+      return;
+    }
+    const authUser = authResult.error ? null : authResult.data.user;
+    const list = jobs ?? [];
+    const openBan =
+      ban && (!ban.expires_at || new Date(ban.expires_at).getTime() > Date.now()) ? ban : null;
+    const communityPosts = communityResult.error ? [] : (communityResult.data ?? []);
+    const communityIds = communityPosts.map((post) => post.id as string);
+    let communityImages: Array<{ id: string; post_id: string; image_url: string; sort_order: number }> = [];
+    if (communityIds.length > 0) {
+      const images = await supabaseAdmin
+        .from("community_post_images")
+        .select("id, post_id, image_url, sort_order")
+        .in("post_id", communityIds)
+        .order("sort_order", { ascending: true });
+      if (!images.error) communityImages = (images.data ?? []) as typeof communityImages;
+    }
+    res.json({
+      profile,
+      completedAsClient: list.filter((job) => job.status === "completed" && job.client_id === id).length,
+      completedAsFreelancer: list.filter(
+        (job) => job.status === "completed" && job.selected_freelancer_id === id,
+      ).length,
+      ban: openBan,
+      media: mediaResult.error ? [] : (mediaResult.data ?? []),
+      posts: postsResult.error ? [] : (postsResult.data ?? []),
+      communityPosts: communityPosts.map((post) => ({
+        ...post,
+        images: communityImages.filter((image) => image.post_id === post.id),
+      })),
+      account: authUser
+        ? {
+            email: authUser.email ?? null,
+            emailConfirmedAt: authUser.email_confirmed_at ?? null,
+            phone: authUser.phone ?? null,
+            lastSignInAt: authUser.last_sign_in_at ?? null,
+            providers: [
+              ...new Set(
+                (authUser.identities ?? [])
+                  .map((row) => row.provider)
+                  .filter((provider): provider is string => Boolean(provider)),
+              ),
+            ],
+          }
+        : null,
+      helper: helperResult.error ? null : (helperResult.data ?? null),
+      reviews: reviewsResult.error ? [] : (reviewsResult.data ?? []),
+      askedCategories: [
+        ...new Set(
+          list
+            .filter((job) => job.client_id === id && typeof job.service_type === "string" && job.service_type)
+            .map((job) => job.service_type as string),
+        ),
+      ],
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Could not load this member";
+    res.status(500).json({ error: message });
+  }
+});
+
+const OWNED_MEDIA_BUCKETS = new Set(["avatars", "public-profile-media", "job-images", "community-posts"]);
+
+function ownedStorageRef(value: string): { bucket: string; path: string } | null {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.includes("..") || trimmed.length > 800) return null;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return { bucket: "public-profile-media", path: trimmed.replace(/^\/+/, "") };
+  }
+  const match = trimmed.match(/\/storage\/v1\/(?:object|render\/image)\/public\/([^/]+)\/([^?]+)/);
+  if (!match || !OWNED_MEDIA_BUCKETS.has(match[1])) return null;
+  try {
+    return { bucket: match[1], path: decodeURIComponent(match[2]) };
+  } catch {
+    return null;
+  }
+}
+
+async function removeOwnedFile(value: string | null | undefined) {
+  if (!value) return;
+  const ref = ownedStorageRef(value);
+  if (!ref?.path) return;
+  const { error } = await supabaseAdmin.storage.from(ref.bucket).remove([ref.path]);
+  if (error) console.warn("[AdminRouter] storage remove failed:", ref.bucket, ref.path, error.message);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f-]{36}$/i.test(value);
+}
+
+adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const kind = typeof req.body?.kind === "string" ? req.body.kind : "";
+  if (!isUuid(id)) {
+    res.status(400).json({ error: "Unknown member." });
+    return;
+  }
+  try {
+    if (kind === "avatar") {
+      const { data: profile, error } = await supabaseAdmin
+        .from("profiles")
+        .select("photo_url")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!profile) {
+        res.status(404).json({ error: "Member not found." });
+        return;
+      }
+      const { error: updateErr } = await supabaseAdmin.from("profiles").update({ photo_url: null }).eq("id", id);
+      if (updateErr) throw updateErr;
+      await removeOwnedFile(profile.photo_url as string | null);
+      res.json({ ok: true });
+      return;
+    }
+
+    if (kind === "gallery") {
+      const mediaId = typeof req.body?.mediaId === "string" ? req.body.mediaId : "";
+      if (!isUuid(mediaId)) {
+        res.status(400).json({ error: "Unknown photo." });
+        return;
+      }
+      const { data: row, error } = await supabaseAdmin
+        .from("public_profile_media")
+        .select("id, storage_path")
+        .eq("id", mediaId)
+        .eq("user_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!row) {
+        res.status(404).json({ error: "That photo is already gone." });
+        return;
+      }
+      const { error: deleteErr } = await supabaseAdmin
+        .from("public_profile_media")
+        .delete()
+        .eq("id", mediaId)
+        .eq("user_id", id);
+      if (deleteErr) throw deleteErr;
+      await removeOwnedFile(row.storage_path as string);
+      res.json({ ok: true });
+      return;
+    }
+
+    if (kind === "post") {
+      const postId = typeof req.body?.postId === "string" ? req.body.postId : "";
+      const storagePath = typeof req.body?.storagePath === "string" ? req.body.storagePath.trim() : "";
+      if (!isUuid(postId) || !storagePath || storagePath.length > 800 || storagePath.includes("..")) {
+        res.status(400).json({ error: "Unknown photo." });
+        return;
+      }
+      const { data: post, error } = await supabaseAdmin
+        .from("profile_posts")
+        .select("id, media_type, storage_path, post_metadata")
+        .eq("id", postId)
+        .eq("author_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!post) {
+        res.status(404).json({ error: "That post is already gone." });
+        return;
+      }
+      const meta =
+        post.post_metadata && typeof post.post_metadata === "object" && !Array.isArray(post.post_metadata)
+          ? { ...(post.post_metadata as Record<string, unknown>) }
+          : {};
+      const extras = Array.isArray(meta.media_items) ? meta.media_items : [];
+      const kept: Array<{ storage_path: string; media_type: "image" | "video" }> = [];
+      const seen = new Set<string>();
+      let removed = false;
+      const push = (path: unknown, mediaType: unknown) => {
+        if (typeof path !== "string" || !path) return;
+        if (path === storagePath) {
+          removed = true;
+          return;
+        }
+        if ((mediaType !== "image" && mediaType !== "video") || seen.has(path)) return;
+        seen.add(path);
+        kept.push({ storage_path: path, media_type: mediaType });
+      };
+      push(post.storage_path, post.media_type);
+      for (const raw of extras) {
+        if (!raw || typeof raw !== "object") continue;
+        const row = raw as Record<string, unknown>;
+        push(row.storage_path, row.media_type);
+      }
+      if (!removed) {
+        res.status(404).json({ error: "That photo is already gone." });
+        return;
+      }
+      const primary = kept[0] ?? null;
+      if (kept.length > 1) meta.media_items = kept.slice(1);
+      else delete meta.media_items;
+      const { error: updateErr } = await supabaseAdmin
+        .from("profile_posts")
+        .update({
+          media_type: primary?.media_type ?? null,
+          storage_path: primary?.storage_path ?? null,
+          post_metadata: meta,
+        })
+        .eq("id", postId)
+        .eq("author_id", id);
+      if (updateErr) throw updateErr;
+      await removeOwnedFile(storagePath);
+      res.json({ ok: true });
+      return;
+    }
+
+    if (kind === "board") {
+      const imageId = typeof req.body?.imageId === "string" ? req.body.imageId : "";
+      if (!isUuid(imageId)) {
+        res.status(400).json({ error: "Unknown photo." });
+        return;
+      }
+      const { data: image, error } = await supabaseAdmin
+        .from("community_post_images")
+        .select("id, image_url, post_id")
+        .eq("id", imageId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!image) {
+        res.status(404).json({ error: "That photo is already gone." });
+        return;
+      }
+      const { data: post, error: postErr } = await supabaseAdmin
+        .from("community_posts")
+        .select("id")
+        .eq("id", image.post_id)
+        .eq("author_id", id)
+        .maybeSingle();
+      if (postErr) throw postErr;
+      if (!post) {
+        res.status(404).json({ error: "That photo is already gone." });
+        return;
+      }
+      const { error: deleteErr } = await supabaseAdmin.from("community_post_images").delete().eq("id", imageId);
+      if (deleteErr) throw deleteErr;
+      await removeOwnedFile(image.image_url as string);
+      res.json({ ok: true });
+      return;
+    }
+
+    res.status(400).json({ error: "Unknown photo." });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Could not delete that photo.";
+    console.error("[AdminRouter] POST /users/:id/media failure:", message);
+    res.status(500).json({ error: "Could not delete that photo." });
+  }
+});
+
+adminRouter.post("/users/:id/message", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const adminId = (req as AuthenticatedRequest).user.id;
+  const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    res.status(400).json({ error: "Unknown member." });
+    return;
+  }
+  if (body.length < 2 || body.length > 2000) {
+    res.status(400).json({ error: "Write a message between 2 and 2000 characters." });
+    return;
+  }
+  if (id === adminId) {
+    res.status(400).json({ error: "You cannot message yourself." });
+    return;
+  }
+  try {
+    const { data: member } = await supabaseAdmin
+      .from("profiles")
+      .select("id, is_admin")
+      .eq("id", id)
+      .maybeSingle();
+    if (!member) {
+      res.status(404).json({ error: "Member not found." });
+      return;
+    }
+    let conversationId: string | null = null;
+    const { data: existingConv } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .is("job_id", null)
+      .eq("client_id", adminId)
+      .eq("freelancer_id", id)
+      .maybeSingle();
+    if (existingConv?.id) conversationId = existingConv.id as string;
+    if (!conversationId) {
+      const { data: reverseConv } = await supabaseAdmin
+        .from("conversations")
+        .select("id")
+        .is("job_id", null)
+        .eq("freelancer_id", adminId)
+        .eq("client_id", id)
+        .maybeSingle();
+      if (reverseConv?.id) conversationId = reverseConv.id as string;
+    }
+    if (!conversationId) {
+      const created = await supabaseAdmin
+        .from("conversations")
+        .insert({ job_id: null, client_id: adminId, freelancer_id: id })
+        .select("id")
+        .single();
+      if (created.error || !created.data) {
+        res.status(500).json({ error: created.error?.message || "Could not open a chat." });
+        return;
+      }
+      conversationId = created.data.id as string;
+    }
+    const sent = await supabaseAdmin.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: adminId,
+      body,
+    });
+    if (sent.error) {
+      res.status(500).json({ error: sent.error.message });
+      return;
+    }
+    res.json({ success: true, conversationId });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Could not send the message";
+    res.status(500).json({ error: message });
+  }
+});
+
+adminRouter.post("/profile-flags/:id/dismiss", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { error } = await supabaseAdmin
+    .from("quality_profile_flags")
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("dismissed_at", null);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  res.json({ success: true });
+});
+
+adminRouter.post("/chat-flags/:id/dismiss", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { error } = await supabaseAdmin
+    .from("quality_chat_flags")
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("dismissed_at", null);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  res.json({ success: true });
 });
 
 adminRouter.post("/support/follow-up", async (req: Request, res: Response): Promise<void> => {

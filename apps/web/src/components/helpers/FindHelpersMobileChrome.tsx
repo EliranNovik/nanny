@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutGrid, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
+import { AdminHeaderMenuButton } from "@/components/nav/AdminHeaderMenuButton";
+import { useAuth } from "@/context/AuthContext";
 import { categoryIllustrationSrc } from "@/lib/discoverCategoryTileIcons";
 import {
   OTHER_HELP_SUBCATEGORIES,
@@ -97,6 +99,7 @@ export function FindHelpersMobileChrome({
   locationPanel,
 }: FindHelpersMobileChromeProps) {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [otherSubsOpen, setOtherSubsOpen] = useState(false);
@@ -144,14 +147,19 @@ export function FindHelpersMobileChrome({
       >
         <div className="flex flex-col px-2 md:flex-row md:items-center md:gap-3 md:px-0">
           <div className="flex items-center justify-between md:contents">
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex h-11 w-11 items-center justify-center text-foreground md:hidden"
-              aria-label={t("common.back")}
-            >
-              <HeaderBackChevron className="h-8 w-8" />
-            </button>
+            <div className="flex items-center md:contents">
+              {profile?.is_admin ? (
+                <AdminHeaderMenuButton className="h-11 w-11 text-foreground md:hidden" />
+              ) : null}
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex h-11 w-11 items-center justify-center text-foreground md:hidden"
+                aria-label={t("common.back")}
+              >
+                <HeaderBackChevron className="h-8 w-8" />
+              </button>
+            </div>
             <div className="flex items-center gap-0.5 md:order-3 md:shrink-0">
               <div className="relative" ref={menuRef}>
                 <button

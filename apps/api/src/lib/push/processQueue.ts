@@ -154,7 +154,32 @@ async function withActorPhoto(
 type DeviceTokenRow = {
   token: string;
   platform: "ios" | "android" | "web" | string;
+  device_id?: string | null;
+  last_seen_at?: string | null;
 };
+
+/**
+ * One phone often has several saved tokens (a refresh, or a different case of
+ * the same APNs hex). Keep the newest token per platform, and per device when
+ * the app sent a device id. Older tokens still receive pushes until Apple or
+ * FCM rejects them, which is how the same alert shows twice.
+ */
+function tokensToDeliver(rows: DeviceTokenRow[]): DeviceTokenRow[] {
+  const newest = new Map<string, DeviceTokenRow>();
+  for (const row of rows) {
+    if (!row.token) continue;
+    const token = row.platform === "ios" ? normalizeIosToken(row.token) : row.token;
+    const deviceKey = row.device_id?.trim() || "device";
+    const key = `${row.platform}:${deviceKey}`;
+    const current = newest.get(key);
+    const seen = row.last_seen_at ? Date.parse(row.last_seen_at) : 0;
+    const currentSeen = current?.last_seen_at ? Date.parse(current.last_seen_at) : 0;
+    if (!current || seen >= currentSeen) {
+      newest.set(key, { ...row, token });
+    }
+  }
+  return [...newest.values()];
+}
 
 function stringifyData(data: Record<string, unknown> | null): Record<string, string> {
   const out: Record<string, string> = {};
@@ -168,6 +193,43 @@ function stringifyData(data: Record<string, unknown> | null): Record<string, str
 /** FCM registration tokens (Android / web). Never use raw APNs hex here. */
 function isLikelyFcmToken(token: string): boolean {
   return token.includes(":") || token.includes("APA91");
+}
+
+/** APNs hex is case-insensitive. One phone can be stored twice if the case differs. */
+function normalizeIosToken(token: string): string {
+  return token.replace(/[<>\s]/g, "").toLowerCase();
+}
+
+function uniqueTokens(tokens: string[], normalize?: (token: string) => string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const token of tokens) {
+    const key = normalize ? normalize(token) : token;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalize ? key : token);
+  }
+  return out;
+}
+
+/**
+ * Two workers (in-process scheduler and the cron endpoint, or two servers)
+ * can read the same pending row. Claim it before sending so only one proceeds.
+ */
+async function claimQueueRow(row: QueueRow): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("push_notification_queue")
+    .update({ attempts: row.attempts + 1, last_error: "sending" })
+    .eq("id", row.id)
+    .eq("status", "pending")
+    .eq("attempts", row.attempts)
+    .select("id");
+
+  if (error) {
+    pushError("Queue claim failed", { queue_id: row.id, message: error.message });
+    return false;
+  }
+  return (data ?? []).length === 1;
 }
 
 export async function processPushQueue(limit = BATCH_SIZE): Promise<{
@@ -236,7 +298,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
 
     const { data: tokens, error: tokenError } = await supabaseAdmin
       .from("push_device_tokens")
-      .select("token, platform")
+      .select("token, platform, device_id, last_seen_at")
       .eq("user_id", row.user_id);
 
     if (tokenError) {
@@ -250,7 +312,16 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       continue;
     }
 
-    const deviceRows = (tokens ?? []) as DeviceTokenRow[];
+    const claimed = await claimQueueRow(row);
+    if (!claimed) {
+      pushLog("Queue row already claimed", { queue_id: row.id });
+      skipped += 1;
+      continue;
+    }
+    const claimedAttempts = row.attempts + 1;
+
+    const rawDeviceRows = (tokens ?? []) as DeviceTokenRow[];
+    const deviceRows = tokensToDeliver(rawDeviceRows);
     pushLog("Device tokens loaded", {
       queue_id: row.id,
       user_id: row.user_id,
@@ -263,12 +334,15 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       })),
     });
 
-    const iosTokens = deviceRows
-      .filter((t) => t.platform === "ios" && t.token)
-      .map((t) => t.token);
-    const fcmTokens = deviceRows
-      .filter((t) => t.platform !== "ios" && t.token && isLikelyFcmToken(t.token))
-      .map((t) => t.token);
+    const iosTokens = uniqueTokens(
+      deviceRows.filter((t) => t.platform === "ios" && t.token).map((t) => t.token),
+      normalizeIosToken,
+    );
+    const fcmTokens = uniqueTokens(
+      deviceRows
+        .filter((t) => t.platform !== "ios" && t.token && isLikelyFcmToken(t.token))
+        .map((t) => t.token),
+    );
     // Defense: never pass APNs hex into FCM even if platform was mis-tagged.
     const skippedMisrouted = deviceRows.filter(
       (t) => t.platform !== "ios" && t.token && !isLikelyFcmToken(t.token),
@@ -291,7 +365,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
           ? "No valid device tokens (non-FCM tokens on non-ios platform)"
           : "No device tokens registered";
       pushWarn("Queue row skipped", { queue_id: row.id, reason });
-      await markQueueRow(row.id, "skipped", row.attempts, reason);
+      await markQueueRow(row.id, "skipped", claimedAttempts, reason);
       skipped += 1;
       continue;
     }
@@ -326,7 +400,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     // FCM and APNs are independent — one provider failing must not block the other.
     if (fcmTokens.length) {
       try {
-        const fcmResult = await sendFcmToTokens(fcmTokens, payload);
+        const fcmResult = await sendFcmToTokens(fcmTokens, payload, row.id);
         successCount += fcmResult.successCount;
         invalidTokens.push(...fcmResult.invalidTokens);
         if (fcmResult.failureCount > 0) {
@@ -353,7 +427,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
           });
           errorParts.push(`APNs: ${iosTokens.length} iOS token(s) but ${cfgErr}`);
         } else {
-          const apnsResult = await sendApnsToTokens(iosTokens, payload);
+          const apnsResult = await sendApnsToTokens(iosTokens, payload, row.id);
           successCount += apnsResult.successCount;
           invalidTokens.push(...apnsResult.invalidTokens);
           if (apnsResult.failureCount > 0) {
@@ -375,7 +449,17 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
         count: invalidTokens.length,
         previews: invalidTokens.map(tokenPreview),
       });
-      await supabaseAdmin.from("push_device_tokens").delete().in("token", invalidTokens);
+      const doomed = new Set(invalidTokens);
+      const storedTokens = rawDeviceRows
+        .filter((device) => {
+          const key = device.platform === "ios" ? normalizeIosToken(device.token) : device.token;
+          return doomed.has(device.token) || doomed.has(key);
+        })
+        .map((device) => device.token);
+      await supabaseAdmin
+        .from("push_device_tokens")
+        .delete()
+        .in("token", storedTokens.length ? storedTokens : invalidTokens);
     }
 
     if (successCount > 0) {
@@ -384,10 +468,10 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
         successCount,
         worker_version: PUSH_WORKER_VERSION,
       });
-      await markQueueRow(row.id, "sent", row.attempts + 1, null);
+      await markQueueRow(row.id, "sent", claimedAttempts, null);
       sent += 1;
     } else {
-      const nextAttempts = row.attempts + 1;
+      const nextAttempts = claimedAttempts;
       const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
       const lastError = errorParts.join(" | ") || "All push deliveries failed";
       pushError("Queue row NOT sent", {

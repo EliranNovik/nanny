@@ -96,6 +96,7 @@ export async function sendFcmToTokens(
     body: string;
     data?: Record<string, string>;
   },
+  collapseId: string | null = null,
 ): Promise<FcmSendResult> {
   if (!tokens.length) {
     return { successCount: 0, failureCount: 0, invalidTokens: [], errors: [] };
@@ -139,9 +140,11 @@ export async function sendFcmToTokens(
     // On Android 8+, channel_id selects the sound configured in the app.
     android: {
       priority: "high",
+      ...(collapseId ? { collapseKey: collapseId } : {}),
       notification: {
         channelId: androidChannelId,
         sound,
+        ...(collapseId ? { tag: collapseId } : {}),
         ...(imageUrl ? { imageUrl } : {}),
       },
     },

@@ -148,6 +148,7 @@ async function sendOneApns(
   bundleId: string,
   deviceToken: string,
   payload: Record<string, unknown>,
+  collapseId: string | null,
 ): Promise<{ ok: boolean; status: number; reason?: string; raw?: string }> {
   return new Promise((resolve) => {
     const client = http2.connect(host);
@@ -185,6 +186,7 @@ async function sendOneApns(
       "apns-push-type": "alert",
       "apns-priority": "10",
       "content-type": "application/json",
+      ...(collapseId ? { "apns-collapse-id": collapseId } : {}),
     });
 
     let status = 0;
@@ -237,6 +239,7 @@ export async function sendApnsToTokens(
     body: string;
     data?: Record<string, string>;
   },
+  collapseId: string | null = null,
 ): Promise<ApnsSendResult> {
   if (!tokens.length) {
     return { successCount: 0, failureCount: 0, invalidTokens: [], errors: [] };
@@ -302,7 +305,7 @@ export async function sendApnsToTokens(
 
   // Sequential to keep HTTP/2 client lifecycle simple and avoid stampeding APNs.
   for (const token of tokens) {
-    let result = await sendOneApns(preferredHost, jwt, config.bundleId, token, body);
+    let result = await sendOneApns(preferredHost, jwt, config.bundleId, token, body, collapseId);
     let usedHost = preferredHost;
     let retriedOtherEnv = false;
 
@@ -315,7 +318,7 @@ export async function sendApnsToTokens(
         fallback_host: fallbackHost,
       });
       retriedOtherEnv = true;
-      result = await sendOneApns(fallbackHost, jwt, config.bundleId, token, body);
+      result = await sendOneApns(fallbackHost, jwt, config.bundleId, token, body, collapseId);
       usedHost = fallbackHost;
     }
 

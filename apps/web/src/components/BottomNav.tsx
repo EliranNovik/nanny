@@ -28,7 +28,6 @@ import {
   Bot,
   ChevronDown,
   LogOut,
-  Menu,
   Pencil,
   Search,
   Settings,
@@ -95,6 +94,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { useDesktopSidePanel } from "@/context/DesktopSidePanelContext";
 import { isDesktopSidePanelExcludedRoute } from "@/components/nav/DesktopSidePanel";
+import { AdminHeaderMenuButton } from "@/components/nav/AdminHeaderMenuButton";
 import { useAuthenticatedShellLayout } from "@/hooks/useAuthenticatedShellLayout";
 
 /** Tab icons: outline when inactive, filled when active. */
@@ -208,11 +208,7 @@ export function BottomNav() {
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
   const { t } = useTranslation();
-  const {
-    collapsed: desktopSidePanelCollapsed,
-    adminMenuOpen,
-    setAdminMenuOpen,
-  } = useDesktopSidePanel();
+  const { collapsed: desktopSidePanelCollapsed } = useDesktopSidePanel();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const jobsTabCounts = useJobsTabCounts(user);
@@ -1060,6 +1056,9 @@ export function BottomNav() {
       )}
     >
       <div className="flex h-16 w-full items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+        {profile?.is_admin && !isAdminPage ? (
+          <AdminHeaderMenuButton className="ms-3 h-11 w-11 rounded-full text-zinc-800 hover:bg-zinc-200/80 dark:text-zinc-100 dark:hover:bg-white/10" />
+        ) : null}
         {isAdminPage ? (
           <div className="flex w-[220px] shrink-0 items-center px-3">
             <HeaderSearchToggle
@@ -1298,15 +1297,10 @@ export function BottomNav() {
           )}
         >
           {isAdminUser ? (
-            <button
-              type="button"
-              onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+            <AdminHeaderMenuButton
               className={mobileHeaderIconClass}
-              aria-label={adminMenuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={adminMenuOpen}
-            >
-              <Menu className={mobileHeaderIconSize} strokeWidth={2} />
-            </button>
+              iconClassName={mobileHeaderIconSize}
+            />
           ) : null}
           {showCommunityFeedHeaderLeft ? (
               <div className="flex items-center gap-1.5">
@@ -1415,6 +1409,14 @@ export function BottomNav() {
     </header>
   ) : null;
 
+  const showLooseAdminMenuButton =
+    isAdminUser &&
+    hideMobileAppHeaderChrome &&
+    !isMessagesDesktopRoute &&
+    !isHelpersFindPage &&
+    !isDiscoverHome &&
+    pathnameNorm !== "/client/create";
+
   const ProfileMenuModal = (
     <Dialog open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
       <DialogContent className="max-w-xs gap-3 rounded-2xl border-0 p-4 shadow-xl outline-none ring-0 focus:outline-none focus-visible:ring-0 left-4 right-4 top-14 w-[calc(100%-2rem)] max-w-sm translate-x-0 translate-y-0 bg-white dark:bg-zinc-800 dark:text-zinc-50 data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
@@ -1464,6 +1466,15 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {MobileSignedInHeader}
+        {showLooseAdminMenuButton ? (
+          <AdminHeaderMenuButton
+            className={cn(
+              mobileHeaderIconClass,
+              "fixed start-2 z-[80] md:hidden",
+              "top-[max(0.35rem,env(safe-area-inset-top,0px))]",
+            )}
+          />
+        ) : null}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <NotificationsModal
@@ -1525,6 +1536,15 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {MobileSignedInHeader}
+        {showLooseAdminMenuButton ? (
+          <AdminHeaderMenuButton
+            className={cn(
+              mobileHeaderIconClass,
+              "fixed start-2 z-[80] md:hidden",
+              "top-[max(0.35rem,env(safe-area-inset-top,0px))]",
+            )}
+          />
+        ) : null}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         {!hideMobileBottomNav &&
@@ -1579,6 +1599,15 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {MobileSignedInHeader}
+        {showLooseAdminMenuButton ? (
+          <AdminHeaderMenuButton
+            className={cn(
+              mobileHeaderIconClass,
+              "fixed start-2 z-[80] md:hidden",
+              "top-[max(0.35rem,env(safe-area-inset-top,0px))]",
+            )}
+          />
+        ) : null}
         {!hideMobileBottomNav &&
           createPortal(
           <nav
@@ -1792,6 +1821,15 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {MobileSignedInHeader}
+        {showLooseAdminMenuButton ? (
+          <AdminHeaderMenuButton
+            className={cn(
+              mobileHeaderIconClass,
+              "fixed start-2 z-[80] md:hidden",
+              "top-[max(0.35rem,env(safe-area-inset-top,0px))]",
+            )}
+          />
+        ) : null}
         {!hideMobileBottomNav &&
           createPortal(
           <nav className={mobileNavPortalClass}>

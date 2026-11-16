@@ -71,6 +71,8 @@ import {
 } from "@/components/messages/MessagesInboxFloatingHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 import { chatContactPreview } from "@/lib/chatSharePayloads";
+import { memberModerationNotice } from "@/lib/moderationChatCopy";
+import { messageBodyForDisplay } from "@/components/chat/AiSentAvatar";
 import { chatMessagePlainText } from "@/lib/linkifyMessageBody";
 import { maskAdminProfile } from "@/lib/adminProfiles";
 import {
@@ -1226,11 +1228,19 @@ export default function MessagesPage() {
                                   ? t("messagesPage.photo")
                                   : convo.last_message.attachment_name ||
                                     t("messagesPage.file")
-                                : trimPreviewNoise(
-                                    chatContactPreview(
-                                      convo.last_message.body,
-                                    ) ?? convo.last_message.body,
-                                  )}
+                                : (() => {
+                                    const raw =
+                                      chatContactPreview(
+                                        convo.last_message.body,
+                                      ) ?? convo.last_message.body;
+                                    if (profile?.is_admin !== true && raw) {
+                                      const notice = memberModerationNotice(
+                                        messageBodyForDisplay(raw),
+                                      );
+                                      if (notice) return `${notice.title}. ${notice.body}`;
+                                    }
+                                    return trimPreviewNoise(raw);
+                                  })()}
                             </p>
                           )}
                         </div>

@@ -87,7 +87,8 @@ export function DesktopSidePanel() {
     pathname === "/messages" || pathname.startsWith("/messages/");
   /** Admin pages, the mobile drawer, and the desktop messages page: full open sidebar. */
   const adminDrawer =
-    isAdminPage || (Boolean(profile?.is_admin) && (!isMdUp || isMessagesPage));
+    isAdminPage ||
+    (Boolean(profile?.is_admin) && (!isMdUp || isMessagesPage || adminMenuOpen));
   /** Extra clearance under the fixed header on all pages except messages. */
   const insetFromHeader = !adminDrawer && !isMessagesPage;
   /** Messages on desktop uses the open sidebar. The icon rail is for a collapsed panel elsewhere. */
@@ -543,7 +544,7 @@ export function DesktopSidePanel() {
       <div
         className={cn(
           "fixed inset-0 z-[220] bg-black/40 transition-opacity duration-300",
-          isMessagesPage ? "" : "md:hidden",
+          isAdminPage ? "md:hidden" : "",
           adminMenuOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setAdminMenuOpen(false)}
@@ -555,7 +556,7 @@ export function DesktopSidePanel() {
         "app-desktop-side-panel flex flex-col border-0 shadow-none",
         railBg,
         adminDrawer &&
-          "app-admin-side-panel rounded-e-3xl transition-transform duration-300 ease-out max-md:z-[206] max-md:shadow-2xl md:overflow-hidden",
+          "app-admin-side-panel rounded-e-3xl transition-transform duration-300 ease-out max-md:z-[230] max-md:shadow-2xl md:overflow-hidden",
         adminDrawer &&
           isMessagesPage &&
           !adminMenuOpen &&

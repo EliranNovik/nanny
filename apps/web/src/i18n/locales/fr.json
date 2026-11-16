@@ -116,6 +116,13 @@
     "required": "Vous devez confirmer avoir 18 ans ou plus et accepter les Conditions et la Politique de confidentialité.",
     "accountSettings": "Réglages du compte"
   },
+  "accountBan": {
+    "title": "Ce compte est banni",
+    "reason": "Motif",
+    "until": "Vous pourrez vous reconnecter après le {{when}}.",
+    "forever": "Ce bannissement n'expire pas. Le compte n'est pas supprimé, mais il ne peut plus être utilisé.",
+    "signOut": "Se déconnecter"
+  },
   "analyticsConsent": {
     "title": "Choix analytique",
     "body": "Nous utilisons un stockage essentiel au fonctionnement de Tebnu. Avec votre accord, nous chargeons aussi les outils Google pour comprendre et améliorer le service.",

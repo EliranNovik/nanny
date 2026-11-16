@@ -169,6 +169,112 @@ export async function reviewPost(input: {
   return review;
 }
 
+export type ChatQualityReview = {
+  decision: QualityDecision;
+  summary: string;
+  reasons: QualityReason[];
+  speaker: "A" | "B" | "";
+};
+
+const chatResponseSchema = responseSchema.extend({
+  speaker: z.enum(["A", "B", ""]).optional(),
+});
+
+/** Same categories and 50/70 thresholds as a post, applied to a bio or a review. */
+export async function reviewProfileText(input: {
+  kind: "bio" | "review";
+  text: string;
+}): Promise<Omit<ChatQualityReview, "speaker">> {
+  const notes = await loadQualityNotes();
+  const messages: OpenAiChatMessage[] = [
+    { role: "system", content: instructions(notes.standards, notes.categories) },
+    {
+      role: "user",
+      content: [
+        input.kind === "bio"
+          ? "This is a profile bio, not a post."
+          : "This is a review one member wrote about another, not a post.",
+        "Use the same problems as a post. Also report insults, slurs, sexual content, and profanity aimed at a person.",
+        "A normal bio or a short honest review stays under 50.",
+        "note is one sentence an admin can read: what was written and why it was flagged. No percentages.",
+        "",
+        input.text.slice(0, 4000),
+      ].join("\n"),
+    },
+  ];
+  const raw = await createSupportChatCompletion(messages);
+  let parsed: z.infer<typeof responseSchema>;
+  try {
+    const json = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    parsed = responseSchema.parse(JSON.parse(json));
+  } catch (err) {
+    if (err instanceof SupportBotError) throw err;
+    throw new SupportBotError("The profile review could not be read.", "invalid_response");
+  }
+  const reasons = (parsed.reasons ?? [])
+    .map((reason) => ({
+      category: reason.category.trim() || "Other",
+      confidence: percent(reason.confidence),
+      detail: reason.detail.trim(),
+    }))
+    .filter((reason) => reason.confidence >= FLAG_AT && reason.detail)
+    .slice(0, 6);
+  const decision = decide(reasons);
+  return {
+    decision,
+    summary: decision === "allow" ? "" : (parsed.note ?? "").trim(),
+    reasons: decision === "allow" ? [] : reasons,
+  };
+}
+
+/** Same categories and 50/70 thresholds as a post, applied to a short chat. */
+export async function reviewConversation(input: {
+  transcript: string;
+}): Promise<ChatQualityReview> {
+  const notes = await loadQualityNotes();
+  const messages: OpenAiChatMessage[] = [
+    { role: "system", content: instructions(notes.standards, notes.categories) },
+    {
+      role: "user",
+      content: [
+        "This is a private chat, not a post. Speakers are labeled A and B.",
+        "Use the same problems as a post. Also report insults, slurs, sexual requests, and profanity aimed at the other person.",
+        "Casual swearing with no target stays under 50.",
+        "speaker is A or B for the person who wrote the problem, or empty if neither did.",
+        "note is one sentence an admin can read: what happened and why it was flagged. No percentages.",
+        "",
+        input.transcript.slice(0, 6000),
+      ].join("\n"),
+    },
+  ];
+
+  const raw = await createSupportChatCompletion(messages);
+  let parsed: z.infer<typeof chatResponseSchema>;
+  try {
+    const json = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    parsed = chatResponseSchema.parse(JSON.parse(json));
+  } catch (err) {
+    if (err instanceof SupportBotError) throw err;
+    throw new SupportBotError("The chat review could not be read.", "invalid_response");
+  }
+
+  const reasons = (parsed.reasons ?? [])
+    .map((reason) => ({
+      category: reason.category.trim() || "Other",
+      confidence: percent(reason.confidence),
+      detail: reason.detail.trim(),
+    }))
+    .filter((reason) => reason.confidence >= FLAG_AT && reason.detail)
+    .slice(0, 6);
+  const decision = decide(reasons);
+  return {
+    decision,
+    summary: decision === "allow" ? "" : (parsed.note ?? "").trim(),
+    reasons: decision === "allow" ? [] : reasons,
+    speaker: parsed.speaker === "A" || parsed.speaker === "B" ? parsed.speaker : "",
+  };
+}
+
 export function takeFlagReview(userId: string, reviewId: string): QualityReview | null {
   sweep();
   const stored = reviews.get(reviewId);

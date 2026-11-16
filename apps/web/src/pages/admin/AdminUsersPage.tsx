@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Users, Search, Download, Shield, Settings, Trash, LogOut, MoreVertical, BadgeCheck } from "lucide-react";
+import { Users, Search, Download, Shield, Settings, Trash, LogOut, MoreVertical, BadgeCheck, Ban, Loader2 } from "lucide-react";
 import { apiPost, apiPatch } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import { getAdminData, getCachedAdminData, invalidateAdminData } from "@/lib/adminDataCache";
 import { useProgressiveList } from "@/hooks/useProgressiveList";
 import { format } from "date-fns";
@@ -39,7 +43,34 @@ type UserJob = {
   selected_freelancer_id: string | null;
 };
 
+type BanLength = "2d" | "1w" | "1m" | "forever";
+
+const BAN_LENGTHS: Array<[BanLength, string]> = [
+  ["2d", "2 days"],
+  ["1w", "1 week"],
+  ["1m", "1 month"],
+  ["forever", "Forever"],
+];
+
+type ActiveBan = {
+  user_id: string;
+  reason: string;
+  duration: string;
+  expires_at: string | null;
+  created_at: string;
+};
+
+function banIsLive(expiresAt: string | null) {
+  return !expiresAt || new Date(expiresAt).getTime() > Date.now();
+}
+
+function banUntilLabel(ban: ActiveBan) {
+  if (!ban.expires_at || ban.duration === "forever") return "Forever";
+  return format(new Date(ban.expires_at), "d MMM yyyy, HH:mm");
+}
+
 export default function AdminUsersPage() {
+  const { addToast } = useToast();
   const cachedDashboard = getCachedAdminData<{ users: UserProfile[]; jobs: UserJob[] }>("dashboard");
   const [users, setUsers] = useState<UserProfile[]>(cachedDashboard?.users || []);
   const [jobs, setJobs] = useState<UserJob[]>(cachedDashboard?.jobs || []);
@@ -66,10 +97,15 @@ export default function AdminUsersPage() {
   const [isVerified, setIsVerified] = useState(false);
   const [kycStatus, setKycStatus] = useState("");
   const [isAvailable, setIsAvailable] = useState(false);
-
+  const [bans, setBans] = useState<Record<string, ActiveBan>>({});
+  const [banUser, setBanUser] = useState<UserProfile | null>(null);
+  const [banLength, setBanLength] = useState<BanLength>("2d");
+  const [banReason, setBanReason] = useState("");
+  const [banSaving, setBanSaving] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    void loadBans();
   }, []);
 
   useEffect(() => {
@@ -84,6 +120,102 @@ export default function AdminUsersPage() {
     document.addEventListener("pointerdown", closeActionMenus);
     return () => document.removeEventListener("pointerdown", closeActionMenus);
   }, []);
+
+  async function loadBans() {
+    const { data, error } = await supabase
+      .from("user_bans")
+      .select("user_id, reason, duration, expires_at, created_at, lifted_at")
+      .is("lifted_at", null);
+    if (error) {
+      setBans({});
+      return;
+    }
+    const next: Record<string, ActiveBan> = {};
+    for (const row of (data ?? []) as Array<ActiveBan & { lifted_at?: string | null }>) {
+      if (!banIsLive(row.expires_at)) continue;
+      next[row.user_id] = {
+        user_id: row.user_id,
+        reason: row.reason,
+        duration: row.duration,
+        expires_at: row.expires_at,
+        created_at: row.created_at,
+      };
+    }
+    setBans(next);
+  }
+
+  function openBan(user: UserProfile) {
+    const existing = bans[user.id];
+    const duration = BAN_LENGTHS.some(([id]) => id === existing?.duration)
+      ? (existing!.duration as BanLength)
+      : "2d";
+    setBanLength(duration);
+    setBanReason(existing?.reason ?? "");
+    setBanUser(user);
+  }
+
+  async function applyBan() {
+    if (!banUser || banSaving) return;
+    const reason = banReason.trim();
+    if (reason.length < 3) {
+      addToast({ title: "Add a reason", variant: "error" });
+      return;
+    }
+    setBanSaving(true);
+    const { error } = await supabase.rpc("admin_ban_user", {
+      p_user_id: banUser.id,
+      p_duration: banLength,
+      p_reason: reason,
+    });
+    setBanSaving(false);
+    if (error) {
+      addToast({
+        title: "Could not ban this member",
+        description: /admin_ban_user|schema cache|does not exist/i.test(error.message)
+          ? "Run db/sql/165_user_bans.sql in the Supabase SQL editor, then try again."
+          : error.message,
+        variant: "error",
+      });
+      return;
+    }
+    const expiresAt =
+      banLength === "forever"
+        ? null
+        : new Date(Date.now() + (banLength === "2d" ? 2 : banLength === "1w" ? 7 : 30) * 86400000).toISOString();
+    setBans((prev) => ({
+      ...prev,
+      [banUser.id]: {
+        user_id: banUser.id,
+        reason,
+        duration: banLength,
+        expires_at: expiresAt,
+        created_at: new Date().toISOString(),
+      },
+    }));
+    addToast({
+      title: banLength === "forever" ? "Banned" : "Banned for a limited time",
+      variant: "success",
+    });
+    setBanUser(null);
+  }
+
+  async function liftBan() {
+    if (!banUser || banSaving) return;
+    setBanSaving(true);
+    const { error } = await supabase.rpc("admin_lift_ban", { p_user_id: banUser.id });
+    setBanSaving(false);
+    if (error) {
+      addToast({ title: "Could not lift the ban", description: error.message, variant: "error" });
+      return;
+    }
+    setBans((prev) => {
+      const next = { ...prev };
+      delete next[banUser.id];
+      return next;
+    });
+    addToast({ title: "Ban lifted", variant: "success" });
+    setBanUser(null);
+  }
 
   async function fetchUsers() {
     if (!getCachedAdminData("dashboard")) setLoading(true);
@@ -357,10 +489,20 @@ export default function AdminUsersPage() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-sm tracking-tight flex items-center gap-1.5 text-zinc-900 dark:text-zinc-50">
-                      {u.full_name || "Anonymous"}
+                      <Link
+                        to={`/admin/members/${u.id}`}
+                        className="truncate underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900 dark:hover:decoration-zinc-100"
+                      >
+                        {u.full_name || "Anonymous"}
+                      </Link>
                       {u.is_verified && (
                         <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white" aria-label="Verified" />
                       )}
+                      {bans[u.id] ? (
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
+                          Banned
+                        </span>
+                      ) : null}
                     </span>
                     <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate">{u.phone || "No phone listed"}</span>
                   </div>
@@ -434,6 +576,15 @@ export default function AdminUsersPage() {
                       </button>
                       {!u.is_admin && (
                         <>
+                          <button
+                            onClick={(event) => {
+                              openBan(u);
+                              event.currentTarget.closest("details")?.removeAttribute("open");
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          >
+                            <Ban className="h-4 w-4" /> {bans[u.id] ? "Manage ban" : "Ban"}
+                          </button>
                           <button
                             onClick={() => void handleUserAction(u.id, "disconnect")}
                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
@@ -647,6 +798,82 @@ export default function AdminUsersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={banUser !== null}
+        onOpenChange={(open) => {
+          if (!open && !banSaving) setBanUser(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl">
+          {banUser ? (
+            <>
+              <DialogTitle>Ban a member</DialogTitle>
+              <DialogDescription>
+                The account stays. They cannot sign in, and other members cannot see, find, or message them.
+              </DialogDescription>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                {banUser.full_name || "Anonymous"}
+              </p>
+              {bans[banUser.id] ? (
+                <p className="rounded-2xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                  Already banned ({banUntilLabel(bans[banUser.id])}). {bans[banUser.id].reason}
+                </p>
+              ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                {BAN_LENGTHS.map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setBanLength(id)}
+                    className={cn(
+                      "rounded-xl px-3 py-2.5 text-sm font-bold",
+                      banLength === id
+                        ? id === "forever"
+                          ? "bg-red-600 text-white"
+                          : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                        : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500">
+                Why
+                <textarea
+                  value={banReason}
+                  onChange={(event) => setBanReason(event.target.value.slice(0, 500))}
+                  rows={3}
+                  placeholder="What should they see when they try to sign in?"
+                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium normal-case tracking-normal text-zinc-900 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </label>
+              <div className="flex flex-wrap justify-end gap-2">
+                {bans[banUser.id] ? (
+                  <button
+                    type="button"
+                    onClick={() => void liftBan()}
+                    disabled={banSaving}
+                    className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    Lift ban
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void applyBan()}
+                  disabled={banSaving || banReason.trim().length < 3}
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {banSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {banLength === "forever" ? "Ban forever" : `Ban for ${BAN_LENGTHS.find(([id]) => id === banLength)?.[1]}`}
+                </button>
+              </div>
+            </>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

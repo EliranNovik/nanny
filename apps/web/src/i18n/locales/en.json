@@ -116,6 +116,13 @@
     "required": "You must confirm that you are 18+ and accept the Terms and Privacy Policy.",
     "accountSettings": "Account settings"
   },
+  "accountBan": {
+    "title": "This account is banned",
+    "reason": "Reason",
+    "until": "You can sign in again after {{when}}.",
+    "forever": "This ban does not expire. The account is not deleted, but it cannot be used.",
+    "signOut": "Sign out"
+  },
   "analyticsConsent": {
     "title": "Analytics choice",
     "body": "We use essential storage to run Tebnu. With your permission, we also load Google analytics tools to understand and improve the service.",
