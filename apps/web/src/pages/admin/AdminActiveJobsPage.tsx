@@ -8,6 +8,7 @@ import { useProgressiveList } from "@/hooks/useProgressiveList";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { postServiceCategoryLabel } from "@/lib/serviceCategories";
 import { adminCityLabel } from "@/lib/adminCityLabel";
+import { AdminMemberLink } from "@/components/admin/AdminMemberLink";
 import { format } from "date-fns";
 
 interface Job {
@@ -267,9 +268,9 @@ export default function AdminActiveJobsPage() {
                               {job.client?.full_name?.[0] || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <AdminMemberLink userId={job.client_id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                             {job.client?.full_name || "Unknown"}
-                          </span>
+                          </AdminMemberLink>
                         </div>
                       </td>
 
@@ -282,9 +283,12 @@ export default function AdminActiveJobsPage() {
                               {job.freelancer?.full_name?.[0] || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <AdminMemberLink
+                            userId={job.freelancer ? job.selected_freelancer_id || job.freelancer.id : null}
+                            className="text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+                          >
                             {job.freelancer?.full_name || "Unassigned"}
-                          </span>
+                          </AdminMemberLink>
                         </div>
                       </td>
 

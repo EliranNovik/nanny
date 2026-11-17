@@ -67,8 +67,8 @@ export const chatMediaMessageColumnCn = (isOwn: boolean) =>
   cn(
     "flex w-max min-w-0 shrink flex-col space-y-0.5",
     isOwn
-      ? "max-w-[94%] items-end md:max-w-[88%] lg:max-w-[min(40rem,80%)]"
-      : "max-w-[94%] items-start text-left md:max-w-[88%] lg:max-w-[min(40rem,80%)]",
+      ? "max-w-[94%] items-end md:max-w-[92%] lg:max-w-[min(52rem,92%)]"
+      : "max-w-[94%] items-start text-left md:max-w-[92%] lg:max-w-[min(52rem,92%)]",
   );
 
 export const chatBubbleLinkCn =

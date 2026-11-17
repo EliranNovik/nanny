@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import {
-  ArrowLeft,
+  Activity,
   BadgeCheck,
   Ban,
   ChevronDown,
+  Briefcase,
+  Clock,
   FileText,
+  HelpingHand,
   Image,
   LayoutDashboard,
   Loader2,
@@ -14,7 +17,9 @@ import {
   MapPin,
   MessageSquare,
   Newspaper,
+  Search,
   Shield,
+  ShieldCheck,
   Star,
   Trash2,
   UserRound,
@@ -23,11 +28,15 @@ import { apiGet, apiPost } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { initialsGradient } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { adminCityLabel } from "@/lib/adminCityLabel";
+import { getAdminData } from "@/lib/adminDataCache";
 import { getProfilePostMediaItems } from "@/lib/profilePostMedia";
 import { publicProfileMediaPublicUrl, publicProfileMediaUrl } from "@/lib/publicProfileMedia";
-import { serviceCategoryLabel } from "@/lib/serviceCategories";
+import { storageImageUrl } from "@/lib/imageTransform";
+import { globalProfilePostFeedPath, isolatedOfferPostPath } from "@/lib/profilePostShare";
+import { getServiceCategoryImage, serviceCategoryLabel } from "@/lib/serviceCategories";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 type BanLength = "2d" | "1w" | "1m" | "forever";
@@ -102,6 +111,7 @@ type MemberPost = {
   storage_path: string | null;
   created_at: string;
   custom_category: string | null;
+  post_type_id?: string | null;
   post_metadata?: unknown;
   post_types?: { name?: string | null; emoji?: string | null } | { name?: string | null; emoji?: string | null }[] | null;
 };
@@ -115,6 +125,8 @@ type CommunityPost = {
   created_at: string;
   images: Array<{ id: string; post_id: string; image_url: string; sort_order: number }>;
 };
+
+type PostDeleteTarget = { kind: "profile" | "community"; postId: string };
 
 type MediaDeleteTarget =
   | { kind: "avatar" }
@@ -133,11 +145,34 @@ type MemberReview = {
     | null;
 };
 
+type MatchTally = { active: number; completed: number; cancelled: number };
+
 type Dossier = {
   profile: MemberProfile;
   completedAsClient: number;
   completedAsFreelancer: number;
+  postCounts?: {
+    request_help: number;
+    offer_service: number;
+    community: number;
+    event: number;
+  };
+  jobMatches?: {
+    client: MatchTally;
+    helper: MatchTally;
+  };
+  messages?: { sent: number; received: number };
+  moderation?: {
+    flaggedChats: number;
+    flaggedMessages: number;
+    flaggedBios: number;
+    flaggedReviews: number;
+    flaggedPosts: number;
+    blockedPosts: number;
+  };
   ban: ActiveBan | null;
+  online?: boolean;
+  lastActiveAt?: string | null;
   media: ProfileMedia[];
   posts: MemberPost[];
   communityPosts: CommunityPost[];
@@ -147,13 +182,14 @@ type Dossier = {
   reviews: MemberReview[];
 };
 
-type Rubric = "overview" | "dossier" | "media" | "posts" | "message";
+type Rubric = "overview" | "dossier" | "media" | "posts" | "activity" | "message";
 
 const RUBRICS: Array<{ id: Rubric; label: string; icon: typeof LayoutDashboard }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "dossier", label: "Dossier", icon: UserRound },
   { id: "media", label: "Media", icon: Image },
   { id: "posts", label: "Posts", icon: Newspaper },
+  { id: "activity", label: "Activity", icon: Activity },
   { id: "message", label: "Message", icon: MessageSquare },
 ];
 
@@ -281,9 +317,57 @@ const TEMPLATES: Array<{ id: string; group: string; label: string; hint: string;
 
 const TEMPLATE_GROUPS = ["Onboarding", "Care", "Moderation", "Other"];
 
+type DirectoryUser = {
+  id: string;
+  full_name: string | null;
+  role?: string | null;
+  is_admin?: boolean | null;
+  photo_url?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  login_phone?: string | null;
+  whatsapp_number_e164?: string | null;
+};
+
+function memberInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
+function memberDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function memberMatchesQuery(user: DirectoryUser, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return false;
+  const fields = [user.full_name, user.email, user.id, user.phone, user.login_phone, user.whatsapp_number_e164];
+  if (fields.some((value) => (value || "").toLowerCase().includes(q))) return true;
+  const qDigits = memberDigits(q);
+  if (qDigits.length < 3) return false;
+  return [user.phone, user.login_phone, user.whatsapp_number_e164].some((value) =>
+    memberDigits(value || "").includes(qDigits),
+  );
+}
+
 function banUntilLabel(ban: ActiveBan) {
   if (!ban.expires_at || ban.duration === "forever") return "Forever";
   return format(new Date(ban.expires_at), "d MMM yyyy, HH:mm");
+}
+
+function lastActiveLabel(value: string | null | undefined) {
+  if (!value) return "No activity yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No activity yet";
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (minutes < 60) return `Active ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Active ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Active ${days}d ago`;
+  return `Active ${format(date, "d MMM yyyy")}`;
 }
 
 function when(value: string | null | undefined) {
@@ -294,7 +378,8 @@ function when(value: string | null | undefined) {
 }
 
 export default function AdminMemberPage() {
-  const { userId = "" } = useParams();
+  const { userId = "", rubric: rubricParam } = useParams();
+  const rubric: Rubric = RUBRICS.some((item) => item.id === rubricParam) ? (rubricParam as Rubric) : "overview";
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [dossier, setDossier] = useState<Dossier | null>(null);
@@ -313,9 +398,53 @@ export default function AdminMemberPage() {
   const [sending, setSending] = useState(false);
   const [acting, setActing] = useState<"delete" | "disconnect" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [rubric, setRubric] = useState<Rubric>("overview");
+  const [photoDeleteOpen, setPhotoDeleteOpen] = useState(false);
+  const [photoDeleting, setPhotoDeleting] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [directory, setDirectory] = useState<DirectoryUser[]>([]);
+  const [bannedIds, setBannedIds] = useState<Set<string>>(new Set());
+  const [memberQuery, setMemberQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAdminData<{ users: DirectoryUser[] }>("dashboard", "/api/admin/dashboard")
+      .then((data) => {
+        if (!cancelled) setDirectory(data.users ?? []);
+      })
+      .catch(() => {});
+    supabase
+      .from("user_bans")
+      .select("user_id, expires_at")
+      .is("lifted_at", null)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const ids = new Set<string>();
+        for (const row of data ?? []) {
+          const expiresAt = row.expires_at as string | null;
+          if (!expiresAt || new Date(expiresAt).getTime() > Date.now()) ids.add(row.user_id as string);
+        }
+        setBannedIds(ids);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!searchRef.current?.contains(event.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [searchOpen]);
+
+  const memberMatches = memberQuery.trim()
+    ? directory.filter((person) => person.id !== userId && memberMatchesQuery(person, memberQuery)).slice(0, 8)
+    : [];
 
   useEffect(() => {
     if (!templatesOpen && !actionsOpen) return;
@@ -341,7 +470,6 @@ export default function AdminMemberPage() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    setRubric("overview");
     apiGet<Dossier>(`/api/admin/users/${userId}`)
       .then((data) => {
         if (!cancelled) setDossier(data);
@@ -416,11 +544,58 @@ export default function AdminMemberPage() {
     addToast({ title: "Photo removed", variant: "success" });
   }
 
-  function openRubric(next: Rubric) {
-    setRubric(next);
+  async function deletePost(target: PostDeleteTarget) {
+    try {
+      await apiPost(`/api/admin/users/${userId}/posts`, target);
+    } catch (err: unknown) {
+      addToast({
+        title: "Could not delete that post",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+      throw err;
+    }
+    setDossier((current) => {
+      if (!current) return current;
+      if (target.kind === "community") {
+        return {
+          ...current,
+          communityPosts: current.communityPosts.filter((post) => post.id !== target.postId),
+        };
+      }
+      const removed = current.posts.find((post) => post.id === target.postId);
+      const typeId = removed?.post_type_id;
+      const counts = current.postCounts;
+      const nextCounts =
+        counts && typeId && typeId in counts
+          ? { ...counts, [typeId]: Math.max(0, counts[typeId as keyof typeof counts] - 1) }
+          : counts;
+      return {
+        ...current,
+        posts: current.posts.filter((post) => post.id !== target.postId),
+        postCounts: nextCounts,
+      };
+    });
+    addToast({ title: "Post removed", variant: "success" });
+  }
+
+  async function removeProfilePhoto() {
+    if (photoDeleting) return;
+    setPhotoDeleting(true);
+    try {
+      await deleteMedia({ kind: "avatar" });
+      setPhotoDeleteOpen(false);
+    } catch {
+      // deleteMedia already reports the error.
+    } finally {
+      setPhotoDeleting(false);
+    }
+  }
+
+  useEffect(() => {
     setTemplatesOpen(false);
     scrollRef.current?.scrollTo({ top: 0 });
-  }
+  }, [rubric]);
 
   async function applyBan() {
     if (!profile || banSaving) return;
@@ -529,13 +704,72 @@ export default function AdminMemberPage() {
   return (
     <div ref={scrollRef} className="admin-page min-h-screen overflow-y-auto overscroll-contain bg-zinc-100 pb-16 dark:bg-zinc-950 md:h-[calc(100dvh-4rem)] md:min-h-0">
       <div className="w-full px-4 py-6 md:px-8 xl:px-10">
-        <Link
-          to="/admin/users"
-          className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Users registry
-        </Link>
+        <div className="mb-5">
+          <div ref={searchRef} className="relative w-full max-w-sm">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="search"
+              value={memberQuery}
+              placeholder="Search by name, email, id, phone, or WhatsApp"
+              onChange={(event) => {
+                setMemberQuery(event.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-11 pr-4 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            {searchOpen && memberQuery.trim() ? (
+              <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10 dark:bg-zinc-900 dark:ring-white/10">
+                {memberMatches.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-zinc-500">No members match.</p>
+                ) : (
+                  memberMatches.map((person) => {
+                    const personName = person.full_name?.trim() || "Anonymous";
+                    return (
+                      <button
+                        key={person.id}
+                        type="button"
+                        onClick={() => {
+                          setMemberQuery("");
+                          setSearchOpen(false);
+                          navigate(`/admin/members/${person.id}`);
+                        }}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                      >
+                        <span
+                          className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full"
+                          style={{ backgroundImage: initialsGradient(person.id) }}
+                        >
+                          {person.photo_url ? (
+                            <img src={person.photo_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-xs font-bold text-white">
+                              {personName.slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-100">{personName}</span>
+                            <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                              {accountTypeLabel(person.role ?? null, Boolean(person.is_admin))}
+                            </span>
+                            {bannedIds.has(person.id) ? (
+                              <Ban className="h-3.5 w-3.5 shrink-0 text-red-600" aria-label="Banned" />
+                            ) : null}
+                          </span>
+                          <span className="block truncate text-xs text-zinc-500">
+                            {person.email || person.phone || person.whatsapp_number_e164 || person.id}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-24">
@@ -547,153 +781,170 @@ export default function AdminMemberPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            <section className="overflow-visible rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800">
+            <section className="relative overflow-visible rounded-3xl bg-white shadow-sm dark:bg-zinc-900">
               <div
-                className={cn(
-                  "relative h-32 overflow-hidden rounded-t-3xl",
-                  profile.role === "freelancer"
-                    ? "bg-gradient-to-br from-emerald-300 via-emerald-500 to-teal-800"
-                    : "bg-gradient-to-br from-orange-300 via-orange-500 to-orange-700",
-                )}
+                className="relative h-44 overflow-hidden rounded-t-3xl"
+                style={{ backgroundImage: initialsGradient(profile.id) }}
               >
-                <img
-                  src={BRAND_LOGO_SRC}
-                  alt=""
-                  className="pointer-events-none absolute end-8 top-1/2 h-16 w-auto -translate-y-1/2 drop-shadow-md"
-                />
-              </div>
-              <div className="px-5 pb-6 sm:px-8">
-                <div className="-mt-16 flex flex-col gap-5 sm:flex-row sm:items-end">
-                  <div
+                <div className="absolute start-6 top-6 z-10 flex flex-col items-start gap-2">
+                  <span
                     className={cn(
-                      "relative h-32 w-32 shrink-0 overflow-hidden rounded-3xl ring-4 ring-white dark:ring-zinc-900",
-                      profile.role === "freelancer"
-                        ? "bg-gradient-to-br from-emerald-400 to-teal-700"
-                        : "bg-gradient-to-br from-orange-400 to-orange-600",
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold shadow-sm",
+                      dossier.online ? "bg-emerald-500 text-white" : "bg-white/90 text-zinc-700",
                     )}
+                    title={
+                      dossier.online
+                        ? "Logged in and in the app"
+                        : dossier.lastActiveAt
+                          ? format(new Date(dossier.lastActiveAt), "d MMM yyyy, HH:mm")
+                          : undefined
+                    }
                   >
-                    <img
-                      src={BRAND_LOGO_SRC}
-                      alt=""
-                      className="absolute inset-0 m-auto h-14 w-auto"
-                    />
-                    {profile.photo_url ? (
-                      <img src={profile.photo_url} alt="" className="relative z-10 h-full w-full object-cover" />
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 flex-1 pb-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h1 className="min-w-0 text-3xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">{name}</h1>
-                      {profile.is_verified ? (
-                        <BadgeCheck className="h-6 w-6 fill-sky-500 text-white" aria-label="Verified" />
-                      ) : null}
-                      {ban ? (
-                        <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
-                          Banned
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500">
-                      <span className="inline-flex items-center gap-1 font-semibold text-zinc-700 dark:text-zinc-200">
-                        {isAdmin ? <Shield className="h-3.5 w-3.5" /> : null}
-                        {accountTypeLabel(profile.role, isAdmin)}
-                      </span>
-                      {profile.city ? (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {adminCityLabel(profile.city)}
-                        </span>
-                      ) : null}
-                      <span>Member since {when(profile.created_at)}</span>
-                    </p>
-                  </div>
-                  <div ref={actionsRef} className="relative shrink-0 sm:mb-1">
+                    {dossier.online ? (
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5" />
+                    )}
+                    {dossier.online ? "Online" : lastActiveLabel(dossier.lastActiveAt)}
+                  </span>
+                  {ban ? (
+                    <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-600">
+                      Banned
+                    </span>
+                  ) : null}
+                </div>
+                <span className="pointer-events-none absolute end-6 top-7 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/10">
+                  <img src={BRAND_LOGO_SRC} alt="" className="h-16 w-16 object-contain" />
+                </span>
+              </div>
+              <div
+                className="absolute left-1/2 top-44 z-10 h-44 w-44 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl ring-4 ring-white dark:ring-zinc-900"
+                style={{ backgroundImage: initialsGradient(profile.id) }}
+              >
+                {profile.photo_url ? (
+                  <>
+                    <img src={profile.photo_url} alt="" className="h-full w-full object-cover" />
                     <button
                       type="button"
-                      aria-expanded={actionsOpen}
-                      aria-haspopup="menu"
-                      onClick={() => setActionsOpen((open) => !open)}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-orange-600"
+                      onClick={() => setPhotoDeleteOpen(true)}
+                      className="absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-sm transition hover:bg-red-600"
+                      aria-label="Delete profile photo"
                     >
-                      Actions
-                      <ChevronDown className={cn("h-4 w-4 transition", actionsOpen && "rotate-180")} />
+                      <Trash2 className="h-4 w-4" />
                     </button>
-                    {actionsOpen ? (
-                      <div
-                        role="menu"
-                        className="absolute end-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl bg-white p-1.5 shadow-xl ring-1 ring-black/10 dark:bg-zinc-900 dark:ring-white/10"
-                      >
-                        <Link
-                          to={`/profile/${profile.id}`}
+                  </>
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-5xl font-black tracking-tight text-white">
+                    {memberInitials(name)}
+                  </span>
+                )}
+              </div>
+              <div ref={actionsRef} className="absolute end-6 top-[13rem] z-20 -translate-y-1/2">
+                <button
+                  type="button"
+                  aria-expanded={actionsOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setActionsOpen((open) => !open)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold text-orange-500 transition hover:bg-orange-500/10"
+                >
+                  Actions
+                  <ChevronDown className={cn("h-4 w-4 transition", actionsOpen && "rotate-180")} />
+                </button>
+                {actionsOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute end-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl bg-white p-1.5 shadow-xl ring-1 ring-black/10 dark:bg-zinc-900 dark:ring-white/10"
+                  >
+                    <Link
+                      to={`/profile/${profile.id}`}
+                      role="menuitem"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                      onClick={() => setActionsOpen(false)}
+                    >
+                      <Star className="h-4 w-4" />
+                      Public profile
+                    </Link>
+                    {isAdmin ? (
+                      <p className="px-3 py-2 text-xs text-zinc-500">Admins stay out of ban and delete.</p>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
                           role="menuitem"
-                          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                          onClick={() => setActionsOpen(false)}
+                          onClick={() => {
+                            setActionsOpen(false);
+                            setBanOpen(true);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
                         >
-                          <Star className="h-4 w-4" />
-                          Public profile
-                        </Link>
-                        {isAdmin ? (
-                          <p className="px-3 py-2 text-xs text-zinc-500">Admins stay out of ban and delete.</p>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                setActionsOpen(false);
-                                setBanOpen(true);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
-                            >
-                              <Ban className="h-4 w-4" />
-                              {ban ? "Manage ban" : "Ban"}
-                            </button>
-                            {ban ? (
-                              <button
-                                type="button"
-                                role="menuitem"
-                                disabled={banSaving}
-                                onClick={() => {
-                                  setActionsOpen(false);
-                                  void liftBan();
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                              >
-                                Lift ban
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              role="menuitem"
-                              disabled={acting !== null}
-                              onClick={() => {
-                                setActionsOpen(false);
-                                void runAction("disconnect");
-                              }}
-                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
-                            >
-                              {acting === "disconnect" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                              Disconnect profile
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              disabled={acting !== null}
-                              onClick={() => {
-                                setActionsOpen(false);
-                                setConfirmDelete(true);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete account
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
+                          <Ban className="h-4 w-4" />
+                          {ban ? "Manage ban" : "Ban"}
+                        </button>
+                        {ban ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={banSaving}
+                            onClick={() => {
+                              setActionsOpen(false);
+                              void liftBan();
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          >
+                            Lift ban
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={acting !== null}
+                          onClick={() => {
+                            setActionsOpen(false);
+                            void runAction("disconnect");
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                        >
+                          {acting === "disconnect" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                          Disconnect profile
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={acting !== null}
+                          onClick={() => {
+                            setActionsOpen(false);
+                            setConfirmDelete(true);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete account
+                        </button>
+                      </>
+                    )}
                   </div>
-                </div>
+                ) : null}
+              </div>
+              <div className="px-5 pb-5 pt-28 sm:px-8">
+                <h1 className="truncate px-4 text-center text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
+                  {name}
+                  {profile.is_verified ? (
+                    <BadgeCheck className="ms-2 inline h-7 w-7 align-[-0.15em] fill-sky-500 text-white" aria-label="Verified" />
+                  ) : null}
+                </h1>
+                <p className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-zinc-500">
+                  <span className="inline-flex items-center gap-1 font-semibold text-zinc-700 dark:text-zinc-200">
+                    {isAdmin ? <Shield className="h-3.5 w-3.5" /> : null}
+                    {accountTypeLabel(profile.role, isAdmin)}
+                  </span>
+                  {profile.city ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {adminCityLabel(profile.city)}
+                    </span>
+                  ) : null}
+                  <span>Member since {when(profile.created_at)}</span>
+                </p>
                 {ban ? (
                   <p className="mt-5 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
                     Banned until {banUntilLabel(ban)}. {ban.reason}
@@ -702,46 +953,24 @@ export default function AdminMemberPage() {
               </div>
             </section>
 
-            <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Member sections">
-                {RUBRICS.map((item) => {
-                  const Icon = item.icon;
-                  const selected = rubric === item.id;
-                  const count =
-                    item.id === "media"
-                      ? (profile.photo_url ? 1 : 0) + gallery.length + postMedia.length + boardImages.length
-                      : item.id === "posts"
-                        ? feedPosts.length + boardPosts.length
-                        : null;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => openRubric(item.id)}
-                      aria-current={selected ? "page" : undefined}
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold",
-                        selected
-                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                          : "bg-white text-zinc-600 ring-1 ring-zinc-200 hover:text-zinc-900 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800",
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {count !== null ? (
-                        <span className={cn("text-xs tabular-nums", selected ? "text-white/70 dark:text-zinc-500" : "text-zinc-400")}>
-                          {count}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-            </nav>
-
             <div className="min-w-0 space-y-5">
             {rubric === "overview" ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Stat label="Done as client" value={String(dossier.completedAsClient)} />
-              <Stat label="Done as helper" value={String(dossier.completedAsFreelancer)} />
+            <div className="space-y-8">
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              <Stat
+                label="Done as client"
+                value={String(dossier.completedAsClient)}
+                icon={Briefcase}
+                tone="orange"
+                onClick={() => navigate(`/admin/members/${profile.id}/jobs/client`)}
+              />
+              <Stat
+                label="Done as helper"
+                value={String(dossier.completedAsFreelancer)}
+                icon={HelpingHand}
+                tone="sky"
+                onClick={() => navigate(`/admin/members/${profile.id}/jobs/helper`)}
+              />
               <Stat
                 label="Rating"
                 value={
@@ -754,40 +983,99 @@ export default function AdminMemberPage() {
                     ? `${dossier.reviews?.length || profile.total_ratings} review${(dossier.reviews?.length || profile.total_ratings) === 1 ? "" : "s"}`
                     : "No reviews"
                 }
+                icon={Star}
+                tone="amber"
                 onClick={() => setReviewsOpen(true)}
               />
               <Stat
                 label="KYC"
                 value={profile.kyc_status ? profile.kyc_status.replace(/_/g, " ") : "None"}
+                icon={ShieldCheck}
+                tone="emerald"
               />
+            </div>
+            <div className="grid gap-8 lg:grid-cols-2">
+              <CountBoard
+                title="Posts"
+                hint="How many of each post type this member published."
+                rows={[
+                  { label: "Request help", value: dossier.postCounts?.request_help ?? 0, bar: "bg-orange-500" },
+                  { label: "Offer service", value: dossier.postCounts?.offer_service ?? 0, bar: "bg-emerald-500" },
+                  { label: "Community", value: dossier.postCounts?.community ?? 0, bar: "bg-blue-500" },
+                  { label: "Event", value: dossier.postCounts?.event ?? 0, bar: "bg-violet-500" },
+                ]}
+              />
+              <CountBoard
+                title="Job matches"
+                hint="Jobs they posted or were chosen for."
+                rows={[
+                  { label: "Active as client", value: dossier.jobMatches?.client.active ?? 0, bar: "bg-sky-500" },
+                  { label: "Completed as client", value: dossier.jobMatches?.client.completed ?? 0, bar: "bg-emerald-500" },
+                  { label: "Cancelled as client", value: dossier.jobMatches?.client.cancelled ?? 0, bar: "bg-zinc-400" },
+                  { label: "Active as helper", value: dossier.jobMatches?.helper.active ?? 0, bar: "bg-sky-500" },
+                  { label: "Completed as helper", value: dossier.jobMatches?.helper.completed ?? 0, bar: "bg-emerald-500" },
+                  { label: "Cancelled as helper", value: dossier.jobMatches?.helper.cancelled ?? 0, bar: "bg-zinc-400" },
+                ]}
+              />
+              <CountBoard
+                title="Messages"
+                hint="Chat messages this member sent and received."
+                rows={[
+                  { label: "Sent", value: dossier.messages?.sent ?? 0, bar: "bg-orange-500" },
+                  { label: "Received", value: dossier.messages?.received ?? 0, bar: "bg-sky-500" },
+                ]}
+              />
+              <CountBoard
+                title="Moderation"
+                hint="What the quality manager caught, and any admin ban."
+                rows={[
+                  { label: "Flagged in chat", value: dossier.moderation?.flaggedChats ?? 0, bar: "bg-amber-500" },
+                  { label: "Flagged messages", value: dossier.moderation?.flaggedMessages ?? 0, bar: "bg-orange-500" },
+                  { label: "Flagged bio", value: dossier.moderation?.flaggedBios ?? 0, bar: "bg-fuchsia-500" },
+                  { label: "Flagged reviews", value: dossier.moderation?.flaggedReviews ?? 0, bar: "bg-rose-500" },
+                  { label: "Flagged posts", value: dossier.moderation?.flaggedPosts ?? 0, bar: "bg-violet-500" },
+                  { label: "Blocked posts", value: dossier.moderation?.blockedPosts ?? 0, bar: "bg-red-600" },
+                ]}
+                total={
+                  (dossier.moderation?.flaggedChats ?? 0) +
+                  (dossier.moderation?.flaggedBios ?? 0) +
+                  (dossier.moderation?.flaggedReviews ?? 0) +
+                  (dossier.moderation?.flaggedPosts ?? 0) +
+                  (dossier.moderation?.blockedPosts ?? 0)
+                }
+                note={banNote(dossier.ban)}
+                action={{ to: `/admin/members/${profile.id}/flags`, label: "Open table" }}
+              />
+            </div>
             </div>
             ) : null}
 
             {rubric === "dossier" ? (
-                <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
-                  <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Account</h2>
-                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <DossierBox title="Account" className="lg:col-span-2">
+                  <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
                     <Field label="Account type" value={accountTypeLabel(profile.role, isAdmin)} />
                     <Field label="Email" value={dossier.account?.email || "—"} />
                     <Field label="Email confirmed" value={when(dossier.account?.emailConfirmedAt)} />
                     <Field label="Sign-in" value={providerLabel(dossier.account?.providers ?? [])} />
                     <Field label="Last sign-in" value={when(dossier.account?.lastSignInAt)} />
+                    <Field label="Language" value={localeLabel(profile.app_locale)} />
                     <Field label="Phone on login" value={dossier.account?.phone || "—"} />
                     <Field label="Phone on profile" value={profile.phone || "—"} />
-                    <Field label="Language" value={localeLabel(profile.app_locale)} />
+                    <Field label="Area" value={areaLabel(profile.address, profile.service_radius)} />
                     <Field label="Legal name" value={profile.kyc_legal_name || "—"} />
                     <Field label="Identity checked" value={when(profile.kyc_verified_at)} />
-                    <Field label="Area" value={areaLabel(profile.address, profile.service_radius)} />
                     <Field label="Member id" value={profile.id} mono />
                   </dl>
-                  <h3 className="mt-8 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Get help</h3>
-                  <p className="mt-1 text-xs text-zinc-500">Categories they use when they need someone.</p>
+                </DossierBox>
+                <DossierBox title="Get help" hint="Categories they use when they need someone.">
                   <CategoryList ids={getHelpCategories(profile, dossier.askedCategories ?? [])} />
-                  <h3 className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Help others</h3>
-                  <p className="mt-1 text-xs text-zinc-500">Categories they offer as a helper.</p>
+                </DossierBox>
+                <DossierBox title="Help others" hint="Categories they offer as a helper.">
                   <CategoryList ids={helpOthersCategories(profile, dossier.helper)} />
-                  <h3 className="mt-8 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Contact</h3>
-                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                </DossierBox>
+                <DossierBox title="Contact">
+                  <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                     <Field label="WhatsApp" value={profile.whatsapp_number_e164 || "—"} />
                     <Field label="WhatsApp shared" value={profile.share_whatsapp ? "Yes" : "No"} />
                     <Field label="Telegram" value={profile.telegram_username ? `@${profile.telegram_username.replace(/^@/, "")}` : "—"} />
@@ -795,13 +1083,21 @@ export default function AdminMemberPage() {
                     <Field label="Available for jobs" value={profile.is_available_for_jobs ? "Yes" : "No"} />
                     <Field label="Live now" value={dossier.helper?.available_now ? "Yes" : "No"} />
                     <Field label="Rate" value={rateLabel(dossier.helper)} />
+                  </dl>
+                </DossierBox>
+                <DossierBox title="Agreements">
+                  <dl className="grid gap-x-6 gap-y-4">
                     <Field label="Terms accepted" value={when(profile.legal_terms_accepted_at)} />
                     <Field label="Privacy accepted" value={when(profile.privacy_accepted_at)} />
                     <Field label="Age confirmed" value={when(profile.age_18_confirmed_at)} />
                   </dl>
+                </DossierBox>
+                <DossierBox title="About" className="lg:col-span-2">
                   {profile.bio ? (
-                    <p className="mt-5 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{profile.bio}</p>
-                  ) : null}
+                    <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{profile.bio}</p>
+                  ) : (
+                    <p className="text-sm font-semibold text-zinc-400">No bio yet.</p>
+                  )}
                   {uniqueIds([...(profile.languages ?? []), ...(dossier.helper?.languages ?? [])]).length > 0 ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {uniqueIds([...(profile.languages ?? []), ...(dossier.helper?.languages ?? [])]).map((item) => (
@@ -809,7 +1105,8 @@ export default function AdminMemberPage() {
                       ))}
                     </div>
                   ) : null}
-                </section>
+                </DossierBox>
+              </div>
             ) : null}
 
             {rubric === "media" ? (
@@ -823,11 +1120,13 @@ export default function AdminMemberPage() {
             ) : null}
 
             {rubric === "posts" ? (
-              <PostsRubric feedPosts={feedPosts} boardPosts={boardPosts} />
+              <PostsRubric feedPosts={feedPosts} boardPosts={boardPosts} onDelete={deletePost} />
             ) : null}
 
+            {rubric === "activity" ? <ActivityRubric userId={profile.id} /> : null}
+
             {rubric === "message" ? (
-                <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
+                <section className="rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-zinc-400" />
                     <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Message</h2>
@@ -1025,6 +1324,34 @@ export default function AdminMemberPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={photoDeleteOpen} onOpenChange={(open) => !photoDeleting && setPhotoDeleteOpen(open)}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogTitle>Delete this profile photo</DialogTitle>
+          <DialogDescription>
+            It comes off the profile for everyone. The initials stay in its place.
+          </DialogDescription>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPhotoDeleteOpen(false)}
+              disabled={photoDeleting}
+              className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={() => void removeProfilePhoto()}
+              disabled={photoDeleting}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {photoDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={confirmDelete} onOpenChange={(open) => !acting && setConfirmDelete(open)}>
         <DialogContent className="max-w-md rounded-3xl">
           <DialogTitle>Delete this account</DialogTitle>
@@ -1056,6 +1383,14 @@ export default function AdminMemberPage() {
   );
 }
 
+function fullMediaPreview(src: string) {
+  const objectUrl = src.includes("/storage/v1/render/image/")
+    ? src.replace("/storage/v1/render/image/", "/storage/v1/object/").split("?")[0]
+    : src;
+  if (!objectUrl.includes("/storage/v1/object/public/")) return src;
+  return storageImageUrl(objectUrl, { width: 960, quality: 82, resize: "contain" });
+}
+
 function MediaRubric({
   photoUrl,
   gallery,
@@ -1073,7 +1408,7 @@ function MediaRubric({
   const [busy, setBusy] = useState(false);
   const tiles: MediaTile[] = [];
   if (photoUrl) {
-    tiles.push({ id: "avatar", label: "Profile photo", kind: "image", src: photoUrl, target: { kind: "avatar" } });
+    tiles.push({ id: "avatar", label: "Profile photo", kind: "image", src: fullMediaPreview(photoUrl), target: { kind: "avatar" } });
   }
   for (const item of gallery) {
     tiles.push({
@@ -1082,7 +1417,7 @@ function MediaRubric({
       kind: item.media_type,
       src: item.media_type === "video"
         ? publicProfileMediaPublicUrl(item.storage_path)
-        : publicProfileMediaUrl(item.storage_path, { width: 720, quality: 80 }),
+        : fullMediaPreview(publicProfileMediaUrl(item.storage_path, { width: 960, quality: 82, resize: "contain" })),
       target: { kind: "gallery", mediaId: item.id },
     });
   }
@@ -1093,7 +1428,7 @@ function MediaRubric({
       kind: item.media_type,
       src: item.media_type === "video"
         ? publicProfileMediaPublicUrl(item.storage_path)
-        : publicProfileMediaUrl(item.storage_path, { width: 720, quality: 80 }),
+        : fullMediaPreview(publicProfileMediaUrl(item.storage_path, { width: 960, quality: 82, resize: "contain" })),
       target: { kind: "post", postId: item.postId, storagePath: item.storage_path },
     });
   }
@@ -1102,7 +1437,7 @@ function MediaRubric({
       id: item.id,
       label: "From a post",
       kind: "image",
-      src: item.url,
+      src: fullMediaPreview(item.url),
       target: { kind: "board", imageId: item.id },
     });
   }
@@ -1121,19 +1456,24 @@ function MediaRubric({
   }
 
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
-      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Media</h2>
+    <section className="rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Media</h2>
+        <p className="text-2xl font-black tabular-nums tracking-tight text-zinc-950 dark:text-zinc-50">{tiles.length}</p>
+      </div>
       {tiles.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-500">No photos or videos on this profile.</p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {tiles.map((tile) => (
-            <figure key={tile.id} className="relative overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-              {tile.kind === "video" ? (
-                <video src={tile.src} controls className="aspect-square w-full object-cover" />
-              ) : (
-                <img src={tile.src} alt="" className="aspect-square w-full object-cover" />
-              )}
+            <figure key={tile.id} className="relative min-w-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+              <div className="relative aspect-square w-full bg-zinc-100 dark:bg-zinc-800">
+                {tile.kind === "video" ? (
+                  <video src={tile.src} controls className="absolute inset-0 h-full w-full object-contain" />
+                ) : (
+                  <img src={tile.src} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setPending(tile)}
@@ -1219,16 +1559,395 @@ function stripPostMedia(post: MemberPost, storagePath: string): MemberPost {
   };
 }
 
+type ActivityDay = {
+  date: string;
+  posts: number;
+  media: number;
+  messages: number;
+  jobs: number;
+  reviews: number;
+  notes: string[];
+  total: number;
+};
+
+function activityDayLabel(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return format(date, "d MMM yyyy");
+}
+
+function activityDayShort(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return format(date, "d MMM");
+}
+
+function lastThirtyDays(days: ActivityDay[]) {
+  const byDate = new Map(days.map((day) => [day.date, day]));
+  const series: ActivityDay[] = [];
+  const today = new Date();
+  for (let offset = 29; offset >= 0; offset -= 1) {
+    const date = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - offset));
+    const key = date.toISOString().slice(0, 10);
+    series.push(
+      byDate.get(key) ?? {
+        date: key,
+        posts: 0,
+        media: 0,
+        messages: 0,
+        jobs: 0,
+        reviews: 0,
+        notes: [],
+        total: 0,
+      },
+    );
+  }
+  return series;
+}
+
+function peakNote(day: ActivityDay) {
+  const lines: string[] = [];
+  if (day.posts) lines.push(`${day.posts} post${day.posts === 1 ? "" : "s"}`);
+  if (day.media) lines.push(`${day.media} media`);
+  if (day.messages) lines.push(`${day.messages} message${day.messages === 1 ? "" : "s"}`);
+  if (day.jobs) lines.push(`${day.jobs} job${day.jobs === 1 ? "" : "s"}`);
+  if (day.reviews) lines.push(`${day.reviews} review${day.reviews === 1 ? "" : "s"}`);
+  for (const note of day.notes) lines.push(note);
+  return lines;
+}
+
+function ActivityChart({ days }: { days: ActivityDay[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const series = lastThirtyDays(days);
+  const max = Math.max(1, ...series.map((day) => day.total));
+  const mid = Math.round(max / 2);
+  const width = 600;
+  const height = 160;
+  const plotTop = 28;
+  const plotBottom = 16;
+  const plotHeight = height - plotTop - plotBottom;
+  const xAt = (index: number) => (series.length <= 1 ? 0 : (index / (series.length - 1)) * width);
+  const yAt = (total: number) => plotTop + (1 - total / max) * plotHeight;
+  const points = series.map((day, index) => ({ x: xAt(index), y: yAt(day.total) }));
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `0,${yAt(0)} ${line} ${width},${yAt(0)}`;
+  const xTicks = series
+    .map((day, index) => ({ day, index }))
+    .filter(({ day, index }) => day.total > 0 || index % 7 === 0 || index === series.length - 1);
+  const yTicks = mid > 0 && mid < max ? [max, mid, 0] : [max, 0];
+
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Last 30 days</p>
+      <div className="mt-3 grid grid-cols-[2.25rem_minmax(0,1fr)] gap-2">
+        <div className="relative h-40">
+          {yTicks.map((tick) => (
+            <span
+              key={tick}
+              className="absolute right-0 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-zinc-500"
+              style={{ top: `${(yAt(tick) / height) * 100}%` }}
+            >
+              {tick}
+            </span>
+          ))}
+        </div>
+        <div className="min-w-0">
+          <div className="relative h-40">
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full"
+              role="img"
+              aria-label="Activity over the last 30 days"
+            >
+              {yTicks.map((tick) => (
+                <line
+                  key={tick}
+                  x1="0"
+                  x2={width}
+                  y1={yAt(tick)}
+                  y2={yAt(tick)}
+                  className="stroke-zinc-200 dark:stroke-zinc-700"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              <polygon points={area} className="fill-orange-500/15" />
+              <polyline
+                points={line}
+                fill="none"
+                className="stroke-orange-500"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            {series.map((day, index) => {
+              if (day.total === 0) return null;
+              const left = (xAt(index) / width) * 100;
+              const top = (yAt(day.total) / height) * 100;
+              const open = hover === index;
+              const note = peakNote(day);
+              return (
+                <span key={day.date}>
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute z-10 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500 ring-4 ring-white transition hover:scale-125 dark:ring-zinc-900",
+                      open && "scale-125",
+                    )}
+                    style={{ left: `${left}%`, top: `${top}%` }}
+                    aria-label={`${activityDayLabel(day.date)}: ${note.join(", ")}`}
+                    onMouseEnter={() => setHover(index)}
+                    onMouseLeave={() => setHover((current) => (current === index ? null : current))}
+                    onFocus={() => setHover(index)}
+                    onBlur={() => setHover((current) => (current === index ? null : current))}
+                  />
+                  {open ? (
+                    <span
+                      className={cn(
+                        "pointer-events-none absolute z-20 w-max max-w-[14rem] rounded-2xl bg-zinc-950 px-3 py-2 text-left text-white shadow-lg",
+                        left < 18 ? "translate-x-0" : left > 82 ? "-translate-x-full" : "-translate-x-1/2",
+                        top < 42 ? "translate-y-3" : "-translate-y-[calc(100%+0.75rem)]",
+                      )}
+                      style={{ left: `${left}%`, top: `${top}%` }}
+                    >
+                      <span className="block text-[11px] font-bold">{activityDayLabel(day.date)}</span>
+                      <span className="mt-1 block text-[11px] font-medium leading-5 text-zinc-300">
+                        {note.join(" · ")}
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
+          <div className="relative mt-2 h-4">
+            {xTicks.map(({ day, index }) => {
+              const atStart = index === 0;
+              const atEnd = index === series.length - 1;
+              return (
+                <span
+                  key={day.date}
+                  className={cn(
+                    "absolute top-0 whitespace-nowrap text-[11px] font-semibold",
+                    day.total > 0 ? "text-zinc-800 dark:text-zinc-100" : "text-zinc-400",
+                    atStart ? "left-0" : atEnd ? "right-0" : "-translate-x-1/2",
+                  )}
+                  style={atStart || atEnd ? undefined : { left: `${(xAt(index) / width) * 100}%` }}
+                >
+                  {activityDayShort(day.date)}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ACTIVITY_TYPES = [
+  { id: "all", label: "All" },
+  { id: "posts", label: "Posts" },
+  { id: "media", label: "Media" },
+  { id: "messages", label: "Messages" },
+  { id: "jobs", label: "Jobs" },
+  { id: "reviews", label: "Reviews" },
+  { id: "notes", label: "Notes" },
+] as const;
+
+type ActivityType = (typeof ACTIVITY_TYPES)[number]["id"];
+
+function ActivityRubric({ userId }: { userId: string }) {
+  const [days, setDays] = useState<ActivityDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [activityType, setActivityType] = useState<ActivityType>("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    apiGet<{ days: ActivityDay[] }>(`/api/admin/users/${userId}/activity`)
+      .then((data) => {
+        if (!cancelled) setDays(data.days ?? []);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load activity.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const total = days.reduce((sum, day) => sum + day.total, 0);
+  const filtered = days.filter((day) => {
+    if (from && day.date < from) return false;
+    if (to && day.date > to) return false;
+    if (activityType === "notes") return day.notes.length > 0;
+    if (activityType === "all") return true;
+    return day[activityType] > 0;
+  });
+
+  return (
+    <section>
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">Activity</h2>
+        <p className="text-2xl font-black tabular-nums tracking-tight text-zinc-950 dark:text-zinc-50">{total}</p>
+      </div>
+      <div className="mt-3 rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-sm text-zinc-600">{error}</p>
+      ) : days.length === 0 ? (
+        <p className="mt-4 text-sm text-zinc-500">No activity yet.</p>
+      ) : (
+        <>
+          <ActivityChart days={days} />
+          <div className="mt-6 flex flex-wrap items-end gap-3">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              From
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(event) => setFrom(event.target.value)}
+                className="mt-1 block rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+            </label>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              To
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(event) => setTo(event.target.value)}
+                className="mt-1 block rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ACTIVITY_TYPES.map((item) => {
+                const selected = activityType === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActivityType(item.id)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-sm font-bold transition",
+                      selected
+                        ? "bg-orange-500 text-white"
+                        : "text-zinc-600 hover:bg-orange-500/10 hover:text-orange-600 dark:text-zinc-300",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {filtered.length === 0 ? (
+            <p className="mt-4 text-sm text-zinc-500">No activity matches these filters.</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <tr>
+                    <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">Posts</th>
+                    <th className="py-2 pr-3">Media</th>
+                    <th className="py-2 pr-3">Messages</th>
+                    <th className="py-2 pr-3">Jobs</th>
+                    <th className="py-2 pr-3">Reviews</th>
+                    <th className="py-2 pr-3">Notes</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {filtered.map((day) => (
+                    <tr key={day.date}>
+                      <td className="whitespace-nowrap py-2.5 pr-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                        {activityDayLabel(day.date)}
+                      </td>
+                      <td className="py-2.5 pr-3 tabular-nums text-zinc-600 dark:text-zinc-300">{day.posts}</td>
+                      <td className="py-2.5 pr-3 tabular-nums text-zinc-600 dark:text-zinc-300">{day.media}</td>
+                      <td className="py-2.5 pr-3 tabular-nums text-zinc-600 dark:text-zinc-300">{day.messages}</td>
+                      <td className="py-2.5 pr-3 tabular-nums text-zinc-600 dark:text-zinc-300">{day.jobs}</td>
+                      <td className="py-2.5 pr-3 tabular-nums text-zinc-600 dark:text-zinc-300">{day.reviews}</td>
+                      <td className="py-2.5 pr-3 text-zinc-600 dark:text-zinc-300">{day.notes.join(", ") || "—"}</td>
+                      <td className="py-2.5 text-right font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{day.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+      </div>
+    </section>
+  );
+}
+
+function offerRequestCategoryImage(post: MemberPost) {
+  if (post.post_type_id !== "offer_service" && post.post_type_id !== "request_help") return null;
+  const meta =
+    post.post_metadata && typeof post.post_metadata === "object" && !Array.isArray(post.post_metadata)
+      ? (post.post_metadata as Record<string, unknown>)
+      : null;
+  const raw = post.post_type_id === "offer_service" ? meta?.service ?? meta?.category : meta?.category;
+  const id = typeof raw === "string" && raw.trim() ? raw.trim() : post.custom_category;
+  return getServiceCategoryImage(id);
+}
+
 function postTypeLabel(post: MemberPost) {
   const type = Array.isArray(post.post_types) ? post.post_types[0] : post.post_types;
   return type?.name || post.custom_category || "Post";
 }
 
-function PostsRubric({ feedPosts, boardPosts }: { feedPosts: MemberPost[]; boardPosts: CommunityPost[] }) {
+function PostsRubric({
+  feedPosts,
+  boardPosts,
+  onDelete,
+}: {
+  feedPosts: MemberPost[];
+  boardPosts: CommunityPost[];
+  onDelete: (target: PostDeleteTarget) => Promise<void>;
+}) {
+  const [pending, setPending] = useState<PostDeleteTarget | null>(null);
+  const [busy, setBusy] = useState(false);
   const empty = feedPosts.length === 0 && boardPosts.length === 0;
+  const postCount = feedPosts.length + boardPosts.length;
+
+  async function confirmDelete() {
+    if (!pending || busy) return;
+    setBusy(true);
+    try {
+      await onDelete(pending);
+      setPending(null);
+    } catch {
+      // The page already shows the error.
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
-      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Posts</h2>
+    <section className="rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Posts</h2>
+        <p className="text-2xl font-black tabular-nums tracking-tight text-zinc-950 dark:text-zinc-50">{postCount}</p>
+      </div>
       {empty ? (
         <p className="mt-4 text-sm text-zinc-500">This member has not posted yet.</p>
       ) : (
@@ -1238,23 +1957,25 @@ function PostsRubric({ feedPosts, boardPosts }: { feedPosts: MemberPost[]; board
             const thumb = media
               ? media.media_type === "video"
                 ? publicProfileMediaPublicUrl(media.storage_path)
-                : publicProfileMediaUrl(media.storage_path, { width: 720, quality: 80 })
-              : null;
+                : fullMediaPreview(publicProfileMediaUrl(media.storage_path, { width: 960, quality: 82, resize: "contain" }))
+              : offerRequestCategoryImage(post);
             return (
-              <li key={post.id}>
+              <li key={post.id} className="relative min-w-0">
                 <Link
-                  to={`/posts/${post.id}`}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-zinc-100 transition hover:bg-zinc-50 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                  to={isolatedOfferPostPath(post.id)}
+                  className="flex h-full flex-col overflow-hidden rounded-2xl transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                 >
-                  {thumb && media?.media_type === "video" ? (
-                    <video src={thumb} className="aspect-[4/3] w-full bg-zinc-100 object-cover" />
-                  ) : thumb ? (
-                    <img src={thumb} alt="" className="aspect-[4/3] w-full object-cover" />
-                  ) : (
-                    <span className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
-                      <FileText className="h-8 w-8" />
-                    </span>
-                  )}
+                  <div className="relative aspect-[4/3] w-full bg-zinc-100 dark:bg-zinc-800">
+                    {media && thumb && media.media_type === "video" ? (
+                      <video src={thumb} className="absolute inset-0 h-full w-full object-contain" />
+                    ) : thumb ? (
+                      <img src={thumb} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-zinc-400">
+                        <FileText className="h-8 w-8" />
+                      </span>
+                    )}
+                  </div>
                   <span className="min-w-0 p-3">
                     <span className="block text-[11px] font-bold uppercase tracking-wide text-zinc-400">
                       {postTypeLabel(post)} · {format(new Date(post.created_at), "d MMM yyyy")}
@@ -1264,33 +1985,83 @@ function PostsRubric({ feedPosts, boardPosts }: { feedPosts: MemberPost[]; board
                     </span>
                   </span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => setPending({ kind: "profile", postId: post.id })}
+                  className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-sm transition hover:bg-red-600"
+                  aria-label="Delete post"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </li>
             );
           })}
           {boardPosts.map((post) => {
             const image = post.images?.[0]?.image_url;
             return (
-              <li key={post.id} className="flex h-full flex-col overflow-hidden rounded-2xl ring-1 ring-zinc-100 dark:ring-zinc-800">
-                {image ? (
-                  <img src={image} alt="" className="aspect-[4/3] w-full object-cover" />
-                ) : (
-                  <span className="flex aspect-[4/3] w-full items-center justify-center bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
-                    <FileText className="h-8 w-8" />
+              <li key={post.id} className="relative min-w-0">
+                <Link
+                  to={globalProfilePostFeedPath(post.id)}
+                  className="flex h-full flex-col overflow-hidden rounded-2xl transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                >
+                  <div className="relative aspect-[4/3] w-full bg-zinc-100 dark:bg-zinc-800">
+                    {image ? (
+                      <img src={fullMediaPreview(image)} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-zinc-400">
+                        <FileText className="h-8 w-8" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="min-w-0 p-3">
+                    <span className="block text-[11px] font-bold uppercase tracking-wide text-zinc-400">
+                      {post.category || "Availability"} · {post.status || "active"} · {format(new Date(post.created_at), "d MMM yyyy")}
+                    </span>
+                    <span className="mt-1 line-clamp-3 block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {post.title?.trim() || post.body?.trim() || "Untitled"}
+                    </span>
                   </span>
-                )}
-                <span className="min-w-0 p-3">
-                  <span className="block text-[11px] font-bold uppercase tracking-wide text-zinc-400">
-                    {post.category || "Availability"} · {post.status || "active"} · {format(new Date(post.created_at), "d MMM yyyy")}
-                  </span>
-                  <span className="mt-1 line-clamp-3 block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    {post.title?.trim() || post.body?.trim() || "Untitled"}
-                  </span>
-                </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setPending({ kind: "community", postId: post.id })}
+                  className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-sm transition hover:bg-red-600"
+                  aria-label="Delete post"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </li>
             );
           })}
         </ul>
       )}
+      <Dialog open={pending != null} onOpenChange={(open) => !busy && !open && setPending(null)}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogTitle>Delete this post</DialogTitle>
+          <DialogDescription>
+            It comes off Tebnu for everyone. The member gets a message in support chat that the team removed it because it is not appropriate.
+          </DialogDescription>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              disabled={busy}
+              className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmDelete()}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -1351,10 +2122,10 @@ function helpOthersCategories(profile: MemberProfile, helper: HelperRecord | nul
 
 function CategoryList({ ids }: { ids: string[] }) {
   if (ids.length === 0) {
-    return <p className="mt-3 text-sm font-semibold text-zinc-400">None chosen</p>;
+    return <p className="text-sm font-semibold text-zinc-400">None chosen</p>;
   }
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {ids.map((id) => (
         <Chip key={id}>{serviceCategoryLabel(id)}</Chip>
       ))}
@@ -1362,15 +2133,92 @@ function CategoryList({ ids }: { ids: string[] }) {
   );
 }
 
+function banNote(ban: ActiveBan | null) {
+  if (!ban) return "Not banned by an admin.";
+  const length =
+    ban.duration === "2d"
+      ? "2 days"
+      : ban.duration === "1w"
+        ? "1 week"
+        : ban.duration === "1m"
+          ? "1 month"
+          : "forever";
+  return `Banned for ${length}, until ${banUntilLabel(ban)}. ${ban.reason}`;
+}
+
+function CountBoard({
+  title,
+  hint,
+  rows,
+  note,
+  total,
+  action,
+}: {
+  title: string;
+  hint: string;
+  rows: Array<{ label: string; value: number; bar: string }>;
+  note?: string;
+  total?: number;
+  action?: { to: string; label: string };
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  const shown = total ?? rows.reduce((sum, row) => sum + row.value, 0);
+  return (
+    <section>
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">{title}</h2>
+      <p className="mt-1 text-sm text-zinc-500">{hint}</p>
+      <div className="mt-3 rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+      <p className="text-right text-3xl font-black tabular-nums tracking-tight text-zinc-950 dark:text-zinc-50">{shown}</p>
+      <ul className="mt-4 space-y-3.5">
+        {rows.map((row) => (
+          <li key={row.label}>
+            <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold text-zinc-800 dark:text-zinc-100">{row.label}</span>
+              <span className="font-bold tabular-nums text-zinc-500">{row.value}</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <div
+                className={cn("h-full rounded-full", row.bar)}
+                style={{ width: row.value === 0 ? "0%" : `${Math.max(6, (row.value / max) * 100)}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {note ? <p className="mt-4 text-sm font-semibold leading-6 text-zinc-700 dark:text-zinc-200">{note}</p> : null}
+      {action ? (
+        <Link
+          to={action.to}
+          className="mt-5 inline-flex items-center rounded-full px-3 py-1.5 text-sm font-bold text-orange-500 transition hover:bg-orange-500/10"
+        >
+          {action.label}
+        </Link>
+      ) : null}
+      </div>
+    </section>
+  );
+}
+
+const STAT_TONES = {
+  orange: "text-orange-500",
+  sky: "text-sky-500",
+  amber: "text-amber-500",
+  emerald: "text-emerald-500",
+} as const;
+
 function Stat({
   label,
   value,
   hint,
+  icon: Icon,
+  tone,
   onClick,
 }: {
   label: string;
   value: string;
   hint?: string;
+  icon: typeof Star;
+  tone: keyof typeof STAT_TONES;
   onClick?: () => void;
 }) {
   const Tag = onClick ? "button" : "div";
@@ -1379,14 +2227,39 @@ function Stat({
       type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
-        "rounded-2xl bg-white px-4 py-4 text-left shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800",
-        onClick && "transition hover:ring-zinc-400",
+        "flex w-full items-center gap-4 rounded-3xl bg-white px-5 py-5 text-left shadow-sm dark:bg-zinc-900",
+        onClick && "transition hover:-translate-y-0.5 hover:shadow-md",
       )}
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-black capitalize tracking-tight text-zinc-950 dark:text-zinc-50">{value}</p>
-      {hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
+      <Icon className={cn("h-12 w-12 shrink-0", STAT_TONES[tone])} strokeWidth={1.6} />
+      <span className="min-w-0">
+        <span className="block text-lg font-black tracking-tight text-zinc-600 dark:text-zinc-300">{label}</span>
+        <span className="mt-0.5 block truncate text-3xl font-black capitalize tracking-tight text-zinc-950 dark:text-zinc-50">{value}</span>
+        {hint ? <span className="mt-1 block text-xs text-zinc-500">{hint}</span> : null}
+      </span>
     </Tag>
+  );
+}
+
+function DossierBox({
+  title,
+  hint,
+  className,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={cn(className)}>
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">{title}</h2>
+      {hint ? <p className="mt-1 text-sm text-zinc-500">{hint}</p> : null}
+      <div className="mt-3 rounded-3xl bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+        {children}
+      </div>
+    </section>
   );
 }
 

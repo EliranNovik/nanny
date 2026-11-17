@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { adminCityLabel } from "@/lib/adminCityLabel";
 import { adminJobCategory } from "@/lib/adminJobPresentation";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { AdminMemberLink } from "@/components/admin/AdminMemberLink";
 
 interface Job {
   id: string;
@@ -436,9 +437,9 @@ export default function AdminCompletedJobsPage() {
                               {job.client?.full_name?.[0] || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <AdminMemberLink userId={job.client_id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                             {job.client?.full_name || "Unknown"}
-                          </span>
+                          </AdminMemberLink>
                         </div>
                       </td>
 
@@ -451,9 +452,12 @@ export default function AdminCompletedJobsPage() {
                               {job.freelancer?.full_name?.[0] || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <AdminMemberLink
+                            userId={job.freelancer ? job.selected_freelancer_id || job.freelancer.id : null}
+                            className="text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+                          >
                             {job.freelancer?.full_name || "Unassigned"}
-                          </span>
+                          </AdminMemberLink>
                         </div>
                       </td>
 
@@ -523,8 +527,14 @@ export default function AdminCompletedJobsPage() {
                   .map((job) => (
                     <tr key={job.id}>
                       <td className="px-3 py-3 font-semibold">{adminJobCategory(job)}</td>
-                      <td className="px-3 py-3">{job.client?.full_name || "Unknown"}</td>
-                      <td className="px-3 py-3">{job.freelancer?.full_name || "Unknown"}</td>
+                      <td className="px-3 py-3">
+                        <AdminMemberLink userId={job.client_id}>{job.client?.full_name || "Unknown"}</AdminMemberLink>
+                      </td>
+                      <td className="px-3 py-3">
+                        <AdminMemberLink userId={job.freelancer ? job.selected_freelancer_id || job.freelancer.id : null}>
+                          {job.freelancer?.full_name || "Unknown"}
+                        </AdminMemberLink>
+                      </td>
                       <td className="px-3 py-3 text-zinc-500">{format(new Date(job.updated_at || job.created_at), "MMM d, yyyy")}</td>
                       <td className="px-3 py-3 text-right font-bold">{formatJobBudget(job)}</td>
                     </tr>

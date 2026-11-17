@@ -2595,23 +2595,6 @@ export function ComposeModal({
           );
         })()}
 
-        {selectedPostTypeId && selectedPostTypeId !== "community" && (
-          <button
-            type="button"
-            disabled
-            className={cn(
-              "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black uppercase tracking-wider opacity-75 cursor-not-allowed",
-              selectedPostTypeId === "request_help" && requestPostCtaClass,
-              selectedPostTypeId === "offer_service" && "bg-emerald-600 text-white",
-              selectedPostTypeId === "event" && "bg-violet-600 text-white",
-            )}
-          >
-            {selectedPostTypeId === "request_help" && t("feed.iCanHelp")}
-            {selectedPostTypeId === "offer_service" &&
-              feedContactLabel(t, authorProfile.full_name)}
-            {selectedPostTypeId === "event" && "I want to join"}
-          </button>
-        )}
       </div>
     </div>
   );

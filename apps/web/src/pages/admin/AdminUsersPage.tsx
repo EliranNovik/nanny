@@ -28,6 +28,8 @@ interface UserProfile {
   is_verified?: boolean | null;
   kyc_status?: string | null;
   is_available_for_jobs?: boolean | null;
+  email?: string | null;
+  login_phone?: string | null;
   whatsapp_number_e164?: string | null;
   telegram_username?: string | null;
   legal_terms_accepted_at?: string | null;
@@ -59,6 +61,22 @@ type ActiveBan = {
   expires_at: string | null;
   created_at: string;
 };
+
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function userMatchesSearch(user: UserProfile, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const fields = [user.full_name, user.email, user.id, user.phone, user.login_phone, user.whatsapp_number_e164];
+  if (fields.some((value) => (value || "").toLowerCase().includes(q))) return true;
+  const qDigits = digitsOnly(q);
+  if (qDigits.length < 3) return false;
+  return [user.phone, user.login_phone, user.whatsapp_number_e164].some((value) =>
+    digitsOnly(value || "").includes(qDigits),
+  );
+}
 
 function banIsLive(expiresAt: string | null) {
   return !expiresAt || new Date(expiresAt).getTime() > Date.now();
@@ -309,16 +327,9 @@ export default function AdminUsersPage() {
     }
   }
 
-  // Filters logic
-  const normalizedSearch = search.trim().toLowerCase();
   const filteredUsers = users
     .filter((u) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        (u.full_name || "").toLowerCase().includes(normalizedSearch) ||
-        (u.phone || "").toLowerCase().includes(normalizedSearch) ||
-        (u.city || "").toLowerCase().includes(normalizedSearch) ||
-        u.id.toLowerCase().includes(normalizedSearch);
+      const matchesSearch = userMatchesSearch(u, search);
 
       const matchesRole =
         roleFilter === "all" ||
@@ -391,19 +402,19 @@ export default function AdminUsersPage() {
           </button>
         </div>
 
-        {/* Filter controls */}
-        <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-0">
-          <div className="relative col-span-full md:col-span-1 lg:col-span-2">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Search by name, phone, city or UID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none transition-colors"
-            />
-          </div>
+        <div className="admin-user-search relative mb-4 shrink-0">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="search"
+            placeholder="Search by name, email, id, phone, or WhatsApp"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-11 pr-4 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </div>
 
+        {/* Filter controls */}
+        <div className="admin-filter-panel grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 p-0">
           <div className="admin-filter-carousel col-span-full -mx-2 px-2 md:mx-0 md:px-0 md:contents">
           <div>
             <select
@@ -504,7 +515,10 @@ export default function AdminUsersPage() {
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate">{u.phone || "No phone listed"}</span>
+                    {u.email ? (
+                      <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">{u.email}</span>
+                    ) : null}
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate">{u.phone || u.login_phone || "No phone listed"}</span>
                   </div>
                 </div>
 

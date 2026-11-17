@@ -59,10 +59,9 @@ function mediaShellClass(isLandscape: boolean | null, flushBottom: boolean) {
     "dark:border-white/10 dark:bg-zinc-900/80",
     !flushBottom && "transition duration-300 hover:scale-[1.01] active:scale-[0.99]",
     isLandscape === null &&
-      "aspect-[4/3] min-h-[11rem] max-h-[360px] md:min-h-[10rem] md:max-h-[320px]",
-    isLandscape === false &&
-      "aspect-[3/4] max-h-[min(52vh,360px)] md:max-h-[380px]",
-    isLandscape === true && "max-h-[min(48vh,400px)] md:max-h-[420px]",
+      "aspect-[4/3] min-h-[16rem] max-h-[min(62vh,520px)]",
+    isLandscape === false && "aspect-[3/4] max-h-[min(72vh,640px)]",
+    isLandscape === true && "max-h-[min(58vh,520px)]",
   );
 }
 
@@ -106,8 +105,8 @@ export function ChatMessageMedia({
       ? ({
           aspectRatio: `${dims.width} / ${dims.height}`,
           width: isLandscape
-            ? `min(${flushBottom ? "640px" : "100%, 640px"}, calc(min(48vh, 420px) * ${dims.width / dims.height}))`
-            : `min(${flushBottom ? "440px" : "100%, 440px"}, calc(min(52vh, 380px) * ${dims.width / dims.height}))`,
+            ? `min(${flushBottom ? "840px" : "100%, 840px"}, calc(min(58vh, 520px) * ${dims.width / dims.height}))`
+            : `min(${flushBottom ? "560px" : "100%, 560px"}, calc(min(72vh, 640px) * ${dims.width / dims.height}))`,
           maxWidth: "100%",
         } as const)
       : {}),

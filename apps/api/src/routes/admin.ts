@@ -53,6 +53,28 @@ adminRouter.get("/dashboard", async (_req: Request, res: Response): Promise<void
 
     if (usersErr) throw usersErr;
 
+    const authContacts = new Map<string, { email: string | null; phone: string | null }>();
+    try {
+      for (let page = 1; page <= 20; page += 1) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error || !data.users.length) break;
+        for (const account of data.users) {
+          authContacts.set(account.id, { email: account.email ?? null, phone: account.phone ?? null });
+        }
+        if (data.users.length < 1000) break;
+      }
+    } catch (err) {
+      console.warn("[AdminRouter] Could not load login emails:", err);
+    }
+    const usersWithContact = (users || []).map((user) => {
+      const contact = authContacts.get(user.id as string);
+      return {
+        ...user,
+        email: contact?.email ?? null,
+        login_phone: contact?.phone ?? null,
+      };
+    });
+
     // 3. Fetch Reports (job_id is null)
     const { data: convs, error: convsErr } = await supabaseAdmin
       .from("conversations")
@@ -111,7 +133,7 @@ adminRouter.get("/dashboard", async (_req: Request, res: Response): Promise<void
 
     res.json({
       jobs: jobsWithCancellations,
-      users: users || [],
+      users: usersWithContact,
       reports: reports || [],
       statistics: {
         totalJobs,
@@ -639,6 +661,246 @@ adminRouter.post("/quality-flags/:id/remove", async (req: Request, res: Response
   }
 });
 
+adminRouter.get("/users/:id/jobs", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const side = req.query.as === "helper" ? "helper" : req.query.as === "client" ? "client" : "";
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !side) {
+    res.status(400).json({ error: "Unknown jobs list." });
+    return;
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("job_requests")
+      .select(
+        `id, status, service_type, care_type, service_details, location_city, location_address, created_at, updated_at, start_at,
+         budget_min, budget_max, budget_rate_type, notes, shift_hours, confirm_starts_at, confirm_ends_at,
+         client_id, selected_freelancer_id,
+         client:profiles!job_requests_client_id_fkey(id, full_name),
+         freelancer:profiles!job_requests_selected_freelancer_id_fkey(id, full_name)`,
+      )
+      .eq(side === "client" ? "client_id" : "selected_freelancer_id", id)
+      .eq("status", "completed")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    res.json({ jobs: data ?? [] });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Could not load these jobs";
+    res.status(500).json({ error: message });
+  }
+});
+
+adminRouter.get("/users/:id/activity", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    res.status(400).json({ error: "Unknown member." });
+    return;
+  }
+  const dayOf = (value: string | null | undefined) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().slice(0, 10);
+  };
+  type Bucket = {
+    date: string;
+    posts: number;
+    media: number;
+    messages: number;
+    jobs: number;
+    reviews: number;
+    notes: string[];
+    total: number;
+  };
+  const buckets = new Map<string, Bucket>();
+  const bucket = (value: string | null | undefined) => {
+    const date = dayOf(value);
+    if (!date) return null;
+    const current = buckets.get(date) ?? {
+      date,
+      posts: 0,
+      media: 0,
+      messages: 0,
+      jobs: 0,
+      reviews: 0,
+      notes: [],
+      total: 0,
+    };
+    buckets.set(date, current);
+    return current;
+  };
+  const count = (value: string | null | undefined, key: "posts" | "media" | "messages" | "jobs" | "reviews") => {
+    const row = bucket(value);
+    if (!row) return;
+    row[key] += 1;
+    row.total += 1;
+  };
+  const note = (value: string | null | undefined, label: string) => {
+    const row = bucket(value);
+    if (!row || row.notes.includes(label)) return;
+    row.notes.push(label);
+    row.total += 1;
+  };
+
+  const [profile, profilePosts, communityPosts, media, reviewsWritten, reviewsReceived, jobs, bans] = await Promise.all([
+    supabaseAdmin.from("profiles").select("created_at").eq("id", id).maybeSingle(),
+    supabaseAdmin.from("profile_posts").select("created_at").eq("author_id", id),
+    supabaseAdmin.from("community_posts").select("created_at").eq("author_id", id),
+    supabaseAdmin.from("public_profile_media").select("created_at").eq("user_id", id),
+    supabaseAdmin.from("job_reviews").select("created_at").eq("reviewer_id", id),
+    supabaseAdmin.from("job_reviews").select("created_at").eq("reviewee_id", id),
+    supabaseAdmin
+      .from("job_requests")
+      .select("created_at, updated_at, status, client_id, selected_freelancer_id")
+      .or(`client_id.eq.${id},selected_freelancer_id.eq.${id}`),
+    supabaseAdmin.from("user_bans").select("created_at").eq("user_id", id),
+  ]);
+  const messageStamps: string[] = [];
+  for (let page = 0; page < 5; page += 1) {
+    const from = page * 1000;
+    const sent = await supabaseAdmin
+      .from("messages")
+      .select("created_at")
+      .eq("sender_id", id)
+      .order("created_at", { ascending: false })
+      .range(from, from + 999);
+    if (sent.error || !sent.data?.length) break;
+    for (const row of sent.data) {
+      if (row.created_at) messageStamps.push(row.created_at as string);
+    }
+    if (sent.data.length < 1000) break;
+  }
+
+  if (!profile.error && profile.data?.created_at) note(profile.data.created_at as string, "Joined");
+  for (const row of profilePosts.error ? [] : (profilePosts.data ?? [])) count(row.created_at as string, "posts");
+  for (const row of communityPosts.error ? [] : (communityPosts.data ?? [])) count(row.created_at as string, "posts");
+  for (const row of media.error ? [] : (media.data ?? [])) count(row.created_at as string, "media");
+  for (const row of reviewsWritten.error ? [] : (reviewsWritten.data ?? [])) count(row.created_at as string, "reviews");
+  for (const row of reviewsReceived.error ? [] : (reviewsReceived.data ?? [])) count(row.created_at as string, "reviews");
+  for (const row of jobs.error ? [] : (jobs.data ?? [])) {
+    if (row.client_id === id) count(row.created_at as string, "jobs");
+    if (row.status === "completed" && (row.client_id === id || row.selected_freelancer_id === id)) {
+      count((row.updated_at as string | null) ?? (row.created_at as string), "jobs");
+    }
+  }
+  for (const stamp of messageStamps) count(stamp, "messages");
+  for (const row of bans.error ? [] : (bans.data ?? [])) note(row.created_at as string, "Banned");
+
+  const days = [...buckets.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+  res.json({ days });
+});
+
+adminRouter.get("/users/:id/flags", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    res.status(400).json({ error: "Unknown member." });
+    return;
+  }
+  const reasonText = (value: unknown) => {
+    if (!Array.isArray(value)) return "";
+    return value
+      .map((reason) => {
+        if (!reason || typeof reason !== "object") return "";
+        const row = reason as { detail?: unknown; category?: unknown };
+        const detail = typeof row.detail === "string" ? row.detail.trim() : "";
+        const category = typeof row.category === "string" ? row.category.trim() : "";
+        return detail || category;
+      })
+      .filter(Boolean)
+      .join(" · ");
+  };
+  const [posts, chats, profiles] = await Promise.all([
+    supabaseAdmin
+      .from("quality_post_flags")
+      .select("id, title, excerpt, reasons, outcome, created_at")
+      .eq("author_id", id)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("quality_chat_flags")
+      .select("id, summary, excerpt, reasons, outcome, created_at, dismissed_at")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("quality_profile_flags")
+      .select("id, kind, user_id, about_user_id, summary, excerpt, reasons, outcome, created_at, dismissed_at")
+      .or(`user_id.eq.${id},about_user_id.eq.${id}`)
+      .order("created_at", { ascending: false }),
+  ]);
+  type FlagItem = {
+    id: string;
+    kind: string;
+    result: "Flagged" | "Blocked";
+    summary: string;
+    excerpt: string | null;
+    reasons: string;
+    createdAt: string;
+    state: "Open" | "Dismissed" | null;
+  };
+  const items: FlagItem[] = [];
+  if (!posts.error) {
+    for (const row of posts.data ?? []) {
+      items.push({
+        id: `post:${row.id}`,
+        kind: "Post",
+        result: row.outcome === "block" ? "Blocked" : "Flagged",
+        summary: (row.title as string | null)?.trim() || "Post",
+        excerpt: (row.excerpt as string | null) ?? null,
+        reasons: reasonText(row.reasons),
+        createdAt: row.created_at as string,
+        state: null,
+      });
+    }
+  }
+  if (!chats.error) {
+    for (const row of chats.data ?? []) {
+      items.push({
+        id: `chat:${row.id}`,
+        kind: "Chat",
+        result: row.outcome === "block" ? "Blocked" : "Flagged",
+        summary: (row.summary as string | null)?.trim() || "Flagged in chat",
+        excerpt: (row.excerpt as string | null) ?? null,
+        reasons: reasonText(row.reasons),
+        createdAt: row.created_at as string,
+        state: row.dismissed_at ? "Dismissed" : "Open",
+      });
+    }
+  }
+  if (!profiles.error) {
+    for (const row of profiles.data ?? []) {
+      const kind = row.kind === "bio" ? "Bio" : row.kind === "review" ? "Review" : "";
+      if (kind === "Bio" && row.user_id !== id) continue;
+      if (!kind) continue;
+      const wrote = row.user_id === id;
+      const note = (row.summary as string | null)?.trim() || kind;
+      items.push({
+        id: `profile:${row.id}`,
+        kind,
+        result: row.outcome === "block" ? "Blocked" : "Flagged",
+        summary: kind === "Review" ? `${wrote ? "Wrote" : "About them"} — ${note}` : note,
+        excerpt: (row.excerpt as string | null) ?? null,
+        reasons: reasonText(row.reasons),
+        createdAt: row.created_at as string,
+        state: row.dismissed_at ? "Dismissed" : "Open",
+      });
+    }
+  }
+  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json({ items });
+});
+
+function latestTimestamp(values: Array<string | null | undefined>) {
+  let best = 0;
+  let iso: string | null = null;
+  for (const value of values) {
+    if (!value) continue;
+    const time = Date.parse(value);
+    if (Number.isFinite(time) && time > best) {
+      best = time;
+      iso = new Date(time).toISOString();
+    }
+  }
+  return iso;
+}
+
 adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) {
@@ -654,8 +916,12 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
       postsResult,
       communityResult,
       authResult,
+      pushSeenResult,
+      messageSeenResult,
+      presenceResult,
       helperResult,
       reviewsResult,
+      postTypesResult,
     ] = await Promise.all([
         supabaseAdmin.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabaseAdmin
@@ -675,7 +941,7 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
           .order("sort_order", { ascending: true }),
         supabaseAdmin
           .from("profile_posts")
-          .select("id, caption, media_type, storage_path, created_at, custom_category, post_metadata, post_types(name, emoji)")
+          .select("id, caption, media_type, storage_path, created_at, custom_category, post_type_id, post_metadata, post_types(name, emoji)")
           .eq("author_id", id)
           .order("created_at", { ascending: false })
           .limit(100),
@@ -687,6 +953,21 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
           .limit(100),
         supabaseAdmin.auth.admin.getUserById(id),
         supabaseAdmin
+          .from("push_device_tokens")
+          .select("last_seen_at")
+          .eq("user_id", id)
+          .order("last_seen_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("messages")
+          .select("created_at")
+          .eq("sender_id", id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin.rpc("admin_member_presence", { member_id: id }),
+        supabaseAdmin
           .from("freelancer_profiles")
           .select("languages, live_categories, available_now, hourly_rate_min, hourly_rate_max")
           .eq("user_id", id)
@@ -696,6 +977,7 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
           .select("id, rating, review_text, created_at, reviewer:profiles!reviewer_id(full_name, photo_url)")
           .eq("reviewee_id", id)
           .order("created_at", { ascending: false }),
+        supabaseAdmin.from("profile_posts").select("post_type_id").eq("author_id", id),
       ]);
     if (profileErr) throw profileErr;
     if (jobsErr) throw jobsErr;
@@ -704,7 +986,31 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
       return;
     }
     const authUser = authResult.error ? null : authResult.data.user;
+    const presence =
+      presenceResult.error || !presenceResult.data || typeof presenceResult.data !== "object"
+        ? null
+        : (presenceResult.data as { online?: boolean; session_at?: string | null });
+    const online = presence?.online === true;
+    const lastActiveAt = latestTimestamp([
+      authUser?.last_sign_in_at,
+      presence?.session_at,
+      pushSeenResult.error ? null : pushSeenResult.data?.last_seen_at,
+      messageSeenResult.error ? null : messageSeenResult.data?.created_at,
+      postsResult.error ? null : postsResult.data?.[0]?.created_at,
+      communityResult.error ? null : communityResult.data?.[0]?.created_at,
+      ...(mediaResult.error ? [] : (mediaResult.data ?? []).map((row) => row.created_at as string)),
+    ]);
     const list = jobs ?? [];
+    const postCounts = { request_help: 0, offer_service: 0, community: 0, event: 0 };
+    for (const row of postTypesResult.error ? [] : (postTypesResult.data ?? [])) {
+      const key = row.post_type_id as keyof typeof postCounts;
+      if (key in postCounts) postCounts[key] += 1;
+    }
+    const tally = (mine: typeof list) => ({
+      active: mine.filter((job) => job.status === "locked" || job.status === "active").length,
+      completed: mine.filter((job) => job.status === "completed").length,
+      cancelled: mine.filter((job) => job.status === "cancelled").length,
+    });
     const openBan =
       ban && (!ban.expires_at || new Date(ban.expires_at).getTime() > Date.now()) ? ban : null;
     const communityPosts = communityResult.error ? [] : (communityResult.data ?? []);
@@ -718,12 +1024,55 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
         .order("sort_order", { ascending: true });
       if (!images.error) communityImages = (images.data ?? []) as typeof communityImages;
     }
+    const [sentMessages, conversationRows, postFlagRows, chatFlagRows, profileFlagRows] = await Promise.all([
+      supabaseAdmin.from("messages").select("id", { count: "exact", head: true }).eq("sender_id", id),
+      supabaseAdmin.from("conversations").select("id").or(`client_id.eq.${id},freelancer_id.eq.${id}`),
+      supabaseAdmin.from("quality_post_flags").select("outcome").eq("author_id", id),
+      supabaseAdmin.from("quality_chat_flags").select("outcome").eq("user_id", id),
+      supabaseAdmin
+        .from("quality_profile_flags")
+        .select("kind, user_id")
+        .or(`user_id.eq.${id},about_user_id.eq.${id}`),
+    ]);
+    const conversationIds = (conversationRows.error ? [] : (conversationRows.data ?? [])).map(
+      (row) => row.id as string,
+    );
+    let receivedMessages = 0;
+    for (let index = 0; index < conversationIds.length; index += 80) {
+      const slice = conversationIds.slice(index, index + 80);
+      const received = await supabaseAdmin
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .in("conversation_id", slice)
+        .neq("sender_id", id);
+      if (!received.error) receivedMessages += received.count ?? 0;
+    }
+    const postFlags = postFlagRows.error ? [] : (postFlagRows.data ?? []);
+    const chatFlags = chatFlagRows.error ? [] : (chatFlagRows.data ?? []);
+    const profileFlags = profileFlagRows.error ? [] : (profileFlagRows.data ?? []);
     res.json({
       profile,
       completedAsClient: list.filter((job) => job.status === "completed" && job.client_id === id).length,
       completedAsFreelancer: list.filter(
         (job) => job.status === "completed" && job.selected_freelancer_id === id,
       ).length,
+      postCounts,
+      jobMatches: {
+        client: tally(list.filter((job) => job.client_id === id)),
+        helper: tally(list.filter((job) => job.selected_freelancer_id === id)),
+      },
+      messages: {
+        sent: sentMessages.error ? 0 : (sentMessages.count ?? 0),
+        received: receivedMessages,
+      },
+      moderation: {
+        flaggedChats: chatFlags.filter((row) => row.outcome !== "block").length,
+        flaggedMessages: chatFlags.length,
+        flaggedBios: profileFlags.filter((row) => row.kind === "bio" && row.user_id === id).length,
+        flaggedReviews: profileFlags.filter((row) => row.kind === "review").length,
+        flaggedPosts: postFlags.filter((row) => row.outcome !== "block").length,
+        blockedPosts: postFlags.filter((row) => row.outcome === "block").length,
+      },
       ban: openBan,
       media: mediaResult.error ? [] : (mediaResult.data ?? []),
       posts: postsResult.error ? [] : (postsResult.data ?? []),
@@ -731,6 +1080,8 @@ adminRouter.get("/users/:id", async (req: Request, res: Response): Promise<void>
         ...post,
         images: communityImages.filter((image) => image.post_id === post.id),
       })),
+      online,
+      lastActiveAt,
       account: authUser
         ? {
             email: authUser.email ?? null,
@@ -791,6 +1142,77 @@ function isUuid(value: string) {
   return /^[0-9a-f-]{36}$/i.test(value);
 }
 
+const PROFILE_PHOTO_REMOVED_NOTICE = `🛡️ Tebnu Admin Notice
+
+Your profile image was deleted by our team because it is not appropriate.
+
+You can add a new photo from your profile. If you have questions, please contact us at info@tebnu.com.`;
+
+function mediaRemovedNotice(what: string, extra?: string) {
+  return `🛡️ Tebnu Admin Notice
+
+${what} was deleted by our team because it is not appropriate.
+${extra ? `\n${extra}\n` : ""}
+If you have questions, please contact us at info@tebnu.com.`;
+}
+
+async function notifyMediaRemoved(userId: string, body: string) {
+  try {
+    await notifyInSupportChat(userId, body);
+  } catch (noticeErr) {
+    console.error("[AdminRouter] media notice failed:", noticeErr);
+  }
+}
+
+async function notifyInSupportChat(userId: string, body: string) {
+  const { data: adminProfile, error: adminErr } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("is_admin", true)
+    .limit(1)
+    .maybeSingle();
+  if (adminErr) throw adminErr;
+  if (!adminProfile?.id || adminProfile.id === userId) return;
+
+  let conversationId: string | null = null;
+  const { data: existingConv } = await supabaseAdmin
+    .from("conversations")
+    .select("id")
+    .is("job_id", null)
+    .eq("client_id", adminProfile.id)
+    .eq("freelancer_id", userId)
+    .maybeSingle();
+  if (existingConv?.id) {
+    conversationId = existingConv.id as string;
+  } else {
+    const { data: reverseConv } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .is("job_id", null)
+      .eq("freelancer_id", adminProfile.id)
+      .eq("client_id", userId)
+      .maybeSingle();
+    if (reverseConv?.id) {
+      conversationId = reverseConv.id as string;
+    } else {
+      const { data: newConv, error: convErr } = await supabaseAdmin
+        .from("conversations")
+        .insert({ job_id: null, client_id: adminProfile.id, freelancer_id: userId })
+        .select("id")
+        .single();
+      if (convErr || !newConv) throw convErr ?? new Error("Could not open support chat.");
+      conversationId = newConv.id as string;
+    }
+  }
+
+  const { error: sendErr } = await supabaseAdmin.from("messages").insert({
+    conversation_id: conversationId,
+    sender_id: adminProfile.id,
+    body,
+  });
+  if (sendErr) throw sendErr;
+}
+
 adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const kind = typeof req.body?.kind === "string" ? req.body.kind : "";
@@ -810,9 +1232,11 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
         res.status(404).json({ error: "Member not found." });
         return;
       }
+      const hadPhoto = Boolean((profile.photo_url as string | null)?.trim());
       const { error: updateErr } = await supabaseAdmin.from("profiles").update({ photo_url: null }).eq("id", id);
       if (updateErr) throw updateErr;
       await removeOwnedFile(profile.photo_url as string | null);
+      if (hadPhoto) await notifyMediaRemoved(id, PROFILE_PHOTO_REMOVED_NOTICE);
       res.json({ ok: true });
       return;
     }
@@ -825,7 +1249,7 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
       }
       const { data: row, error } = await supabaseAdmin
         .from("public_profile_media")
-        .select("id, storage_path")
+        .select("id, storage_path, media_type")
         .eq("id", mediaId)
         .eq("user_id", id)
         .maybeSingle();
@@ -841,6 +1265,8 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
         .eq("user_id", id);
       if (deleteErr) throw deleteErr;
       await removeOwnedFile(row.storage_path as string);
+      const galleryWhat = row.media_type === "video" ? "A video on your profile" : "A photo on your profile";
+      await notifyMediaRemoved(id, mediaRemovedNotice(galleryWhat));
       res.json({ ok: true });
       return;
     }
@@ -871,10 +1297,12 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
       const kept: Array<{ storage_path: string; media_type: "image" | "video" }> = [];
       const seen = new Set<string>();
       let removed = false;
+      let removedVideo = false;
       const push = (path: unknown, mediaType: unknown) => {
         if (typeof path !== "string" || !path) return;
         if (path === storagePath) {
           removed = true;
+          if (mediaType === "video") removedVideo = true;
           return;
         }
         if ((mediaType !== "image" && mediaType !== "video") || seen.has(path)) return;
@@ -905,6 +1333,10 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
         .eq("author_id", id);
       if (updateErr) throw updateErr;
       await removeOwnedFile(storagePath);
+      const postWhat = removedVideo
+        ? "A video attached to your post"
+        : "A photo attached to your post";
+      await notifyMediaRemoved(id, mediaRemovedNotice(postWhat, "The post text stays."));
       res.json({ ok: true });
       return;
     }
@@ -939,6 +1371,7 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
       const { error: deleteErr } = await supabaseAdmin.from("community_post_images").delete().eq("id", imageId);
       if (deleteErr) throw deleteErr;
       await removeOwnedFile(image.image_url as string);
+      await notifyMediaRemoved(id, mediaRemovedNotice("A photo on your post", "The post text stays."));
       res.json({ ok: true });
       return;
     }
@@ -948,6 +1381,111 @@ adminRouter.post("/users/:id/media", async (req: Request, res: Response): Promis
     const message = err instanceof Error ? err.message : "Could not delete that photo.";
     console.error("[AdminRouter] POST /users/:id/media failure:", message);
     res.status(500).json({ error: "Could not delete that photo." });
+  }
+});
+
+function postSnippet(value: string | null | undefined) {
+  const text = value?.trim() ?? "";
+  if (!text) return "";
+  const cut = text.length > 60 ? `${text.slice(0, 60)}...` : text;
+  return ` "${cut}"`;
+}
+
+function postRemovedNotice(snippet: string) {
+  return `🛡️ Tebnu Admin Notice
+
+Your post${snippet} was deleted by our team because it is not appropriate.
+
+If you have questions, please contact us at info@tebnu.com.`;
+}
+
+function profilePostPaths(post: { storage_path: string | null; post_metadata: unknown }) {
+  const paths: string[] = [];
+  if (post.storage_path) paths.push(post.storage_path);
+  const meta = post.post_metadata;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const items = (meta as { media_items?: unknown }).media_items;
+    if (Array.isArray(items)) {
+      for (const raw of items) {
+        if (!raw || typeof raw !== "object") continue;
+        const path = (raw as { storage_path?: unknown }).storage_path;
+        if (typeof path === "string" && path) paths.push(path);
+      }
+    }
+  }
+  return paths;
+}
+
+adminRouter.post("/users/:id/posts", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const kind = typeof req.body?.kind === "string" ? req.body.kind : "";
+  const postId = typeof req.body?.postId === "string" ? req.body.postId : "";
+  if (!isUuid(id) || !isUuid(postId)) {
+    res.status(400).json({ error: "Unknown post." });
+    return;
+  }
+  try {
+    if (kind === "profile") {
+      const { data: post, error } = await supabaseAdmin
+        .from("profile_posts")
+        .select("id, caption, storage_path, post_metadata")
+        .eq("id", postId)
+        .eq("author_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!post) {
+        res.status(404).json({ error: "That post is already gone." });
+        return;
+      }
+      const paths = profilePostPaths(post);
+      const { error: deleteErr } = await supabaseAdmin
+        .from("profile_posts")
+        .delete()
+        .eq("id", postId)
+        .eq("author_id", id);
+      if (deleteErr) throw deleteErr;
+      await Promise.all(paths.map((path) => removeOwnedFile(path)));
+      await notifyMediaRemoved(id, postRemovedNotice(postSnippet(post.caption as string | null)));
+      res.json({ ok: true });
+      return;
+    }
+
+    if (kind === "community") {
+      const { data: post, error } = await supabaseAdmin
+        .from("community_posts")
+        .select("id, title, body")
+        .eq("id", postId)
+        .eq("author_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!post) {
+        res.status(404).json({ error: "That post is already gone." });
+        return;
+      }
+      const images = await supabaseAdmin
+        .from("community_post_images")
+        .select("image_url")
+        .eq("post_id", postId);
+      const { error: deleteErr } = await supabaseAdmin
+        .from("community_posts")
+        .delete()
+        .eq("id", postId)
+        .eq("author_id", id);
+      if (deleteErr) throw deleteErr;
+      if (!images.error) {
+        await Promise.all((images.data ?? []).map((image) => removeOwnedFile(image.image_url as string)));
+      }
+      const label = (post.title as string | null)?.trim() || (post.body as string | null)?.trim() || "";
+      await notifyMediaRemoved(id, postRemovedNotice(postSnippet(label)));
+      res.json({ ok: true });
+      return;
+    }
+
+    res.status(400).json({ error: "Unknown post." });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Could not delete that post.";
+    console.error("[AdminRouter] POST /users/:id/posts failure:", message);
+    res.status(500).json({ error: "Could not delete that post." });
   }
 });
 

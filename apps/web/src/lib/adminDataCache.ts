@@ -1,6 +1,6 @@
 import { apiGet } from "@/lib/api";
 
-const CACHE_PREFIX = "admin-data:v2:";
+const CACHE_PREFIX = "admin-data:v3:";
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 type CacheEntry<T> = {
@@ -17,13 +17,7 @@ function readEntry<T>(key: string): CacheEntry<T> | null {
 
   try {
     const storageKey = `${CACHE_PREFIX}${key}`;
-    const stored = JSON.parse(
-      sessionStorage.getItem(storageKey) ||
-        (key === "dashboard"
-          ? sessionStorage.getItem("admin-dashboard:v2")
-          : null) ||
-        "null",
-    ) as CacheEntry<T> | null;
+    const stored = JSON.parse(sessionStorage.getItem(storageKey) || "null") as CacheEntry<T> | null;
     if (!stored?.savedAt || stored.data == null) return null;
     memoryCache.set(key, stored);
     return stored;

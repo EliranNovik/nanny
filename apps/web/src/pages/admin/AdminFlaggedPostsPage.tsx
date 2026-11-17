@@ -247,7 +247,7 @@ function PersonCell({ person, banned }: { person: BlockPerson; banned?: boolean 
   const name = personName(person);
   return (
     <Link
-      to={`/profile/${person.id}`}
+      to={`/admin/members/${person.id}`}
       onClick={(event) => event.stopPropagation()}
       className="inline-flex min-w-0 items-center gap-2.5 hover:underline"
     >
@@ -818,8 +818,17 @@ export default function AdminFlaggedPostsPage() {
                       </td>
                       <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-200">
                         {row.kind === "bio" ? "Bio" : "Review"}
-                        {row.kind === "review" && row.aboutName ? (
-                          <p className="mt-1 font-normal text-zinc-500">About {row.aboutName}</p>
+                        {row.kind === "review" && row.about_user_id && row.aboutName ? (
+                          <p className="mt-1 font-normal text-zinc-500">
+                            About{" "}
+                            <Link
+                              to={`/admin/members/${row.about_user_id}`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900 dark:hover:decoration-zinc-100"
+                            >
+                              {row.aboutName}
+                            </Link>
+                          </p>
                         ) : null}
                       </td>
                       <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1043,17 +1052,13 @@ export default function AdminFlaggedPostsPage() {
                     </td>
                     <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
                       <span className="inline-flex items-center gap-2">
-                        {tab === "block" ? (
-                          <Link
-                            to={`/admin/members/${row.author_id}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900 dark:hover:decoration-zinc-100"
-                          >
-                            {row.authorName}
-                          </Link>
-                        ) : (
-                          row.authorName
-                        )}
+                        <Link
+                          to={`/admin/members/${row.author_id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900 dark:hover:decoration-zinc-100"
+                        >
+                          {row.authorName}
+                        </Link>
                         {bans[row.author_id] ? (
                           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
                             Banned

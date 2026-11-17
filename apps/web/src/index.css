@@ -967,6 +967,7 @@
       flex: none;
     }
 
+    .admin-table-page .admin-user-search,
     .admin-table-page .admin-filter-panel {
       margin-bottom: 1rem;
       flex: none;

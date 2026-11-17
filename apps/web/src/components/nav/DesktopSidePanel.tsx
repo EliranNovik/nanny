@@ -15,10 +15,15 @@ import {
   UsersRound,
   ArrowLeft,
   Home,
+  Activity,
+  Image,
+  LayoutDashboard,
+  MessageSquare,
   Rss,
   MessageCircle,
   Send,
   User,
+  UserRound,
   LogOut,
   Shield,
   CheckCircle2,
@@ -47,6 +52,27 @@ type NavItem = {
   activeMatch: (pathname: string) => boolean;
 };
 
+const MEMBER_SECTIONS: Array<{ id: string; label: string; icon: LucideIcon }> = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "dossier", label: "Dossier", icon: UserRound },
+  { id: "media", label: "Media", icon: Image },
+  { id: "posts", label: "Posts", icon: Newspaper },
+  { id: "activity", label: "Activity", icon: Activity },
+  { id: "message", label: "Message", icon: MessageSquare },
+];
+
+function memberSidebar(pathname: string) {
+  const match = pathname.match(/^\/admin\/members\/([0-9a-f-]{36})(?:\/([^/]+))?/i);
+  if (!match) return null;
+  const section = match[2];
+  const rubric = MEMBER_SECTIONS.some((item) => item.id === section)
+    ? section
+    : section === "jobs" || section === "flags"
+      ? ""
+      : "overview";
+  return { userId: match[1], rubric };
+}
+
 export function isDesktopSidePanelExcludedRoute(pathname: string): boolean {
   if (pathname === "/") return true;
   if (pathname === "/login") return true;
@@ -64,6 +90,7 @@ export function DesktopSidePanel() {
   const { collapsed, adminMenuOpen, setAdminMenuOpen } = useDesktopSidePanel();
   const { pathname, search } = useLocation();
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const memberNav = isAdminPage ? memberSidebar(pathname) : null;
 
   useEffect(() => {
     setAdminMenuOpen(false);
@@ -567,7 +594,7 @@ export function DesktopSidePanel() {
           "max-md:pointer-events-none max-md:-translate-x-full max-md:rtl:translate-x-full",
       )}
     >
-      {isAdminPage ? (
+      {isAdminPage && !memberNav ? (
         <Link
           to={homeHref}
           className="hidden shrink-0 items-center gap-3 px-6 pb-1 pt-4 text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10 md:flex"
@@ -602,7 +629,50 @@ export function DesktopSidePanel() {
       >
 
         <div className="mt-2 flex flex-col">
-          <nav className="flex w-full flex-col items-stretch gap-1">
+          {memberNav ? (
+            <nav className="flex w-full flex-col items-stretch gap-1" aria-label="Member sections">
+              <Link
+                to="/admin/users"
+                className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+              >
+                <ArrowLeft className="h-5 w-5 shrink-0 text-zinc-400 rtl-flip-icon" strokeWidth={2.15} />
+                <span className="text-[13px] font-semibold leading-none tracking-tight">Users registry</span>
+              </Link>
+              {MEMBER_SECTIONS.map((section) => {
+                const active = memberNav.rubric === section.id;
+                const Icon = section.icon;
+                const href =
+                  section.id === "overview"
+                    ? `/admin/members/${memberNav.userId}`
+                    : `/admin/members/${memberNav.userId}/${section.id}`;
+                return (
+                  <Link
+                    key={section.id}
+                    to={href}
+                    className={cn(
+                      "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+                      navHover,
+                      active ? navActive : "text-zinc-800 dark:text-zinc-100",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {active ? (
+                      <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-orange-500" aria-hidden />
+                    ) : null}
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0",
+                        active ? "text-orange-600 dark:text-orange-400" : "text-zinc-400",
+                      )}
+                      strokeWidth={2.15}
+                    />
+                    <span className="text-[13px] font-semibold leading-none tracking-tight">{section.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
+          <nav className={cn("flex w-full flex-col items-stretch gap-1", memberNav && "hidden")}>
             {items.filter((it) => !(isAdminPage && isMdUp && it.id === "home")).map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
@@ -657,7 +727,7 @@ export function DesktopSidePanel() {
             })}
           </nav>
 
-          {profile?.is_admin && (
+          {profile?.is_admin && !memberNav && (
             <div className="mt-4 pt-4 border-t border-border/40">
               <div className="px-3 mb-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/80">
@@ -836,6 +906,7 @@ export function DesktopSidePanel() {
         </div>
       </div>
       <div className="flex shrink-0 flex-col gap-1 border-t border-border/10 p-3">
+        {memberNav ? null : (
         <button
           type="button"
           onClick={() => navigate("/community/feed?compose=1")}
@@ -844,7 +915,8 @@ export function DesktopSidePanel() {
           <Send className="h-4 w-4" strokeWidth={2.6} aria-hidden />
           {t("nav.sharePost")}
         </button>
-        {isAdminPage ? (
+        )}
+        {isAdminPage && !memberNav ? (
           <Link
             to={homeHref}
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"

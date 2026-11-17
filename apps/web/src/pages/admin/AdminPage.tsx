@@ -33,6 +33,7 @@ import { findOrCreateDirectConversation } from "@/lib/findOrCreateDirectConversa
 import { adminCityLabel } from "@/lib/adminCityLabel";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { adminJobBudget } from "@/lib/adminJobPresentation";
+import { AdminMemberLink } from "@/components/admin/AdminMemberLink";
 
 interface Job {
   id: string;
@@ -550,12 +551,12 @@ export default function AdminPage() {
                               <AvatarImage src={job.client?.photo_url || undefined} />
                               <AvatarFallback>{job.client?.full_name?.[0] || "?"}</AvatarFallback>
                             </Avatar>
-                            <span className="inline-flex items-center gap-1 font-semibold">
+                            <AdminMemberLink userId={job.client_id} className="inline-flex items-center gap-1 font-semibold">
                               {job.client?.full_name || "Unknown"}
                               {job.client?.is_verified && (
                                 <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:text-zinc-900" aria-label="Verified" />
                               )}
-                            </span>
+                            </AdminMemberLink>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -565,12 +566,12 @@ export default function AdminPage() {
                                 <AvatarImage src={freelancer.photo_url || undefined} />
                                 <AvatarFallback>{freelancer.full_name?.[0] || "?"}</AvatarFallback>
                               </Avatar>
-                              <span className="inline-flex items-center gap-1 font-semibold">
+                              <AdminMemberLink userId={freelancerId} className="inline-flex items-center gap-1 font-semibold">
                                 {freelancer.full_name || "Unknown"}
                                 {freelancer.is_verified && (
                                   <BadgeCheck className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:text-zinc-900" aria-label="Verified" />
                                 )}
-                              </span>
+                              </AdminMemberLink>
                             </div>
                           ) : (
                             <span className="text-sm text-zinc-400">Unassigned</span>
@@ -675,7 +676,9 @@ export default function AdminPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
-                                  <span className="font-semibold text-sm tracking-tight">{u.full_name || "Anonymous"}</span>
+                                  <AdminMemberLink userId={u.id} className="font-semibold text-sm tracking-tight">
+                                    {u.full_name || "Anonymous"}
+                                  </AdminMemberLink>
                                   <span className="text-xs text-muted-foreground font-normal">{u.phone || "No phone listed"}</span>
                                 </div>
                               </div>
@@ -785,7 +788,11 @@ export default function AdminPage() {
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {reports.map((report) => (
                       <tr key={report.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40">
-                        <td className="px-6 py-3 font-semibold">{report.client?.full_name || "Unknown User"}</td>
+                        <td className="px-6 py-3 font-semibold">
+                          <AdminMemberLink userId={report.client_id}>
+                            {report.client?.full_name || "Unknown User"}
+                          </AdminMemberLink>
+                        </td>
                         <td className="max-w-sm truncate px-6 py-3 text-muted-foreground">{report.last_message?.body || "No message"}</td>
                         <td className="px-6 py-3 text-muted-foreground">{format(new Date(report.created_at), "MMM d, yyyy")}</td>
                         <td className="px-6 py-3">{report.unread_count || 0}</td>
@@ -846,8 +853,10 @@ export default function AdminPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
-                            {selectedJob.client?.full_name || "Anonymous Client"}
+                          <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            <AdminMemberLink userId={selectedJob.client_id}>
+                              {selectedJob.client?.full_name || "Anonymous Client"}
+                            </AdminMemberLink>
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
                             {selectedJob.location_city || "No location listed"}
@@ -869,8 +878,10 @@ export default function AdminPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
-                              {selectedJob.freelancer.full_name}
+                            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                              <AdminMemberLink userId={selectedJob.selected_freelancer_id}>
+                                {selectedJob.freelancer.full_name}
+                              </AdminMemberLink>
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
                               Platform Helper

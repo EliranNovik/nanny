@@ -23,6 +23,7 @@ import { AdminTableSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { format } from "date-fns";
 import { publicProfileMediaPublicUrl, publicProfileMediaUrl } from "@/lib/publicProfileMedia";
 import { useNavigate } from "react-router-dom";
+import { AdminMemberLink } from "@/components/admin/AdminMemberLink";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -683,9 +684,12 @@ export default function AdminPostsPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <div className="font-medium text-zinc-900 dark:text-zinc-100 text-xs truncate max-w-[120px]">
+                            <AdminMemberLink
+                              userId={post.author_id}
+                              className="block max-w-[120px] truncate text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                            >
                               {post.author?.full_name || "Unknown"}
-                            </div>
+                            </AdminMemberLink>
                             <div className="text-xs text-zinc-400 dark:text-zinc-500 capitalize">
                               {post.author?.role || "—"}
                             </div>
@@ -877,11 +881,18 @@ export default function AdminPostsPage() {
               {(reportedPost.reports || []).map((report) => {
                 const expanded = expandedReportId === report.id;
                 return (
-                  <button
+                  <div
                     key={report.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedReportId(expanded ? null : report.id)}
-                    className="w-full rounded-xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setExpandedReportId(expanded ? null : report.id);
+                      }
+                    }}
+                    className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
@@ -889,7 +900,9 @@ export default function AdminPostsPage() {
                         <AvatarFallback>{report.reporter?.full_name?.[0] || "?"}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-bold text-zinc-900 dark:text-white">{report.reporter?.full_name || "Unknown user"}</p>
+                        <AdminMemberLink userId={report.reporter_id} className="truncate font-bold text-zinc-900 dark:text-white">
+                          {report.reporter?.full_name || "Unknown user"}
+                        </AdminMemberLink>
                         <p className="text-xs text-zinc-500">{format(new Date(report.created_at), "MMM d, yyyy 'at' HH:mm")}</p>
                       </div>
                     </div>
@@ -925,7 +938,7 @@ export default function AdminPostsPage() {
                         </div>
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
               {(reportedPost.reports || []).length === 0 && (

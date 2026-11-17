@@ -104,6 +104,8 @@ import AdminPostsPage from "@/pages/admin/AdminPostsPage";
 import AdminAiBotPage from "@/pages/admin/AdminAiBotPage";
 import AdminFlaggedPostsPage from "@/pages/admin/AdminFlaggedPostsPage";
 import AdminMemberPage from "@/pages/admin/AdminMemberPage";
+import AdminMemberJobsPage from "@/pages/admin/AdminMemberJobsPage";
+import AdminMemberFlagsPage from "@/pages/admin/AdminMemberFlagsPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
@@ -807,6 +809,30 @@ function AppRoutes() {
           element={
             <ProtectedAdminRoute>
               <AdminUsersPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/members/:userId/flags"
+          element={
+            <ProtectedAdminRoute>
+              <AdminMemberFlagsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/members/:userId/jobs/:side"
+          element={
+            <ProtectedAdminRoute>
+              <AdminMemberJobsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/members/:userId/:rubric"
+          element={
+            <ProtectedAdminRoute>
+              <AdminMemberPage />
             </ProtectedAdminRoute>
           }
         />
