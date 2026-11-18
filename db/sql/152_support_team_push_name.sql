@@ -117,15 +117,19 @@ begin
 
   v_title := coalesce(v_sender_name, 'New message');
 
-  if nullif(trim(coalesce(NEW.body, '')), '') is not null then
+  if nullif(trim(coalesce(NEW.body, '')), '') is not null
+     and NEW.attachment_type is null then
     v_body := left(trim(NEW.body), 140);
-  elsif NEW.attachment_type is not null then
+  elsif NEW.attachment_type is not null
+    and nullif(trim(coalesce(NEW.body, '')), '') is null then
     v_body := case
-      when NEW.attachment_type like 'image%' then 'Sent a photo'
-      when NEW.attachment_type like 'video%' then 'Sent a video'
-      when NEW.attachment_type like 'audio%' then 'Sent an audio message'
-      else 'Sent an attachment'
+      when NEW.attachment_type like 'image%' then 'Sent you an image'
+      when NEW.attachment_type like 'video%' then 'Sent you a video'
+      when NEW.attachment_type like 'audio%' then 'Sent you a voice message'
+      else 'Sent you an attachment'
     end;
+  elsif nullif(trim(coalesce(NEW.body, '')), '') is not null then
+    v_body := left(trim(NEW.body), 140);
   else
     v_body := 'Sent you a message';
   end if;
@@ -145,8 +149,23 @@ begin
     'sender_id', NEW.sender_id::text,
     'actor_id', NEW.sender_id::text,
     'link', '/messages/' || NEW.conversation_id::text,
-    'image', coalesce(v_sender_photo, ''),
-    'actor_photo_url', coalesce(v_sender_photo, '')
+    'image', case
+      when NEW.attachment_type like 'image%'
+        and coalesce(NEW.attachment_url, '') ~* '^https?://'
+        then NEW.attachment_url
+      else coalesce(v_sender_photo, '')
+    end,
+    'actor_photo_url', coalesce(v_sender_photo, ''),
+    'media_url', case
+      when coalesce(NEW.attachment_url, '') ~* '^https?://' then NEW.attachment_url
+      else ''
+    end,
+    'media_type', case
+      when NEW.attachment_type like 'image%' then 'image'
+      when NEW.attachment_type like 'video%' then 'video'
+      when NEW.attachment_type like 'audio%' then 'audio'
+      else ''
+    end
   );
   v_dedupe := 'message:' || NEW.id::text;
 

@@ -56,6 +56,55 @@ async function supportTeamPush(
   };
 }
 
+function attachmentNotice(type: string): string | null {
+  const kind = type.trim().toLowerCase();
+  if (kind.startsWith("image")) return "Sent you an image";
+  if (kind.startsWith("video")) return "Sent you a video";
+  if (kind.startsWith("audio")) return "Sent you a voice message";
+  return null;
+}
+
+/**
+ * Voice, image, and video messages get a plain description.
+ * An image is also attached so the lock screen can show a small preview.
+ * A written caption stays as the text.
+ */
+async function withMessageMedia(
+  row: QueueRow,
+  body: string,
+  data: Record<string, unknown>,
+): Promise<{ body: string; data: Record<string, unknown> }> {
+  const type = row.notification_type || nonEmptyString(data.type);
+  const messageId = nonEmptyString(data.message_id);
+  if (type !== "message" || !messageId) return { body, data };
+
+  const { data: message, error } = await supabaseAdmin
+    .from("messages")
+    .select("body, attachment_url, attachment_type")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (error || !message) return { body, data };
+
+  const attachmentType = nonEmptyString(message.attachment_type);
+  const notice = attachmentType ? attachmentNotice(attachmentType) : null;
+  if (!notice || !attachmentType) return { body, data };
+
+  const caption = visiblePushBody(nonEmptyString(message.body) ?? "").trim();
+  const nextBody = caption ? caption.slice(0, 140) : notice;
+  const url = nonEmptyString(message.attachment_url);
+  const kind = attachmentType.toLowerCase().startsWith("image")
+    ? "image"
+    : attachmentType.toLowerCase().startsWith("video")
+      ? "video"
+      : "audio";
+  data.media_type = kind;
+  if (isHttpUrl(url)) {
+    data.media_url = url;
+    if (kind === "image") data.image = url;
+  }
+  return { body: nextBody, data };
+}
+
 function isHttpUrl(v: string | null | undefined): v is string {
   return !!v && /^https?:\/\//i.test(v);
 }
@@ -378,9 +427,10 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     if (!nonEmptyString(enriched.type) && nonEmptyString(row.notification_type)) {
       enriched.type = row.notification_type;
     }
-    const data = stringifyData(enriched);
     const named = await supportTeamPush(row);
-    const payload = { title: named.title, body: named.body, data };
+    const withMedia = await withMessageMedia(row, named.body, enriched);
+    const data = stringifyData(withMedia.data);
+    const payload = { title: named.title, body: withMedia.body, data };
     pushLog("Queue row audio fields", {
       queue_id: row.id,
       notification_type: row.notification_type ?? null,

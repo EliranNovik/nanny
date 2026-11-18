@@ -72,8 +72,9 @@ Report a problem only when the post itself contains something people would repor
 - a scam that tries to trick someone out of money
 - instructions for causing serious harm
 - someone's private documents, such as an identity card or a bank record
+- buying, selling, offering, using, promoting, or celebrating illegal drugs or controlled substances (including "let's do drugs", "taking drugs", dealing, or named hard drugs). Confidence for these must be 90 or higher so the post is blocked. Do not allow or only flag them.
 
-Do not report ordinary help requests, prices, disagreements, care or health requests that are not graphic, strong language on its own, or everyday photos of homes, food, pets, or people.
+Do not report ordinary help requests, prices, disagreements, care or health requests that are not graphic, prescription medicine talk that is not abuse or diversion, strong language on its own, or everyday photos of homes, food, pets, or people.
 
 For each real problem give a category, a confidence from 0 to 100 for how sure you are that the post contains that problem, and a short factual detail.
 Also give note: one calm sentence for the person who wrote the post. No accusation, no percentage, no mention of a ban. If there is no problem, reasons is empty and note is empty.
