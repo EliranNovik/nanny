@@ -2,11 +2,7 @@ import { supabaseAdmin } from "../../supabase";
 import { sendFcmToTokens } from "./fcm";
 import { getApnsConfigError, isApnsConfigured, sendApnsToTokens } from "./apns";
 import { PUSH_WORKER_VERSION, pushError, pushLog, pushWarn, tokenPreview } from "./log";
-import {
-  linkPushImage,
-  mediaPushImage,
-  shortenPushLinkText,
-} from "./pushPreview";
+import { mediaPushImage } from "./pushPreview";
 import {
   loadDeliveryPrefs,
   messageSoundShouldPause,
@@ -89,8 +85,7 @@ function attachmentNotice(type: string): string | null {
  * `actor_photo_url` and `image` stay the sender, so the profile photo is not replaced.
  * Android draws `media_preview_url` to the right of the text. iOS does that only
  * after the notification extension attaches `media_preview_url` as a file.
- * A written caption stays as the text. A shared link is shortened to a
- * link icon plus the site name, with the page image as the preview.
+ * A written caption stays as the text. A shared link stays the link itself.
  */
 async function withMessageMedia(
   row: QueueRow,
@@ -141,18 +136,6 @@ async function withMessageMedia(
 
   let nextBody = caption || notice || visiblePushBody(body);
   if (!nextBody.trim()) nextBody = "Sent you a message";
-  if (caption || !notice) {
-    const shortened = shortenPushLinkText(nextBody);
-    if (shortened.text) nextBody = shortened.text;
-    const pageUrl = shortened.urls[0];
-    if (pageUrl && !nonEmptyString(data.media_preview_url)) {
-      const preview = await withTimeout(linkPushImage(pageUrl), 8_000);
-      if (preview) {
-        data.media_preview_url = preview;
-        pushLog("Push link preview ready", { message_id: messageId });
-      }
-    }
-  }
 
   return { body: nextBody.slice(0, 140), data, skipAlert: false };
 }

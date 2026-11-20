@@ -5,7 +5,6 @@
  */
 import { supabaseAdmin } from "../../supabase";
 import { pushWarn } from "./log";
-import { shortenPushLinkText } from "./pushPreview";
 
 const QUIET_START_HOUR = 22;
 const QUIET_END_HOUR = 7;
@@ -453,7 +452,7 @@ async function socialCopy(
         .eq("id", commentId)
         .maybeSingle();
       const excerpt = nonEmpty((comment as { body?: unknown } | null)?.body);
-      if (excerpt) body = shortenPushLinkText(excerpt).text;
+      if (excerpt) body = excerpt;
     }
   }
   return { title: names[0] || "Someone", body: clip(body) };
