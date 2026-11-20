@@ -115,14 +115,6 @@ async function withMessageMedia(
   const notice = attachmentType ? attachmentNotice(attachmentType) : null;
   const caption = visiblePushBody(nonEmptyString(message.body) ?? "").trim();
   const url = nonEmptyString(message.attachment_url);
-  if (!showPreview) {
-    return {
-      body: notice || "Sent you a message",
-      data,
-      skipAlert: false,
-    };
-  }
-
   const kind = !attachmentType
     ? null
     : attachmentType.toLowerCase().startsWith("image")
@@ -133,18 +125,31 @@ async function withMessageMedia(
           ? "audio"
           : null;
 
-  if (kind) {
-    data.media_type = kind;
-    if (isHttpUrl(url)) data.media_url = url;
-  }
+  if (kind) data.media_type = kind;
 
+  // The written message can be hidden. The picture still has to be attached,
+  // or a video alert keeps the sender's face and never shows a frame.
   if ((kind === "image" || kind === "video") && isHttpUrl(url)) {
     const preview = await mediaPushImage(messageId, url, kind);
     if (preview) {
       data.image = preview;
       data.actor_photo_url = preview;
+      data.media_url = preview;
       pushLog("Push media preview ready", { message_id: messageId, kind });
+    } else if (kind === "image") {
+      data.image = url;
+      data.media_url = url;
     }
+  } else if (isHttpUrl(url)) {
+    data.media_url = url;
+  }
+
+  if (!showPreview) {
+    return {
+      body: notice || "Sent you a message",
+      data,
+      skipAlert: false,
+    };
   }
 
   let nextBody = notice ? (caption || notice) : caption || visiblePushBody(body);
