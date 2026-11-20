@@ -9,7 +9,6 @@ import {
 } from "./pushPreview";
 import {
   loadDeliveryPrefs,
-  messageAlreadyRead,
   messageSoundShouldPause,
   morningSummaryLine,
   newestGroupedQueueIds,
@@ -97,7 +96,6 @@ async function withMessageMedia(
   row: QueueRow,
   body: string,
   data: Record<string, unknown>,
-  showPreview: boolean,
 ): Promise<{ body: string; data: Record<string, unknown>; skipAlert: boolean }> {
   const type = row.notification_type || nonEmptyString(data.type);
   const messageId = nonEmptyString(data.message_id);
@@ -105,13 +103,10 @@ async function withMessageMedia(
 
   const { data: message, error } = await supabaseAdmin
     .from("messages")
-    .select("body, attachment_url, attachment_type, read_at")
+    .select("body, attachment_url, attachment_type")
     .eq("id", messageId)
     .maybeSingle();
   if (error || !message) return { body, data, skipAlert: false };
-  if ((message as { read_at?: string | null }).read_at) {
-    return { body, data, skipAlert: true };
-  }
 
   const attachmentType = nonEmptyString(message.attachment_type);
   const notice = attachmentType ? attachmentNotice(attachmentType) : null;
@@ -132,7 +127,7 @@ async function withMessageMedia(
 
   const profilePhoto = nonEmptyString(data.actor_photo_url);
   if ((kind === "image" || kind === "video") && isHttpUrl(url)) {
-    const preview = await mediaPushImage(messageId, url, kind);
+    const preview = await withTimeout(mediaPushImage(messageId, url, kind), 12_000);
     if (preview) {
       data.media_preview_url = preview;
       pushLog("Push media preview ready", { message_id: messageId, kind });
@@ -144,21 +139,14 @@ async function withMessageMedia(
   if (profilePhoto) data.image = profilePhoto;
   else if (data.media_preview_url) delete data.image;
 
-  if (!showPreview) {
-    return {
-      body: notice || "Sent you a message",
-      data,
-      skipAlert: false,
-    };
-  }
-
-  let nextBody = notice ? (caption || notice) : caption || visiblePushBody(body);
+  let nextBody = caption || notice || visiblePushBody(body);
+  if (!nextBody.trim()) nextBody = "Sent you a message";
   if (caption || !notice) {
     const shortened = shortenPushLinkText(nextBody);
     if (shortened.text) nextBody = shortened.text;
     const pageUrl = shortened.urls[0];
-    if (pageUrl && !isHttpUrl(nonEmptyString(data.image))) {
-      const preview = await linkPushImage(pageUrl);
+    if (pageUrl && !nonEmptyString(data.media_preview_url)) {
+      const preview = await withTimeout(linkPushImage(pageUrl), 8_000);
       if (preview) {
         data.media_preview_url = preview;
         pushLog("Push link preview ready", { message_id: messageId });
@@ -167,6 +155,22 @@ async function withMessageMedia(
   }
 
   return { body: nextBody.slice(0, 140), data, skipAlert: false };
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
 }
 
 function isHttpUrl(v: string | null | undefined): v is string {
@@ -272,26 +276,32 @@ type DeviceTokenRow = {
 };
 
 /**
- * One phone often has several saved tokens (a refresh, or a different case of
- * the same APNs hex). Keep the newest token per platform, and per device when
- * the app sent a device id. Older tokens still receive pushes until Apple or
- * FCM rejects them, which is how the same alert shows twice.
+ * One phone often has several saved tokens. Sending to all of them shows the
+ * same alert twice, and a shared collapse id then hides one. Keep the newest
+ * token per platform. On iOS, prefer a real APNs token over a mis-tagged one.
  */
 function tokensToDeliver(rows: DeviceTokenRow[]): DeviceTokenRow[] {
-  const newest = new Map<string, DeviceTokenRow>();
+  const byPlatform = new Map<string, DeviceTokenRow[]>();
   for (const row of rows) {
     if (!row.token) continue;
     const token = row.platform === "ios" ? normalizeIosToken(row.token) : row.token;
-    const deviceKey = row.device_id?.trim() || "device";
-    const key = `${row.platform}:${deviceKey}`;
-    const current = newest.get(key);
-    const seen = row.last_seen_at ? Date.parse(row.last_seen_at) : 0;
-    const currentSeen = current?.last_seen_at ? Date.parse(current.last_seen_at) : 0;
-    if (!current || seen >= currentSeen) {
-      newest.set(key, { ...row, token });
-    }
+    const list = byPlatform.get(row.platform) ?? [];
+    list.push({ ...row, token });
+    byPlatform.set(row.platform, list);
   }
-  return [...newest.values()];
+  const out: DeviceTokenRow[] = [];
+  for (const [platform, list] of byPlatform) {
+    const apns = list.filter((row) => /^[0-9a-f]{64}$/.test(row.token));
+    const pool = platform === "ios" && apns.length ? apns : list;
+    pool.sort((a, b) => {
+      const aSeen = a.last_seen_at ? Date.parse(a.last_seen_at) : 0;
+      const bSeen = b.last_seen_at ? Date.parse(b.last_seen_at) : 0;
+      return bSeen - aSeen;
+    });
+    const chosen = pool[0];
+    if (chosen) out.push(chosen);
+  }
+  return out;
 }
 
 function stringifyData(data: Record<string, unknown> | null): Record<string, string> {
@@ -332,7 +342,12 @@ function uniqueTokens(tokens: string[], normalize?: (token: string) => string): 
 async function claimQueueRow(row: QueueRow): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("push_notification_queue")
-    .update({ attempts: row.attempts + 1, last_error: "sending" })
+    .update({
+      attempts: row.attempts + 1,
+      last_error: "sending",
+      // Hold the row so a second worker cannot deliver the same alert.
+      scheduled_for: new Date(Date.now() + 3 * 60 * 1000).toISOString(),
+    })
     .eq("id", row.id)
     .eq("status", "pending")
     .eq("attempts", row.attempts)
@@ -353,6 +368,7 @@ async function takeMorningDigest(row: QueueRow): Promise<{
   folded: QueueRow[];
   handledIds: string[];
 } | null> {
+  if ((row.notification_type || nonEmptyString(row.data?.type)) === "message") return null;
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin
     .from("push_notification_queue")
@@ -368,6 +384,9 @@ async function takeMorningDigest(row: QueueRow): Promise<{
   const folded: QueueRow[] = [];
   const handledIds: string[] = [];
   for (const sibling of data as QueueRow[]) {
+    if ((sibling.notification_type || nonEmptyString(sibling.data?.type)) === "message") {
+      continue;
+    }
     if (await notificationPartyBlocked(sibling)) {
       if (await claimQueueRow(sibling)) {
         await markQueueRow(sibling.id, "skipped", sibling.attempts + 1, "blocked");
@@ -482,9 +501,8 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
 
     const groupKey = pushCollapseKey(rowType, row.data);
     const prefs = await loadDeliveryPrefs(row.user_id, prefsCache);
-    const alreadyRead = await messageAlreadyRead(row);
 
-    if (!alreadyRead && rowType !== "badge") {
+    if (rowType !== "badge") {
       const deferUntil = quietHoursDeferral({
         enabled: prefs.quietHours,
         timeZone: prefs.timezone,
@@ -606,7 +624,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     if (!nonEmptyString(enriched.type) && nonEmptyString(row.notification_type)) {
       enriched.type = row.notification_type;
     }
-    let silent = rowType === "badge" || alreadyRead;
+    let silent = rowType === "badge";
     let title = row.title;
     let alertBody = row.body;
     let alertData = enriched;
@@ -625,12 +643,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       };
     } else if (!silent) {
       const named = await supportTeamPush(row);
-      const withMedia = await withMessageMedia(
-        row,
-        named.body,
-        enriched,
-        prefs.showMessagePreview,
-      );
+      const withMedia = await withMessageMedia(row, named.body, enriched);
       if (withMedia.skipAlert) {
         silent = true;
       } else {
@@ -659,7 +672,9 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     const muteSound = conversationId
       ? await messageSoundShouldPause(row.user_id, conversationId)
       : false;
-    const threadId = digest ? `digest-${row.user_id}` : groupKey;
+    const messageId =
+      rowType === "message" ? nonEmptyString(alertData.message_id) || nonEmptyString(row.data?.message_id) : null;
+    const threadId = digest ? `digest-${row.user_id}` : messageId ? null : groupKey;
     const payload = {
       title,
       body: alertBody,
@@ -669,11 +684,16 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       muteSound,
       threadId,
     };
+    // Same message can be handed to Apple twice (two saved tokens, or two workers).
+    // Collapse only that message. A conversation-wide id was replacing the alert,
+    // so a second copy flashed and the first text disappeared.
     const collapseId = silent
       ? `badge-${row.user_id}`
       : digest
         ? `digest-${row.user_id}`
-        : groupKey;
+        : messageId
+          ? `msg-${messageId}`
+          : groupKey;
     pushLog("Queue row audio fields", {
       queue_id: row.id,
       notification_type: row.notification_type ?? null,
@@ -829,6 +849,9 @@ async function markQueueRow(
 
   if (status === "sent") {
     patch.sent_at = new Date().toISOString();
+  }
+  if (status === "pending") {
+    patch.scheduled_for = new Date().toISOString();
   }
 
   const { error } = await supabaseAdmin

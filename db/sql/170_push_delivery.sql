@@ -3,13 +3,17 @@
 -- Run once in the Supabase SQL editor.
 
 alter table public.push_notification_preferences
-  add column if not exists show_message_preview boolean not null default false;
+  add column if not exists show_message_preview boolean not null default true;
+
+update public.push_notification_preferences
+  set show_message_preview = true
+  where show_message_preview = false;
 
 alter table public.push_notification_preferences
   add column if not exists quiet_hours_enabled boolean not null default true;
 
 comment on column public.push_notification_preferences.show_message_preview is
-  'When false, message alerts name the sender and hide the message text.';
+  'Message alerts always include the written text. This flag no longer hides it.';
 
 comment on column public.push_notification_preferences.quiet_hours_enabled is
   'When true, non-job alerts wait until 07:00 in the user timezone.';

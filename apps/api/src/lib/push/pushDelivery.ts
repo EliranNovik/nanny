@@ -1,6 +1,6 @@
 /**
  * Lock-screen polish that the current app already honors:
- * one alert per conversation, a real unread badge, quieter nights,
+ * each message keeps its own text, a real unread badge, quieter nights,
  * and titles that name the person.
  */
 import { supabaseAdmin } from "../../supabase";
@@ -132,10 +132,6 @@ export function pushCollapseKey(
   data: Record<string, unknown> | null | undefined,
 ): string | null {
   const record = data ?? {};
-  if (type === "message") {
-    const conversationId = nonEmpty(record.conversation_id);
-    return conversationId ? `conv-${conversationId}` : null;
-  }
   if (type === "like" || type === "comment") {
     const subject =
       nonEmpty(record.post_id) ||
@@ -303,8 +299,8 @@ export async function loadDeliveryPrefs(
     };
     prefs = {
       timezone: row.timezone?.trim() || "UTC",
-      quietHours: row.quiet_hours_enabled !== false,
-      showMessagePreview: row.show_message_preview === true,
+      quietHours: row.quiet_hours_enabled === true,
+      showMessagePreview: true,
     };
   }
   cache.set(userId, prefs);

@@ -32,7 +32,7 @@ const DEFAULT_PREFS: PushPreferences = {
   comment_enabled: true,
   like_enabled: true,
   post_expiry_enabled: true,
-  show_message_preview: false,
+  show_message_preview: true,
   quiet_hours_enabled: true,
   post_expiry_timing: "at_expiry",
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -117,11 +117,6 @@ export function ProfilePushPreferences() {
 
   const rows: { key: PrefKey; label: string; description?: string }[] = [
     { key: "messages_enabled", label: t("profile.push.messages"), description: t("profile.push.messagesDesc") },
-    {
-      key: "show_message_preview",
-      label: t("profile.push.previews"),
-      description: t("profile.push.previewsDesc"),
-    },
     {
       key: "quiet_hours_enabled",
       label: t("profile.push.quietHours"),
