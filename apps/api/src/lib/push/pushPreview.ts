@@ -3,7 +3,8 @@
  *
  * Chat files are often too large for FCM (1MB) and a video file is not an
  * image, so the phone never draws a preview. We store a small JPEG the
- * current app already shows via `image` and `actor_photo_url`.
+ * Android already shows via notification imageUrl. iOS shows it on the
+ * right once the notification extension attaches this URL.
  */
 import crypto from "crypto";
 import { spawn } from "child_process";

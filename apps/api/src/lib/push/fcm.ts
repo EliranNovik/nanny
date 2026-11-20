@@ -122,8 +122,9 @@ export async function sendFcmToTokens(
     data[key] = typeof value === "string" ? value : JSON.stringify(value);
   }
 
-  const rawImage = data.image?.trim();
-  const imageUrl = rawImage && /^https?:\/\//i.test(rawImage) ? rawImage : undefined;
+  const rawPreview = data.media_preview_url?.trim();
+  const imageUrl =
+    rawPreview && /^https?:\/\//i.test(rawPreview) ? rawPreview : undefined;
   const audio = resolvePushAudio(data);
   const sound = payload.muteSound ? undefined : audio.sound;
   const androidChannelId = audio.androidChannelId;

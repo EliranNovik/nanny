@@ -86,8 +86,10 @@ function attachmentNotice(type: string): string | null {
 
 /**
  * Voice, image, and video messages get a plain description.
- * Image and video alerts carry a small JPEG in `image` and `actor_photo_url`,
- * which is what the current iOS extension and Android already display.
+ * Image and video alerts carry a small JPEG in `media_preview_url`.
+ * `actor_photo_url` and `image` stay the sender, so the profile photo is not replaced.
+ * Android draws `media_preview_url` to the right of the text. iOS does that only
+ * after the notification extension attaches `media_preview_url` as a file.
  * A written caption stays as the text. A shared link is shortened to a
  * link icon plus the site name, with the page image as the preview.
  */
@@ -126,23 +128,21 @@ async function withMessageMedia(
           : null;
 
   if (kind) data.media_type = kind;
+  if (isHttpUrl(url)) data.media_url = url;
 
-  // The written message can be hidden. The picture still has to be attached,
-  // or a video alert keeps the sender's face and never shows a frame.
+  const profilePhoto = nonEmptyString(data.actor_photo_url);
   if ((kind === "image" || kind === "video") && isHttpUrl(url)) {
     const preview = await mediaPushImage(messageId, url, kind);
     if (preview) {
-      data.image = preview;
-      data.actor_photo_url = preview;
-      data.media_url = preview;
+      data.media_preview_url = preview;
       pushLog("Push media preview ready", { message_id: messageId, kind });
     } else if (kind === "image") {
-      data.image = url;
-      data.media_url = url;
+      data.media_preview_url = url;
     }
-  } else if (isHttpUrl(url)) {
-    data.media_url = url;
   }
+  // Keep the sender in the avatar slot. A chat photo must not take that place.
+  if (profilePhoto) data.image = profilePhoto;
+  else if (data.media_preview_url) delete data.image;
 
   if (!showPreview) {
     return {
@@ -160,8 +160,7 @@ async function withMessageMedia(
     if (pageUrl && !isHttpUrl(nonEmptyString(data.image))) {
       const preview = await linkPushImage(pageUrl);
       if (preview) {
-        data.image = preview;
-        data.actor_photo_url = preview;
+        data.media_preview_url = preview;
         pushLog("Push link preview ready", { message_id: messageId });
       }
     }
