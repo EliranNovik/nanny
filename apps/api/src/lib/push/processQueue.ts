@@ -2,6 +2,25 @@ import { supabaseAdmin } from "../../supabase";
 import { sendFcmToTokens } from "./fcm";
 import { getApnsConfigError, isApnsConfigured, sendApnsToTokens } from "./apns";
 import { PUSH_WORKER_VERSION, pushError, pushLog, pushWarn, tokenPreview } from "./log";
+import {
+  linkPushImage,
+  mediaPushImage,
+  shortenPushLinkText,
+} from "./pushPreview";
+import {
+  loadDeliveryPrefs,
+  messageAlreadyRead,
+  messageSoundShouldPause,
+  morningSummaryLine,
+  newestGroupedQueueIds,
+  notificationPartyBlocked,
+  pushCollapseKey,
+  quietHoursDeferral,
+  rememberMessageSound,
+  specificAlertCopy,
+  unreadConversationCount,
+  type DeliveryPrefs,
+} from "./pushDelivery";
 
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 100;
@@ -15,6 +34,7 @@ type QueueRow = {
   notification_type?: string | null;
   dedupe_key: string | null;
   attempts: number;
+  last_error?: string | null;
 };
 
 function nonEmptyString(v: unknown): string | null {
@@ -66,43 +86,83 @@ function attachmentNotice(type: string): string | null {
 
 /**
  * Voice, image, and video messages get a plain description.
- * An image is also attached so the lock screen can show a small preview.
- * A written caption stays as the text.
+ * Image and video alerts carry a small JPEG in `image` and `actor_photo_url`,
+ * which is what the current iOS extension and Android already display.
+ * A written caption stays as the text. A shared link is shortened to a
+ * link icon plus the site name, with the page image as the preview.
  */
 async function withMessageMedia(
   row: QueueRow,
   body: string,
   data: Record<string, unknown>,
-): Promise<{ body: string; data: Record<string, unknown> }> {
+  showPreview: boolean,
+): Promise<{ body: string; data: Record<string, unknown>; skipAlert: boolean }> {
   const type = row.notification_type || nonEmptyString(data.type);
   const messageId = nonEmptyString(data.message_id);
-  if (type !== "message" || !messageId) return { body, data };
+  if (type !== "message" || !messageId) return { body, data, skipAlert: false };
 
   const { data: message, error } = await supabaseAdmin
     .from("messages")
-    .select("body, attachment_url, attachment_type")
+    .select("body, attachment_url, attachment_type, read_at")
     .eq("id", messageId)
     .maybeSingle();
-  if (error || !message) return { body, data };
+  if (error || !message) return { body, data, skipAlert: false };
+  if ((message as { read_at?: string | null }).read_at) {
+    return { body, data, skipAlert: true };
+  }
 
   const attachmentType = nonEmptyString(message.attachment_type);
   const notice = attachmentType ? attachmentNotice(attachmentType) : null;
-  if (!notice || !attachmentType) return { body, data };
-
   const caption = visiblePushBody(nonEmptyString(message.body) ?? "").trim();
-  const nextBody = caption ? caption.slice(0, 140) : notice;
   const url = nonEmptyString(message.attachment_url);
-  const kind = attachmentType.toLowerCase().startsWith("image")
-    ? "image"
-    : attachmentType.toLowerCase().startsWith("video")
-      ? "video"
-      : "audio";
-  data.media_type = kind;
-  if (isHttpUrl(url)) {
-    data.media_url = url;
-    if (kind === "image") data.image = url;
+  if (!showPreview) {
+    return {
+      body: notice || "Sent you a message",
+      data,
+      skipAlert: false,
+    };
   }
-  return { body: nextBody, data };
+
+  const kind = !attachmentType
+    ? null
+    : attachmentType.toLowerCase().startsWith("image")
+      ? "image"
+      : attachmentType.toLowerCase().startsWith("video")
+        ? "video"
+        : attachmentType.toLowerCase().startsWith("audio")
+          ? "audio"
+          : null;
+
+  if (kind) {
+    data.media_type = kind;
+    if (isHttpUrl(url)) data.media_url = url;
+  }
+
+  if ((kind === "image" || kind === "video") && isHttpUrl(url)) {
+    const preview = await mediaPushImage(messageId, url, kind);
+    if (preview) {
+      data.image = preview;
+      data.actor_photo_url = preview;
+      pushLog("Push media preview ready", { message_id: messageId, kind });
+    }
+  }
+
+  let nextBody = notice ? (caption || notice) : caption || visiblePushBody(body);
+  if (caption || !notice) {
+    const shortened = shortenPushLinkText(nextBody);
+    if (shortened.text) nextBody = shortened.text;
+    const pageUrl = shortened.urls[0];
+    if (pageUrl && !isHttpUrl(nonEmptyString(data.image))) {
+      const preview = await linkPushImage(pageUrl);
+      if (preview) {
+        data.image = preview;
+        data.actor_photo_url = preview;
+        pushLog("Push link preview ready", { message_id: messageId });
+      }
+    }
+  }
+
+  return { body: nextBody.slice(0, 140), data, skipAlert: false };
 }
 
 function isHttpUrl(v: string | null | undefined): v is string {
@@ -281,6 +341,69 @@ async function claimQueueRow(row: QueueRow): Promise<boolean> {
   return (data ?? []).length === 1;
 }
 
+/** Fold every alert that waited overnight into one line. A single alert stays as itself. */
+async function takeMorningDigest(row: QueueRow): Promise<{
+  title: string;
+  body: string;
+  link: string;
+  folded: QueueRow[];
+  handledIds: string[];
+} | null> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("push_notification_queue")
+    .select("id, user_id, title, body, data, notification_type, dedupe_key, attempts, last_error")
+    .eq("user_id", row.user_id)
+    .eq("status", "pending")
+    .eq("last_error", "quiet_hours")
+    .lte("scheduled_for", now)
+    .neq("id", row.id)
+    .limit(50);
+  if (error || !data?.length) return null;
+
+  const folded: QueueRow[] = [];
+  const handledIds: string[] = [];
+  for (const sibling of data as QueueRow[]) {
+    if (await notificationPartyBlocked(sibling)) {
+      if (await claimQueueRow(sibling)) {
+        await markQueueRow(sibling.id, "skipped", sibling.attempts + 1, "blocked");
+        handledIds.push(sibling.id);
+      }
+      continue;
+    }
+    if (await claimQueueRow(sibling)) {
+      folded.push(sibling);
+      handledIds.push(sibling.id);
+    }
+  }
+
+  const types = [row, ...folded].map(
+    (item) => item.notification_type || nonEmptyString(item.data?.type) || "",
+  );
+  const line = morningSummaryLine(types);
+  if (!line) {
+    for (const sibling of folded) {
+      await markQueueRow(sibling.id, "pending", sibling.attempts + 1, "quiet_hours");
+    }
+    return null;
+  }
+
+  const messageWaiting = types.includes("message");
+  const link =
+    (messageWaiting
+      ? "/messages"
+      : nonEmptyString(folded.find((item) => nonEmptyString(item.data?.link))?.data?.link) ||
+        nonEmptyString(row.data?.link)) || "/messages";
+
+  return {
+    title: "While you were away",
+    body: line,
+    link,
+    folded,
+    handledIds,
+  };
+}
+
 export async function processPushQueue(limit = BATCH_SIZE): Promise<{
   processed: number;
   sent: number;
@@ -313,7 +436,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
 
   const { data: rows, error } = await supabaseAdmin
     .from("push_notification_queue")
-    .select("id, user_id, title, body, data, notification_type, dedupe_key, attempts")
+    .select("id, user_id, title, body, data, notification_type, dedupe_key, attempts, last_error")
     .eq("status", "pending")
     .lte("scheduled_for", now)
     .order("scheduled_for", { ascending: true })
@@ -334,8 +457,54 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
   let failed = 0;
   let skipped = 0;
   const photoCache = new Map<string, string | null>();
+  const prefsCache = new Map<string, DeliveryPrefs>();
+  const badgeCache = new Map<string, number | null>();
+  const nameCache = new Map<string, string>();
+  const newestInBatch = newestGroupedQueueIds(queueRows);
+  const foldedAway = new Set<string>();
 
   for (const row of queueRows) {
+    if (foldedAway.has(row.id)) continue;
+    const rowType = row.notification_type || nonEmptyString(row.data?.type) || "";
+
+    if (rowType !== "badge" && (await notificationPartyBlocked(row))) {
+      const blockedClaim = await claimQueueRow(row);
+      if (blockedClaim) {
+        await markQueueRow(row.id, "skipped", row.attempts + 1, "blocked");
+        skipped += 1;
+      }
+      continue;
+    }
+
+    const groupKey = pushCollapseKey(rowType, row.data);
+    const prefs = await loadDeliveryPrefs(row.user_id, prefsCache);
+    const alreadyRead = await messageAlreadyRead(row);
+
+    if (!alreadyRead && rowType !== "badge") {
+      const deferUntil = quietHoursDeferral({
+        enabled: prefs.quietHours,
+        timeZone: prefs.timezone,
+        type: rowType,
+      });
+      if (deferUntil) {
+        await supabaseAdmin
+          .from("push_notification_queue")
+          .update({
+            scheduled_for: deferUntil.toISOString(),
+            last_error: "quiet_hours",
+          })
+          .eq("id", row.id)
+          .eq("status", "pending")
+          .eq("attempts", row.attempts);
+        pushLog("Deferred for quiet hours", {
+          queue_id: row.id,
+          until: deferUntil.toISOString(),
+        });
+        skipped += 1;
+        continue;
+      }
+    }
+
     pushLog("Queue row start", {
       queue_id: row.id,
       user_id: row.user_id,
@@ -368,6 +537,12 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       continue;
     }
     const claimedAttempts = row.attempts + 1;
+
+    if (groupKey && row.last_error !== "quiet_hours" && newestInBatch.get(groupKey) !== row.id) {
+      await markQueueRow(row.id, "skipped", claimedAttempts, "grouped");
+      skipped += 1;
+      continue;
+    }
 
     const rawDeviceRows = (tokens ?? []) as DeviceTokenRow[];
     const deviceRows = tokensToDeliver(rawDeviceRows);
@@ -427,10 +602,74 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
     if (!nonEmptyString(enriched.type) && nonEmptyString(row.notification_type)) {
       enriched.type = row.notification_type;
     }
-    const named = await supportTeamPush(row);
-    const withMedia = await withMessageMedia(row, named.body, enriched);
-    const data = stringifyData(withMedia.data);
-    const payload = { title: named.title, body: withMedia.body, data };
+    let silent = rowType === "badge" || alreadyRead;
+    let title = row.title;
+    let alertBody = row.body;
+    let alertData = enriched;
+    let folded: QueueRow[] = [];
+    const digest =
+      !silent && row.last_error === "quiet_hours" ? await takeMorningDigest(row) : null;
+    if (digest) {
+      for (const id of digest.handledIds) foldedAway.add(id);
+      folded = digest.folded;
+      title = digest.title;
+      alertBody = digest.body;
+      alertData = {
+        type: "quiet_digest",
+        link: digest.link,
+        notification_type: "quiet_digest",
+      };
+    } else if (!silent) {
+      const named = await supportTeamPush(row);
+      const withMedia = await withMessageMedia(
+        row,
+        named.body,
+        enriched,
+        prefs.showMessagePreview,
+      );
+      if (withMedia.skipAlert) {
+        silent = true;
+      } else {
+        title = named.title;
+        alertBody = withMedia.body;
+        alertData = withMedia.data;
+        if (rowType !== "message") {
+          const polished = await specificAlertCopy(
+            rowType,
+            title,
+            alertBody,
+            alertData,
+            nameCache,
+          );
+          title = polished.title;
+          alertBody = polished.body;
+        }
+      }
+    }
+    const badge = await unreadConversationCount(row.user_id, badgeCache);
+    const data = stringifyData(alertData);
+    const conversationId =
+      rowType === "message" && !digest
+        ? nonEmptyString(alertData.conversation_id) || nonEmptyString(row.data?.conversation_id)
+        : null;
+    const muteSound = conversationId
+      ? await messageSoundShouldPause(row.user_id, conversationId)
+      : false;
+    const threadId = digest ? `digest-${row.user_id}` : groupKey;
+    const payload = {
+      title,
+      body: alertBody,
+      data,
+      badge,
+      silent,
+      muteSound,
+      threadId,
+    };
+    const collapseId = silent
+      ? `badge-${row.user_id}`
+      : digest
+        ? `digest-${row.user_id}`
+        : groupKey;
     pushLog("Queue row audio fields", {
       queue_id: row.id,
       notification_type: row.notification_type ?? null,
@@ -447,10 +686,23 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
       fcm_count: fcmTokens.length,
     });
 
+    // A badge-only update has no banner. Android cannot change the icon count
+    // without the app, so that refresh goes to iOS only.
+    if (silent && (badge === null || !iosTokens.length)) {
+      await markQueueRow(
+        row.id,
+        "sent",
+        claimedAttempts,
+        badge === null ? "badge unavailable" : null,
+      );
+      sent += 1;
+      continue;
+    }
+
     // FCM and APNs are independent — one provider failing must not block the other.
-    if (fcmTokens.length) {
+    if (!silent && fcmTokens.length) {
       try {
-        const fcmResult = await sendFcmToTokens(fcmTokens, payload, row.id);
+        const fcmResult = await sendFcmToTokens(fcmTokens, payload, collapseId);
         successCount += fcmResult.successCount;
         invalidTokens.push(...fcmResult.invalidTokens);
         if (fcmResult.failureCount > 0) {
@@ -477,7 +729,7 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
           });
           errorParts.push(`APNs: ${iosTokens.length} iOS token(s) but ${cfgErr}`);
         } else {
-          const apnsResult = await sendApnsToTokens(iosTokens, payload, row.id);
+          const apnsResult = await sendApnsToTokens(iosTokens, payload, collapseId);
           successCount += apnsResult.successCount;
           invalidTokens.push(...apnsResult.invalidTokens);
           if (apnsResult.failureCount > 0) {
@@ -518,9 +770,21 @@ export async function processPushQueue(limit = BATCH_SIZE): Promise<{
         successCount,
         worker_version: PUSH_WORKER_VERSION,
       });
-      await markQueueRow(row.id, "sent", claimedAttempts, null);
+      await markQueueRow(
+        row.id,
+        "sent",
+        claimedAttempts,
+        muteSound ? "quiet_sound" : null,
+      );
+      if (conversationId && !muteSound) rememberMessageSound(row.user_id, conversationId);
+      for (const sibling of folded) {
+        await markQueueRow(sibling.id, "skipped", sibling.attempts + 1, "morning_summary");
+      }
       sent += 1;
     } else {
+      for (const sibling of folded) {
+        await markQueueRow(sibling.id, "pending", sibling.attempts + 1, "quiet_hours");
+      }
       const nextAttempts = claimedAttempts;
       const status = nextAttempts >= MAX_ATTEMPTS ? "failed" : "pending";
       const lastError = errorParts.join(" | ") || "All push deliveries failed";

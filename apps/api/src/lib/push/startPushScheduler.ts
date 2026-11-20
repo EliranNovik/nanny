@@ -63,10 +63,10 @@ export function startPushScheduler(): void {
     return;
   }
 
-  const intervalMs = Math.max(
-    30_000,
-    Number(process.env.PUSH_CRON_INTERVAL_MS || 120_000) || 120_000,
-  );
+  // A chat alert should arrive in a few seconds. Cap the wait so an old
+  // 2-minute setting cannot leave messages sitting in the queue.
+  const requested = Number(process.env.PUSH_CRON_INTERVAL_MS || 5_000) || 5_000;
+  const intervalMs = Math.min(10_000, Math.max(5_000, requested));
 
   pushLog("Scheduler starting", {
     worker_version: PUSH_WORKER_VERSION,

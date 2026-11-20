@@ -25,6 +25,8 @@ const preferencesSchema = z.object({
   comment_enabled: z.boolean().optional(),
   like_enabled: z.boolean().optional(),
   post_expiry_enabled: z.boolean().optional(),
+  show_message_preview: z.boolean().optional(),
+  quiet_hours_enabled: z.boolean().optional(),
   post_expiry_timing: z.enum(["at_expiry", "today", "tomorrow"]).optional(),
   timezone: z.string().max(80).optional(),
 });

@@ -184,7 +184,14 @@ async function sendOneApns(
       authorization: `bearer ${jwt}`,
       "apns-topic": bundleId,
       "apns-push-type": "alert",
-      "apns-priority": "10",
+      "apns-priority":
+        payload &&
+        typeof payload === "object" &&
+        payload.aps &&
+        typeof payload.aps === "object" &&
+        "alert" in (payload.aps as object)
+          ? "10"
+          : "5",
       "content-type": "application/json",
       ...(collapseId ? { "apns-collapse-id": collapseId } : {}),
     });
@@ -238,6 +245,10 @@ export async function sendApnsToTokens(
     title: string;
     body: string;
     data?: Record<string, string>;
+    badge?: number | null;
+    silent?: boolean;
+    muteSound?: boolean;
+    threadId?: string | null;
   },
   collapseId: string | null = null,
 ): Promise<ApnsSendResult> {
@@ -275,7 +286,7 @@ export async function sendApnsToTokens(
   });
 
   const jwt = createApnsJwt(config);
-  const { sound } = resolvePushAudio(payload.data);
+  const sound = payload.muteSound ? undefined : resolvePushAudio(payload.data).sound;
 
   pushLog("APNs audio", {
     sound,
@@ -284,18 +295,25 @@ export async function sendApnsToTokens(
 
   // Custom keys live alongside `aps` so the app can deep-link from data.link / data.type.
   // `aps.sound` must match the filename bundled in the iOS app (e.g. tebnu_request.mp3).
+  const badge = typeof payload.badge === "number" ? payload.badge : undefined;
+  const aps: Record<string, unknown> = payload.silent
+    ? {
+        ...(badge !== undefined ? { badge } : {}),
+      }
+    : {
+        alert: {
+          title: payload.title,
+          body: payload.body,
+        },
+        ...(sound ? { sound } : {}),
+        ...(badge !== undefined ? { badge } : {}),
+        // Lets the Notification Service Extension swap in actor_photo_url / image.
+        "mutable-content": 1,
+        ...(payload.threadId ? { "thread-id": payload.threadId } : {}),
+      };
   const body: Record<string, unknown> = {
-    aps: {
-      alert: {
-        title: payload.title,
-        body: payload.body,
-      },
-      sound,
-      badge: 1,
-      // Lets the Notification Service Extension swap in actor_photo_url / image (communication-style avatar).
-      "mutable-content": 1,
-    },
-    ...(payload.data ?? {}),
+    aps,
+    ...(payload.silent ? {} : (payload.data ?? {})),
   };
 
   let successCount = 0;

@@ -95,6 +95,10 @@ export async function sendFcmToTokens(
     title: string;
     body: string;
     data?: Record<string, string>;
+    badge?: number | null;
+    silent?: boolean;
+    muteSound?: boolean;
+    threadId?: string | null;
   },
   collapseId: string | null = null,
 ): Promise<FcmSendResult> {
@@ -120,7 +124,9 @@ export async function sendFcmToTokens(
 
   const rawImage = data.image?.trim();
   const imageUrl = rawImage && /^https?:\/\//i.test(rawImage) ? rawImage : undefined;
-  const { sound, androidChannelId } = resolvePushAudio(data);
+  const audio = resolvePushAudio(data);
+  const sound = payload.muteSound ? undefined : audio.sound;
+  const androidChannelId = audio.androidChannelId;
 
   pushLog("FCM audio", {
     sound,
@@ -128,6 +134,7 @@ export async function sendFcmToTokens(
     type: data.type ?? data.notification_type ?? null,
   });
 
+  const badge = typeof payload.badge === "number" ? payload.badge : undefined;
   const message: admin.messaging.MulticastMessage = {
     tokens,
     notification: {
@@ -138,19 +145,26 @@ export async function sendFcmToTokens(
     data,
     // Android / web FCM only — native iOS APNs tokens are sent via apns.ts, not FCM.
     // On Android 8+, channel_id selects the sound configured in the app.
+    // The same tag replaces the previous alert for that conversation or post.
     android: {
       priority: "high",
       ...(collapseId ? { collapseKey: collapseId } : {}),
       notification: {
         channelId: androidChannelId,
-        sound,
+        ...(sound ? { sound } : { defaultSound: false }),
         ...(collapseId ? { tag: collapseId } : {}),
         ...(imageUrl ? { imageUrl } : {}),
+        ...(badge !== undefined ? { notificationCount: badge } : {}),
       },
     },
     apns: {
       payload: {
-        aps: { mutableContent: true, sound },
+        aps: {
+          mutableContent: true,
+          ...(sound ? { sound } : {}),
+          ...(badge !== undefined ? { badge } : {}),
+          ...(payload.threadId ? { threadId: payload.threadId } : {}),
+        },
       },
       ...(imageUrl ? { fcmOptions: { imageUrl } } : {}),
     },
